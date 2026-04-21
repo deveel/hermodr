@@ -29,12 +29,18 @@ namespace Deveel.Events
         /// <summary>
         /// The name of the queue to bind the exchange to.
         /// </summary>
-        public string QueueName { get; set; }
+        public string? QueueName { get; set; }
 
         /// <summary>
         /// The connection string to the RabbitMQ server.
         /// </summary>
-        public string ConnectionString { get; set; }
+        public string? ConnectionString { get; set; }
+
+        /// <summary>
+        /// An optional client name to identify this application in RabbitMQ management UI.
+        /// Defaults to <c>"Deveel.Events"</c>.
+        /// </summary>
+        public string? ClientName { get; set; }
 
         /// <summary>
         /// A set of options to configure the JSON serialization
@@ -52,5 +58,31 @@ namespace Deveel.Events
         /// The type of content to be published to the RabbitMQ queue.
         /// </summary>
         public RabbitMqMessageContent MessageContent { get; set; } = RabbitMqMessageContent.CloudEvent;
+
+        /// <summary>
+        /// When <c>true</c>, messages are published with delivery mode set to persistent
+        /// (delivery mode 2), ensuring they survive broker restarts. Defaults to <c>true</c>.
+        /// </summary>
+        public bool PersistentMessages { get; set; } = true;
+
+        /// <summary>
+        /// When <c>true</c>, publisher confirms are enabled on the channel, so each
+        /// publish waits for a broker acknowledgement before returning.
+        /// Defaults to <c>true</c>.
+        /// </summary>
+        public bool PublisherConfirms { get; set; } = true;
+
+        /// <summary>
+        /// The maximum time to wait for a publisher confirm from the broker.
+        /// Defaults to 5 seconds.
+        /// </summary>
+        public TimeSpan ConfirmTimeout { get; set; } = TimeSpan.FromSeconds(5);
+
+        /// <summary>
+        /// When <c>true</c>, the <c>mandatory</c> flag is set on published messages,
+        /// causing the broker to return unroutable messages instead of silently discarding them.
+        /// Defaults to <c>false</c>.
+        /// </summary>
+        public bool Mandatory { get; set; } = false;
     }
 }

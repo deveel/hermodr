@@ -24,7 +24,9 @@ namespace Deveel.Events
             builder.Services.TryAddSingleton<IConnection>(sp =>
             {
                 var factory = sp.GetRequiredService<IRabbitMqConnectionFactory>();
-                return factory.CreateConnection();
+                // CreateConnectionAsync is called synchronously here because DI factories are synchronous.
+                // This is acceptable at startup time.
+                return factory.CreateConnectionAsync().GetAwaiter().GetResult();
             });
 
             return builder;
