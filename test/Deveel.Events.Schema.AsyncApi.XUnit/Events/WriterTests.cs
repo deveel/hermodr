@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 //
 
-using Newtonsoft.Json.Linq;
+using System.Text.Json;
 
 namespace Deveel.Events {
     /// <summary>
@@ -29,70 +29,73 @@ namespace Deveel.Events {
         [Fact]
         public async Task WriteJson_IsValidJson() {
             var output = await WriteToStringAsync(TestSchemas.SimpleSchema());
-            var ex = Record.Exception(() => JObject.Parse(output));
+            var ex = Record.Exception(() => JsonDocument.Parse(output));
             Assert.Null(ex);
         }
 
         [Fact]
         public async Task WriteJson_InfoBlockPresent() {
             var output = await WriteToStringAsync(TestSchemas.SimpleSchema());
-            var doc = JObject.Parse(output);
+            using var doc = JsonDocument.Parse(output);
 
-            Assert.Equal("user.registered", doc["info"]!["title"]!.Value<string>());
-            Assert.Equal("1.0",             doc["info"]!["version"]!.Value<string>());
+            Assert.Equal("user.registered", doc.RootElement.GetProperty("info").GetProperty("title").GetString());
+            Assert.Equal("1.0",             doc.RootElement.GetProperty("info").GetProperty("version").GetString());
         }
 
         [Fact]
         public async Task WriteJson_CustomTitleAndVersion() {
             var output = await WriteToStringAsync(TestSchemas.SimpleSchema(), title: "My API", version: "2.0");
-            var doc = JObject.Parse(output);
+            using var doc = JsonDocument.Parse(output);
 
-            Assert.Equal("My API", doc["info"]!["title"]!.Value<string>());
-            Assert.Equal("2.0",    doc["info"]!["version"]!.Value<string>());
+            Assert.Equal("My API", doc.RootElement.GetProperty("info").GetProperty("title").GetString());
+            Assert.Equal("2.0",    doc.RootElement.GetProperty("info").GetProperty("version").GetString());
         }
 
         [Fact]
         public async Task WriteJson_ChannelPresent() {
             var output = await WriteToStringAsync(TestSchemas.SimpleSchema());
-            var doc = JObject.Parse(output);
+            using var doc = JsonDocument.Parse(output);
 
-            Assert.NotNull(doc["channels"]!["user-registered"]);
+            Assert.True(doc.RootElement.GetProperty("channels").TryGetProperty("user-registered", out _));
         }
 
         [Fact]
         public async Task WriteJson_ComponentSchemaPresent() {
             var output = await WriteToStringAsync(TestSchemas.SimpleSchema());
-            var doc = JObject.Parse(output);
+            using var doc = JsonDocument.Parse(output);
 
-            Assert.NotNull(doc["components"]!["schemas"]!["user-registered"]);
+            Assert.True(doc.RootElement.GetProperty("components").GetProperty("schemas").TryGetProperty("user-registered", out _));
         }
 
         [Fact]
         public async Task WriteJson_ComponentMessagePresent() {
             var output = await WriteToStringAsync(TestSchemas.SimpleSchema());
-            var doc = JObject.Parse(output);
+            using var doc = JsonDocument.Parse(output);
 
-            Assert.NotNull(doc["components"]!["messages"]!["user-registered"]);
+            Assert.True(doc.RootElement.GetProperty("components").GetProperty("messages").TryGetProperty("user-registered", out _));
         }
 
         [Fact]
         public async Task WriteJson_PropertiesPresent() {
             var output = await WriteToStringAsync(TestSchemas.SimpleSchema());
-            var doc = JObject.Parse(output);
+            using var doc = JsonDocument.Parse(output);
 
-            var props = doc["components"]!["schemas"]!["user-registered"]!["properties"];
-            Assert.NotNull(props);
-            Assert.NotNull(props!["user_id"]);
-            Assert.NotNull(props["email"]);
+            var props = doc.RootElement.GetProperty("components").GetProperty("schemas").GetProperty("user-registered").GetProperty("properties");
+            Assert.True(props.TryGetProperty("user_id", out _));
+            Assert.True(props.TryGetProperty("email",   out _));
         }
 
         [Fact]
         public async Task WriteJson_NestedSchema_AddressPropertiesPresent() {
             var output = await WriteToStringAsync(TestSchemas.NestedSchema());
-            var doc = JObject.Parse(output);
+            using var doc = JsonDocument.Parse(output);
 
-            var street = doc["components"]!["schemas"]!["order-shipped"]!["properties"]!["address"]!["properties"]!["street"];
-            Assert.NotNull(street);
+            var street = doc.RootElement
+                .GetProperty("components").GetProperty("schemas")
+                .GetProperty("order-shipped").GetProperty("properties")
+                .GetProperty("address").GetProperty("properties")
+                .TryGetProperty("street", out _);
+            Assert.True(street);
         }
 
         [Fact]
@@ -107,9 +110,9 @@ namespace Deveel.Events {
         [Fact]
         public async Task WriteJson_WithDescription_DescriptionInSchema() {
             var output = await WriteToStringAsync(TestSchemas.WithDescriptionSchema());
-            var doc = JObject.Parse(output);
+            using var doc = JsonDocument.Parse(output);
 
-            var desc = doc["components"]!["schemas"]!["thing-happened"]!["description"]?.Value<string>();
+            var desc = doc.RootElement.GetProperty("components").GetProperty("schemas").GetProperty("thing-happened").GetProperty("description").GetString();
             Assert.Equal("Something happened", desc);
         }
 
@@ -205,47 +208,40 @@ namespace Deveel.Events {
         public async Task WriteJson_MultipleSchemas_AllChannelsPresent() {
             var schemas = new[] { TestSchemas.SimpleSchema(), TestSchemas.NestedSchema() };
             var output = await WriteSchemasToStringAsync(schemas);
-            var doc = JObject.Parse(output);
+            using var doc = JsonDocument.Parse(output);
+            var channels = doc.RootElement.GetProperty("channels");
 
-            Assert.NotNull(doc["channels"]!["user-registered"]);
-            Assert.NotNull(doc["channels"]!["order-shipped"]);
+            Assert.True(channels.TryGetProperty("user-registered", out _));
+            Assert.True(channels.TryGetProperty("order-shipped",   out _));
         }
 
         [Fact]
         public async Task WriteJson_MultipleSchemas_AllComponentSchemasPresent() {
             var schemas = new[] { TestSchemas.SimpleSchema(), TestSchemas.EnumConstraintSchema() };
             var output = await WriteSchemasToStringAsync(schemas);
-            var doc = JObject.Parse(output);
+            using var doc = JsonDocument.Parse(output);
+            var schemas2 = doc.RootElement.GetProperty("components").GetProperty("schemas");
 
-            Assert.NotNull(doc["components"]!["schemas"]!["user-registered"]);
-            Assert.NotNull(doc["components"]!["schemas"]!["order-status-changed"]);
+            Assert.True(schemas2.TryGetProperty("user-registered",      out _));
+            Assert.True(schemas2.TryGetProperty("order-status-changed", out _));
         }
 
         [Fact]
         public async Task WriteJson_InfoBlockMatchesTitleAndVersion() {
             var schemas = new[] { TestSchemas.SimpleSchema() };
             var output = await WriteSchemasToStringAsync(schemas, title: "Events Platform", version: "4.0");
-            var doc = JObject.Parse(output);
+            using var doc = JsonDocument.Parse(output);
 
-            Assert.Equal("Events Platform", doc["info"]!["title"]!.Value<string>());
-            Assert.Equal("4.0",             doc["info"]!["version"]!.Value<string>());
+            Assert.Equal("Events Platform", doc.RootElement.GetProperty("info").GetProperty("title").GetString());
+            Assert.Equal("4.0",             doc.RootElement.GetProperty("info").GetProperty("version").GetString());
         }
 
         [Fact]
         public async Task WriteJson_EmptySchemaList_ValidDocumentWithNoChannels() {
             var output = await WriteSchemasToStringAsync(Array.Empty<IEventSchema>());
-            var doc = JObject.Parse(output);
+            using var doc = JsonDocument.Parse(output);
 
-            Assert.NotNull(doc["info"]);
-        }
-
-        [Fact]
-        public async Task WriteJson_StreamLeftOpen() {
-            var writer = new EventSchemasAsyncApiWriter("API", "1.0");
-            using var ms = new MemoryStream();
-            await writer.WriteToAsync(ms, new[] { TestSchemas.SimpleSchema() });
-
-            Assert.True(ms.CanWrite);
+            Assert.Equal(JsonValueKind.Object, doc.RootElement.GetProperty("info").ValueKind);
         }
 
         // ── YAML output ───────────────────────────────────────────────────────

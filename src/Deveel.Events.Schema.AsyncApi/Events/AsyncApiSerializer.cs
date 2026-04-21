@@ -46,9 +46,7 @@ namespace Deveel.Events {
 
         public static string ToYaml(AsyncApiDocument document) {
             var json = ToJson(document);
-            // Round-trip via YamlDotNet: deserialise the JSON object graph, then re-serialise as YAML
-            var obj = YamlJsonBridge.Deserialize<object>(
-                new System.IO.StringReader(json));
+            var obj = YamlJsonBridge.Deserialize<object>(new System.IO.StringReader(json));
             return YamlSerializer.Serialize(obj);
         }
 
