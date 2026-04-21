@@ -11,7 +11,7 @@ namespace Deveel.Events {
     /// <typeparam name="TValue">
 	/// The type of values that allowed by the constraint.
 	/// </typeparam>
-    public class EnumMemberConstraint<TValue> : IEventPropertyConstraint {
+    public class EnumMemberConstraint<TValue> : IEventPropertyConstraint, IEnumMemberConstraint {
         /// <summary>
         /// Constructs a constraint that allows only the values
         /// enumerated in the given list.
@@ -30,6 +30,13 @@ namespace Deveel.Events {
         /// The list of values that are allowed by the constraint.
         /// </summary>
 		public IReadOnlyList<TValue> AllowedValues { get; }
+
+		/// <inheritdoc/>
+		public string ConstraintType => "allowedValues";
+
+		/// <inheritdoc/>
+		IReadOnlyList<object?> IEnumMemberConstraint.AllowedValueObjects =>
+			AllowedValues.Select(v => (object?) v).ToList();
 
 		bool IEventPropertyConstraint.IsValid(object? value) {
 			return value == null ? false : value is TValue enumValue ? AllowedValues.Contains(enumValue) : false;

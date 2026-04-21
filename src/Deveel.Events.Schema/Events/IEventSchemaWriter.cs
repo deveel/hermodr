@@ -26,6 +26,6 @@ namespace Deveel.Events {
         /// Returns an asynchronous task that represents the writing
         /// of the schema to the stream.
         /// </returns>
-		Task WriteToAsync(Stream stream, IEventSchema schema, CancellationToken cancellationToken);
+		Task WriteToAsync(Stream stream, IEventSchema schema, CancellationToken cancellationToken = default);
 	}
 }

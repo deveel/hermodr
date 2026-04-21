@@ -1,0 +1,11 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Deveel.Events.Schema.AsyncApi\Deveel.Events.Schema.AsyncApi.csproj" />
+  </ItemGroup>
+</Project>

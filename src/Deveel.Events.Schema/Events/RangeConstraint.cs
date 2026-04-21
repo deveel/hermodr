@@ -9,7 +9,7 @@ namespace Deveel.Events {
 	/// property to a range of values.
     /// </summary>
     /// <typeparam name="TValue"></typeparam>
-    public sealed class RangeConstraint<TValue> : IEventPropertyConstraint where TValue : struct {
+    public sealed class RangeConstraint<TValue> : IEventPropertyConstraint, IRangeConstraint where TValue : struct {
         /// <summary>
         /// Constructs a constraint that allows only the values
 		/// within the given range.
@@ -45,6 +45,18 @@ namespace Deveel.Events {
         /// </summary>
         public TValue? Max { get; }
 
+        /// <inheritdoc/>
+        public string ConstraintType => "range";
+
+		/// <inheritdoc/>
+		Type IRangeConstraint.ValueType => typeof(TValue);
+
+		/// <inheritdoc/>
+		object? IRangeConstraint.Min => Min;
+
+		/// <inheritdoc/>
+		object? IRangeConstraint.Max => Max;
+
 		bool IEventPropertyConstraint.IsValid(object? value) {
 			if (value == null)
 				return Min == null && Max == null;
@@ -52,12 +64,12 @@ namespace Deveel.Events {
 			if (value is TValue typedValue) {
 				var comparer = Comparer<TValue>.Default;
 				if (Min != null && Max != null)
-					return comparer.Compare(typedValue, Min.Value) > 0 
-						&& comparer.Compare(typedValue, Max.Value) < 0;
+					return comparer.Compare(typedValue, Min.Value) >= 0
+						&& comparer.Compare(typedValue, Max.Value) <= 0;
 
-				if (Min != null && comparer.Compare(typedValue, Min.Value) > 0)
+				if (Min != null && comparer.Compare(typedValue, Min.Value) >= 0)
 					return true;
-				if (Max != null && comparer.Compare(typedValue, Max.Value) < 0)
+				if (Max != null && comparer.Compare(typedValue, Max.Value) <= 0)
 					return true;
 			}
 

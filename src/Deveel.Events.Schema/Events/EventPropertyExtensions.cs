@@ -11,13 +11,17 @@ namespace Deveel.Events {
         /// <summary>
         /// Checks if the property is required.
         /// </summary>
-        /// <param name="property">
-        /// The property to check if it is required.
-        /// </param>
-        /// <returns>
-        /// Returns <c>true</c> if the property is required, otherwise <c>false</c>.
-        /// </returns>
+        /// <remarks>
+        /// This extension delegates to <see cref="IEventProperty.IsRequired"/> and
+        /// is kept for backward compatibility.
+        /// </remarks>
 		public static bool IsRequired(this IEventProperty property)
-			=> property.Constraints?.OfType<PropertyRequiredConstraint>().Any() ?? false;
+			=> property.IsRequired;
+
+		/// <summary>
+		/// Checks if the property accepts <c>null</c> values.
+		/// </summary>
+		public static bool IsNullable(this IEventProperty property)
+			=> property.IsNullable;
 	}
 }

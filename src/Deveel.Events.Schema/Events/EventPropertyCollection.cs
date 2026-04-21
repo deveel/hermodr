@@ -76,11 +76,14 @@ namespace Deveel.Events {
 		protected override void InsertItem(int index, EventProperty item) {
 			ArgumentNullException.ThrowIfNull(item, nameof(item));
 
-			if (item.Version == null)
-				item.Version = _owner.Version;
+			// Only auto-assign / compare version when the owner itself has a version
+			if (_owner.Version != null) {
+				if (item.Version == null)
+					item = item.WithVersion(_owner.Version);
 
-			if (item.Version > _owner.Version)
-				throw new ArgumentException("The version of the property is not compatible with the owner", nameof(item));
+				if (item.Version > _owner.Version)
+					throw new ArgumentException("The version of the property is not compatible with the owner", nameof(item));
+			}
 
 			if (Contains(item.Name))
 				throw new ArgumentException("The property with the same name already exists", nameof(item));
@@ -92,11 +95,13 @@ namespace Deveel.Events {
         protected override void SetItem(int index, EventProperty item) {
 			ArgumentNullException.ThrowIfNull(item, nameof(item));
 
-			if (item.Version == null)
-				item.Version = _owner.Version;
+			if (_owner.Version != null) {
+				if (item.Version == null)
+					item = item.WithVersion(_owner.Version);
 
-			if (item.Version > _owner.Version)
-				throw new ArgumentException("The version of the property is not compatible with owner", nameof(item));
+				if (item.Version > _owner.Version)
+					throw new ArgumentException("The version of the property is not compatible with owner", nameof(item));
+			}
 
 			for (var i = 0; i < base.Items.Count; i++) {
 				if (i == index)

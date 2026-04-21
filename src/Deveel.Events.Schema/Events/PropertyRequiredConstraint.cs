@@ -8,6 +8,10 @@ namespace Deveel.Events {
     /// A constraint that requires a property to have a value.
     /// </summary>
     public sealed class PropertyRequiredConstraint : IEventPropertyConstraint {
-		bool IEventPropertyConstraint.IsValid(object? value) => value != null;
+        /// <inheritdoc/>
+        public string ConstraintType => "required";
+
+		/// <inheritdoc/>
+		public bool IsValid(object? value) => value != null;
 	}
 }

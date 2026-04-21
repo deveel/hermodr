@@ -10,6 +10,13 @@ namespace Deveel.Events {
     /// </summary>
     public interface IEventPropertyConstraint {
         /// <summary>
+        /// A short identifier for the kind of constraint (e.g. <c>"required"</c>,
+        /// <c>"range"</c>, <c>"allowedValues"</c>). Used by writers and other
+        /// consumers to dispatch on constraint type without reflection.
+        /// </summary>
+        string ConstraintType { get; }
+
+        /// <summary>
         /// Validates the given value against the constraint
         /// defined by the implementation.
         /// </summary>

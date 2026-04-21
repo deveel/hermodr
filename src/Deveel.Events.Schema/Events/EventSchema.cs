@@ -47,7 +47,9 @@ namespace Deveel.Events {
 
 		string IEventSchema.Version => Version.ToString();
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// The schema version as a <see cref="System.Version"/> instance.
+        /// </summary>
         public Version Version { get; }
 
         /// <inheritdoc/>
@@ -61,7 +63,7 @@ namespace Deveel.Events {
         /// </summary>
 		public EventPropertyCollection Properties { get; }
 
-		IEnumerable<IEventProperty> IEventSchema.Properties => Properties;
+		IReadOnlyList<IEventProperty> IEventSchema.Properties => Properties;
 
         /// <summary>
         /// Creates a new schema for an event from the given
@@ -96,5 +98,13 @@ namespace Deveel.Events {
         public static EventSchema FromDataType<TData>()
 			where TData : class
 			=> FromDataType(typeof(TData));
+
+        /// <summary>
+        /// Returns a fluent <see cref="EventSchemaBuilder"/> to construct
+        /// an <see cref="EventSchema"/> for the given <paramref name="eventType"/>.
+        /// </summary>
+        /// <param name="eventType">The type identifier of the event.</param>
+        public static EventSchemaBuilder Build(string eventType)
+			=> new EventSchemaBuilder(eventType);
 	}
 }
