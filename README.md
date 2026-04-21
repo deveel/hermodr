@@ -47,7 +47,10 @@ Packages provided by the framework are:
 | `Deveel.Events.Publisher` | The core framework for publishing events | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher) | [![GitHub](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/deveel.events/pkgs/nuget/Deveel.Events.Publisher) |
 | `Deveel.Events.Publisher.AzureServiceBus` | An implementation of the publisher using Azure Service Bus | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.AzureServiceBus.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.AzureServiceBus) | [![GitHub](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/deveel.events/pkgs/nuget/Deveel.Events.Publisher.AzureServiceBus) |
 | `Deveel.Events.Amqp.Annotations` | A set of attributes used to describe the metadata of an event published in AMQP queues | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Amqp.Annotations.svg)](https://www.nuget.org/packages/Deveel.Events.Amqp.Annotations) | [![GitHub](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/deveel.events/pkgs/nuget/Deveel.Events.Amqp.Annotations) |
-| `Deveel.Events.Publisher.RabbitMq` | An implementation of the publisher using RabbitMQ as a channel | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.RabbitMq.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.RabbitMq) | [![GitHub](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/deveel.events/pkgs/nuget/Deveel.Events.Publisher.RabbitMq)
+| `Deveel.Events.Publisher.RabbitMq` | An implementation of the publisher using RabbitMQ as a channel | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.RabbitMq.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.RabbitMq) | [![GitHub](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/deveel.events/pkgs/nuget/Deveel.Events.Publisher.RabbitMq) |
+| `Deveel.Events.Schema` | Core schema model, fluent builder, JSON writer, and schema validation | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Schema.svg)](https://www.nuget.org/packages/Deveel.Events.Schema) | [![GitHub](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/deveel.events/pkgs/nuget/Deveel.Events.Schema) |
+| `Deveel.Events.Schema.Yaml` | Exports an event schema as a YAML document | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Schema.Yaml.svg)](https://www.nuget.org/packages/Deveel.Events.Schema.Yaml) | [![GitHub](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/deveel.events/pkgs/nuget/Deveel.Events.Schema.Yaml) |
+| `Deveel.Events.Schema.AsyncApi` | Exports one or more event schemas as an AsyncAPI 2.x document (JSON or YAML) | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Schema.AsyncApi.svg)](https://www.nuget.org/packages/Deveel.Events.Schema.AsyncApi) | [![GitHub](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/deveel.events/pkgs/nuget/Deveel.Events.Schema.AsyncApi) |
 
 ## Usage
 
@@ -252,6 +255,135 @@ The output will look similar to:
     "Notes":   { "dataType": "string", "nullable": true }
   }
 }
+```
+
+### Exporting the Schema as YAML
+
+Install the package:
+
+```bash
+dotnet add package Deveel.Events.Schema.Yaml
+```
+
+Use `EventSchemaYamlWriter` (which implements `IEventSchemaWriter`) to serialise a schema to a YAML stream:
+
+```csharp
+using Deveel.Events;
+
+var schema = EventSchema.FromDataType<OrderPlacedData>();
+
+var writer = new EventSchemaYamlWriter();   // uses camelCase by default
+
+await using var stream = File.OpenWrite("order-placed-schema.yaml");
+await writer.WriteToAsync(stream, schema);
+```
+
+The output will look similar to:
+
+```yaml
+type: order.placed
+version: 1.0
+contentType: object
+properties:
+  orderId:
+    dataType: guid
+    required: true
+  amount:
+    dataType: money
+    required: true
+    min: 0
+    max: 1000000
+  currency:
+    dataType: string
+    required: true
+  notes:
+    dataType: string
+    nullable: true
+```
+
+You can supply a custom `YamlDotNet.Serialization.ISerializer` to the constructor to control naming conventions, anchors, and other serialization options.
+
+### Exporting the Schema as AsyncAPI
+
+Install the package:
+
+```bash
+dotnet add package Deveel.Events.Schema.AsyncApi
+```
+
+#### Single schema → standalone AsyncAPI document
+
+`EventSchemaAsyncApiWriter` wraps a single `IEventSchema` in a fully valid AsyncAPI 2.x document. It exposes the schema under `components/schemas`, declares a corresponding message under `components/messages`, and wires a subscribe channel:
+
+```csharp
+using Deveel.Events;
+
+var schema = EventSchema.FromDataType<OrderPlacedData>();
+
+// Output as JSON (default)
+var writer = new EventSchemaAsyncApiWriter(
+    format: AsyncApiFormat.Json,
+    title: "Order Events",
+    documentVersion: "1.0");
+
+await using var stream = File.OpenWrite("order-placed-asyncapi.json");
+await writer.WriteToAsync(stream, schema);
+```
+
+To produce YAML instead, pass `AsyncApiFormat.Yaml`:
+
+```csharp
+var writer = new EventSchemaAsyncApiWriter(AsyncApiFormat.Yaml);
+
+await using var stream = File.OpenWrite("order-placed-asyncapi.yaml");
+await writer.WriteToAsync(stream, schema);
+```
+
+#### Multiple schemas → combined AsyncAPI document
+
+`EventSchemasAsyncApiWriter` merges several schemas into a single AsyncAPI document — useful for generating a service-wide contract file:
+
+```csharp
+using Deveel.Events;
+
+IEnumerable<IEventSchema> schemas = new[] {
+    EventSchema.FromDataType<OrderPlacedData>(),
+    EventSchema.FromDataType<OrderCancelledData>(),
+    EventSchema.FromDataType<UserRegisteredData>()
+};
+
+var writer = new EventSchemasAsyncApiWriter(
+    title: "My Service Events",
+    version: "2.0",
+    format: AsyncApiFormat.Yaml);
+
+await using var stream = File.OpenWrite("events-asyncapi.yaml");
+await writer.WriteToAsync(stream, schemas);
+```
+
+#### Using the extension methods directly
+
+The `EventSchemaAsyncApiExtensions` class exposes lower-level helpers when you need finer control:
+
+```csharp
+using Deveel.Events;
+using NJsonSchema;
+using Saunter.AsyncApiSchema.v2;
+
+var schema = EventSchema.FromDataType<OrderPlacedData>();
+
+// Convert to NJsonSchema
+JsonSchema jsonSchema = schema.ToJsonSchema();
+
+// Convert to an AsyncAPI Message
+Message message = schema.ToAsyncApiMessage();
+
+// Build a standalone AsyncApiDocument
+AsyncApiDocument document = schema.ToAsyncApiDocument(title: "Order Events", version: "1.0");
+
+// Or add to an existing document
+var existingDoc = new AsyncApiDocument { /* ... */ };
+existingDoc.AddSchema(schema);
 ```
 
 ### Validating an Event Against a Schema
