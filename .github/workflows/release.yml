@@ -8,11 +8,6 @@ on:
   release:
     types: [published]
   workflow_dispatch:
-    inputs:
-       version:
-         type: string
-         required: true
-         description: The version to be published
 
 jobs:
   release:
@@ -24,7 +19,7 @@ jobs:
         dotnet-version: [ '6.0.x', '7.0.x', '8.0.x' ]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
   
     - name: Set the TFM in Ubuntu
       if: startsWith(matrix.os, 'ubuntu')
@@ -42,7 +37,7 @@ jobs:
           echo "DOTNET_TFM=$DOTNET_TFM" | Out-File -FilePath $env:GITHUB_ENV -Append
     
     - name: Setup .NET ${{ matrix.dotnet-version }} Framework
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v5
       with:
         dotnet-version: ${{ matrix.dotnet-version }}
               
@@ -69,30 +64,21 @@ jobs:
     needs: release
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         fetch-depth: 0
   
     - name: Setup GitVsion
-      if: ${{ inputs.version }} == null
-      uses: gittools/actions/gitversion/setup@v3.0.0
+      uses: gittools/actions/gitversion/setup@v1.1.1
       with:
         versionSpec: '5.x'
 
     - name: Determine GitVersion
-      if: ${{ inputs.version }} == null
       id: gitversion
-      uses: gittools/actions/gitversion/execute@v3.0.0
+      uses: gittools/actions/gitversion/execute@v1.1.1
       with:
         updateAssemblyInfo: true
 
-    # - name: Extract the Version
-    #   run: echo "VERSION=$(echo ${{ github.event.release.tag_name }} | sed -e 's/^v//')" >> $GITHUB_ENV
-    #   if: github.event.release.tag_name != null
-
-    - name: Set the Version from Input
-      run: echo "GitVersion_SemVer=${{ inputs.version }}" >> $GITHUB_ENV
-      if: ${{ inputs.version }} != null
 
     - name: Pack NuGet
       run: dotnet pack -p:PackageVersion=${{ env.GitVersion_SemVer }} -c Release -o ./nuget -p:Version=${{ env.GitVersion_SemVer }} --include-symbols --include-source
