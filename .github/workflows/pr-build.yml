@@ -15,7 +15,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
   
@@ -36,6 +36,8 @@ jobs:
 
       - name: Setup GitVsion
         uses: gittools/actions/gitversion/setup@v1.1.1
+        with:
+          versionSpec: '5.x'
 
       - name: Determine GitVersion
         id: gitversion
@@ -44,7 +46,7 @@ jobs:
           updateAssemblyInfo: true
     
       - name: Setup .NET ${{ matrix.dotnet-version }}
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: ${{ matrix.dotnet-version }}
     
