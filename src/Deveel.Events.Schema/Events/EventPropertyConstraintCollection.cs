@@ -18,9 +18,8 @@ namespace Deveel.Events {
 		protected override void InsertItem(int index, IEventPropertyConstraint item) {
 			ArgumentNullException.ThrowIfNull(item, nameof(item));
 
-			var constraintType = item.GetType();
-			if (base.Items.Any(x => x.GetType() == constraintType))
-				throw new ArgumentException("The constraint of the same type already exists", nameof(item));
+			if (base.Items.Any(x => x.ConstraintType == item.ConstraintType))
+				throw new ArgumentException($"A constraint of type '{item.ConstraintType}' already exists in this collection", nameof(item));
 
 			base.InsertItem(index, item);
 		}
@@ -29,13 +28,12 @@ namespace Deveel.Events {
         protected override void SetItem(int index, IEventPropertyConstraint item) {
 			ArgumentNullException.ThrowIfNull(item, nameof(item));
 
-			var constraintType = item.GetType();
 			for (var i = 0; i < base.Items.Count; i++) {
 				if (i == index)
 					continue;
 
-				if (base.Items[i].GetType() == constraintType)
-					throw new ArgumentException("The constraint of the same type already exists", nameof(item));
+				if (base.Items[i].ConstraintType == item.ConstraintType)
+					throw new ArgumentException($"A constraint of type '{item.ConstraintType}' already exists in this collection", nameof(item));
 			}
 
 			base.SetItem(index, item);

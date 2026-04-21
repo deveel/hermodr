@@ -132,6 +132,173 @@ public class MyService {
 }
 ```
 
+## Event Schema
+
+The `Deveel.Events.Schema` package provides a way to describe and validate the structure of events through schemas, ensuring that events conform to an expected contract.
+
+### Installation
+
+```bash
+dotnet add package Deveel.Events.Schema
+```
+
+### Creating a Schema with the Fluent Builder
+
+The `EventSchema.Build()` factory method returns an `EventSchemaBuilder` that allows you to describe every aspect of an event schema in a fluent, readable style:
+
+```csharp
+using Deveel.Events;
+
+var schema = EventSchema.Build("order.placed")
+    .WithVersion("1.0")
+    .WithContentType("application/json")
+    .WithDescription("Raised when a customer places an order")
+    .AddProperty("order_id",  "guid",   p => p.Required())
+    .AddProperty("amount",    "money",  p => p.Required().WithRange<decimal>(0m, 1_000_000m))
+    .AddProperty("currency",  "string", p => p.Required())
+    .AddProperty("notes",     "string", p => p.Nullable())
+    .Build();
+```
+
+You can also describe a property with a configure delegate for richer control:
+
+```csharp
+var schema = EventSchema.Build("user.registered")
+    .WithVersion("1.0")
+    .AddProperty("email", p => p
+        .OfType("string")
+        .Required()
+        .WithDescription("The email address of the new user"))
+    .AddProperty("age", p => p
+        .OfType("int")
+        .WithRange<int>(18, 120))
+    .AddProperty("nickname", p => p
+        .OfType("string")
+        .Nullable())
+    .Build();
+```
+
+### Generating a Schema from an Annotated Class
+
+If you already have a class decorated with `[Event]` and standard data-annotation attributes, you can derive the schema automatically without writing it by hand:
+
+```csharp
+using System.ComponentModel.DataAnnotations;
+using Deveel.Events.Annotations;
+
+[Event("order.placed", "1.0")]
+public class OrderPlacedData {
+    [Required]
+    public Guid OrderId { get; set; }
+
+    [Required]
+    [Range(0.0, 1_000_000.0)]
+    public decimal Amount { get; set; }
+
+    [Required]
+    public string Currency { get; set; } = default!;
+
+    public string? Notes { get; set; }
+}
+```
+
+Use the static helper to create the schema:
+
+```csharp
+// Via the static convenience method
+var schema = EventSchema.FromDataType<OrderPlacedData>();
+
+// Or via the injectable factory (preferred in DI scenarios)
+using Deveel.Events;
+
+public class MyService {
+    private readonly IEventSchemaFactory schemaFactory;
+
+    public MyService(IEventSchemaFactory schemaFactory) {
+        this.schemaFactory = schemaFactory;
+    }
+
+    public EventSchema GetSchema() => schemaFactory.CreateFromType<OrderPlacedData>();
+}
+```
+
+### Exporting the Schema as JSON
+
+A schema can be serialised to a JSON stream with `EventSchemaJsonWriter`:
+
+```csharp
+using Deveel.Events;
+using System.Text.Json;
+
+var schema = EventSchema.FromDataType<OrderPlacedData>();
+
+var writer = new EventSchemaJsonWriter(new JsonWriterOptions { Indented = true });
+
+await using var stream = File.OpenWrite("order-placed-schema.json");
+await writer.WriteToAsync(stream, schema);
+```
+
+The output will look similar to:
+
+```json
+{
+  "type": "order.placed",
+  "version": "1.0",
+  "contentType": "object",
+  "properties": {
+    "OrderId": { "dataType": "guid", "required": true },
+    "Amount":  { "dataType": "money", "required": true, "min": 0, "max": 1000000 },
+    "Currency":{ "dataType": "string", "required": true },
+    "Notes":   { "dataType": "string", "nullable": true }
+  }
+}
+```
+
+### Validating an Event Against a Schema
+
+The `IEventSchemaValidator` service validates a `CloudEvent` instance against an `IEventSchema` and returns an asynchronous stream of `ValidationResult` objects — one per violated constraint.
+
+```csharp
+using CloudNative.CloudEvents;
+using Deveel.Events;
+using System.ComponentModel.DataAnnotations;
+
+public class OrderService {
+    private readonly IEventSchemaValidator validator;
+    private readonly IEventPublisher publisher;
+
+    public OrderService(IEventSchemaValidator validator, IEventPublisher publisher) {
+        this.validator = validator;
+        this.publisher = publisher;
+    }
+
+    public async Task PlaceOrderAsync(OrderPlacedData data) {
+        var schema = EventSchema.FromDataType<OrderPlacedData>();
+
+        var @event = new CloudEvent {
+            Type    = "order.placed",
+            Source  = new Uri("https://myapp.example.com/orders"),
+            Data    = data
+        };
+
+        // Collect all validation errors before publishing
+        var errors = new List<ValidationResult>();
+        await foreach (var result in validator.ValidateEventAsync(schema, @event)) {
+            errors.Add(result);
+        }
+
+        if (errors.Count > 0) {
+            var messages = string.Join(", ", errors.Select(e => e.ErrorMessage));
+            throw new InvalidOperationException($"Event is invalid: {messages}");
+        }
+
+        await publisher.PublishAsync(data);
+    }
+}
+```
+
+> **Tip:** Register the validator (and the schema factory) via the DI container by including the `Deveel.Events.Schema` services in your `IServiceCollection`.
+
 ## Future Work
 
 The framework is still in its early stages, and there are several areas that need to be improved and extended.

@@ -20,7 +20,8 @@ namespace Deveel.Events {
 		/// The data type that the property can hold.
 		/// </param>
         /// <param name="version">
-		/// The version of the event this property belongs to.
+		/// The version of the event schema in which this property was introduced.
+		/// When <c>null</c>, the property inherits the version of the owning schema.
 		/// </param>
 		/// <exception cref="ArgumentNullException">
 		/// Thrown when the name or data type is <c>null</c>.
@@ -55,19 +56,52 @@ namespace Deveel.Events {
         /// <inheritdoc/>
         public string DataType { get; }
 
-		string IEventProperty.Version => Version.ToString();
+		/// <summary>
+		/// The version of the schema in which this property was introduced,
+		/// or <c>null</c> if the property inherits the owner schema's version.
+		/// </summary>
+		public Version? Version { get; internal set; }
 
-        /// <inheritdoc/>
-        public Version Version { get; internal set; }
-
-		IEnumerable<IEventPropertyConstraint> IEventProperty.Constraints => Constraints;
-
-        /// <inheritdoc/>
-        public EventPropertyConstraintCollection Constraints { get; }
-
-		IEnumerable<IEventProperty> IEventProperty.Properties => Properties;
+		string? IEventProperty.Version => Version?.ToString();
 
 		/// <inheritdoc/>
+		public bool IsRequired => Constraints.Any(c => c.ConstraintType == "required");
+
+		/// <summary>
+		/// Indicates whether this property accepts <c>null</c> values,
+		/// derived from the CLR nullability of the source member.
+		/// </summary>
+		public bool IsNullable { get; set; }
+
+		IReadOnlyList<IEventPropertyConstraint> IEventProperty.Constraints => Constraints;
+
+        /// <summary>
+        /// The constraints that restrict the values assignable to this property.
+        /// </summary>
+        public EventPropertyConstraintCollection Constraints { get; }
+
+		IReadOnlyList<IEventProperty> IEventProperty.Properties => Properties;
+
+		/// <summary>
+        /// The collection of nested properties, present when <see cref="DataType"/>
+        /// represents a complex object.
+        /// </summary>
         public EventPropertyCollection Properties { get; }
+
+		/// <summary>
+		/// Returns a new <see cref="EventProperty"/> identical to this one but
+		/// carrying the specified <paramref name="version"/>.
+		/// </summary>
+		internal EventProperty WithVersion(Version version) {
+			var copy = new EventProperty(Name, DataType, version.ToString()) {
+				Description = Description,
+				IsNullable = IsNullable
+			};
+			foreach (var c in Constraints)
+				copy.Constraints.Add(c);
+			foreach (var p in Properties)
+				copy.Properties.Add(p);
+			return copy;
+		}
 	}
 }

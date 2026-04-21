@@ -59,5 +59,11 @@ namespace Deveel.Events {
         /// A description of the event type.
         /// </summary>
 		public string? Description { get; set; }
+
+        /// <summary>
+        /// The MIME content type (e.g. <c>"application/json"</c>) of the event data.
+        /// When not set, the factory defaults to <c>"object"</c>.
+        /// </summary>
+		public string? ContentType { get; set; }
 	}
 }

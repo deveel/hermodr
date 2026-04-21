@@ -35,6 +35,6 @@ namespace Deveel.Events {
         /// <summary>
         /// The properties that are part of the event schema.
         /// </summary>
-		IEnumerable<IEventProperty> Properties { get; }
+		IReadOnlyList<IEventProperty> Properties { get; }
 	}
 }

@@ -28,21 +28,35 @@ namespace Deveel.Events {
 		string DataType { get; }
 
         /// <summary>
-        /// The version of the event this property 
-        /// belongs to.
+        /// The version of the event schema in which this property
+        /// was introduced. When <c>null</c>, the property inherits
+        /// the version of the owning schema.
         /// </summary>
-		string Version { get; }
+		string? Version { get; }
+
+        /// <summary>
+        /// Indicates whether this property is required to have
+        /// a non-<c>null</c> value. Equivalent to checking for a
+        /// <see cref="PropertyRequiredConstraint"/> in <see cref="Constraints"/>.
+        /// </summary>
+        bool IsRequired { get; }
+
+        /// <summary>
+        /// Indicates whether the property accepts <c>null</c> values,
+        /// typically derived from the CLR nullability of the source member.
+        /// </summary>
+        bool IsNullable { get; }
 
         /// <summary>
         /// The constraints that are applied to the property
         /// to restrict the values that can be assigned to it.
         /// </summary>
-		IEnumerable<IEventPropertyConstraint> Constraints { get; }
+		IReadOnlyList<IEventPropertyConstraint> Constraints { get; }
 
         /// <summary>
-        /// The collection of properties that are part of this
-        /// property, when the data type is complex.
+        /// The collection of nested properties that are part of this
+        /// property, when the data type is a complex object.
         /// </summary>
-		IEnumerable<IEventProperty> Properties { get; }
+		IReadOnlyList<IEventProperty> Properties { get; }
 	}
 }
