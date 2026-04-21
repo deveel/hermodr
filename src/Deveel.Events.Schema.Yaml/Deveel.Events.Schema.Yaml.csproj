@@ -6,4 +6,3 @@
     <ProjectReference Include="..\Deveel.Events.Schema\Deveel.Events.Schema.csproj" />
   </ItemGroup>
 </Project>
-
