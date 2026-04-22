@@ -43,6 +43,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Deveel.Events.Schema.AsyncA
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Deveel.Events.Schema.AsyncApi.XUnit", "test\Deveel.Events.Schema.AsyncApi.XUnit\Deveel.Events.Schema.AsyncApi.XUnit.csproj", "{A7097C01-3D2D-4CCA-8519-141B18D96A5F}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Deveel.Events.Publisher.Webhook", "src\Deveel.Events.Publisher.Webhook\Deveel.Events.Publisher.Webhook.csproj", "{F3AB8C21-4D77-4E3A-B1C5-9E12345AB001}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Deveel.Events.Publisher.Webhook.XUnit", "test\Deveel.Events.Publisher.Webhook.XUnit\Deveel.Events.Publisher.Webhook.XUnit.csproj", "{F3AB8C21-4D77-4E3A-B1C5-9E12345AB002}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Deveel.Events.Schema.Yaml", "src\Deveel.Events.Schema.Yaml\Deveel.Events.Schema.Yaml.csproj", "{C7F44AB7-3417-4EC2-84D2-D707891AB0B5}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Deveel.Events.Schema.Yaml.XUnit", "test\Deveel.Events.Schema.Yaml.XUnit\Deveel.Events.Schema.Yaml.XUnit.csproj", "{86DB1A12-3465-48BD-BCDA-534EE22A8C27}"
@@ -249,6 +253,30 @@ Global
 		{86DB1A12-3465-48BD-BCDA-534EE22A8C27}.Release|x64.Build.0 = Release|Any CPU
 		{86DB1A12-3465-48BD-BCDA-534EE22A8C27}.Release|x86.ActiveCfg = Release|Any CPU
 		{86DB1A12-3465-48BD-BCDA-534EE22A8C27}.Release|x86.Build.0 = Release|Any CPU
+		{F3AB8C21-4D77-4E3A-B1C5-9E12345AB001}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F3AB8C21-4D77-4E3A-B1C5-9E12345AB001}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F3AB8C21-4D77-4E3A-B1C5-9E12345AB001}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{F3AB8C21-4D77-4E3A-B1C5-9E12345AB001}.Debug|x64.Build.0 = Debug|Any CPU
+		{F3AB8C21-4D77-4E3A-B1C5-9E12345AB001}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{F3AB8C21-4D77-4E3A-B1C5-9E12345AB001}.Debug|x86.Build.0 = Debug|Any CPU
+		{F3AB8C21-4D77-4E3A-B1C5-9E12345AB001}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F3AB8C21-4D77-4E3A-B1C5-9E12345AB001}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F3AB8C21-4D77-4E3A-B1C5-9E12345AB001}.Release|x64.ActiveCfg = Release|Any CPU
+		{F3AB8C21-4D77-4E3A-B1C5-9E12345AB001}.Release|x64.Build.0 = Release|Any CPU
+		{F3AB8C21-4D77-4E3A-B1C5-9E12345AB001}.Release|x86.ActiveCfg = Release|Any CPU
+		{F3AB8C21-4D77-4E3A-B1C5-9E12345AB001}.Release|x86.Build.0 = Release|Any CPU
+		{F3AB8C21-4D77-4E3A-B1C5-9E12345AB002}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F3AB8C21-4D77-4E3A-B1C5-9E12345AB002}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F3AB8C21-4D77-4E3A-B1C5-9E12345AB002}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{F3AB8C21-4D77-4E3A-B1C5-9E12345AB002}.Debug|x64.Build.0 = Debug|Any CPU
+		{F3AB8C21-4D77-4E3A-B1C5-9E12345AB002}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{F3AB8C21-4D77-4E3A-B1C5-9E12345AB002}.Debug|x86.Build.0 = Debug|Any CPU
+		{F3AB8C21-4D77-4E3A-B1C5-9E12345AB002}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F3AB8C21-4D77-4E3A-B1C5-9E12345AB002}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F3AB8C21-4D77-4E3A-B1C5-9E12345AB002}.Release|x64.ActiveCfg = Release|Any CPU
+		{F3AB8C21-4D77-4E3A-B1C5-9E12345AB002}.Release|x64.Build.0 = Release|Any CPU
+		{F3AB8C21-4D77-4E3A-B1C5-9E12345AB002}.Release|x86.ActiveCfg = Release|Any CPU
+		{F3AB8C21-4D77-4E3A-B1C5-9E12345AB002}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -270,6 +298,8 @@ Global
 		{A7097C01-3D2D-4CCA-8519-141B18D96A5F} = {EDED427E-1408-4971-9FA9-EBFCACCEAC22}
 		{C7F44AB7-3417-4EC2-84D2-D707891AB0B5} = {B34ECEB3-D2F9-459B-A3DE-99E04123E593}
 		{86DB1A12-3465-48BD-BCDA-534EE22A8C27} = {EDED427E-1408-4971-9FA9-EBFCACCEAC22}
+		{F3AB8C21-4D77-4E3A-B1C5-9E12345AB001} = {B34ECEB3-D2F9-459B-A3DE-99E04123E593}
+		{F3AB8C21-4D77-4E3A-B1C5-9E12345AB002} = {EDED427E-1408-4971-9FA9-EBFCACCEAC22}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {2F6B1794-D5DB-4788-A4E3-2786DA1F4359}
