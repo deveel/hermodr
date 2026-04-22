@@ -4,6 +4,8 @@
 //
 
 using RabbitMQ.Client;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Deveel.Events
 {
@@ -16,10 +18,13 @@ namespace Deveel.Events
         /// <summary>
         /// Creates a new connection to the RabbitMQ server.
         /// </summary>
+        /// <param name="cancellationToken">
+        /// A token to cancel the operation.
+        /// </param>
         /// <returns>
         /// Returns a new instance of <see cref="IConnection"/> that represents
         /// the connection to the RabbitMQ server.
         /// </returns>
-        IConnection CreateConnection();
+        Task<IConnection> CreateConnectionAsync(CancellationToken cancellationToken = default);
     }
 }

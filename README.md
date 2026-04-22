@@ -48,6 +48,7 @@ Packages provided by the framework are:
 | `Deveel.Events.Publisher.AzureServiceBus` | An implementation of the publisher using Azure Service Bus | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.AzureServiceBus.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.AzureServiceBus) | [![GitHub](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/deveel.events/pkgs/nuget/Deveel.Events.Publisher.AzureServiceBus) |
 | `Deveel.Events.Amqp.Annotations` | A set of attributes used to describe the metadata of an event published in AMQP queues | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Amqp.Annotations.svg)](https://www.nuget.org/packages/Deveel.Events.Amqp.Annotations) | [![GitHub](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/deveel.events/pkgs/nuget/Deveel.Events.Amqp.Annotations) |
 | `Deveel.Events.Publisher.RabbitMq` | An implementation of the publisher using RabbitMQ as a channel | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.RabbitMq.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.RabbitMq) | [![GitHub](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/deveel.events/pkgs/nuget/Deveel.Events.Publisher.RabbitMq) |
+| `Deveel.Events.Publisher.MassTransit` | An implementation of the publisher using MassTransit as the messaging abstraction | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.MassTransit.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.MassTransit) | [![GitHub](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/deveel.events/pkgs/nuget/Deveel.Events.Publisher.MassTransit) |
 | `Deveel.Events.Schema` | Core schema model, fluent builder, JSON writer, and schema validation | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Schema.svg)](https://www.nuget.org/packages/Deveel.Events.Schema) | [![GitHub](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/deveel.events/pkgs/nuget/Deveel.Events.Schema) |
 | `Deveel.Events.Schema.Yaml` | Exports an event schema as a YAML document | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Schema.Yaml.svg)](https://www.nuget.org/packages/Deveel.Events.Schema.Yaml) | [![GitHub](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/deveel.events/pkgs/nuget/Deveel.Events.Schema.Yaml) |
 | `Deveel.Events.Schema.AsyncApi` | Exports one or more event schemas as an AsyncAPI 2.x document (JSON or YAML) | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Schema.AsyncApi.svg)](https://www.nuget.org/packages/Deveel.Events.Schema.AsyncApi) | [![GitHub](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/deveel.events/pkgs/nuget/Deveel.Events.Schema.AsyncApi) |
@@ -135,9 +136,189 @@ public class MyService {
 }
 ```
 
+## Publishing via MassTransit
+
+The `Deveel.Events.Publisher.MassTransit` package integrates the event publisher with [MassTransit](https://masstransit.io/), allowing CloudEvents to be dispatched through any transport that MassTransit supports (RabbitMQ, Azure Service Bus, Amazon SQS, etc.).
+
+### Installation
+
+```bash
+dotnet add package Deveel.Events.Publisher.MassTransit
+```
+
+### How it works
+
+Each `CloudEvent` is serialized as a **structured-mode JSON CloudEvent** (per the CloudEvents specification) and wrapped inside an `ICloudEventMessage` envelope that carries:
+
+- `Body` — the raw UTF-8 JSON bytes of the CloudEvent
+- `ContentType` — `application/cloudevents+json`
+
+Optionally, all standard CloudEvent attributes (`ce-id`, `ce-type`, `ce-source`, `ce-time`, `ce-subject`, `ce-specversion`, `ce-datacontenttype`, plus any extension attributes) can be copied to the MassTransit message headers — making them directly accessible to consumers without having to deserialize the body.
+
+### Registering the channel
+
+MassTransit must already be registered in the service collection before calling `UseMassTransit()`.
+
+#### Publish (fan-out) — no destination address
+
+When no `DestinationAddress` is configured the channel calls `IPublishEndpoint.Publish<ICloudEventMessage>`, relying on MassTransit's topology to route the message to all interested consumers:
+
+```csharp
+using Deveel.Events;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// 1. Register MassTransit with your preferred transport
+builder.Services.AddMassTransit(x =>
+{
+    x.UsingRabbitMq((ctx, cfg) =>
+    {
+        cfg.Host("rabbitmq://localhost");
+        cfg.ConfigureEndpoints(ctx);
+    });
+});
+
+// 2. Register the event publisher and select the MassTransit channel
+builder.Services.AddEventPublisher(options =>
+{
+    options.Source = new Uri("https://api.example.com");
+})
+.UseMassTransit();
+```
+
+#### Send — route to a specific endpoint
+
+Set `DestinationAddress` to route the message directly to a queue or exchange instead of publishing it:
+
+```csharp
+builder.Services.AddEventPublisher(options =>
+{
+    options.Source = new Uri("https://api.example.com");
+})
+.UseMassTransit(options =>
+{
+    options.DestinationAddress = new Uri("queue:my-events");
+});
+```
+
+#### Bind options from configuration
+
+```csharp
+builder.Services.AddEventPublisher(options =>
+{
+    options.Source = new Uri("https://api.example.com");
+})
+.UseMassTransit("MassTransit:EventChannel");
+```
+
+```json
+{
+  "MassTransit": {
+    "EventChannel": {
+      "DestinationAddress": "queue:my-events",
+      "MapAttributesToHeaders": true
+    }
+  }
+}
+```
+
+### Channel options
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `DestinationAddress` | `Uri?` | `null` | When `null` the event is **published** (fan-out). When set, the event is **sent** to that specific endpoint. |
+| `MapAttributesToHeaders` | `bool` | `true` | When `true`, standard CloudEvent attributes are copied to MassTransit message headers (`ce-id`, `ce-type`, `ce-source`, `ce-time`, `ce-subject`, `ce-specversion`, `ce-datacontenttype`, and any extension attributes). |
+
+### Publishing an event
+
+Publishing works exactly the same way as with any other channel — no MassTransit-specific code is required at the call site:
+
+```csharp
+using Deveel.Events;
+
+public class OrderService
+{
+    private readonly EventPublisher _publisher;
+
+    public OrderService(EventPublisher publisher)
+    {
+        _publisher = publisher;
+    }
+
+    // Publish a pre-built CloudEvent
+    public Task NotifyOrderPlacedAsync(string orderId) =>
+        _publisher.PublishEventAsync(new CloudEvent
+        {
+            Type   = "order.placed",
+            Source = new Uri("https://api.example.com/orders"),
+            Id     = Guid.NewGuid().ToString("N"),
+            Time   = DateTimeOffset.UtcNow,
+            DataContentType = "application/json",
+            Data   = System.Text.Json.JsonSerializer.Serialize(new { OrderId = orderId })
+        });
+
+    // Publish from annotated event-data class
+    public Task NotifyOrderCancelledAsync(OrderCancelledData data) =>
+        _publisher.PublishAsync(data);
+}
+
+[Event("order.cancelled", "1.0")]
+public class OrderCancelledData
+{
+    public string OrderId { get; set; } = default!;
+    public string Reason  { get; set; } = default!;
+}
+```
+
+### Consuming CloudEvents
+
+On the consumer side, implement a MassTransit `IConsumer<ICloudEventMessage>` and decode the body back to a `CloudEvent` using the `JsonEventFormatter` from the `CloudNative.CloudEvents.SystemTextJson` package:
+
+```csharp
+using CloudNative.CloudEvents;
+using CloudNative.CloudEvents.SystemTextJson;
+using Deveel.Events;
+using MassTransit;
+using System.Net.Mime;
+
+public class CloudEventConsumer : IConsumer<ICloudEventMessage>
+{
+    private static readonly JsonEventFormatter Formatter = new();
+
+    public Task Consume(ConsumeContext<ICloudEventMessage> context)
+    {
+        var msg = context.Message;
+
+        var cloudEvent = Formatter.DecodeStructuredModeMessage(
+            msg.Body,
+            new ContentType(msg.ContentType),
+            extensionAttributes: null);
+
+        Console.WriteLine($"Received event: {cloudEvent.Type} (id={cloudEvent.Id})");
+
+        // Further processing...
+        return Task.CompletedTask;
+    }
+}
+```
+
+Register the consumer with MassTransit as usual:
+
+```csharp
+builder.Services.AddMassTransit(x =>
+{
+    x.AddConsumer<CloudEventConsumer>();
+
+    x.UsingRabbitMq((ctx, cfg) =>
+    {
+        cfg.Host("rabbitmq://localhost");
+        cfg.ConfigureEndpoints(ctx);
+    });
+});
+```
+
 ## Event Schema
 
-The `Deveel.Events.Schema` package provides a way to describe and validate the structure of events through schemas, ensuring that events conform to an expected contract.
 
 ### Installation
 
