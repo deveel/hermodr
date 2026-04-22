@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Title>Deveel Events MassTransit Publisher</Title>
+    <Description>Provides a publisher of events through MassTransit</Description>
+    <PackageTags>event;events;ddd;publisher;masstransit;messaging</PackageTags>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="CloudNative.CloudEvents.SystemTextJson" Version="2.8.0" />
+    <PackageReference Include="MassTransit" Version="8.3.6" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Deveel.Events.Publisher\Deveel.Events.Publisher.csproj" />
+  </ItemGroup>
+</Project>
+
