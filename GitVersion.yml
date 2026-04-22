@@ -36,5 +36,3 @@ branches:
     tag: '-pr'
 ignore:
   sha: []
-  
-next-version: 0.4.2

@@ -36,14 +36,18 @@ namespace Deveel.Events
 
             _connectionFactory = new ConnectionFactory
             {
-                Uri = connectionUri
+                Uri = connectionUri,
+                AutomaticRecoveryEnabled = true,
+                NetworkRecoveryInterval = TimeSpan.FromSeconds(10),
+                RequestedHeartbeat = TimeSpan.FromSeconds(60),
+                ClientProvidedName = options.Value.ClientName ?? "Deveel.Events"
             };
         }
 
         /// <inheritdoc />
-        public IConnection CreateConnection()
+        public Task<IConnection> CreateConnectionAsync(CancellationToken cancellationToken = default)
         {
-            return _connectionFactory.CreateConnection();
+            return _connectionFactory.CreateConnectionAsync(cancellationToken);
         }
     }
 }

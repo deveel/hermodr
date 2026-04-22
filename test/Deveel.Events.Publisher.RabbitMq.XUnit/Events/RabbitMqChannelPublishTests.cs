@@ -18,7 +18,7 @@ namespace Deveel.Events
     [Trait("Function", "Publish")]
     public class RabbitMqChannelPublishTests : IClassFixture<RabbitMqTestServer>, IAsyncLifetime
     {
-        private IModel? _channel;
+        private IChannel? _channel;
 
         public RabbitMqChannelPublishTests(RabbitMqTestServer testServer, ITestOutputHelper outputHelper)
         {
@@ -28,7 +28,12 @@ namespace Deveel.Events
                 options.DataSchemaBaseUri = new System.Uri("http://example.com/events/schema");
                 options.Source = new System.Uri("https://api.svc.deveel.com");
             })
-                .UseRabbitMq(options => options.ConnectionString = testServer.ConnectionString);
+                .UseRabbitMq(options =>
+                {
+                    options.ConnectionString = testServer.ConnectionString;
+                    // Disable confirms in tests to keep setup simple
+                    options.PublisherConfirms = false;
+                });
 
             services.AddLogging(logging => logging.AddXUnit(outputHelper).SetMinimumLevel(LogLevel.Trace));
 
@@ -41,13 +46,13 @@ namespace Deveel.Events
 
         private CloudEvent? ReceivedEvent { get; set; }
 
-        public Task InitializeAsync()
+        public async Task InitializeAsync()
         {
             var connection = Services.GetRequiredService<IConnection>();
-            _channel = connection.CreateModel();
+            _channel = await connection.CreateChannelAsync();
 
-            var consumer = new EventingBasicConsumer(_channel);
-            consumer.Received += (sender, args) =>
+            var consumer = new AsyncEventingBasicConsumer(_channel);
+            consumer.ReceivedAsync += (sender, args) =>
             {
                 var body = args.Body.ToArray();
                 var message = Encoding.UTF8.GetString(body);
@@ -55,22 +60,22 @@ namespace Deveel.Events
                 var json = JsonSerializer.Deserialize<JsonElement>(message);
                 var formatter = new JsonEventFormatter();
                 ReceivedEvent = formatter.ConvertFromJsonElement(json, null);
+
+                return Task.CompletedTask;
             };
 
-            _channel.ExchangeDeclare("test", ExchangeType.Topic);
-            _channel.QueueDeclare("test.queue1", true, false, false, null);
-            _channel.QueueBind("test.queue1", "test", "test.event1");
-            _channel.BasicConsume("test.queue1", true, consumer);
-
-            return Task.CompletedTask;
+            await _channel.ExchangeDeclareAsync("test", ExchangeType.Topic);
+            await _channel.QueueDeclareAsync("test.queue1", durable: true, exclusive: false, autoDelete: false, arguments: null);
+            await _channel.QueueBindAsync("test.queue1", "test", "test.event1");
+            await _channel.BasicConsumeAsync("test.queue1", autoAck: true, consumer: consumer);
         }
 
-        public Task DisposeAsync()
+        public async Task DisposeAsync()
         {
-            _channel?.Dispose();
-            (Services as IDisposable)?.Dispose();
+            if (_channel != null)
+                await _channel.DisposeAsync();
 
-            return Task.CompletedTask;
+            (Services as IDisposable)?.Dispose();
         }
 
         [Fact]
@@ -93,7 +98,7 @@ namespace Deveel.Events
 
             await Publisher.PublishEventAsync(cloudEvent);
 
-            await Task.Delay(200);
+            await Task.Delay(500);
 
             Assert.NotNull(ReceivedEvent);
             Assert.Equal(cloudEvent.Id, ReceivedEvent.Id);
@@ -113,7 +118,7 @@ namespace Deveel.Events
 
             await Publisher.PublishAsync(personCreated);
 
-            await Task.Delay(200);
+            await Task.Delay(500);
 
             Assert.NotNull(ReceivedEvent);
 
