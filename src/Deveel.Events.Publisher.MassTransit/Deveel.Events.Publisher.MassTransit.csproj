@@ -6,7 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="CloudNative.CloudEvents.SystemTextJson" Version="2.8.0" />
-    <PackageReference Include="MassTransit" Version="8.3.6" />
+    <PackageReference Include="MassTransit" Version="9.1.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Deveel.Events.Publisher\Deveel.Events.Publisher.csproj" />

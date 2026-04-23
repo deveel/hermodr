@@ -16,8 +16,6 @@ using NSubstitute;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-using Xunit.Abstractions;
-
 namespace Deveel.Events
 {
     [Trait("Channel", "MassTransit")]

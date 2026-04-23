@@ -1,22 +1,26 @@
 <Project>
   <PropertyGroup>
-    <TargetFrameworks>net6.0;net7.0;net8.0</TargetFrameworks>
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>Deveel</RootNamespace>
+    
+    <OutputType>Exe</OutputType>
 
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
 
     <NoWarn>$(NoWarn);CS8618</NoWarn>
+    
+    <UseMicrosoftTestingPlatformRunner>True</UseMicrosoftTestingPlatformRunner>
+    <TestingPlatformDotnetTestSupport>True</TestingPlatformDotnetTestSupport>
+    <TestingPlatformShowTestsFailure>true</TestingPlatformShowTestsFailure>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="coverlet.collector" Version="6.0.2" />
-    <PackageReference Include="coverlet.msbuild" Version="6.0.2" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
-    <PackageReference Include="xunit" Version="2.9.0" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageReference Include="xunit.v3" Version="3.2.2" />
+    <PackageReference Include="MartinCostello.Logging.XUnit.v3" Version="0.7.1"/>
+    <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" Version="17.14.2"/>
   </ItemGroup>
 
   <ItemGroup>

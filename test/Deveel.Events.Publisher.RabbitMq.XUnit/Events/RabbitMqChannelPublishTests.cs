@@ -10,11 +10,9 @@ using RabbitMQ.Client.Events;
 using System.Text;
 using System.Text.Json;
 
-using Xunit.Abstractions;
-
 namespace Deveel.Events
 {
-    [Trait("Channel", "RabbitMq")]
+    [Trait("Channel", "RabbitMQ")]
     [Trait("Function", "Publish")]
     public class RabbitMqChannelPublishTests : IClassFixture<RabbitMqTestServer>, IAsyncLifetime
     {
@@ -46,7 +44,7 @@ namespace Deveel.Events
 
         private CloudEvent? ReceivedEvent { get; set; }
 
-        public async Task InitializeAsync()
+        public async ValueTask InitializeAsync()
         {
             var connection = Services.GetRequiredService<IConnection>();
             _channel = await connection.CreateChannelAsync();
@@ -70,7 +68,7 @@ namespace Deveel.Events
             await _channel.BasicConsumeAsync("test.queue1", autoAck: true, consumer: consumer);
         }
 
-        public async Task DisposeAsync()
+        public async ValueTask DisposeAsync()
         {
             if (_channel != null)
                 await _channel.DisposeAsync();
