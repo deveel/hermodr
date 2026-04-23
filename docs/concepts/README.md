@@ -1,0 +1,46 @@
+# Core Concepts
+
+This section explains the fundamental building blocks of the Deveel Events framework.
+
+## Overview
+
+```
+┌──────────────────────────────────────────────────────┐
+│                   Your application                   │
+│                                                      │
+│   ┌──────────────┐      ┌──────────────────────────┐ │
+│   │  Event data  │─────▶│     IEventPublisher      │ │
+│   │  (annotated  │      └──────────┬───────────────┘ │
+│   │   classes)   │                 │ fan-out          │
+│   └──────────────┘        ┌────────┴────────┐         │
+│                           │                 │         │
+│                   ┌───────▼─────┐   ┌───────▼──────┐ │
+│                   │  Channel A  │   │  Channel B   │ │
+│                   │ (Azure SB)  │   │  (Webhook)   │ │
+│                   └─────────────┘   └──────────────┘ │
+└──────────────────────────────────────────────────────┘
+```
+
+1. You describe an event using an annotated data class (or construct a raw `CloudEvent`).
+2. You call `IEventPublisher.PublishAsync` (or `PublishEventAsync`).
+3. The publisher fans the event out to **every registered `IEventPublishChannel`**.
+4. Each channel serialises the event and dispatches it to the appropriate transport.
+
+## Key Abstractions
+
+| Abstraction | Role |
+|-------------|------|
+| `IEventPublisher` | The single entry point for publishing events |
+| `IEventPublishChannel` | One transport target (Azure Service Bus queue, RabbitMQ exchange, …) |
+| `IBatchEventPublishChannel<TOptions>` | A channel that supports per-call delivery options (e.g. webhook URL) |
+| `IEventCreator` | Converts an annotated data object into a `CloudEvent` |
+| `IEventIdGenerator` | Generates unique identifiers for events (default: GUID) |
+| `IEventSystemTime` | Supplies the event timestamp (replaceable for testing) |
+
+## Pages in this section
+
+- [CloudEvents Standard](cloudevents.md)
+- [Event Publisher](event-publisher.md)
+- [Publish Channels](publish-channels.md)
+- [Event Annotations](event-annotations.md)
+
