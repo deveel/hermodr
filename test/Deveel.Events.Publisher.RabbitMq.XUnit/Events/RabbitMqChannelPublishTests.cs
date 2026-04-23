@@ -12,7 +12,7 @@ using System.Text.Json;
 
 namespace Deveel.Events
 {
-    [Trait("Channel", "RabbitMq")]
+    [Trait("Channel", "RabbitMQ")]
     [Trait("Function", "Publish")]
     public class RabbitMqChannelPublishTests : IClassFixture<RabbitMqTestServer>, IAsyncLifetime
     {
