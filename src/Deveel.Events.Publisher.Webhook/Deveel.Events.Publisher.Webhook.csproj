@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Title>Deveel Events Webhook Publisher</Title>
+    <Description>Provides a publisher of CloudEvents through HTTP POST webhooks with signature verification, delivery tracking and retry support</Description>
+    <PackageTags>event;events;ddd;publisher;webhook;http;cloudevents</PackageTags>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="CloudNative.CloudEvents.SystemTextJson" Version="2.8.0" />
+    <PackageReference Include="Polly" Version="7.2.4" />
+    <PackageReference Include="Polly.Extensions.Http" Version="3.0.0" />
+  </ItemGroup>
+  <ItemGroup Condition="$(TargetFramework) == 'net6.0'">
+    <PackageReference Include="Microsoft.Extensions.Http" Version="6.0.0" />
+  </ItemGroup>
+  <ItemGroup Condition="$(TargetFramework) == 'net7.0'">
+    <PackageReference Include="Microsoft.Extensions.Http" Version="7.0.0" />
+  </ItemGroup>
+  <ItemGroup Condition="$(TargetFramework) == 'net8.0'">
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Deveel.Events.Publisher\Deveel.Events.Publisher.csproj" />
+  </ItemGroup>
+</Project>
+

@@ -27,15 +27,21 @@ This choice is made to ensure the maximum compatibility with other systems and s
 
 ## Installation
 
-The framework is available as a NuGet package, and can be installed using the `dotnet` cli.
+The framework is available as a set of NuGet packages that can be installed using the `dotnet` CLI.
 
-For example, to install the package that provides the publisher to the Azure Service Bus, you can run the following command:
+For example, to install the webhook publisher package, run:
+
+```bash
+dotnet add package Deveel.Events.Publisher.Webhook
+```
+
+Or, to install the Azure Service Bus publisher:
 
 ```bash
 dotnet add package Deveel.Events.Publisher.AzureServiceBus
 ```
 
-Alternatively, you can use the NuGet package manager in Visual Studio to search and install the package.
+Alternatively, you can use the NuGet Package Manager in Visual Studio to search for and install the packages.
 
 ### Framework Packages
 
@@ -48,10 +54,11 @@ Packages provided by the framework are:
 | `Deveel.Events.Publisher.AzureServiceBus` | An implementation of the publisher using Azure Service Bus | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.AzureServiceBus.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.AzureServiceBus) | [![GitHub](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/deveel.events/pkgs/nuget/Deveel.Events.Publisher.AzureServiceBus) |
 | `Deveel.Events.Amqp.Annotations` | A set of attributes used to describe the metadata of an event published in AMQP queues | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Amqp.Annotations.svg)](https://www.nuget.org/packages/Deveel.Events.Amqp.Annotations) | [![GitHub](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/deveel.events/pkgs/nuget/Deveel.Events.Amqp.Annotations) |
 | `Deveel.Events.Publisher.RabbitMq` | An implementation of the publisher using RabbitMQ as a channel | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.RabbitMq.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.RabbitMq) | [![GitHub](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/deveel.events/pkgs/nuget/Deveel.Events.Publisher.RabbitMq) |
-| `Deveel.Events.Publisher.MassTransit` | An implementation of the publisher using MassTransit as the messaging abstraction | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.MassTransit.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.MassTransit) | [![GitHub](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/deveel.events/pkgs/nuget/Deveel.Events.Publisher.MassTransit) |
 | `Deveel.Events.Schema` | Core schema model, fluent builder, JSON writer, and schema validation | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Schema.svg)](https://www.nuget.org/packages/Deveel.Events.Schema) | [![GitHub](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/deveel.events/pkgs/nuget/Deveel.Events.Schema) |
 | `Deveel.Events.Schema.Yaml` | Exports an event schema as a YAML document | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Schema.Yaml.svg)](https://www.nuget.org/packages/Deveel.Events.Schema.Yaml) | [![GitHub](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/deveel.events/pkgs/nuget/Deveel.Events.Schema.Yaml) |
 | `Deveel.Events.Schema.AsyncApi` | Exports one or more event schemas as an AsyncAPI 2.x document (JSON or YAML) | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Schema.AsyncApi.svg)](https://www.nuget.org/packages/Deveel.Events.Schema.AsyncApi) | [![GitHub](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/deveel.events/pkgs/nuget/Deveel.Events.Schema.AsyncApi) |
+| `Deveel.Events.Publisher.Webhook` | An implementation of the publisher that delivers events to HTTP endpoints as webhooks, with HMAC signature verification, delivery tracking and retry support | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.Webhook.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.Webhook) | [![GitHub](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/deveel.events/pkgs/nuget/Deveel.Events.Publisher.Webhook) |
+| `Deveel.Events.TestPublisher` | An in-memory test publisher useful for verifying that events are raised correctly in unit and integration tests | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.TestPublisher.svg)](https://www.nuget.org/packages/Deveel.Events.TestPublisher) | [![GitHub](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/deveel.events/pkgs/nuget/Deveel.Events.TestPublisher) |
 
 ## Usage
 
@@ -74,6 +81,7 @@ builder.Services.AddEventPublisher();
 Then, you can create an event and publish it to a channel:
 
 ```csharp
+using CloudNative.CloudEvents;
 using Deveel.Events;
 
 public class MyService {
@@ -84,11 +92,11 @@ public class MyService {
     }
 
     public async Task PublishEventAsync() {
-        var @event = new CloudEvent("com.example.myevent", new Uri("http://example.com/events/123"), "Hello, World!") {
-            ContentType = "text/plain",
-            DataSchema = new Uri("http://example.com/schema"),
-            Source = new Uri("http://example.com"),
-            Data = "Hello, World!"
+        var @event = new CloudEvent {
+            Type    = "com.example.myevent",
+            Source  = new Uri("http://example.com"),
+            DataContentType = "application/json",
+            Data    = new { Message = "Hello, World!" }
         };
 
         await publisher.PublishEventAsync(@event);
@@ -136,189 +144,272 @@ public class MyService {
 }
 ```
 
-## Publishing via MassTransit
+## Webhook Publisher
 
-The `Deveel.Events.Publisher.MassTransit` package integrates the event publisher with [MassTransit](https://masstransit.io/), allowing CloudEvents to be dispatched through any transport that MassTransit supports (RabbitMQ, Azure Service Bus, Amazon SQS, etc.).
+The `Deveel.Events.Publisher.Webhook` package provides a publishing channel that delivers `CloudEvent` instances to a remote endpoint via HTTP POST, following webhook best practices — including HMAC request signing, delivery tracking, and configurable exponential-backoff retries.
 
 ### Installation
 
 ```bash
-dotnet add package Deveel.Events.Publisher.MassTransit
+dotnet add package Deveel.Events.Publisher.Webhook
 ```
 
-### How it works
+### Registration
 
-Each `CloudEvent` is serialized as a **structured-mode JSON CloudEvent** (per the CloudEvents specification) and wrapped inside an `ICloudEventMessage` envelope that carries:
+Register the webhook channel using `UseWebhook` on the `EventPublisherBuilder`. You can configure it inline or bind it from a configuration section:
 
-- `Body` — the raw UTF-8 JSON bytes of the CloudEvent
-- `ContentType` — `application/cloudevents+json`
-
-Optionally, all standard CloudEvent attributes (`ce-id`, `ce-type`, `ce-source`, `ce-time`, `ce-subject`, `ce-specversion`, `ce-datacontenttype`, plus any extension attributes) can be copied to the MassTransit message headers — making them directly accessible to consumers without having to deserialize the body.
-
-### Registering the channel
-
-MassTransit must already be registered in the service collection before calling `UseMassTransit()`.
-
-#### Publish (fan-out) — no destination address
-
-When no `DestinationAddress` is configured the channel calls `IPublishEndpoint.Publish<ICloudEventMessage>`, relying on MassTransit's topology to route the message to all interested consumers:
+**Inline configuration**
 
 ```csharp
 using Deveel.Events;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Register MassTransit with your preferred transport
-builder.Services.AddMassTransit(x =>
-{
-    x.UsingRabbitMq((ctx, cfg) =>
+builder.Services.AddEventPublisher(pub => pub
+    .UseWebhook(opts =>
     {
-        cfg.Host("rabbitmq://localhost");
-        cfg.ConfigureEndpoints(ctx);
-    });
-});
-
-// 2. Register the event publisher and select the MassTransit channel
-builder.Services.AddEventPublisher(options =>
-{
-    options.Source = new Uri("https://api.example.com");
-})
-.UseMassTransit();
+        opts.EndpointUrl   = "https://hooks.example.com/events";
+        opts.SigningSecret = "super-secret-key";
+        // Optional tweaks — all have sensible defaults
+        opts.SignatureAlgorithm    = WebhookSignatureAlgorithm.HmacSha256;
+        opts.MessageFormat         = WebhookMessageFormat.Json;   // or CloudEventsJson, Xml, CloudEventsXml
+        opts.MaxRetryCount         = 3;
+        opts.RetryDelay            = TimeSpan.FromSeconds(1);
+        opts.RetryBackoffMultiplier = 2.0;
+        opts.RequestTimeout        = TimeSpan.FromSeconds(30);
+    }));
 ```
 
-#### Send — route to a specific endpoint
+**Configuration section** (`appsettings.json`)
 
-Set `DestinationAddress` to route the message directly to a queue or exchange instead of publishing it:
-
-```csharp
-builder.Services.AddEventPublisher(options =>
+```jsonc
 {
-    options.Source = new Uri("https://api.example.com");
-})
-.UseMassTransit(options =>
-{
-    options.DestinationAddress = new Uri("queue:my-events");
-});
-```
-
-#### Bind options from configuration
-
-```csharp
-builder.Services.AddEventPublisher(options =>
-{
-    options.Source = new Uri("https://api.example.com");
-})
-.UseMassTransit("MassTransit:EventChannel");
-```
-
-```json
-{
-  "MassTransit": {
-    "EventChannel": {
-      "DestinationAddress": "queue:my-events",
-      "MapAttributesToHeaders": true
-    }
+  "Webhook": {
+    "EndpointUrl": "https://hooks.example.com/events",
+    "SigningSecret": "super-secret-key",
+    "SignatureAlgorithm": "HmacSha256",
+    "MessageFormat": "json",
+    "MaxRetryCount": 3,
+    "RetryDelay": "00:00:01",
+    "RetryBackoffMultiplier": 2.0,
+    "RequestTimeout": "00:00:30"
   }
 }
 ```
 
-### Channel options
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `DestinationAddress` | `Uri?` | `null` | When `null` the event is **published** (fan-out). When set, the event is **sent** to that specific endpoint. |
-| `MapAttributesToHeaders` | `bool` | `true` | When `true`, standard CloudEvent attributes are copied to MassTransit message headers (`ce-id`, `ce-type`, `ce-source`, `ce-time`, `ce-subject`, `ce-specversion`, `ce-datacontenttype`, and any extension attributes). |
-
-### Publishing an event
-
-Publishing works exactly the same way as with any other channel — no MassTransit-specific code is required at the call site:
-
 ```csharp
-using Deveel.Events;
-
-public class OrderService
-{
-    private readonly EventPublisher _publisher;
-
-    public OrderService(EventPublisher publisher)
-    {
-        _publisher = publisher;
-    }
-
-    // Publish a pre-built CloudEvent
-    public Task NotifyOrderPlacedAsync(string orderId) =>
-        _publisher.PublishEventAsync(new CloudEvent
-        {
-            Type   = "order.placed",
-            Source = new Uri("https://api.example.com/orders"),
-            Id     = Guid.NewGuid().ToString("N"),
-            Time   = DateTimeOffset.UtcNow,
-            DataContentType = "application/json",
-            Data   = System.Text.Json.JsonSerializer.Serialize(new { OrderId = orderId })
-        });
-
-    // Publish from annotated event-data class
-    public Task NotifyOrderCancelledAsync(OrderCancelledData data) =>
-        _publisher.PublishAsync(data);
-}
-
-[Event("order.cancelled", "1.0")]
-public class OrderCancelledData
-{
-    public string OrderId { get; set; } = default!;
-    public string Reason  { get; set; } = default!;
-}
+builder.Services.AddEventPublisher(pub => pub
+    .UseWebhook("Webhook"));
 ```
 
-### Consuming CloudEvents
+### Publishing a Single Event
 
-On the consumer side, implement a MassTransit `IConsumer<ICloudEventMessage>` and decode the body back to a `CloudEvent` using the `JsonEventFormatter` from the `CloudNative.CloudEvents.SystemTextJson` package:
+Once registered, inject `IEventPublisher` and publish events normally — the webhook channel will handle the delivery:
 
 ```csharp
 using CloudNative.CloudEvents;
-using CloudNative.CloudEvents.SystemTextJson;
 using Deveel.Events;
-using MassTransit;
-using System.Net.Mime;
 
-public class CloudEventConsumer : IConsumer<ICloudEventMessage>
-{
-    private static readonly JsonEventFormatter Formatter = new();
+public class OrderService {
+    private readonly IEventPublisher publisher;
 
-    public Task Consume(ConsumeContext<ICloudEventMessage> context)
-    {
-        var msg = context.Message;
+    public OrderService(IEventPublisher publisher) {
+        this.publisher = publisher;
+    }
 
-        var cloudEvent = Formatter.DecodeStructuredModeMessage(
-            msg.Body,
-            new ContentType(msg.ContentType),
-            extensionAttributes: null);
+    public async Task PlaceOrderAsync(OrderPlacedData data) {
+        // Publish using the annotated data class
+        await publisher.PublishAsync(data);
 
-        Console.WriteLine($"Received event: {cloudEvent.Type} (id={cloudEvent.Id})");
-
-        // Further processing...
-        return Task.CompletedTask;
+        // — or — build a CloudEvent manually
+        var @event = new CloudEvent {
+            Type            = "order.placed",
+            Source          = new Uri("https://myapp.example.com/orders"),
+            DataContentType = "application/json",
+            Data            = data
+        };
+        await publisher.PublishEventAsync(@event);
     }
 }
 ```
 
-Register the consumer with MassTransit as usual:
+### Per-Delivery Overrides
+
+Use `IEventPublishChannel<WebhookPublishOptions>` when you need to override channel defaults for a single delivery — for example to send to a tenant-specific endpoint or to suppress the signature:
 
 ```csharp
-builder.Services.AddMassTransit(x =>
-{
-    x.AddConsumer<CloudEventConsumer>();
+using Deveel.Events;
 
-    x.UsingRabbitMq((ctx, cfg) =>
+public class NotificationService {
+    private readonly IEventPublishChannel<WebhookPublishOptions> channel;
+
+    public NotificationService(IEventPublishChannel<WebhookPublishOptions> channel) {
+        this.channel = channel;
+    }
+
+    public async Task NotifyTenantAsync(CloudEvent @event, string tenantEndpoint, string tenantSecret) {
+        var options = new WebhookPublishOptions {
+            EndpointUrl   = tenantEndpoint,
+            SigningSecret = tenantSecret,
+            // Override the algorithm for this tenant
+            SignatureAlgorithm = WebhookSignatureAlgorithm.HmacSha512,
+            // Reduce retries for time-sensitive notifications
+            MaxRetryCount = 1
+        };
+
+        await channel.PublishAsync(@event, options);
+    }
+}
+```
+
+### Publishing a Batch of Events
+
+The webhook channel also implements `IBatchEventPublishChannel<WebhookPublishOptions>`, which serialises multiple events into a single HTTP POST:
+
+```csharp
+using CloudNative.CloudEvents;
+using Deveel.Events;
+
+public class BulkEventService {
+    private readonly IBatchEventPublishChannel<WebhookPublishOptions> channel;
+
+    public BulkEventService(IBatchEventPublishChannel<WebhookPublishOptions> channel) {
+        this.channel = channel;
+    }
+
+    public async Task PublishBulkAsync(IReadOnlyList<CloudEvent> events) {
+        // Send all events in a single HTTP POST (serialised as a JSON array)
+        await channel.PublishBatchAsync(events);
+    }
+}
+```
+
+### HMAC Signature Verification (Receiver Side)
+
+Every delivery includes the following HTTP headers so that the receiver can verify the authenticity of the request:
+
+| Header | Default name | Description |
+|--------|-------------|-------------|
+| Delivery ID | `X-Webhook-Delivery` | A unique GUID for each delivery attempt |
+| Event type | `X-Webhook-Event` | The `CloudEvent.Type` (omitted for batch deliveries) |
+| Timestamp | `X-Webhook-Timestamp` | Unix timestamp (seconds) used in the signature |
+| Signature | `X-Webhook-Signature` | HMAC hex digest of `payload + timestamp` |
+| Algorithm | `X-Webhook-Signature-Algorithm` | The algorithm used (e.g. `HmacSha256`) |
+
+A minimal receiver that validates the signature with HMAC-SHA-256:
+
+```csharp
+using System.Security.Cryptography;
+using System.Text;
+using Microsoft.AspNetCore.Mvc;
+
+[ApiController]
+[Route("webhooks")]
+public class WebhookController : ControllerBase
+{
+    private const string Secret = "super-secret-key";
+
+    [HttpPost("events")]
+    public async Task<IActionResult> Receive()
     {
-        cfg.Host("rabbitmq://localhost");
-        cfg.ConfigureEndpoints(ctx);
-    });
-});
+        using var reader = new StreamReader(Request.Body);
+        var body      = await reader.ReadToEndAsync();
+        var payload   = Encoding.UTF8.GetBytes(body);
+        var timestamp = Request.Headers["X-Webhook-Timestamp"].ToString();
+        var signature = Request.Headers["X-Webhook-Signature"].ToString();
+
+        // Recompute the expected signature: HMAC-SHA256(payload + timestamp)
+        var data = payload.Concat(Encoding.UTF8.GetBytes(timestamp)).ToArray();
+        using var hmac     = new HMACSHA256(Encoding.UTF8.GetBytes(Secret));
+        var expected = Convert.ToHexString(hmac.ComputeHash(data)).ToLowerInvariant();
+
+        if (!string.Equals(expected, signature, StringComparison.OrdinalIgnoreCase))
+            return Unauthorized("Invalid webhook signature.");
+
+        // Process the event …
+        return Ok();
+    }
+}
+```
+
+### Custom Signature Provider
+
+Register a custom signature provider by implementing `IWebhookSignatureProvider` and calling `UseWebhookSignatureProvider<T>()`:
+
+```csharp
+using Deveel.Events;
+
+public class Ed25519SignatureProvider : IWebhookSignatureProvider
+{
+    public WebhookSignatureAlgorithm Algorithm => (WebhookSignatureAlgorithm)100; // custom value
+    public string AlgorithmName => "Ed25519";
+
+    public string ComputeSignature(byte[] payload, long timestamp, string secret)
+    {
+        // … your implementation …
+        throw new NotImplementedException();
+    }
+}
+
+// Registration
+builder.Services.AddEventPublisher(pub => pub
+    .UseWebhook(opts => { /* … */ })
+    .UseWebhookSignatureProvider<Ed25519SignatureProvider>());
+```
+
+### Custom Message Serializer
+
+Register a custom serializer by implementing `IEventSerializer` and calling `UseWebhookMessageSerializer<T>()`:
+
+```csharp
+using Deveel.Events;
+
+public class ProtobufEventSerializer : IEventSerializer
+{
+    public string Format => "protobuf";
+    public string ContentType => "application/x-protobuf";
+    public string BatchContentType => "application/x-protobuf";
+
+    public byte[] Serialize(CloudEvent @event) { /* … */ throw new NotImplementedException(); }
+    public byte[] SerializeBatch(IReadOnlyList<CloudEvent> events) { /* … */ throw new NotImplementedException(); }
+}
+
+// Registration
+builder.Services.AddEventPublisher(pub => pub
+    .UseWebhook(opts =>
+    {
+        opts.EndpointUrl  = "https://hooks.example.com/events";
+        opts.MessageFormat = "protobuf";
+    })
+    .UseWebhookMessageSerializer<ProtobufEventSerializer>());
+```
+
+### Handling Delivery Failures
+
+If all retry attempts are exhausted (or the server returns a non-retryable status code), the channel throws a `WebhookDeliveryException`:
+
+```csharp
+using Deveel.Events;
+
+try
+{
+    await publisher.PublishAsync(data);
+}
+catch (WebhookDeliveryException ex) when (ex.StatusCode.HasValue)
+{
+    // HTTP-level failure (e.g. 400 Bad Request)
+    logger.LogError("Webhook rejected with status {Status}", ex.StatusCode);
+}
+catch (WebhookDeliveryException ex)
+{
+    // Network or timeout failure after all retries
+    logger.LogError(ex, "Webhook delivery failed");
+}
 ```
 
 ## Event Schema
 
+The `Deveel.Events.Schema` package provides a way to describe and validate the structure of events through schemas, ensuring that events conform to an expected contract.
 
 ### Installation
 
@@ -619,7 +710,7 @@ The framework is still in its early stages, and there are several areas that nee
 Some of the areas that we plan to work on in the future are:
 
 - Supporting custom event serializers and deserializers
-- Implementing more publishers for different messaging systems (eg. RabbitMQ, Kafka, etc.)
+- Implementing more publishers for different messaging systems (eg. Kafka, etc.)
 - Supporting the deserialization of events from channels, to make consistent the published events are consumed
 - Allow the selection of the channel to publish an event among the registered ones (eg. with named channels)
 
