@@ -19,7 +19,7 @@
   <ItemGroup>
     <PackageReference Include="xunit.v3" Version="3.2.2" />
     <PackageReference Include="MartinCostello.Logging.XUnit.v3" Version="0.7.1"/>
-    <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" Version="18.6.2"/>
+    <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" Version="17.14.2"/>
   </ItemGroup>
 
   <ItemGroup>
