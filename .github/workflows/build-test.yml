@@ -11,9 +11,6 @@ on:
         description: 'Whether to restrict the build step to the matrix target framework (useful for PR builds)'
         type: boolean
         default: false
-    secrets:
-      CODECOV_TOKEN:
-        required: false
 
 jobs:
   build:

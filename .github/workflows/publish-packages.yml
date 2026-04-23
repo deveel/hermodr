@@ -7,11 +7,6 @@ on:
         description: 'Whether to also push packages to the public NuGet.org feed (in addition to GitHub Packages)'
         type: boolean
         default: false
-    secrets:
-      GITHUB_TOKEN:
-        required: true
-      NUGET_API_KEY:
-        required: false
 
 jobs:
   publish:

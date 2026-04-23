@@ -14,8 +14,7 @@ jobs:
     uses: ./.github/workflows/build-test.yml
     with:
       collect-coverage: true
-    secrets:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    secrets: inherit
 
   publish:
     name: Publish Packages
@@ -23,8 +22,7 @@ jobs:
     uses: ./.github/workflows/publish-packages.yml
     with:
       push-to-nuget-org: false
-    secrets:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    secrets: inherit
 
   clean:
     name: Clean Old Packages
