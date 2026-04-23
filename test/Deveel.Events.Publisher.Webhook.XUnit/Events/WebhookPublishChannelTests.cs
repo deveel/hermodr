@@ -12,6 +12,7 @@ using System.Net;
 using System.Text.Json;
 using System.Xml.Linq;
 
+using Microsoft.Extensions.Configuration;
 namespace Deveel.Events
 {
     public class WebhookPublishChannelTests
@@ -469,9 +470,315 @@ namespace Deveel.Events
             Assert.Contains(serializers, s => s.Format == WebhookMessageFormat.Xml);
         }
 
+        // ── Batch delivery ────────────────────────────────────────────────────
+
+        [Fact]
+        public async Task PublishBatchAsync_SuccessOnFirstAttempt()
+        {
+            var requestCount = 0;
+            var handler = new FakeHandler(req => { requestCount++; return OK(); });
+
+            var channel = BuildChannel(handler);
+            await channel.PublishBatchAsync(new[] { MakeEvent("event.one"), MakeEvent("event.two") });
+
+            Assert.Equal(1, requestCount);
+        }
+
+        [Fact]
+        public async Task PublishBatchAsync_EmptyList_Throws()
+        {
+            var handler = new FakeHandler(_ => OK());
+            var channel = BuildChannel(handler);
+
+            await Assert.ThrowsAsync<ArgumentException>(
+                () => channel.PublishBatchAsync(Array.Empty<CloudEvent>()));
+        }
+
+        [Fact]
+        public async Task PublishBatchAsync_NullList_Throws()
+        {
+            var handler = new FakeHandler(_ => OK());
+            var channel = BuildChannel(handler);
+
+            await Assert.ThrowsAsync<ArgumentException>(
+                () => channel.PublishBatchAsync(null!));
+        }
+
+        [Fact]
+        public async Task PublishBatchAsync_SetsBatchContentType()
+        {
+            HttpRequestMessage? captured = null;
+            var handler = new FakeHandler(req => { captured = req; return OK(); });
+
+            var channel = BuildChannel(handler, o => o.MessageFormat = WebhookMessageFormat.Json);
+            await channel.PublishBatchAsync(new[] { MakeEvent("event.a"), MakeEvent("event.b") });
+
+            // Batch should use BatchContentType
+            Assert.NotNull(captured!.Content!.Headers.ContentType!.MediaType);
+        }
+
+        [Fact]
+        public async Task PublishBatchAsync_WithOptions_UsesOverrideEndpoint()
+        {
+            var urls = new List<string>();
+            var handler = new FakeHandler(req => { urls.Add(req.RequestUri!.ToString()); return OK(); });
+
+            var channel = BuildChannel(handler, o => o.EndpointUrl = "https://default.example.com/");
+            await channel.PublishBatchAsync(new[] { MakeEvent() }, new WebhookPublishOptions
+            {
+                EndpointUrl = "https://batch-override.example.com/"
+            });
+
+            Assert.Single(urls);
+            Assert.Equal("https://batch-override.example.com/", urls[0]);
+        }
+
+        [Fact]
+        public async Task PublishBatchAsync_NoEventTypeHeader()
+        {
+            HttpRequestMessage? captured = null;
+            var handler = new FakeHandler(req => { captured = req; return OK(); });
+
+            var channel = BuildChannel(handler);
+            await channel.PublishBatchAsync(new[] { MakeEvent("event.a"), MakeEvent("event.b") });
+
+            // For batches, the event-type header is NOT set
+            Assert.False(captured!.Headers.Contains(WebhookDefaults.EventTypeHeaderName));
+        }
+
+        // ── CloudEventsJson/Xml format ─────────────────────────────────────
+
+        [Fact]
+        public async Task PublishAsync_CloudEventsJsonFormat_ContentTypeIsCloudEventsJson()
+        {
+            HttpRequestMessage? captured = null;
+            var handler = new FakeHandler(req => { captured = req; return OK(); });
+
+            await BuildChannel(handler, o => o.MessageFormat = WebhookMessageFormat.CloudEventsJson)
+                  .PublishAsync(MakeEvent());
+
+            Assert.StartsWith("application/cloudevents+json",
+                captured!.Content!.Headers.ContentType!.MediaType);
+        }
+
+        [Fact]
+        public async Task PublishAsync_CloudEventsXmlFormat_ContentTypeIsCloudEventsXml()
+        {
+            HttpRequestMessage? captured = null;
+            var handler = new FakeHandler(req => { captured = req; return OK(); });
+
+            await BuildChannel(handler, o => o.MessageFormat = WebhookMessageFormat.CloudEventsXml)
+                  .PublishAsync(MakeEvent());
+
+            Assert.StartsWith("application/cloudevents+xml",
+                captured!.Content!.Headers.ContentType!.MediaType);
+        }
+
+        // ── UseWebhook(sectionPath) ───────────────────────────────────────────
+
+        [Fact]
+        public void UseWebhook_WithSectionPath_RegistersChannel()
+        {
+            var configuration = new Microsoft.Extensions.Configuration.ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Webhook:EndpointUrl"] = "https://webhook.example.com/",
+                    ["Webhook:SigningSecret"] = "secret",
+                })
+                .Build();
+
+            var services = new ServiceCollection();
+            services.AddSingleton<Microsoft.Extensions.Configuration.IConfiguration>(configuration);
+            services.AddEventPublisher().UseWebhook("Webhook");
+
+            var sp = services.BuildServiceProvider();
+
+            var channels = sp.GetServices<IEventPublishChannel>();
+            Assert.Contains(channels, c => c is WebhookEventPublishChannel);
+        }
+
+        // ── UseWebhookSignatureProvider and UseWebhookMessageSerializer ────────
+
+        [Fact]
+        public void UseWebhookSignatureProvider_RegistersCustomProvider()
+        {
+            var services = new ServiceCollection();
+            services.AddEventPublisher()
+                .UseWebhook(o => o.EndpointUrl = "https://webhook.example.com/")
+                .UseWebhookSignatureProvider<HmacSha256SignatureProvider>();
+
+            var sp = services.BuildServiceProvider();
+            var providers = sp.GetServices<IWebhookSignatureProvider>();
+            Assert.Contains(providers, p => p.Algorithm == WebhookSignatureAlgorithm.HmacSha256);
+        }
+
+        [Fact]
+        public void UseWebhookMessageSerializer_RegistersCustomSerializer()
+        {
+            var services = new ServiceCollection();
+            services.AddEventPublisher()
+                .UseWebhook(o => o.EndpointUrl = "https://webhook.example.com/")
+                .UseWebhookMessageSerializer<JsonEventSerializer>();
+
+            var sp = services.BuildServiceProvider();
+            var serializers = sp.GetServices<IEventSerializer>();
+            Assert.Contains(serializers, s => s.Format == WebhookMessageFormat.Json);
+        }
+
+        // ── Typed channel resolution (DI lambdas) ────────────────────────────
+
+        [Fact]
+        public void UseWebhook_TypedChannelPublishOptions_Resolved()
+        {
+            var services = new ServiceCollection();
+            services.AddEventPublisher().UseWebhook(o =>
+            {
+                o.EndpointUrl   = "https://webhook.example.com/";
+                o.SigningSecret = "secret";
+            });
+
+            var sp = services.BuildServiceProvider();
+            var typed = sp.GetService<IEventPublishChannel<WebhookPublishOptions>>();
+            Assert.NotNull(typed);
+            Assert.IsType<WebhookEventPublishChannel>(typed);
+        }
+
+        [Fact]
+        public void UseWebhook_TypedBatchChannelPublishOptions_Resolved()
+        {
+            var services = new ServiceCollection();
+            services.AddEventPublisher().UseWebhook(o =>
+            {
+                o.EndpointUrl   = "https://webhook.example.com/";
+                o.SigningSecret = "secret";
+            });
+
+            var sp = services.BuildServiceProvider();
+            var batch = sp.GetService<IBatchEventPublishChannel<WebhookPublishOptions>>();
+            Assert.NotNull(batch);
+            Assert.IsType<WebhookEventPublishChannel>(batch);
+        }
+
+        // ── WebhookDeliveryException extra constructor ────────────────────────
+
+        [Fact]
+        public void WebhookDeliveryException_WithInnerException_SetsMessage()
+        {
+            var inner = new InvalidOperationException("network error");
+            var ex = new WebhookDeliveryException("delivery failed", inner);
+            Assert.Equal("delivery failed", ex.Message);
+            Assert.Same(inner, ex.InnerException);
+            Assert.Equal(0, ex.StatusCode);  // default int value
+        }
+
+        // ── Exception-based retry failure (HttpRequestException thrown) ───────
+
+        [Fact]
+        public async Task PublishAsync_ThrowsAfterExhausted_WithException()
+        {
+            var handler = new FakeHandler(_ => throw new HttpRequestException("connection refused"));
+
+            await Assert.ThrowsAsync<WebhookDeliveryException>(
+                () => BuildChannel(handler, o =>
+                {
+                    o.MaxRetryCount = 1;
+                    o.RetryDelay    = TimeSpan.FromMilliseconds(1);
+                }).PublishAsync(MakeEvent()));
+        }
+
+        // ── No serializer for format ──────────────────────────────────────────
+
+        [Fact]
+        public async Task PublishAsync_UnsupportedFormat_ThrowsNotSupported()
+        {
+            var handler = new FakeHandler(_ => OK());
+            var services = new ServiceCollection();
+            services.AddHttpClient(WebhookDefaults.HttpClientName)
+                    .ConfigurePrimaryHttpMessageHandler(() => handler);
+
+            var options = new WebhookEventPublishChannelOptions
+            {
+                EndpointUrl    = "https://webhook.example.com/receive",
+                SigningSecret  = "test-secret",
+                MessageFormat  = "unsupported-format",
+            };
+
+            var sp      = services.BuildServiceProvider();
+            var factory = sp.GetRequiredService<IHttpClientFactory>();
+            var channel = new WebhookEventPublishChannel(
+                Microsoft.Extensions.Options.Options.Create(options),
+                factory,
+                AllProviders);
+
+            await Assert.ThrowsAsync<NotSupportedException>(
+                () => channel.PublishAsync(MakeEvent()));
+        }
+
+        // ── Per-call RetryBackoffMultiplier and RequestTimeout ─────────────────
+
+        [Fact]
+        public async Task PublishAsync_PerCallOverride_SetsRetryBackoffAndTimeout()
+        {
+            var count   = 0;
+            var handler = new FakeHandler(_ =>
+            {
+                count++;
+                return new HttpResponseMessage(System.Net.HttpStatusCode.ServiceUnavailable);
+            });
+
+            var channel = BuildChannel(handler, o =>
+            {
+                o.MaxRetryCount = 5;
+                o.RetryDelay    = TimeSpan.FromMilliseconds(1);
+            });
+
+            await Assert.ThrowsAsync<WebhookDeliveryException>(
+                () => channel.PublishAsync(MakeEvent(), new WebhookPublishOptions
+                {
+                    MaxRetryCount          = 1,
+                    RetryDelay             = TimeSpan.FromMilliseconds(1),
+                    RetryBackoffMultiplier = 1.0,
+                    RequestTimeout         = TimeSpan.FromSeconds(5),
+                }));
+
+            Assert.Equal(2, count);  // 1 initial + 1 retry
+        }
+
+        // ── HttpClientName option ─────────────────────────────────────────────
+
+        [Fact]
+        public async Task PublishAsync_CustomHttpClientName_UsesNamedClient()
+        {
+            const string customName = "custom-webhook-client";
+            var requests = new List<HttpRequestMessage>();
+            var handler  = new FakeHandler(req => { requests.Add(req); return OK(); });
+
+            var services = new ServiceCollection();
+            services.AddHttpClient(customName)
+                    .ConfigurePrimaryHttpMessageHandler(() => handler);
+
+            var options = new WebhookEventPublishChannelOptions
+            {
+                EndpointUrl    = "https://webhook.example.com/receive",
+                SigningSecret  = "test-secret",
+                MessageFormat  = WebhookMessageFormat.Json,
+                HttpClientName = customName,
+            };
+
+            var sp      = services.BuildServiceProvider();
+            var factory = sp.GetRequiredService<IHttpClientFactory>();
+            var channel = new WebhookEventPublishChannel(
+                Microsoft.Extensions.Options.Options.Create(options),
+                factory,
+                AllProviders);
+
+            await channel.PublishAsync(MakeEvent());
+            Assert.Single(requests);
+        }
+
         // --- Helpers ---------------------------------------------------------
 
-        private static HttpResponseMessage OK() => new(HttpStatusCode.OK);
+        private static HttpResponseMessage OK() => new(System.Net.HttpStatusCode.OK);
 
         private sealed class FakeHandler : HttpMessageHandler
         {

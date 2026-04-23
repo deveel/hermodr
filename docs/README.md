@@ -1,10 +1,5 @@
 # Deveel Events
 
-![GitHub License](https://img.shields.io/github/license/deveel/deveel.events)
-![GitHub Release](https://img.shields.io/github/v/release/deveel/deveel.events)
-![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/deveel/deveel.events/cicd.yml?logo=github)
-![Codecov](https://img.shields.io/codecov/c/github/deveel/deveel.events?logo=codecov)
-
 **Deveel Events** is a lightweight, extensible framework for publishing domain events in .NET applications, built on top of the [CloudEvents](https://cloudevents.io/) standard.
 
 ## Domain Events in DDD

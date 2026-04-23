@@ -23,6 +23,9 @@ namespace Deveel.Events
             Time    = DateTimeOffset.Parse("2024-06-01T12:00:00Z"),
         };
 
+        private static IReadOnlyList<CloudEvent> MakeBatch() =>
+            new[] { MakeEvent("event.one"), MakeEvent("event.two") };
+
         // ── JSON ──────────────────────────────────────────────────────────────
 
         [Fact]
@@ -94,6 +97,34 @@ namespace Deveel.Events
                             .FirstOrDefault(e => e.Attribute("name")?.Value == "env");
             Assert.NotNull(envEl);
             Assert.Equal("prod", envEl!.Value);
+        }
+
+        // ── CloudEventsJson batch ─────────────────────────────────────────────
+
+        [Fact]
+        public void CloudEventsJson_SerializeBatch_ProducesJsonArray()
+        {
+            var bytes = CloudEventsJsonSerializer.Default.SerializeBatch(MakeBatch());
+            var json  = JsonDocument.Parse(bytes);
+            Assert.Equal(System.Text.Json.JsonValueKind.Array, json.RootElement.ValueKind);
+            Assert.Equal(2, json.RootElement.GetArrayLength());
+        }
+
+        [Fact]
+        public void CloudEventsJson_BatchContentType_IsCorrect()
+        {
+            Assert.StartsWith("application/cloudevents-batch+json", CloudEventsJsonSerializer.Default.BatchContentType);
+        }
+
+        // ── CloudEventsXml batch ──────────────────────────────────────────────
+
+        [Fact]
+        public void CloudEventsXml_SerializeBatch_ProducesXmlWithMultipleEvents()
+        {
+            var bytes = CloudEventsXmlSerializer.Default.SerializeBatch(MakeBatch());
+            var xml   = XDocument.Load(new MemoryStream(bytes));
+            XNamespace ns = "http://cloudevents.io/xmlformat/V1";
+            Assert.Equal(2, xml.Root!.Elements(ns + "cloudevent").Count());
         }
     }
 }

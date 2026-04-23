@@ -107,6 +107,34 @@ namespace Deveel.Events
             Assert.IsType<CustomEventPublisher>(provider.GetService<EventPublisher>());
         }
 
+        [Fact]
+        public static void UseSystemTime_ReplacesDefaultSystemTime()
+        {
+            var services = new ServiceCollection();
+            services.AddEventPublisher()
+                .UseSystemTime<CustomSystemTime>();
+
+            var provider = services.BuildServiceProvider();
+
+            var systemTime = provider.GetRequiredService<IEventSystemTime>();
+            Assert.IsType<CustomSystemTime>(systemTime);
+        }
+
+        [Fact]
+        public static void AddEventPublisher_WithConfigureAction_NoAttributes_DefaultsToEmpty()
+        {
+            var services = new ServiceCollection();
+            services.AddEventPublisher(options =>
+            {
+                options.Source = new Uri("https://api.example.com/svc");
+            });
+
+            var provider = services.BuildServiceProvider();
+
+            var options = provider.GetRequiredService<IOptions<EventPublisherOptions>>();
+            Assert.Empty(options.Value.Attributes);
+        }
+
         private class CustomEventPublisher : EventPublisher
         {
             public CustomEventPublisher(
@@ -118,6 +146,11 @@ namespace Deveel.Events
                 : base(options, channels, eventCreator, idGenerator, systemTime)
             {
             }
+        }
+
+        private class CustomSystemTime : IEventSystemTime
+        {
+            public DateTimeOffset UtcNow => new DateTimeOffset(2024, 1, 1, 0, 0, 0, TimeSpan.Zero);
         }
     }
 }

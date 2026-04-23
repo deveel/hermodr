@@ -19,6 +19,7 @@ namespace Deveel.Events
         }
 
         private IEventCreator EventCreator { get; }
+
         [Fact]
         public void CreateFromData()
         {
@@ -62,6 +63,48 @@ namespace Deveel.Events
             Assert.Throws<ArgumentException>(() => EventCreator.CreateEventFromData(new { Name = "John" }));
         }
 
+        [Fact]
+        public void CreateFromData_WithVersion_AndDataSchemaBaseUri()
+        {
+            // PersonCreatedByVersion uses a version string, not a schema URI
+            var services = new ServiceCollection();
+            services.AddEventPublisher(options =>
+            {
+                options.DataSchemaBaseUri = new Uri("https://example.com/events");
+            });
+            var creator = services.BuildServiceProvider().GetRequiredService<IEventCreator>();
+
+            var @event = creator.CreateEventFromData(typeof(PersonCreatedByVersion), new PersonCreatedByVersion
+            {
+                FirstName = "Jane",
+                LastName = "Doe"
+            });
+
+            Assert.Equal("person.created.versioned", @event.Type);
+            // DataSchema should be based on the base URI + event type + version
+            Assert.NotNull(@event.DataSchema);
+            Assert.Contains("person.created.versioned", @event.DataSchema!.ToString());
+            Assert.Contains("2.0", @event.DataSchema!.ToString());
+        }
+
+        [Fact]
+        public void CreateFromData_WithVersion_WithoutDataSchemaBaseUri_Throws()
+        {
+            // No DataSchemaBaseUri set → should throw when event has DataVersion only
+            var services = new ServiceCollection();
+            services.AddEventPublisher();  // DataSchemaBaseUri not set
+            var creator = services.BuildServiceProvider().GetRequiredService<IEventCreator>();
+
+            Assert.Throws<InvalidOperationException>(() =>
+                creator.CreateEventFromData(typeof(PersonCreatedByVersion), new PersonCreatedByVersion()));
+        }
+
+        [Fact]
+        public void CreateFromData_NullDataType_Throws()
+        {
+            Assert.Throws<ArgumentNullException>(() =>
+                EventCreator.CreateEventFromData(null!, new object()));
+        }
 
         [Event("person.created", "https://deveel.com/events/person/schema/1.0")]
         [EventAttributes("streamtype", "person")]
@@ -82,6 +125,16 @@ namespace Deveel.Events
 
             [JsonPropertyName("email")]
             public Email? Email { get; set; }
+        }
+
+        [Event("person.created.versioned", "2.0")]
+        class PersonCreatedByVersion
+        {
+            [JsonPropertyName("first_name")]
+            public string? FirstName { get; set; }
+
+            [JsonPropertyName("last_name")]
+            public string? LastName { get; set; }
         }
 
         class Email
