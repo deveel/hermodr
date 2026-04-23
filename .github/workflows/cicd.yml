@@ -10,92 +10,23 @@ on:
 
 jobs:
   build:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-        dotnet-version: [6.0.x, 7.0.x, 8.0.x]
-      fail-fast: false
-
-    runs-on: ${{ matrix.os }}
-
-    steps:
-      - uses: actions/checkout@v5
-        with:
-         fetch-depth: 0
-
-      - name: Set the TFM in Ubuntu
-        if: startsWith(matrix.os, 'ubuntu')
-        run: |
-          VERSION=$(echo "${{ matrix.dotnet-version }}" | sed 's/[^0-9.]*//g')
-          VERSION=$(echo "${VERSION}" | sed 's/\.$//')
-          DOTNET_TFM="net${VERSION}"
-          echo "DOTNET_TFM=$DOTNET_TFM" >> $GITHUB_ENV
-
-      - name: Set the TFM in Windows
-        if: startsWith(matrix.os, 'windows')
-        run: |
-          $VERSION = "${{ matrix.dotnet-version }}".Substring(0, "${{ matrix.dotnet-version }}".LastIndexOf('.'))
-          $DOTNET_TFM = "net$VERSION"
-          echo "DOTNET_TFM=$DOTNET_TFM" | Out-File -FilePath $env:GITHUB_ENV -Append
-
-      - name: Setup .NET ${{ matrix.dotnet-version }}
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: ${{ matrix.dotnet-version }}
-
-      - name: Install dependencies
-        run: dotnet restore
-
-      - name: Build
-        run: dotnet build -c Release --no-restore
-
-      - name: Test (Ubuntu)
-        if: startsWith(matrix.os, 'ubuntu')
-        run: dotnet test -c Release --no-build --verbosity normal --framework ${{ env.DOTNET_TFM }} /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
-
-      - name: Test (Windows)
-        if: startsWith(matrix.os, 'windows')
-        run: dotnet test -c Release --no-build --verbosity normal --framework ${{ env.DOTNET_TFM }} /p:CollectCoverage=true /p:CoverletOutputFormat=opencover --filter Channel!=RabbitMQ
-
-      - name: Collect to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+    name: Build & Test
+    uses: ./.github/workflows/build-test.yml
+    with:
+      collect-coverage: true
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   publish:
-    name: Publish Events Packages
+    name: Publish Packages
     needs: build
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v5
-      with:
-        fetch-depth: 0
-
-    - name: Setup GitVersion
-      uses: gittools/actions/gitversion/setup@v1.1.1
-      with:
-       versionSpec: '5.x'
-
-    - name: Determine Version
-      uses: gittools/actions/gitversion/execute@v1.1.1
-      with:
-         updateAssemblyInfo: true
-
-    - name: Setup .NET 8.0
-      uses: actions/setup-dotnet@v5
-      with:
-        dotnet-version: 8.0.x
-
-    - name: Build
-      run: dotnet build -c Release /p:Version=${{ env.GitVersion_SemVer }} /p:AssemblyVersion=${{ env.GitVersion_AssemblySemVer }} /p:FileVersion=${{ env.GitVersion_AssemblySemFileVer }}
-
-    - name: Package Artifacts
-      run: dotnet pack -c Release --no-build --include-symbols --output ./pkgs -p:PackageVersion=${{ env.GitVersion_SemVer }}
-
-    - name: Publish Packages on GitHub
-      run: dotnet nuget push ./pkgs/*.nupkg --source "https://nuget.pkg.github.com/deveel/index.json" --api-key ${{ secrets.GITHUB_TOKEN }} --skip-duplicate
+    uses: ./.github/workflows/publish-packages.yml
+    with:
+      push-to-nuget-org: false
+    secrets:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   clean:
-    name: Clean Events Packages
+    name: Clean Old Packages
     needs: publish
     uses: ./.github/workflows/clean-packages.yml

@@ -16,13 +16,13 @@ namespace Deveel.Events
         public string ConnectionString => rabbitMq.GetConnectionString();
 
 
-        public async Task DisposeAsync()
+        public async ValueTask DisposeAsync()
         {
             await rabbitMq.StopAsync();
             await rabbitMq.DisposeAsync();
         }
 
-        public async Task InitializeAsync()
+        public async ValueTask InitializeAsync()
         {
             await rabbitMq.StartAsync();
         }
