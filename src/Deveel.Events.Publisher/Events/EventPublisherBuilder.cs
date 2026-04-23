@@ -23,6 +23,7 @@ namespace Deveel.Events {
         public IServiceCollection Services { get; }
 
 		private void AddDefaultServices() {
+			Services.AddOptions<EventPublisherOptions>();
 			Services.TryAddSingleton<EventPublisher>();
 			Services.TryAddSingleton<IEventIdGenerator>(EventGuidGenerator.Default);
 			Services.TryAddSingleton<IEventSystemTime>(EventSystemTime.Instance);
