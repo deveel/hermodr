@@ -14,6 +14,7 @@
     
     <UseMicrosoftTestingPlatformRunner>True</UseMicrosoftTestingPlatformRunner>
     <TestingPlatformDotnetTestSupport>True</TestingPlatformDotnetTestSupport>
+    <TestingPlatformShowTestsFailure>true</TestingPlatformShowTestsFailure>
   </PropertyGroup>
 
   <ItemGroup>
