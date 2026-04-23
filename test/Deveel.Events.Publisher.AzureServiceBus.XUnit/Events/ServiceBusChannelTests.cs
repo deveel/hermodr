@@ -9,8 +9,6 @@ using CloudNative.CloudEvents;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-using Xunit.Abstractions;
-
 namespace Deveel.Events {
 	[Trait("Channel", "ServiceBus")]
 	[Trait("Function", "Publish")]

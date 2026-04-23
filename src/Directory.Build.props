@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <TargetFrameworks>net6.0;net7.0;net8.0</TargetFrameworks>
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>Deveel</RootNamespace>
@@ -9,7 +9,7 @@
   <PropertyGroup>
     <Authors>antonello</Authors>
     <Company>Deveel</Company>
-    <Copyright>Copyright (C) 2024 Antonello Provenzano</Copyright>
+    <Copyright>Copyright (C) 2024-2026 Antonello Provenzano</Copyright>
     <RepositoryUrl>https://github.com/deveel/deveel.events</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
@@ -28,8 +28,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All" Condition="$(TargetFramework) != 'net8.0'" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" Condition="$(TargetFramework) == 'net8.0'" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.203" PrivateAssets="All" Condition="$(TargetFramework) != 'net8.0'" />
   </ItemGroup>
 
   <ItemGroup>
