@@ -222,7 +222,7 @@ namespace Deveel.Events {
 				_logger.TraceEventPublishing(@event.Type!, channel.GetType());
 
 				try {
-					await PublishEventAsync(channel, @event, cancellationToken);
+					await PublishEventAsync(channel, @eventToPublish, cancellationToken);
 
 					_logger.TraceEventPublished(@event.Type!, channel.GetType());
 				} catch (Exception ex) {
