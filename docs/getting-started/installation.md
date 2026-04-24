@@ -40,7 +40,7 @@ The table below lists the key NuGet packages that each library brings in as tran
 | `Deveel.Events.Publisher.AzureServiceBus` | `Azure.Messaging.ServiceBus` ≥ 7.20 |
 | `Deveel.Events.Publisher.RabbitMq` | `RabbitMQ.Client` ≥ 7.2 · `Deveel.Events.Amqp.Annotations` |
 | `Deveel.Events.Publisher.MassTransit` | `MassTransit` ≥ 9.1 |
-| `Deveel.Events.Publisher.Webhook` | `Microsoft.Extensions.Http` · `Polly` ≥ 7.2 |
+| `Deveel.Events.Publisher.Webhook` | `Microsoft.Extensions.Http` · `Microsoft.Extensions.Http.Resilience` ≥ 9.6 |
 | `Deveel.Events.Schema` | `CloudNative.CloudEvents` |
 | `Deveel.Events.Schema.Yaml` | `YamlDotNet` ≥ 16.3 |
 | `Deveel.Events.Schema.AsyncApi` | `Saunter` ≥ 0.13 · `YamlDotNet` ≥ 16.3 · ASP.NET Core shared framework |

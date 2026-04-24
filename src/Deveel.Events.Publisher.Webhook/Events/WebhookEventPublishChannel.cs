@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 using Polly;
-using Polly.Extensions.Http;
+using Polly.Retry;
 
 using System.Net.Http.Headers;
 
@@ -139,30 +139,55 @@ namespace Deveel.Events
             else
                 _logger.LogDeliveringBatch(deliveryId, eventCount, eff.Format, algorithm, eff.EndpointUrl);
 
-            // Build the Polly retry policy from the effective (possibly per-delivery-overridden) options.
-            var retryPolicy = HttpPolicyExtensions
-                .HandleTransientHttpError()
-                .Or<TaskCanceledException>(ex => !cancellationToken.IsCancellationRequested)
-                .Or<OperationCanceledException>(ex => !cancellationToken.IsCancellationRequested)
-                .OrResult(r => eff.RetryableStatusCodes.Contains((int)r.StatusCode))
-                .WaitAndRetryAsync(
-                    eff.MaxRetryCount,
-                    attempt => TimeSpan.FromMilliseconds(
-                        eff.RetryDelay.TotalMilliseconds * Math.Pow(eff.RetryBackoffMultiplier, attempt - 1)),
-                    onRetry: (outcome, delay, attempt, _) =>
+            // Build the resilience pipeline from the effective (possibly per-delivery-overridden) options.
+            var pipeline = new ResiliencePipelineBuilder<HttpResponseMessage>()
+                .AddRetry(new RetryStrategyOptions<HttpResponseMessage>
+                {
+                    MaxRetryAttempts = eff.MaxRetryCount,
+                    UseJitter        = false,
+                    DelayGenerator   = args => ValueTask.FromResult<TimeSpan?>(
+                        TimeSpan.FromMilliseconds(
+                            eff.RetryDelay.TotalMilliseconds *
+                            Math.Pow(eff.RetryBackoffMultiplier, args.AttemptNumber))),
+                    ShouldHandle = args =>
                     {
-                        if (outcome.Exception != null)
+                        if (args.Outcome.Exception != null)
+                            return ValueTask.FromResult(
+                                args.Outcome.Exception is HttpRequestException ||
+                                ((args.Outcome.Exception is TaskCanceledException
+                                  or OperationCanceledException)
+                                 && !cancellationToken.IsCancellationRequested));
+
+                        if (args.Outcome.Result != null)
+                        {
+                            var code = (int)args.Outcome.Result.StatusCode;
+                            return ValueTask.FromResult(
+                                code is >= 500 or 408 ||
+                                eff.RetryableStatusCodes.Contains(code));
+                        }
+
+                        return ValueTask.FromResult(false);
+                    },
+                    OnRetry = args =>
+                    {
+                        if (args.Outcome.Exception != null)
                             _logger.LogRetryOnException(
-                                deliveryId, attempt, outcome.Exception.Message, delay.TotalMilliseconds);
+                                deliveryId, args.AttemptNumber + 1,
+                                args.Outcome.Exception.Message, args.RetryDelay.TotalMilliseconds);
                         else
                             _logger.LogRetryOnStatusCode(
-                                deliveryId, attempt, (int)outcome.Result.StatusCode, delay.TotalMilliseconds);
-                    });
+                                deliveryId, args.AttemptNumber + 1,
+                                (int)args.Outcome.Result!.StatusCode, args.RetryDelay.TotalMilliseconds);
+
+                        return ValueTask.CompletedTask;
+                    }
+                })
+                .Build();
 
             HttpResponseMessage response;
             try
             {
-                response = await retryPolicy.ExecuteAsync(async ct =>
+                response = await pipeline.ExecuteAsync(async ct =>
                 {
                     // HttpRequestMessage must be recreated per attempt.
                     using var request = BuildRequest(
