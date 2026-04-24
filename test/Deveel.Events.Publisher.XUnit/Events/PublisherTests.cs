@@ -46,7 +46,7 @@ namespace Deveel.Events {
 
 			@event[CloudEventAttribute.CreateExtension("env", CloudEventAttributeType.String)] = "test";
 
-			await Publisher.PublishEventAsync(@event);
+			await Publisher.PublishEventAsync(@event, TestContext.Current.CancellationToken);
 
 			Assert.Single(Events);
 			Assert.Equal("person.created", Events[0].Type);
@@ -65,7 +65,7 @@ namespace Deveel.Events {
 				Id = "123",
 				FirstName = "John",
 				LastName = "Doe"
-			});
+			}, TestContext.Current.CancellationToken);
 
 			Assert.Single(Events);
 			Assert.Equal("person.created", Events[0].Type);
@@ -95,7 +95,7 @@ namespace Deveel.Events {
                 LastName = "Doe"
             };
 
-            await Publisher.PublishEventAsync(personDeleted);
+            await Publisher.PublishEventAsync(personDeleted, TestContext.Current.CancellationToken);
 
             Assert.Single(Events);
             Assert.Equal("person.deleted", Events[0].Type);
@@ -126,7 +126,7 @@ namespace Deveel.Events {
                 Source = new Uri("https://api.svc.deveel.com/test-service"),
             };
 
-            await Publisher.PublishEventAsync(@event);
+            await Publisher.PublishEventAsync(@event,  TestContext.Current.CancellationToken);
 
             Assert.Single(Events);
             Assert.Equal(existingId, Events[0].Id);
@@ -142,7 +142,7 @@ namespace Deveel.Events {
                 Source = customSource,
             };
 
-            await Publisher.PublishEventAsync(@event);
+            await Publisher.PublishEventAsync(@event, TestContext.Current.CancellationToken);
 
             Assert.Single(Events);
             Assert.Equal(customSource, Events[0].Source);
@@ -159,7 +159,7 @@ namespace Deveel.Events {
                 Time = fixedTime,
             };
 
-            await Publisher.PublishEventAsync(@event);
+            await Publisher.PublishEventAsync(@event, TestContext.Current.CancellationToken);
 
             Assert.Single(Events);
             Assert.Equal(fixedTime, Events[0].Time);
@@ -173,7 +173,7 @@ namespace Deveel.Events {
                 Type = "test.event",
             };
 
-            await Publisher.PublishEventAsync(@event);
+            await Publisher.PublishEventAsync(@event,  TestContext.Current.CancellationToken);
 
             Assert.Single(Events);
             Assert.Equal(new Uri("https://api.svc.deveel.com/test-service"), Events[0].Source);
@@ -188,7 +188,7 @@ namespace Deveel.Events {
                 Source = new Uri("https://api.svc.deveel.com"),
             };
 
-            await Publisher.PublishEventAsync(@event);
+            await Publisher.PublishEventAsync(@event, TestContext.Current.CancellationToken);
 
             Assert.Single(Events);
             Assert.NotNull(Events[0].Time);
@@ -203,7 +203,7 @@ namespace Deveel.Events {
                 Source = new Uri("https://api.svc.deveel.com"),
             };
 
-            await Publisher.PublishEventAsync(@event);
+            await Publisher.PublishEventAsync(@event,  TestContext.Current.CancellationToken);
 
             Assert.Single(Events);
             Assert.NotNull(Events[0].Id);
@@ -230,7 +230,7 @@ namespace Deveel.Events {
             {
                 Type = "test.event",
                 Source = new Uri("https://api.example.com"),
-            });
+            }, TestContext.Current.CancellationToken);
 
             Assert.Single(publishedEvents);
             // Just verify the event was published successfully with all attribute types
@@ -254,7 +254,7 @@ namespace Deveel.Events {
             {
                 Type = "test.event",
                 Source = new Uri("https://api.example.com"),
-            });
+            },TestContext.Current.CancellationToken);
         }
 
         [Fact]
@@ -275,7 +275,7 @@ namespace Deveel.Events {
                 {
                     Type = "test.event",
                     Source = new Uri("https://api.example.com"),
-                }));
+                }, TestContext.Current.CancellationToken));
         }
 
         [Fact]
@@ -296,7 +296,7 @@ namespace Deveel.Events {
             );
 
             // ThrowOnErrors = false by default, should swallow
-            await publisher.PublishAsync(typeof(PersonCreated), new PersonCreated { Id = "1" });
+            await publisher.PublishAsync(typeof(PersonCreated), new PersonCreated { Id = "1" }, TestContext.Current.CancellationToken);
         }
 
         [Fact]
@@ -317,7 +317,7 @@ namespace Deveel.Events {
             );
 
             await Assert.ThrowsAsync<EventPublishException>(() =>
-                publisher.PublishAsync(typeof(PersonCreated), new PersonCreated { Id = "1" }));
+                publisher.PublishAsync(typeof(PersonCreated), new PersonCreated { Id = "1" }, TestContext.Current.CancellationToken));
         }
 
         [Fact]
@@ -327,12 +327,12 @@ namespace Deveel.Events {
             services.AddEventPublisher(options =>
             {
                 options.ThrowOnErrors = false;
-            }).AddTestChannel(e => { });
+            }).AddTestChannel(_ => { });
 
             var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
 
             // Should not throw
-            await publisher.PublishEventAsync(new BrokenFactory());
+            await publisher.PublishEventAsync(new BrokenFactory(), TestContext.Current.CancellationToken);
         }
 
         [Fact]
@@ -342,12 +342,12 @@ namespace Deveel.Events {
             services.AddEventPublisher(options =>
             {
                 options.ThrowOnErrors = true;
-            }).AddTestChannel(e => { });
+            }).AddTestChannel(_ => { });
 
             var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
 
             await Assert.ThrowsAsync<EventPublishException>(() =>
-                publisher.PublishEventAsync(new BrokenFactory()));
+                publisher.PublishEventAsync(new BrokenFactory(), TestContext.Current.CancellationToken));
         }
 
         [Fact]
@@ -358,7 +358,7 @@ namespace Deveel.Events {
                 Id = "generic-test",
                 FirstName = "Generic",
                 LastName = "Test"
-            });
+            }, TestContext.Current.CancellationToken);
 
             Assert.Single(Events);
             Assert.Equal("person.created", Events[0].Type);
@@ -368,7 +368,7 @@ namespace Deveel.Events {
         public async Task PublishEventFactory_NullFactory_Throws()
         {
             await Assert.ThrowsAsync<ArgumentNullException>(() =>
-                Publisher.PublishEventAsync<PersonDeleted>(null!));
+                Publisher.PublishEventAsync<PersonDeleted>(null!, TestContext.Current.CancellationToken));
         }
 
         [Event("person.created", "https://example.com/events/person.created/1.0")]
