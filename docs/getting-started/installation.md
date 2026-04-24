@@ -44,6 +44,8 @@ The table below lists the key NuGet packages that each library brings in as tran
 | `Deveel.Events.Schema` | `CloudNative.CloudEvents` |
 | `Deveel.Events.Schema.Yaml` | `YamlDotNet` ≥ 16.3 |
 | `Deveel.Events.Schema.AsyncApi` | `Saunter` ≥ 0.13 · `YamlDotNet` ≥ 16.3 · ASP.NET Core shared framework |
+- .NET 8, 9, or 10
+- A project that uses Microsoft Dependency Injection (`Microsoft.Extensions.DependencyInjection`)
 
 ## Core package
 
