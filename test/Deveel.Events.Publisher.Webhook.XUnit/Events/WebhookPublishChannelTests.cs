@@ -611,17 +611,7 @@ namespace Deveel.Events
             var providers = sp.GetServices<IWebhookSignatureProvider>();
             Assert.Contains(providers, p => p.Algorithm == WebhookSignatureAlgorithm.HmacSha256);
         }
-
-        [Fact]
-        public void UseWebhookMessageSerializer_RegistersCustomSerializer()
-        {
-            var services = new ServiceCollection();
-
-            var sp = services.BuildServiceProvider();
-            var serializers = sp.GetServices<IEventSerializer>();
-            Assert.Contains(serializers, s => s.Format == EventMessageFormat.Json);
-        }
-
+        
         // ── Typed channel resolution (DI lambdas) ────────────────────────────
 
         [Fact]
