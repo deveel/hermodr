@@ -18,7 +18,7 @@ namespace Deveel.Events
     /// </summary>
     public sealed class RabbitMqMessageFactory : IRabbitMqMessageFactory
     {
-        private readonly RabbitMqEventPublishChannelOptions _options;
+        private readonly RabbitMqEventPublishOptions _options;
 
         /// <summary>
         /// Constructs the factory with the options to use for creating messages.
@@ -26,7 +26,7 @@ namespace Deveel.Events
         /// <param name="options">
         /// The RabbitMQ channel options to use for creating messages.
         /// </param>
-        public RabbitMqMessageFactory(IOptions<RabbitMqEventPublishChannelOptions> options)
+        public RabbitMqMessageFactory(IOptions<RabbitMqEventPublishOptions> options)
         {
             _options = options.Value;
         }
@@ -34,21 +34,23 @@ namespace Deveel.Events
         /// <inheritdoc />
         public RabbitMqMessage CreateMessage(CloudEvent @event)
         {
+            var messageContent = _options.MessageContent ?? RabbitMqMessageContent.CloudEvent;
+            var messageFormat  = _options.MessageFormat  ?? RabbitMqMessageFormat.Json;
 
-            switch (_options.MessageContent)
+            switch (messageContent)
             {
                 case RabbitMqMessageContent.CloudEvent:
                     {
-                        var body = _options.MessageFormat switch
+                        var body = messageFormat switch
                         {
-                            RabbitMqMessageFormat.Json => GetCloudEventAsJsonBytes(@event),
+                            RabbitMqMessageFormat.Json   => GetCloudEventAsJsonBytes(@event),
                             RabbitMqMessageFormat.Binary => GetCloudEventAsBinary(@event),
                             _ => throw new InvalidOperationException("The message format is not supported")
                         };
 
-                        var contentType = _options.MessageFormat switch
+                        var contentType = messageFormat switch
                         {
-                            RabbitMqMessageFormat.Json => "application/cloudevents+json",
+                            RabbitMqMessageFormat.Json   => "application/cloudevents+json",
                             RabbitMqMessageFormat.Binary => "application/cloudevents+octet-stream",
                             _ => throw new InvalidOperationException("The message format is not supported")
                         };
@@ -58,22 +60,22 @@ namespace Deveel.Events
 
                 case RabbitMqMessageContent.EventData:
                     {
-                        var body = _options.MessageFormat switch
+                        var body = messageFormat switch
                         {
-                            RabbitMqMessageFormat.Json => GetEventDataAsJsonBytes(@event),
+                            RabbitMqMessageFormat.Json   => GetEventDataAsJsonBytes(@event),
                             RabbitMqMessageFormat.Binary => GetEventDataAsBinary(@event),
-                            _ => throw new NotSupportedException($"The message format {_options.MessageFormat} is not supported")
+                            _ => throw new NotSupportedException($"The message format {messageFormat} is not supported")
                         };
 
-                        var contentType = _options.MessageFormat switch
+                        var contentType = messageFormat switch
                         {
-                            RabbitMqMessageFormat.Json => "application/json",
+                            RabbitMqMessageFormat.Json   => "application/json",
                             RabbitMqMessageFormat.Binary => "application/octet-stream",
-                            _ => throw new NotSupportedException($"The message format {_options.MessageFormat} is not supported")
+                            _ => throw new NotSupportedException($"The message format {messageFormat} is not supported")
                         };
 
                         return new RabbitMqMessage(body, contentType, contentType == "application/json" ? "utf-8" : null);
-                    }                    
+                    }
             }
 
             throw new NotSupportedException($"The message content {_options.MessageContent} is not supported");

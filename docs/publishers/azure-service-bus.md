@@ -50,9 +50,9 @@ builder.Services
 
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
-| `ConnectionString` | `string` | ✅ | Azure Service Bus connection string |
-| `QueueName` | `string` | ✅ | Name of the queue or topic to publish to |
-| `ClientOptions` | `ServiceBusClientOptions` | | Advanced client settings (see Azure SDK docs) |
+| `ConnectionString` | `string` | ✅ | Azure Service Bus connection string. In a per-call override an empty/whitespace value falls back to the channel default. |
+| `QueueName` | `string` | ✅ | Name of the queue or topic to publish to. In a per-call override an empty/whitespace value falls back to the channel default. |
+| `ClientOptions` | `ServiceBusClientOptions` | | Advanced client settings (see Azure SDK docs). `null` in a per-call override falls back to the channel default. |
 
 ## How it works
 
@@ -60,6 +60,23 @@ builder.Services
 2. Each `CloudEvent` is serialised to JSON and wrapped in a `ServiceBusMessage`.
 3. CloudEvent attributes (`id`, `type`, `source`, `time`, `datacontenttype`) are mapped to message application properties so consumers can filter without parsing the body.
 4. The message is sent using a `ServiceBusSender` for the configured queue name.
+
+## Per-delivery options
+
+Every channel registered with `AddServiceBusChannel` also implements `IEventPublishChannel<ServiceBusEventPublishChannelOptions>`, letting you override the destination queue (and, optionally, `ClientOptions`) for a single publish call.  Any property you leave empty or `null` in the per-call override falls back to the channel default.
+
+```csharp
+// Resolve the typed channel from DI
+var channel = serviceProvider
+    .GetRequiredService<IEventPublishChannel<ServiceBusEventPublishChannelOptions>>();
+
+// Send this particular event to a different queue,
+// while inheriting ConnectionString and ClientOptions from the channel defaults.
+await channel.PublishAsync(@event, new ServiceBusEventPublishChannelOptions
+{
+    QueueName = "priority-events",
+});
+```
 
 ## Custom client factory
 

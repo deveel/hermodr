@@ -14,7 +14,7 @@ namespace Deveel.Events
     /// <typeparam name="TOptions">
     /// The options type accepted by this channel alongside a <see cref="CloudEvent"/>.
     /// </typeparam>
-    public interface IEventPublishChannel<TOptions> : IEventPublishChannel
+    public interface IEventPublishChannel<in TOptions> : IEventPublishChannel
         where TOptions : class
     {
         /// <summary>

@@ -44,9 +44,9 @@ namespace Deveel.Events
         /// <returns>
         /// Returns the <see cref="EventPublisherBuilder"/> to continue the configuration.
         /// </returns>
-        public static EventPublisherBuilder UseRabbitMq(this EventPublisherBuilder builder, Action<RabbitMqEventPublishChannelOptions> configure)
+        public static EventPublisherBuilder UseRabbitMq(this EventPublisherBuilder builder, Action<RabbitMqEventPublishOptions> configure)
         {
-            builder.Services.AddOptions<RabbitMqEventPublishChannelOptions>()
+            builder.Services.AddOptions<RabbitMqEventPublishOptions>()
                 .Configure(configure);
 
             return builder.AddRabbitMqChannel();
@@ -66,7 +66,7 @@ namespace Deveel.Events
         /// </returns>
         public static EventPublisherBuilder UseRabbitMq(this EventPublisherBuilder builder, string sectionPath)
         {
-            builder.Services.AddOptions<RabbitMqEventPublishChannelOptions>()
+            builder.Services.AddOptions<RabbitMqEventPublishOptions>()
                 .BindConfiguration(sectionPath);
 
             return builder.AddRabbitMqChannel();

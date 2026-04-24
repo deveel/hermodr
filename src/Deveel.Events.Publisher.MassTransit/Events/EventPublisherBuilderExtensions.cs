@@ -34,9 +34,9 @@ namespace Deveel.Events
         /// </returns>
         public static EventPublisherBuilder UseMassTransit(
             this EventPublisherBuilder builder,
-            Action<MassTransitEventPublishChannelOptions>? configure = null)
+            Action<MassTransitEventPublishOptions>? configure = null)
         {
-            var optBuilder = builder.Services.AddOptions<MassTransitEventPublishChannelOptions>();
+            var optBuilder = builder.Services.AddOptions<MassTransitEventPublishOptions>();
             if (configure is not null)
                 optBuilder.Configure(configure);
 
@@ -60,7 +60,7 @@ namespace Deveel.Events
             this EventPublisherBuilder builder,
             string sectionPath)
         {
-            builder.Services.AddOptions<MassTransitEventPublishChannelOptions>()
+            builder.Services.AddOptions<MassTransitEventPublishOptions>()
                 .BindConfiguration(sectionPath);
 
             return builder.AddMassTransitChannel();

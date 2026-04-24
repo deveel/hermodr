@@ -49,22 +49,43 @@ builder.Services
 
 ## Options reference
 
-`RabbitMqEventPublishChannelOptions`
+`RabbitMqEventPublishOptions`
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
+| Property | Type | Effective default | Description |
+|----------|------|-------------------|-------------|
 | `ConnectionString` | `string?` | `null` | AMQP connection URI |
 | `ExchangeName` | `string?` | `null` | Exchange to publish to (falls back to per-event `[AmqpExchange]` annotation) |
 | `RoutingKey` | `string?` | `null` | Default routing key (falls back to per-event `[AmqpRoutingKey]` annotation) |
 | `QueueName` | `string?` | `null` | Optional queue to bind the exchange to |
 | `ClientName` | `string?` | `"Deveel.Events"` | Client name shown in RabbitMQ management UI |
-| `MessageFormat` | `RabbitMqMessageFormat` | `Json` | Serialisation format: `Json` or `Xml` |
-| `MessageContent` | `RabbitMqMessageContent` | `CloudEvent` | Whether to send the full `CloudEvent` envelope or only the `data` payload |
-| `PersistentMessages` | `bool` | `true` | Delivery mode 2 (survives broker restarts) |
-| `PublisherConfirms` | `bool` | `true` | Wait for broker acknowledgement before returning |
-| `ConfirmTimeout` | `TimeSpan` | 5 s | Timeout for publisher confirms |
-| `Mandatory` | `bool` | `false` | Return unroutable messages instead of silently dropping them |
+| `MessageFormat` | `RabbitMqMessageFormat?` | `Json` | Serialisation format: `Json` or `Binary`. `null` → use channel default |
+| `MessageContent` | `RabbitMqMessageContent?` | `CloudEvent` | Whether to send the full `CloudEvent` envelope or only the `data` payload. `null` → use channel default |
+| `PersistentMessages` | `bool?` | `true` | Delivery mode 2 (survives broker restarts). `null` → use channel default |
+| `PublisherConfirms` | `bool?` | `true` | Wait for broker acknowledgement before returning. `null` → use channel default |
+| `ConfirmTimeout` | `TimeSpan?` | 5 s | Timeout for publisher confirms. `null` → use channel default |
+| `Mandatory` | `bool?` | `false` | Return unroutable messages instead of silently dropping them. `null` → use channel default |
 | `JsonSerializerOptions` | `JsonSerializerOptions?` | default | Serialisation options when `MessageFormat = Json` |
+
+> **Nullable value-type properties** (`MessageFormat`, `MessageContent`, `PersistentMessages`, `PublisherConfirms`, `ConfirmTimeout`, `Mandatory`) use `null` as the sentinel meaning *"inherit from the channel-level default"*.  Set them in the channel registration to establish the baseline; set them in a per-call override only when you need to deviate from that baseline for a specific delivery.
+
+## Per-delivery options
+
+Every channel registered with `UseRabbitMq` also implements `IEventPublishChannel<RabbitMqEventPublishOptions>`, letting you override individual properties for a single publish call.  Only the properties you set (non-`null`) replace the channel default — all others fall back to the values configured at registration time.
+
+```csharp
+// Resolve the typed channel from DI
+var channel = serviceProvider
+    .GetRequiredService<IEventPublishChannel<RabbitMqEventPublishOptions>>();
+
+// Override only the routing key and make this one message non-persistent.
+// Everything else (ConnectionString, ExchangeName, PublisherConfirms, …)
+// is inherited from the channel-level defaults.
+await channel.PublishAsync(@event, new RabbitMqEventPublishOptions
+{
+    RoutingKey         = "priority.orders",
+    PersistentMessages = false,
+});
+```
 
 ## AMQP Annotations
 

@@ -17,7 +17,9 @@ namespace Deveel.Events {
     /// <summary>
     /// A channel that publishes events to an Azure Service Bus queue.
     /// </summary>
-    public sealed class ServiceBusEventPublishChannel : IEventPublishChannel, IAsyncDisposable, IDisposable {
+    public sealed class ServiceBusEventPublishChannel :
+        EventPublishChannelBase<ServiceBusEventPublishChannelOptions>,
+        IAsyncDisposable, IDisposable {
 		private ServiceBusSender? sender;
 		private ServiceBusClient? client;
 		private readonly ServiceBusMessageFactory messageCreator;
@@ -39,6 +41,11 @@ namespace Deveel.Events {
         /// <param name="messageCreator">
 		/// The factory to create the message to send to the queue.
 		/// </param>
+        /// <param name="validators">
+        /// Optional collection of <see cref="IValidateOptions{ServiceBusEventPublishChannelOptions}"/>
+        /// services registered in the DI container. When the collection is empty or <c>null</c>
+        /// validation falls back to DataAnnotations.
+        /// </param>
         /// <param name="logger">
 		/// A logger to record the operations of the channel.
 		/// </param>
@@ -46,24 +53,15 @@ namespace Deveel.Events {
 			IOptions<ServiceBusEventPublishChannelOptions> options,
 			IServiceBusClientFactory clientFactory,
 			ServiceBusMessageFactory messageCreator,
+			IEnumerable<IValidateOptions<ServiceBusEventPublishChannelOptions>>? validators = null,
 			ILogger<ServiceBusEventPublishChannel>? logger = null)
-			: this(options.Value, clientFactory, messageCreator, logger) {
-		}
+			: base(options.Value, validators) {
 
-		private ServiceBusEventPublishChannel(
-			ServiceBusEventPublishChannelOptions options,
-			IServiceBusClientFactory clientFactory,
-			ServiceBusMessageFactory messageCreator,
-			ILogger<ServiceBusEventPublishChannel>? logger = null) {
+			var clientOptions = options.Value.ClientOptions ?? new ServiceBusClientOptions();
 
-			ArgumentNullException.ThrowIfNull(options.ConnectionString, nameof(ServiceBusEventPublishChannelOptions.ConnectionString));
-            ArgumentNullException.ThrowIfNull(options.QueueName, nameof(ServiceBusEventPublishChannelOptions.QueueName));
+			client = clientFactory.CreateClient(options.Value.ConnectionString, clientOptions);
 
-			var clientOptions = options.ClientOptions ?? new ServiceBusClientOptions();
-
-			client = clientFactory.CreateClient(options.ConnectionString, clientOptions);
-
-			sender = client.CreateSender(options.QueueName);
+			sender = client.CreateSender(options.Value.QueueName);
 			this.messageCreator = messageCreator;
 			this.logger = logger ?? NullLogger<ServiceBusEventPublishChannel>.Instance;
 		}
@@ -73,12 +71,40 @@ namespace Deveel.Events {
 				throw new ObjectDisposedException(nameof(ServiceBusEventPublishChannel));
 		}
 
+        /// <inheritdoc/>
+        /// <remarks>
+        /// Performs a property-level merge: non-empty string properties in
+        /// <paramref name="perCallOptions"/> override the corresponding values from
+        /// <paramref name="defaults"/>; an empty or <c>null</c> string signals
+        /// "use the channel-level default".  <see cref="ServiceBusEventPublishChannelOptions.ClientOptions"/>
+        /// is taken from <paramref name="perCallOptions"/> when non-<c>null</c>.
+        /// </remarks>
+        protected override ServiceBusEventPublishChannelOptions MergeOptions(
+            ServiceBusEventPublishChannelOptions defaults,
+            ServiceBusEventPublishChannelOptions? perCallOptions)
+        {
+            if (perCallOptions == null)
+                return defaults;
+
+            return new ServiceBusEventPublishChannelOptions
+            {
+                ConnectionString = !string.IsNullOrWhiteSpace(perCallOptions.ConnectionString)
+                    ? perCallOptions.ConnectionString
+                    : defaults.ConnectionString,
+                QueueName = !string.IsNullOrWhiteSpace(perCallOptions.QueueName)
+                    ? perCallOptions.QueueName
+                    : defaults.QueueName,
+                ClientOptions = perCallOptions.ClientOptions ?? defaults.ClientOptions,
+            };
+        }
+
         /// <inheritdoc />
-        public async Task PublishAsync(CloudEvent @event, CancellationToken cancellationToken = default) {
+        protected override async Task PublishCoreAsync(
+			CloudEvent @event,
+			ServiceBusEventPublishChannelOptions options,
+			CancellationToken cancellationToken) {
 			ThrowIfDisposed();
 			cancellationToken.ThrowIfCancellationRequested();
-
-			ArgumentNullException.ThrowIfNull(@event, nameof(@event));
 
             logger.TracePublishingEvent(@event.Type);
 
@@ -94,7 +120,6 @@ namespace Deveel.Events {
 				logger.LogErrorPublishingEvent(ex, @event.Type);
 				throw;
 			}
-
 		}
 
         /// <inheritdoc />

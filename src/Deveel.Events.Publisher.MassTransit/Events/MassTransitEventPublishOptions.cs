@@ -8,7 +8,7 @@ namespace Deveel.Events
     /// <summary>
     /// Options that configure the <see cref="MassTransitEventPublishChannel"/>.
     /// </summary>
-    public class MassTransitEventPublishChannelOptions
+    public class MassTransitEventPublishOptions
     {
         /// <summary>
         /// Gets or sets the destination address to send the event to.
@@ -21,9 +21,11 @@ namespace Deveel.Events
         /// <summary>
         /// Gets or sets a value indicating whether the CloudEvent attributes
         /// (id, type, source, time, datacontenttype, etc.) should be mapped
-        /// to MassTransit message headers.  Defaults to <c>true</c>.
+        /// to MassTransit message headers.
+        /// When <c>null</c> in a per-call override the channel default is used;
+        /// the effective default is <c>true</c>.
         /// </summary>
-        public bool MapAttributesToHeaders { get; set; } = true;
+        public bool? MapAttributesToHeaders { get; set; }
     }
 }
 

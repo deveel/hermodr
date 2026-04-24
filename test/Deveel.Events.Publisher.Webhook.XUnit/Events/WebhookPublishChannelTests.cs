@@ -8,6 +8,7 @@ using CloudNative.CloudEvents;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
+using System.ComponentModel.DataAnnotations;
 using System.Net;
 using System.Text.Json;
 using System.Xml.Linq;
@@ -39,13 +40,13 @@ namespace Deveel.Events
 
         private static WebhookEventPublishChannel BuildChannel(
             HttpMessageHandler handler,
-            Action<WebhookEventPublishChannelOptions>? configure = null)
+            Action<WebhookPublishOptions>? configure = null)
         {
             var services = new ServiceCollection();
             services.AddHttpClient(WebhookDefaults.HttpClientName)
                     .ConfigurePrimaryHttpMessageHandler(() => handler);
 
-            var options = new WebhookEventPublishChannelOptions
+            var options = new WebhookPublishOptions
             {
                 EndpointUrl            = "https://webhook.example.com/receive",
                 SigningSecret          = "test-secret",
@@ -256,7 +257,7 @@ namespace Deveel.Events
         public async Task PublishAsync_ThrowsWhenEndpointUrlNotConfigured()
         {
             var handler = new FakeHandler(_ => OK());
-            await Assert.ThrowsAsync<InvalidOperationException>(
+            await Assert.ThrowsAsync<ValidationException>(
                 () => BuildChannel(handler, o => o.EndpointUrl = "").PublishAsync(MakeEvent()));
         }
 
@@ -683,7 +684,7 @@ namespace Deveel.Events
             services.AddHttpClient(WebhookDefaults.HttpClientName)
                     .ConfigurePrimaryHttpMessageHandler(() => handler);
 
-            var options = new WebhookEventPublishChannelOptions
+            var options = new WebhookPublishOptions
             {
                 EndpointUrl    = "https://webhook.example.com/receive",
                 SigningSecret  = "test-secret",
@@ -744,7 +745,7 @@ namespace Deveel.Events
             services.AddHttpClient(customName)
                     .ConfigurePrimaryHttpMessageHandler(() => handler);
 
-            var options = new WebhookEventPublishChannelOptions
+            var options = new WebhookPublishOptions
             {
                 EndpointUrl    = "https://webhook.example.com/receive",
                 SigningSecret  = "test-secret",

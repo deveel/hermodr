@@ -11,7 +11,7 @@ namespace Deveel.Events
     /// <remarks>
     /// Implementations are keyed by <see cref="Algorithm"/> so that the channel
     /// can resolve the correct provider at runtime based on the configured
-    /// <see cref="WebhookEventPublishChannelOptions.SignatureAlgorithm"/>.
+    /// <see cref="WebhookPublishOptions.SignatureAlgorithm"/>.
     /// </remarks>
     public interface IWebhookSignatureProvider
     {

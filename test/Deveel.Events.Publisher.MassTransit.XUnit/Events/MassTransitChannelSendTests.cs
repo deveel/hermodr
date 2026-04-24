@@ -22,7 +22,7 @@ namespace Deveel.Events
     public class MassTransitChannelSendTests
     {
         private static MassTransitEventPublishChannel BuildChannel(
-            MassTransitEventPublishChannelOptions options,
+            MassTransitEventPublishOptions options,
             IPublishEndpoint publishEndpoint,
             ISendEndpointProvider sendEndpointProvider)
         {
@@ -30,6 +30,7 @@ namespace Deveel.Events
                 Options.Create(options),
                 publishEndpoint,
                 sendEndpointProvider,
+                validators: null,
                 NullLogger<MassTransitEventPublishChannel>.Instance);
         }
 
@@ -53,7 +54,7 @@ namespace Deveel.Events
             var publishEndpoint = Substitute.For<IPublishEndpoint>();
             var sendProvider = Substitute.For<ISendEndpointProvider>();
 
-            var options = new MassTransitEventPublishChannelOptions();
+            var options = new MassTransitEventPublishOptions();
             var channel = BuildChannel(options, publishEndpoint, sendProvider);
 
             await channel.PublishAsync(MakeSampleEvent());
@@ -84,7 +85,7 @@ namespace Deveel.Events
 
             sendProvider.GetSendEndpoint(destination).Returns(sendEndpoint);
 
-            var options = new MassTransitEventPublishChannelOptions
+            var options = new MassTransitEventPublishOptions
             {
                 DestinationAddress = destination,
             };
@@ -123,7 +124,7 @@ namespace Deveel.Events
                 Arg.Do<IPipe<PublishContext<ICloudEventMessage>>>(p => capturedPipe = p),
                 Arg.Any<CancellationToken>());
 
-            var options = new MassTransitEventPublishChannelOptions { MapAttributesToHeaders = true };
+            var options = new MassTransitEventPublishOptions { MapAttributesToHeaders = true };
             var channel = BuildChannel(options, publishEndpoint, sendProvider);
 
             var cloudEvent = MakeSampleEvent();
@@ -163,7 +164,7 @@ namespace Deveel.Events
                 Arg.Do<IPipe<PublishContext<ICloudEventMessage>>>(p => capturedPipe = p),
                 Arg.Any<CancellationToken>());
 
-            var options = new MassTransitEventPublishChannelOptions { MapAttributesToHeaders = false };
+            var options = new MassTransitEventPublishOptions { MapAttributesToHeaders = false };
             var channel = BuildChannel(options, publishEndpoint, sendProvider);
 
             await channel.PublishAsync(MakeSampleEvent());
@@ -199,7 +200,7 @@ namespace Deveel.Events
                     Arg.Any<CancellationToken>())
                 .Returns(Task.FromException(new InvalidOperationException("bus error")));
 
-            var options = new MassTransitEventPublishChannelOptions();
+            var options = new MassTransitEventPublishOptions();
             var channel = BuildChannel(options, publishEndpoint, sendProvider);
 
             await Assert.ThrowsAsync<EventPublishException>(() => channel.PublishAsync(MakeSampleEvent()));
@@ -210,7 +211,7 @@ namespace Deveel.Events
         {
             var publishEndpoint = Substitute.For<IPublishEndpoint>();
             var sendProvider = Substitute.For<ISendEndpointProvider>();
-            var options = new MassTransitEventPublishChannelOptions();
+            var options = new MassTransitEventPublishOptions();
             var channel = BuildChannel(options, publishEndpoint, sendProvider);
 
             await Assert.ThrowsAsync<ArgumentNullException>(() =>
@@ -233,7 +234,7 @@ namespace Deveel.Events
                     Arg.Any<CancellationToken>())
                 .Returns(Task.FromException(new OperationCanceledException(cts.Token)));
 
-            var options = new MassTransitEventPublishChannelOptions();
+            var options = new MassTransitEventPublishOptions();
             var channel = BuildChannel(options, publishEndpoint, sendProvider);
 
             await Assert.ThrowsAsync<OperationCanceledException>(() =>

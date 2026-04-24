@@ -14,12 +14,13 @@ using RabbitMQ.Client;
 namespace Deveel.Events
 {
     /// <summary>
-    /// The implementation of the <see cref="IEventPublishChannel"/> that
+    /// The implementation of the <see cref="IEventPublishChannel{TOptions}"/> that
     /// is used to publish events to a RabbitMQ exchange.
     /// </summary>
-    public sealed class RabbitMqEventPublishChannel : IEventPublishChannel, IAsyncDisposable, IDisposable
+    public sealed class RabbitMqEventPublishChannel :
+        EventPublishChannelBase<RabbitMqEventPublishOptions>,
+        IAsyncDisposable, IDisposable
     {
-        private readonly RabbitMqEventPublishChannelOptions _options;
         private readonly IRabbitMqMessageFactory _messageFactory;
         private readonly ILogger _logger;
         private readonly IConnection _connection;
@@ -45,26 +46,71 @@ namespace Deveel.Events
         /// The factory used to convert a <see cref="CloudNative.CloudEvents.CloudEvent"/>
         /// into a <see cref="RabbitMqMessage"/> ready for publishing.
         /// </param>
+        /// <param name="validators">
+        /// Optional collection of <see cref="IValidateOptions{RabbitMqEventPublishOptions}"/>
+        /// services registered in the DI container. When the collection is empty or <c>null</c>
+        /// validation falls back to DataAnnotations.
+        /// </param>
         /// <param name="logger">
         /// An optional logger; when <c>null</c> a <see cref="Microsoft.Extensions.Logging.Abstractions.NullLogger{T}"/> is used.
         /// </param>
         public RabbitMqEventPublishChannel(
-            IOptions<RabbitMqEventPublishChannelOptions> options,
+            IOptions<RabbitMqEventPublishOptions> options,
             IConnection connection,
             IRabbitMqMessageFactory messageFactory,
+            IEnumerable<IValidateOptions<RabbitMqEventPublishOptions>>? validators = null,
             ILogger<RabbitMqEventPublishChannel>? logger = null)
+            : base(options.Value, validators)
         {
             _connection = connection;
             _messageFactory = messageFactory;
-            _options = options.Value;
             _logger = logger ?? new NullLogger<RabbitMqEventPublishChannel>();
+        }
+
+        // ── Effective defaults for nullable value-type properties ──────────────────
+        private const bool DefaultPersistentMessages = true;
+        private const bool DefaultPublisherConfirms  = true;
+        private static readonly TimeSpan DefaultConfirmTimeout = TimeSpan.FromSeconds(5);
+        private const bool DefaultMandatory = false;
+
+        /// <inheritdoc/>
+        /// <remarks>
+        /// Performs a property-level merge: each nullable property in
+        /// <paramref name="perCallOptions"/> that is non-<c>null</c> overrides the
+        /// corresponding property from <paramref name="defaults"/>; a <c>null</c>
+        /// value signals "use the channel-level default" for that property.
+        /// </remarks>
+        protected override RabbitMqEventPublishOptions MergeOptions(
+            RabbitMqEventPublishOptions defaults,
+            RabbitMqEventPublishOptions? perCallOptions)
+        {
+            if (perCallOptions == null)
+                return defaults;
+
+            return new RabbitMqEventPublishOptions
+            {
+                ConnectionString      = perCallOptions.ConnectionString      ?? defaults.ConnectionString,
+                ExchangeName          = perCallOptions.ExchangeName          ?? defaults.ExchangeName,
+                RoutingKey            = perCallOptions.RoutingKey            ?? defaults.RoutingKey,
+                QueueName             = perCallOptions.QueueName             ?? defaults.QueueName,
+                ClientName            = perCallOptions.ClientName            ?? defaults.ClientName,
+                JsonSerializerOptions = perCallOptions.JsonSerializerOptions ?? defaults.JsonSerializerOptions,
+                MessageFormat         = perCallOptions.MessageFormat         ?? defaults.MessageFormat,
+                MessageContent        = perCallOptions.MessageContent        ?? defaults.MessageContent,
+                PersistentMessages    = perCallOptions.PersistentMessages    ?? defaults.PersistentMessages,
+                PublisherConfirms     = perCallOptions.PublisherConfirms     ?? defaults.PublisherConfirms,
+                ConfirmTimeout        = perCallOptions.ConfirmTimeout        ?? defaults.ConfirmTimeout,
+                Mandatory             = perCallOptions.Mandatory             ?? defaults.Mandatory,
+            };
         }
 
         /// <summary>
         /// Gets or creates a healthy channel, recreating it if it has been closed.
         /// This must be called while holding <see cref="_channelLock"/>.
         /// </summary>
-        private async Task<IChannel> GetOrCreateChannelAsync(CancellationToken cancellationToken)
+        private async Task<IChannel> GetOrCreateChannelAsync(
+            RabbitMqEventPublishOptions options,
+            CancellationToken cancellationToken)
         {
             if (_channel is { IsOpen: true })
                 return _channel;
@@ -77,15 +123,16 @@ namespace Deveel.Events
                 _channel = null;
             }
 
+            var publisherConfirms = options.PublisherConfirms ?? DefaultPublisherConfirms;
             var channelOptions = new CreateChannelOptions(
-                publisherConfirmationsEnabled: _options.PublisherConfirms,
-                publisherConfirmationTrackingEnabled: _options.PublisherConfirms,
+                publisherConfirmationsEnabled: publisherConfirms,
+                publisherConfirmationTrackingEnabled: publisherConfirms,
                 outstandingPublisherConfirmationsRateLimiter: null,
                 consumerDispatchConcurrency: null);
 
             _channel = await _connection.CreateChannelAsync(channelOptions, cancellationToken);
 
-            if (_options.PublisherConfirms)
+            if (publisherConfirms)
                 _logger.LogPublisherConfirmsEnabled();
 
             _logger.LogChannelCreated();
@@ -93,18 +140,21 @@ namespace Deveel.Events
         }
 
         /// <inheritdoc/>
-        public async Task PublishAsync(CloudEvent @event, CancellationToken cancellationToken = default)
+        protected override async Task PublishCoreAsync(
+            CloudEvent @event,
+            RabbitMqEventPublishOptions options,
+            CancellationToken cancellationToken)
         {
             if (_disposed)
                 throw new ObjectDisposedException(nameof(RabbitMqEventPublishChannel));
 
             _logger.TracePublishingEvent(@event.Type);
 
-            var exchangeName = GetExchangeName(@event);
+            var exchangeName = GetExchangeName(@event, options);
             if (string.IsNullOrWhiteSpace(exchangeName))
                 throw new InvalidOperationException("The exchange name is not defined");
 
-            var routingKey = GetRoutingKey(@event);
+            var routingKey = GetRoutingKey(@event, options);
             if (string.IsNullOrWhiteSpace(routingKey))
                 throw new InvalidOperationException("The routing key is not defined");
 
@@ -118,44 +168,45 @@ namespace Deveel.Events
                 MessageId = @event.Id,
                 Timestamp = new AmqpTimestamp(
                     (@event.Time ?? DateTimeOffset.UtcNow).ToUnixTimeSeconds()),
-                DeliveryMode = _options.PersistentMessages
+                DeliveryMode = (options.PersistentMessages ?? DefaultPersistentMessages)
                     ? DeliveryModes.Persistent
                     : DeliveryModes.Transient,
-                AppId = _options.ClientName ?? "Deveel.Events"
+                AppId = options.ClientName ?? "Deveel.Events"
             };
 
             await _channelLock.WaitAsync(cancellationToken);
             try
             {
-                var channel = await GetOrCreateChannelAsync(cancellationToken);
+                var channel = await GetOrCreateChannelAsync(options, cancellationToken);
 
+                var publisherConfirms = options.PublisherConfirms ?? DefaultPublisherConfirms;
                 // When PublisherConfirms + tracking is on, BasicPublishAsync blocks until
                 // the broker ACKs (or throws on NACK). We apply an additional timeout to
                 // guarantee the call does not hang indefinitely.
-                using var publishCts = _options.PublisherConfirms
+                using var publishCts = publisherConfirms
                     ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken)
                     : null;
-                publishCts?.CancelAfter(_options.ConfirmTimeout);
+                publishCts?.CancelAfter(options.ConfirmTimeout ?? DefaultConfirmTimeout);
                 var publishToken = publishCts?.Token ?? cancellationToken;
 
                 await channel.BasicPublishAsync(
                     exchange: exchangeName,
                     routingKey: routingKey,
-                    mandatory: _options.Mandatory,
+                    mandatory: options.Mandatory ?? DefaultMandatory,
                     basicProperties: props,
                     body: message.Body,
                     cancellationToken: publishToken);
 
                 // When PublisherConfirmationTrackingEnabled = true, BasicPublishAsync already
                 // waits for the broker ACK before completing. A broker NACK raises an exception.
-                if (_options.PublisherConfirms)
+                if (publisherConfirms)
                     _logger.LogEventConfirmed(@event.Type);
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
                 // The publish CT timed out (confirm timeout exceeded), not the caller's token.
                 throw new TimeoutException(
-                    $"RabbitMQ broker did not confirm the message within {_options.ConfirmTimeout.TotalSeconds}s.");
+                    $"RabbitMQ broker did not confirm the message within {(options.ConfirmTimeout ?? DefaultConfirmTimeout).TotalSeconds}s.");
             }
             catch (Exception ex) when (ex is not OperationCanceledException and not TimeoutException)
             {
@@ -168,20 +219,20 @@ namespace Deveel.Events
             }
         }
 
-        private string? GetRoutingKey(CloudEvent @event)
+        private string? GetRoutingKey(CloudEvent @event, RabbitMqEventPublishOptions options)
         {
             var attr = @event.GetAttribute(AmqpCloudEventAttributes.AmqpRoutingKeyAttribute);
             return attr != null && attr.Type == CloudEventAttributeType.String
-                ? ((string?)@event[attr.Name]) ?? _options.RoutingKey
-                : _options.RoutingKey;
+                ? ((string?)@event[attr.Name]) ?? options.RoutingKey
+                : options.RoutingKey;
         }
 
-        private string? GetExchangeName(CloudEvent @event)
+        private string? GetExchangeName(CloudEvent @event, RabbitMqEventPublishOptions options)
         {
             var attr = @event.GetAttribute(AmqpCloudEventAttributes.AmqpExchangeNameAttribute);
             return attr != null && attr.Type == CloudEventAttributeType.String
-                ? ((string?)@event[attr.Name]) ?? _options.ExchangeName
-                : _options.ExchangeName;
+                ? ((string?)@event[attr.Name]) ?? options.ExchangeName
+                : options.ExchangeName;
         }
 
         /// <inheritdoc/>

@@ -53,25 +53,32 @@ builder.Services
 
 ## Options reference
 
-`WebhookEventPublishChannelOptions`
+`WebhookPublishOptions`
+
+Delivery settings (nullable — `null` in a per-call override inherits the channel default):
+
+| Property | Type | Effective default | Description |
+|----------|------|-------------------|-------------|
+| `EndpointUrl` | `string?` | _(required)_ | URL of the webhook endpoint |
+| `SigningSecret` | `string?` | `null` | Shared secret for HMAC signing; no signature header is sent when omitted |
+| `SignatureAlgorithm` | `WebhookSignatureAlgorithm?` | `HmacSha256` | HMAC algorithm used to sign the body |
+| `MessageFormat` | `string?` | `"json"` | Serialisation format. Use `EventMessageFormat` constants (for built-ins: `"json"`, `"xml"`, `"cloudevents+json"`, `"cloudevents+xml"`) or a custom serializer format key |
+| `MaxRetryCount` | `int?` | `3` | Maximum delivery attempts; `0` disables retries |
+| `RetryDelay` | `TimeSpan?` | 1 s | Initial delay between retries |
+| `RetryBackoffMultiplier` | `double?` | `2.0` | Multiplier for exponential backoff |
+| `RequestTimeout` | `TimeSpan?` | 30 s | Timeout per individual HTTP request |
+| `AdditionalHeaders` | `IDictionary<string, string>` | `{}` | Extra HTTP headers merged into every request; per-call entries win on key collision |
+
+Channel-structural settings (always taken from the channel-level defaults; ignored in per-call overrides):
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `EndpointUrl` | `string` | `""` | URL of the webhook endpoint |
-| `SigningSecret` | `string?` | `null` | Shared secret for HMAC signing; no signature header is sent when omitted |
-| `SignatureAlgorithm` | `WebhookSignatureAlgorithm` | `HmacSha256` | HMAC algorithm used to sign the body |
 | `SignatureHeaderName` | `string` | `X-Webhook-Signature` | HTTP header carrying the computed signature |
 | `SignatureAlgorithmHeaderName` | `string?` | `X-Webhook-Signature-Algorithm` | Header advertising the algorithm used; set to `null` to suppress |
 | `DeliveryIdHeaderName` | `string` | `X-Webhook-Delivery` | Header carrying a unique delivery identifier |
 | `EventTypeHeaderName` | `string` | `X-Webhook-Event` | Header carrying the event type |
 | `TimestampHeaderName` | `string` | `X-Webhook-Timestamp` | Unix-epoch timestamp header (used in signature payload to prevent replay attacks) |
-| `AdditionalHeaders` | `IDictionary<string, string>` | `{}` | Extra HTTP headers added to every request |
-| `MessageFormat` | `string` | `"json"` | Serialisation format. Use `EventMessageFormat` constants (for built-ins: `"json"`, `"xml"`, `"cloudevents+json"`, `"cloudevents+xml"`) or a custom serializer format key |
-| `MaxRetryCount` | `int` | `3` | Maximum delivery attempts; `0` disables retries |
-| `RetryDelay` | `TimeSpan` | 1 s | Initial delay between retries |
-| `RetryBackoffMultiplier` | `double` | `2.0` | Multiplier for exponential backoff |
 | `RetryableStatusCodes` | `ISet<int>` | 429, 500, 502, 503, 504 | HTTP status codes that trigger a retry |
-| `RequestTimeout` | `TimeSpan` | 30 s | Timeout per individual HTTP request |
 | `HttpClientName` | `string?` | `null` | Named `HttpClient` resolved from `IHttpClientFactory`; defaults to the internal channel name |
 
 ## Signature algorithms
@@ -98,7 +105,7 @@ Use `EventMessageFormat` constants when selecting a built-in format.
 
 ## Per-delivery options
 
-The channel also implements `IEventPublishChannel<WebhookPublishOptions>`, allowing you to override options per event:
+The channel also implements `IEventPublishChannel<WebhookPublishOptions>`, allowing you to override options per event.  Only the properties you set (non-`null`) replace the channel default — all others fall back to the values configured at registration time.  `AdditionalHeaders` are merged: per-call entries win on key collision.
 
 ```csharp
 using Deveel.Events;
@@ -106,6 +113,8 @@ using Deveel.Events;
 // Resolve via DI
 var webhookChannel = serviceProvider.GetRequiredService<IEventPublishChannel<WebhookPublishOptions>>();
 
+// Override endpoint and secret for this delivery only;
+// everything else (MaxRetryCount, SignatureAlgorithm, …) is inherited.
 await webhookChannel.PublishAsync(@event, new WebhookPublishOptions
 {
     EndpointUrl       = "https://dynamic-endpoint.example.com/hook",

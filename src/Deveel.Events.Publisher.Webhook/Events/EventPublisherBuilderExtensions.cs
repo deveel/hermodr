@@ -62,17 +62,17 @@ namespace Deveel.Events
         /// The <see cref="EventPublisherBuilder"/> to add the channel to.
         /// </param>
         /// <param name="configure">
-        /// An action that configures the <see cref="WebhookEventPublishChannelOptions"/>
-        /// (endpoint URL, signing secret, retry policy, format, etc.).
+        /// An action that configures <see cref="WebhookPublishOptions"/>
+        /// (endpoint URL, signing secret, retry policy, format, header names, etc.).
         /// </param>
         /// <returns>
         /// The same <see cref="EventPublisherBuilder"/> so that additional calls can be chained.
         /// </returns>
         public static EventPublisherBuilder UseWebhook(
             this EventPublisherBuilder builder,
-            Action<WebhookEventPublishChannelOptions> configure)
+            Action<WebhookPublishOptions> configure)
         {
-            builder.Services.AddOptions<WebhookEventPublishChannelOptions>()
+            builder.Services.AddOptions<WebhookPublishOptions>()
                 .Configure(configure);
             return builder.AddWebhookChannel();
         }
@@ -86,7 +86,7 @@ namespace Deveel.Events
         /// </param>
         /// <param name="sectionPath">
         /// The configuration key path (e.g. <c>"Webhook"</c>) whose sub-keys are
-        /// bound to <see cref="WebhookEventPublishChannelOptions"/>.
+        /// bound to <see cref="WebhookPublishOptions"/>.
         /// </param>
         /// <returns>
         /// The same <see cref="EventPublisherBuilder"/> so that additional calls can be chained.
@@ -95,7 +95,7 @@ namespace Deveel.Events
             this EventPublisherBuilder builder,
             string sectionPath)
         {
-            builder.Services.AddOptions<WebhookEventPublishChannelOptions>()
+            builder.Services.AddOptions<WebhookPublishOptions>()
                 .BindConfiguration(sectionPath);
             return builder.AddWebhookChannel();
         }

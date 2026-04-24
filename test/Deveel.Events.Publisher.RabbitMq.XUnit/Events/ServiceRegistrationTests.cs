@@ -55,7 +55,7 @@ namespace Deveel.Events
                     options.ConfirmTimeout = TimeSpan.FromSeconds(10);
                 });
             var provider = services.BuildServiceProvider();
-            var options = provider.GetRequiredService<IOptions<RabbitMqEventPublishChannelOptions>>();
+            var options = provider.GetRequiredService<IOptions<RabbitMqEventPublishOptions>>();
             Assert.NotNull(options.Value);
             Assert.Equal(ValidConnectionString, options.Value.ConnectionString);
             Assert.Equal("my-exchange", options.Value.ExchangeName);
@@ -79,14 +79,16 @@ namespace Deveel.Events
                     options.ConnectionString = ValidConnectionString;
                 });
             var provider = services.BuildServiceProvider();
-            var options = provider.GetRequiredService<IOptions<RabbitMqEventPublishChannelOptions>>();
+            var options = provider.GetRequiredService<IOptions<RabbitMqEventPublishOptions>>();
             Assert.NotNull(options.Value);
-            Assert.True(options.Value.PersistentMessages);
-            Assert.True(options.Value.PublisherConfirms);
-            Assert.False(options.Value.Mandatory);
-            Assert.Equal(TimeSpan.FromSeconds(5), options.Value.ConfirmTimeout);
-            Assert.Equal(RabbitMqMessageFormat.Json, options.Value.MessageFormat);
-            Assert.Equal(RabbitMqMessageContent.CloudEvent, options.Value.MessageContent);
+            // Nullable value-type properties are null when not explicitly configured;
+            // the effective defaults (true/false/5s etc.) are applied during MergeOptions.
+            Assert.Null(options.Value.PersistentMessages);
+            Assert.Null(options.Value.PublisherConfirms);
+            Assert.Null(options.Value.Mandatory);
+            Assert.Null(options.Value.ConfirmTimeout);
+            Assert.Null(options.Value.MessageFormat);
+            Assert.Null(options.Value.MessageContent);
         }
         [Fact]
         public static void UseRabbitMq_WithSectionPath_BindsOptionsFromConfiguration()
@@ -111,7 +113,7 @@ namespace Deveel.Events
                 d.ServiceType == typeof(IEventPublishChannel) &&
                 d.ImplementationType == typeof(RabbitMqEventPublishChannel));
             var provider = services.BuildServiceProvider();
-            var options = provider.GetRequiredService<IOptions<RabbitMqEventPublishChannelOptions>>();
+            var options = provider.GetRequiredService<IOptions<RabbitMqEventPublishOptions>>();
             Assert.NotNull(options.Value);
             Assert.Equal(ValidConnectionString, options.Value.ConnectionString);
             Assert.Equal("config-exchange", options.Value.ExchangeName);
