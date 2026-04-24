@@ -17,20 +17,37 @@ using System.Net.Http.Headers;
 namespace Deveel.Events
 {
     /// <summary>
-    /// An <see cref="IEventPublishChannel{TOptions}"/> and <see cref="IBatchEventPublishChannel{TOptions}"/>
-    /// that delivers <see cref="CloudEvent"/> instances (individually or in batches)
-    /// to a remote endpoint via HTTP POST, following webhook best practices.
+    /// An <see cref="EventPublishChannelBase{TOptions}"/> and
+    /// <see cref="IBatchEventPublishChannel{TOptions}"/> that delivers
+    /// <see cref="CloudEvent"/> instances (individually or in batches) to a remote
+    /// endpoint via HTTP POST, following webhook best practices.
     /// </summary>
-    public class WebhookEventPublishChannel : IBatchEventPublishChannel<WebhookPublishOptions>
+    /// <remarks>
+    /// <para>
+    /// The channel uses <see cref="WebhookPublishOptions"/> as its single options type
+    /// for both the channel-level defaults and per-call overrides. On every
+    /// <c>PublishAsync</c> / <c>PublishBatchAsync</c> call the per-call overrides are
+    /// merged with the channel defaults via <see cref="MergeOptions"/> and the result
+    /// is validated by <see cref="EventPublishChannelBase{TOptions}.ValidateOptions"/>
+    /// before the HTTP delivery is attempted.
+    /// </para>
+    /// <para>
+    /// Channel-structural fields (<see cref="WebhookPublishOptions.SignatureHeaderName"/>,
+    /// <see cref="WebhookPublishOptions.RetryableStatusCodes"/>, etc.) are always taken
+    /// from the channel-level defaults and ignored in per-call overrides.
+    /// </para>
+    /// </remarks>
+    public class WebhookEventPublishChannel :
+        EventPublishChannelBase<WebhookPublishOptions>,
+        IBatchEventPublishChannel<WebhookPublishOptions>
     {
-        private readonly WebhookEventPublishChannelOptions _defaults;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger _logger;
 
         private readonly IDictionary<WebhookSignatureAlgorithm, IWebhookSignatureProvider> _signatureProviders;
         private readonly IDictionary<string, IEventSerializer> _serializers;
 
-        /// <summary>Initialises the channel.</summary>
+        /// <summary>Initializes the channel.</summary>
         /// <param name="options">
         /// Channel-level defaults (endpoint URL, signing secret, retry policy, etc.).
         /// </param>
@@ -49,17 +66,25 @@ namespace Deveel.Events
         /// When non-<c>null</c>, any serializer whose
         /// <see cref="IEventSerializer.Format"/> matches a built-in key replaces the default.
         /// </param>
+        /// <param name="validators">
+        /// Optional collection of <see cref="IValidateOptions{WebhookPublishOptions}"/>
+        /// services registered in the DI container. When the collection is empty or <c>null</c>
+        /// validation falls back to DataAnnotations applied to the effective
+        /// (merged) <see cref="WebhookPublishOptions"/>.
+        /// </param>
         /// <param name="logger">
-        /// An optional logger; when <c>null</c> a <see cref="Microsoft.Extensions.Logging.Abstractions.NullLogger{T}"/> is used.
+        /// An optional logger; when <c>null</c> a
+        /// <see cref="Microsoft.Extensions.Logging.Abstractions.NullLogger{T}"/> is used.
         /// </param>
         public WebhookEventPublishChannel(
-            IOptions<WebhookEventPublishChannelOptions> options,
+            IOptions<WebhookPublishOptions> options,
             IHttpClientFactory httpClientFactory,
             IEnumerable<IWebhookSignatureProvider>? signatureProviders = null,
             IEnumerable<IEventSerializer>? serializers = null,
+            IEnumerable<IValidateOptions<WebhookPublishOptions>>? validators = null,
             ILogger<WebhookEventPublishChannel>? logger = null)
+            : base(options.Value, validators)
         {
-            _defaults          = options.Value;
             _httpClientFactory = httpClientFactory;
             _logger            = logger ?? NullLogger<WebhookEventPublishChannel>.Instance;
 
@@ -80,8 +105,8 @@ namespace Deveel.Events
             // Message serializers — keyed by format string
             _serializers = new Dictionary<string, IEventSerializer>(StringComparer.OrdinalIgnoreCase)
             {
-                [EventMessageFormat.Json]           = JsonEventSerializer.Default,
-                [EventMessageFormat.Xml]            = XmlEventSerializer.Default,
+                [EventMessageFormat.Json]            = JsonEventSerializer.Default,
+                [EventMessageFormat.Xml]             = XmlEventSerializer.Default,
                 [EventMessageFormat.CloudEventsJson] = CloudEventsJsonSerializer.Default,
                 [EventMessageFormat.CloudEventsXml]  = CloudEventsXmlSerializer.Default,
             };
@@ -90,25 +115,64 @@ namespace Deveel.Events
                     _serializers[s.Format] = s;
         }
 
-        // ── IEventPublishChannel / IEventPublishChannel<WebhookPublishOptions> ─
+        // ── EventPublishChannelBase<WebhookPublishOptions> ──────────────────
 
-        /// <inheritdoc/>
-        public Task PublishAsync(CloudEvent @event, CancellationToken cancellationToken = default)
-            => PublishAsync(@event, null, cancellationToken);
-
-        /// <inheritdoc/>
-        public Task PublishAsync(
-            CloudEvent @event,
-            WebhookPublishOptions? options,
-            CancellationToken cancellationToken = default)
+        /// <summary>
+        /// Performs a property-level merge: each nullable delivery field in
+        /// <paramref name="perCallOptions"/> that is non-<c>null</c> overrides the
+        /// corresponding field from <paramref name="defaults"/>; additional headers are
+        /// merged (per-call entries win on key collision).
+        /// Channel-structural fields (<see cref="WebhookPublishOptions.SignatureHeaderName"/>,
+        /// <see cref="WebhookPublishOptions.RetryableStatusCodes"/>, etc.) are always
+        /// copied from <paramref name="defaults"/>.
+        /// </summary>
+        protected override WebhookPublishOptions MergeOptions(
+            WebhookPublishOptions defaults,
+            WebhookPublishOptions? perCallOptions)
         {
-            var eff         = Effective(options);
-            var serializer  = GetSerializer(eff.Format);
-            var payload     = serializer.Serialize(@event);
+            if (perCallOptions == null)
+                return defaults;
+
+            var mergedHeaders = new Dictionary<string, string>(
+                defaults.AdditionalHeaders,
+                StringComparer.OrdinalIgnoreCase);
+            foreach (var kv in perCallOptions.AdditionalHeaders)
+                mergedHeaders[kv.Key] = kv.Value;
+
+            return new WebhookPublishOptions
+            {
+                // ── Delivery settings: per-call wins when non-null ──────────────
+                EndpointUrl            = perCallOptions.EndpointUrl            ?? defaults.EndpointUrl,
+                SigningSecret          = perCallOptions.SigningSecret          ?? defaults.SigningSecret,
+                MaxRetryCount          = perCallOptions.MaxRetryCount          ?? defaults.MaxRetryCount,
+                RetryDelay             = perCallOptions.RetryDelay             ?? defaults.RetryDelay,
+                RetryBackoffMultiplier = perCallOptions.RetryBackoffMultiplier ?? defaults.RetryBackoffMultiplier,
+                RequestTimeout         = perCallOptions.RequestTimeout         ?? defaults.RequestTimeout,
+                MessageFormat          = perCallOptions.MessageFormat          ?? defaults.MessageFormat,
+                SignatureAlgorithm     = perCallOptions.SignatureAlgorithm     ?? defaults.SignatureAlgorithm,
+                AdditionalHeaders      = mergedHeaders,
+                SignatureHeaderName          = defaults.SignatureHeaderName,
+                DeliveryIdHeaderName         = defaults.DeliveryIdHeaderName,
+                EventTypeHeaderName          = defaults.EventTypeHeaderName,
+                TimestampHeaderName          = defaults.TimestampHeaderName,
+                SignatureAlgorithmHeaderName  = defaults.SignatureAlgorithmHeaderName,
+                RetryableStatusCodes         = defaults.RetryableStatusCodes,
+                HttpClientName               = defaults.HttpClientName,
+            };
+        }
+
+        /// <inheritdoc/>
+        protected override Task PublishCoreAsync(
+            CloudEvent @event,
+            WebhookPublishOptions options,
+            CancellationToken cancellationToken)
+        {
+            var format     = options.MessageFormat ?? EventMessageFormat.Json;
+            var serializer = GetSerializer(format);
+            var payload    = serializer.Serialize(@event);
             var contentType = serializer.ContentType;
 
-            // For a single-event delivery the event-type header makes sense.
-            return DeliverAsync(payload, contentType, eventType: @event.Type, eventCount: 1, eff, cancellationToken);
+            return DeliverAsync(payload, contentType, eventType: @event.Type, eventCount: 1, options, cancellationToken);
         }
 
         // ── IBatchEventPublishChannel<WebhookPublishOptions> ────────────────
@@ -128,13 +192,15 @@ namespace Deveel.Events
             if (events == null || events.Count == 0)
                 throw new ArgumentException("The events batch must contain at least one event.", nameof(events));
 
-            var eff         = Effective(options);
-            var serializer  = GetSerializer(eff.Format);
+            var effective = MergeOptions(DefaultOptions, options);
+            ValidateOptions(effective);
+
+            var format      = effective.MessageFormat ?? EventMessageFormat.Json;
+            var serializer  = GetSerializer(format);
             var payload     = serializer.SerializeBatch(events);
             var contentType = serializer.BatchContentType;
 
-            // For batch deliveries the event-type header is omitted (mixed types).
-            return DeliverAsync(payload, contentType, eventType: null, eventCount: events.Count, eff, cancellationToken);
+            return DeliverAsync(payload, contentType, eventType: null, eventCount: events.Count, effective, cancellationToken);
         }
 
         // ── Core delivery ───────────────────────────────────────────────────
@@ -144,32 +210,39 @@ namespace Deveel.Events
             string contentType,
             string? eventType,
             int eventCount,
-            EffectiveOptions eff,
+            WebhookPublishOptions options,
             CancellationToken cancellationToken)
         {
-            if (string.IsNullOrWhiteSpace(eff.EndpointUrl))
-                throw new InvalidOperationException("The webhook EndpointUrl is not configured.");
+            var endpointUrl            = options.EndpointUrl!;
+            var maxRetryCount          = options.MaxRetryCount          ?? 3;
+            var retryDelay             = options.RetryDelay             ?? TimeSpan.FromSeconds(1);
+            var retryBackoffMultiplier = options.RetryBackoffMultiplier ?? 2.0;
+            var requestTimeout         = options.RequestTimeout         ?? TimeSpan.FromSeconds(30);
+            var signatureAlgorithm     = options.SignatureAlgorithm     ?? WebhookSignatureAlgorithm.HmacSha256;
+            var additionalHeaders      = options.AdditionalHeaders;
+            var retryableStatusCodes   = options.RetryableStatusCodes;
+            var httpClientName         = options.HttpClientName;
+            var format                 = options.MessageFormat          ?? EventMessageFormat.Json;
 
             var deliveryId = Guid.NewGuid().ToString("N");
-            var provider   = GetSignatureProvider(eff.SignatureAlgorithm);
+            var provider   = GetSignatureProvider(signatureAlgorithm);
             var timestamp  = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            var algorithm  = eff.SignatureAlgorithm.ToString();
+            var algorithm  = signatureAlgorithm.ToString();
 
             if (eventType != null)
-                _logger.LogDeliveringEvent(eventType, deliveryId, eff.Format, algorithm, eff.EndpointUrl);
+                _logger.LogDeliveringEvent(eventType, deliveryId, format, algorithm, endpointUrl);
             else
-                _logger.LogDeliveringBatch(deliveryId, eventCount, eff.Format, algorithm, eff.EndpointUrl);
+                _logger.LogDeliveringBatch(deliveryId, eventCount, format, algorithm, endpointUrl);
 
-            // Build the resilience pipeline from the effective (possibly per-delivery-overridden) options.
             var pipeline = new ResiliencePipelineBuilder<HttpResponseMessage>()
                 .AddRetry(new RetryStrategyOptions<HttpResponseMessage>
                 {
-                    MaxRetryAttempts = eff.MaxRetryCount,
+                    MaxRetryAttempts = maxRetryCount,
                     UseJitter        = false,
                     DelayGenerator   = args => ValueTask.FromResult<TimeSpan?>(
                         TimeSpan.FromMilliseconds(
-                            eff.RetryDelay.TotalMilliseconds *
-                            Math.Pow(eff.RetryBackoffMultiplier, args.AttemptNumber))),
+                            retryDelay.TotalMilliseconds *
+                            Math.Pow(retryBackoffMultiplier, args.AttemptNumber))),
                     ShouldHandle = args =>
                     {
                         if (args.Outcome.Exception != null)
@@ -184,7 +257,7 @@ namespace Deveel.Events
                             var code = (int)args.Outcome.Result.StatusCode;
                             return ValueTask.FromResult(
                                 code is >= 500 or 408 ||
-                                eff.RetryableStatusCodes.Contains(code));
+                                retryableStatusCodes.Contains(code));
                         }
 
                         return ValueTask.FromResult(false);
@@ -210,22 +283,21 @@ namespace Deveel.Events
             {
                 response = await pipeline.ExecuteAsync(async ct =>
                 {
-                    // HttpRequestMessage must be recreated per attempt.
                     using var request = BuildRequest(
-                        payload, contentType, eventType, deliveryId, timestamp, provider, eff);
+                        payload, contentType, eventType, deliveryId, timestamp, provider,
+                        endpointUrl, options.SigningSecret, additionalHeaders, options);
                     using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                    cts.CancelAfter(eff.RequestTimeout);
-                    return await CreateHttpClient(eff.HttpClientName).SendAsync(request, cts.Token);
+                    cts.CancelAfter(requestTimeout);
+                    return await CreateHttpClient(httpClientName).SendAsync(request, cts.Token);
                 }, cancellationToken);
             }
             catch (Exception ex)
                 when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException
                       && !cancellationToken.IsCancellationRequested)
             {
-                // Polly exhausted all retry attempts and the last attempt ended in an exception.
-                _logger.LogDeliveryFailed(deliveryId, eff.MaxRetryCount + 1);
+                _logger.LogDeliveryFailed(deliveryId, maxRetryCount + 1);
                 throw new WebhookDeliveryException(
-                    $"Webhook delivery {deliveryId} failed after {eff.MaxRetryCount + 1} attempt(s).", ex);
+                    $"Webhook delivery {deliveryId} failed after {maxRetryCount + 1} attempt(s).", ex);
             }
 
             if (response.IsSuccessStatusCode)
@@ -234,20 +306,18 @@ namespace Deveel.Events
                 return;
             }
 
-            var code = (int)response.StatusCode;
+            var statusCode = (int)response.StatusCode;
 
-            if (!eff.RetryableStatusCodes.Contains(code))
+            if (!retryableStatusCodes.Contains(statusCode))
             {
-                // Non-retryable — Polly returned immediately without retrying.
-                _logger.LogNonRetryableFailure(deliveryId, code);
+                _logger.LogNonRetryableFailure(deliveryId, statusCode);
                 throw new WebhookDeliveryException(
-                    $"Webhook delivery {deliveryId} failed with non-retryable status {code}.", code);
+                    $"Webhook delivery {deliveryId} failed with non-retryable status {statusCode}.", statusCode);
             }
 
-            // Retryable status but all retry attempts exhausted — Polly returned the last response.
-            _logger.LogDeliveryExhausted(deliveryId, eff.MaxRetryCount + 1);
+            _logger.LogDeliveryExhausted(deliveryId, maxRetryCount + 1);
             throw new WebhookDeliveryException(
-                $"Webhook delivery {deliveryId} failed after {eff.MaxRetryCount + 1} attempt(s).", code);
+                $"Webhook delivery {deliveryId} failed after {maxRetryCount + 1} attempt(s).", statusCode);
         }
 
         // ── Helpers ─────────────────────────────────────────────────────────
@@ -276,91 +346,36 @@ namespace Deveel.Events
             string deliveryId,
             long timestamp,
             IWebhookSignatureProvider provider,
-            EffectiveOptions eff)
+            string endpointUrl,
+            string? signingSecret,
+            IDictionary<string, string> additionalHeaders,
+            WebhookPublishOptions options)
         {
-            var request = new HttpRequestMessage(HttpMethod.Post, eff.EndpointUrl);
+            var request = new HttpRequestMessage(HttpMethod.Post, endpointUrl);
             request.Content = new ByteArrayContent(payload);
             request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse(contentType);
 
-            request.Headers.TryAddWithoutValidation(_defaults.DeliveryIdHeaderName, deliveryId);
+            request.Headers.TryAddWithoutValidation(options.DeliveryIdHeaderName, deliveryId);
 
             if (!string.IsNullOrWhiteSpace(eventType))
-                request.Headers.TryAddWithoutValidation(_defaults.EventTypeHeaderName, eventType);
+                request.Headers.TryAddWithoutValidation(options.EventTypeHeaderName, eventType);
 
-            request.Headers.TryAddWithoutValidation(_defaults.TimestampHeaderName, timestamp.ToString());
+            request.Headers.TryAddWithoutValidation(options.TimestampHeaderName, timestamp.ToString());
 
-            if (!string.IsNullOrWhiteSpace(eff.SigningSecret))
+            if (!string.IsNullOrWhiteSpace(signingSecret))
             {
-                var sig = provider.ComputeSignature(payload, timestamp, eff.SigningSecret);
-                request.Headers.TryAddWithoutValidation(_defaults.SignatureHeaderName, sig);
+                var sig = provider.ComputeSignature(payload, timestamp, signingSecret);
+                request.Headers.TryAddWithoutValidation(options.SignatureHeaderName, sig);
 
-                if (!string.IsNullOrWhiteSpace(_defaults.SignatureAlgorithmHeaderName))
+                if (!string.IsNullOrWhiteSpace(options.SignatureAlgorithmHeaderName))
                     request.Headers.TryAddWithoutValidation(
-                        _defaults.SignatureAlgorithmHeaderName, provider.AlgorithmName);
+                        options.SignatureAlgorithmHeaderName, provider.AlgorithmName);
             }
 
-            foreach (var h in eff.AdditionalHeaders)
+            foreach (var h in additionalHeaders)
                 request.Headers.TryAddWithoutValidation(h.Key, h.Value);
 
             return request;
-        }
-
-        // ── Effective options resolution ────────────────────────────────────
-
-        private EffectiveOptions Effective(WebhookPublishOptions? options)
-        {
-            if (options == null)
-                return new EffectiveOptions
-                {
-                    EndpointUrl            = _defaults.EndpointUrl,
-                    SigningSecret          = _defaults.SigningSecret,
-                    MaxRetryCount          = _defaults.MaxRetryCount,
-                    RetryDelay             = _defaults.RetryDelay,
-                    RetryBackoffMultiplier = _defaults.RetryBackoffMultiplier,
-                    RequestTimeout         = _defaults.RequestTimeout,
-                    HttpClientName         = _defaults.HttpClientName,
-                    Format                 = _defaults.MessageFormat,
-                    SignatureAlgorithm     = _defaults.SignatureAlgorithm,
-                    AdditionalHeaders      = _defaults.AdditionalHeaders,
-                    RetryableStatusCodes   = _defaults.RetryableStatusCodes,
-                };
-
-            var headers = new Dictionary<string, string>(
-                _defaults.AdditionalHeaders, StringComparer.OrdinalIgnoreCase);
-            if (options.AdditionalHeaders != null)
-                foreach (var kv in options.AdditionalHeaders)
-                    headers[kv.Key] = kv.Value;
-
-            return new EffectiveOptions
-            {
-                EndpointUrl            = options.EndpointUrl ?? _defaults.EndpointUrl,
-                SigningSecret          = options.SigningSecret ?? _defaults.SigningSecret,
-                MaxRetryCount          = options.MaxRetryCount ?? _defaults.MaxRetryCount,
-                RetryDelay             = options.RetryDelay ?? _defaults.RetryDelay,
-                RetryBackoffMultiplier = options.RetryBackoffMultiplier ?? _defaults.RetryBackoffMultiplier,
-                RequestTimeout         = options.RequestTimeout ?? _defaults.RequestTimeout,
-                HttpClientName         = _defaults.HttpClientName,
-                Format                 = options.MessageFormat ?? _defaults.MessageFormat,
-                SignatureAlgorithm     = options.SignatureAlgorithm ?? _defaults.SignatureAlgorithm,
-                AdditionalHeaders      = headers,
-                RetryableStatusCodes   = _defaults.RetryableStatusCodes,
-            };
-        }
-
-        private sealed class EffectiveOptions
-        {
-            public string EndpointUrl { get; init; } = string.Empty;
-            public string? SigningSecret { get; init; }
-            public int MaxRetryCount { get; init; }
-            public TimeSpan RetryDelay { get; init; }
-            public double RetryBackoffMultiplier { get; init; }
-            public TimeSpan RequestTimeout { get; init; }
-            public string? HttpClientName { get; init; }
-            public string Format { get; init; } = EventMessageFormat.Json;
-            public WebhookSignatureAlgorithm SignatureAlgorithm { get; init; }
-            public IDictionary<string, string> AdditionalHeaders { get; init; }
-                = new Dictionary<string, string>();
-            public ISet<int> RetryableStatusCodes { get; init; } = new HashSet<int>();
         }
     }
 }

@@ -12,7 +12,7 @@ namespace Deveel.Events
     /// <summary>
     /// Configuration options for a <see cref="RabbitMqEventPublishChannel"/>.
     /// </summary>
-    public class RabbitMqEventPublishChannelOptions
+    public class RabbitMqEventPublishOptions
     {
         /// <summary>
         /// The default exchange name to publish the events to,
@@ -49,40 +49,48 @@ namespace Deveel.Events
         public JsonSerializerOptions? JsonSerializerOptions { get; set; } = new JsonSerializerOptions();
 
         /// <summary>
-        /// The format of the message to be published to
-        /// the RabbitMQ queue.
+        /// The format of the message to be published to the RabbitMQ queue.
+        /// When <c>null</c> in a per-call override the channel default is used;
+        /// the effective default is <see cref="RabbitMqMessageFormat.Json"/>.
         /// </summary>
-        public RabbitMqMessageFormat MessageFormat { get; set; } = RabbitMqMessageFormat.Json;
+        public RabbitMqMessageFormat? MessageFormat { get; set; }
 
         /// <summary>
         /// The type of content to be published to the RabbitMQ queue.
+        /// When <c>null</c> in a per-call override the channel default is used;
+        /// the effective default is <see cref="RabbitMqMessageContent.CloudEvent"/>.
         /// </summary>
-        public RabbitMqMessageContent MessageContent { get; set; } = RabbitMqMessageContent.CloudEvent;
+        public RabbitMqMessageContent? MessageContent { get; set; }
 
         /// <summary>
         /// When <c>true</c>, messages are published with delivery mode set to persistent
-        /// (delivery mode 2), ensuring they survive broker restarts. Defaults to <c>true</c>.
+        /// (delivery mode 2), ensuring they survive broker restarts.
+        /// When <c>null</c> in a per-call override the channel default is used;
+        /// the effective default is <c>true</c>.
         /// </summary>
-        public bool PersistentMessages { get; set; } = true;
+        public bool? PersistentMessages { get; set; }
 
         /// <summary>
         /// When <c>true</c>, publisher confirms are enabled on the channel, so each
         /// publish waits for a broker acknowledgement before returning.
-        /// Defaults to <c>true</c>.
+        /// When <c>null</c> in a per-call override the channel default is used;
+        /// the effective default is <c>true</c>.
         /// </summary>
-        public bool PublisherConfirms { get; set; } = true;
+        public bool? PublisherConfirms { get; set; }
 
         /// <summary>
         /// The maximum time to wait for a publisher confirm from the broker.
-        /// Defaults to 5 seconds.
+        /// When <c>null</c> in a per-call override the channel default is used;
+        /// the effective default is 5 seconds.
         /// </summary>
-        public TimeSpan ConfirmTimeout { get; set; } = TimeSpan.FromSeconds(5);
+        public TimeSpan? ConfirmTimeout { get; set; }
 
         /// <summary>
         /// When <c>true</c>, the <c>mandatory</c> flag is set on published messages,
         /// causing the broker to return unroutable messages instead of silently discarding them.
-        /// Defaults to <c>false</c>.
+        /// When <c>null</c> in a per-call override the channel default is used;
+        /// the effective default is <c>false</c>.
         /// </summary>
-        public bool Mandatory { get; set; } = false;
+        public bool? Mandatory { get; set; }
     }
 }

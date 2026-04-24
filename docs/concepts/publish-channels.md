@@ -17,7 +17,7 @@ The `EventPublisher` resolves **all** registered `IEventPublishChannel` services
 
 ### `IEventPublishChannel<TOptions>`
 
-An optional generic interface for channels that accept per-call delivery options (e.g. supplying a dynamic webhook URL):
+An optional generic interface for channels that accept per-call delivery options (e.g. supplying a dynamic webhook URL or routing key):
 
 ```csharp
 public interface IEventPublishChannel<TOptions> : IEventPublishChannel
@@ -25,6 +25,15 @@ public interface IEventPublishChannel<TOptions> : IEventPublishChannel
     Task PublishAsync(CloudEvent @event, TOptions options, CancellationToken cancellationToken = default);
 }
 ```
+
+All built-in channels implement this interface.  When `options` is `null`, the channel-level defaults are used as-is.  When non-`null`, each channel performs a **property-level merge** rather than a wholesale replacement:
+
+- **Nullable reference-type properties** (`string?`, `Uri?`, `JsonSerializerOptions?`, …): a `null` value in the per-call options means *"leave this field at the channel default"*; a non-`null` value overrides it.
+- **Nullable value-type properties** (`bool?`, `TimeSpan?`, enum `?`, …): same rule — `null` inherits the channel default, any explicit value overrides it.
+- **Non-nullable string properties** (`ConnectionString`, `QueueName` in the Service Bus channel): an empty or whitespace value falls back to the channel default; a non-empty value overrides it.
+- **Channel-structural fields** that are not meaningful to override per-call (e.g. `SignatureHeaderName`, `RetryableStatusCodes` in the Webhook channel) are always taken from the channel-level defaults and ignored in per-call overrides.
+
+This design lets callers override only what they need — for example, changing the routing key or destination address for one delivery — without having to repeat every setting from the channel configuration.
 
 ### `IBatchEventPublishChannel<TOptions>`
 

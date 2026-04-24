@@ -15,12 +15,12 @@ using Microsoft.Extensions.Options;
 namespace Deveel.Events
 {
     /// <summary>
-    /// An implementation of <see cref="IEventPublishChannel"/> that publishes
+    /// An implementation of <see cref="IEventPublishChannel{TOptions}"/> that publishes
     /// CloudEvents via MassTransit.
     /// </summary>
-    public sealed class MassTransitEventPublishChannel : IEventPublishChannel
+    public sealed class MassTransitEventPublishChannel :
+        EventPublishChannelBase<MassTransitEventPublishOptions>
     {
-        private readonly MassTransitEventPublishChannelOptions _options;
         private readonly IPublishEndpoint _publishEndpoint;
         private readonly ISendEndpointProvider _sendEndpointProvider;
         private readonly ILogger _logger;
@@ -35,28 +35,58 @@ namespace Deveel.Events
         /// </param>
         /// <param name="publishEndpoint">
         /// The MassTransit publish endpoint used when no
-        /// <see cref="MassTransitEventPublishChannelOptions.DestinationAddress"/> is set.
+        /// <see cref="MassTransitEventPublishOptions.DestinationAddress"/> is set.
         /// </param>
         /// <param name="sendEndpointProvider">
         /// The MassTransit send-endpoint provider used when a destination address is configured.
+        /// </param>
+        /// <param name="validators">
+        /// Optional collection of <see cref="IValidateOptions{MassTransitEventPublishOptions}"/>
+        /// services registered in the DI container. When the collection is empty or <c>null</c>
+        /// validation falls back to DataAnnotations.
         /// </param>
         /// <param name="logger">
         /// An optional logger; when <c>null</c> a <see cref="Microsoft.Extensions.Logging.Abstractions.NullLogger{T}"/> is used.
         /// </param>
         public MassTransitEventPublishChannel(
-            IOptions<MassTransitEventPublishChannelOptions> options,
+            IOptions<MassTransitEventPublishOptions> options,
             IPublishEndpoint publishEndpoint,
             ISendEndpointProvider sendEndpointProvider,
+            IEnumerable<IValidateOptions<MassTransitEventPublishOptions>>? validators = null,
             ILogger<MassTransitEventPublishChannel>? logger = null)
+            : base(options.Value, validators)
         {
-            _options = options.Value;
             _publishEndpoint = publishEndpoint;
             _sendEndpointProvider = sendEndpointProvider;
             _logger = logger ?? NullLogger<MassTransitEventPublishChannel>.Instance;
         }
 
         /// <inheritdoc/>
-        public async Task PublishAsync(CloudEvent @event, CancellationToken cancellationToken = default)
+        /// <remarks>
+        /// Performs a property-level merge: each nullable property in
+        /// <paramref name="perCallOptions"/> that is non-<c>null</c> overrides the
+        /// corresponding property from <paramref name="defaults"/>; a <c>null</c>
+        /// value signals "use the channel-level default" for that property.
+        /// </remarks>
+        protected override MassTransitEventPublishOptions MergeOptions(
+            MassTransitEventPublishOptions defaults,
+            MassTransitEventPublishOptions? perCallOptions)
+        {
+            if (perCallOptions == null)
+                return defaults;
+
+            return new MassTransitEventPublishOptions
+            {
+                DestinationAddress     = perCallOptions.DestinationAddress  ?? defaults.DestinationAddress,
+                MapAttributesToHeaders = perCallOptions.MapAttributesToHeaders ?? defaults.MapAttributesToHeaders,
+            };
+        }
+
+        /// <inheritdoc/>
+        protected override async Task PublishCoreAsync(
+            CloudEvent @event,
+            MassTransitEventPublishOptions options,
+            CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(@event);
 
@@ -67,19 +97,19 @@ namespace Deveel.Events
                 var body = JsonFormatter.EncodeStructuredModeMessage(@event, out var contentType);
                 var payload = body.ToArray();
 
-                if (_options.DestinationAddress is not null)
+                if (options.DestinationAddress is not null)
                 {
-                    var endpoint = await _sendEndpointProvider.GetSendEndpoint(_options.DestinationAddress);
+                    var endpoint = await _sendEndpointProvider.GetSendEndpoint(options.DestinationAddress);
                     await endpoint.Send<ICloudEventMessage>(
                         new CloudEventMessage(payload, contentType.MediaType),
-                        ctx => MapHeaders(ctx, @event),
+                        ctx => MapHeaders(ctx, @event, options),
                         cancellationToken);
                 }
                 else
                 {
                     await _publishEndpoint.Publish<ICloudEventMessage>(
                         new CloudEventMessage(payload, contentType.MediaType),
-                        ctx => MapHeaders(ctx, @event),
+                        ctx => MapHeaders(ctx, @event, options),
                         cancellationToken);
                 }
             }
@@ -90,9 +120,9 @@ namespace Deveel.Events
             }
         }
 
-        private void MapHeaders(SendContext ctx, CloudEvent @event)
+        private void MapHeaders(SendContext ctx, CloudEvent @event, MassTransitEventPublishOptions options)
         {
-            if (!_options.MapAttributesToHeaders)
+            if (!(options.MapAttributesToHeaders ?? true))
                 return;
 
             if (@event.Id is not null)

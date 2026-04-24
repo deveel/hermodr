@@ -5,6 +5,8 @@
 
 using Azure.Messaging.ServiceBus;
 
+using System.ComponentModel.DataAnnotations;
+
 namespace Deveel.Events {
     /// <summary>
     /// The options for a channel that publishes events 
@@ -15,13 +17,17 @@ namespace Deveel.Events {
         /// Gets or sets the connection string to the Azure Service Bus
         /// instance that is used to publish the events.
         /// </summary>
-		public string ConnectionString { get; set; }
+        [Required(AllowEmptyStrings = false,
+            ErrorMessage = "A connection string for the Azure Service Bus must be provided.")]
+		public string ConnectionString { get; set; } = string.Empty;
 
         /// <summary>
         /// Gets or sets the name of the queue in the Azure Service Bus
         /// where the events are published.
         /// </summary>
-		public string QueueName { get; set; }
+        [Required(AllowEmptyStrings = false,
+            ErrorMessage = "A queue name for the Azure Service Bus must be provided.")]
+		public string QueueName { get; set; } = string.Empty;
 
         /// <summary>
         /// Gets or sets the options for the client that connects to the
