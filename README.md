@@ -45,6 +45,30 @@ Deveel Events provides a single, consistent way to publish events across any tra
 
 All events are modelled as [`CloudEvent`](https://cloudevents.io/) objects, ensuring maximum interoperability with cloud platforms and services that implement the CNCF CloudEvents specification.
 
+## Requirements
+
+All packages in this solution multi-target the following runtimes:
+
+| Runtime | Version |
+|---------|---------|
+| .NET | 8, 9, 10 |
+
+> **Note:** `Deveel.Events.Schema.AsyncApi` also requires the **ASP.NET Core** shared framework (`Microsoft.AspNetCore.App`), since it integrates with the Saunter AsyncAPI middleware.
+
+Every package requires the **Microsoft Dependency Injection** infrastructure (`Microsoft.Extensions.DependencyInjection`). Below are the additional per-package dependencies automatically pulled in as transitive NuGet references:
+
+| Package | Key Dependencies |
+|---------|-----------------|
+| `Deveel.Events.Annotations` | *(none — pure attribute library)* |
+| `Deveel.Events.Publisher` | `CloudNative.CloudEvents` · `Microsoft.Extensions.Options` · `Microsoft.Extensions.Logging.Abstractions` |
+| `Deveel.Events.Publisher.AzureServiceBus` | `Azure.Messaging.ServiceBus` ≥ 7.20 |
+| `Deveel.Events.Publisher.RabbitMq` | `RabbitMQ.Client` ≥ 7.2 · `Deveel.Events.Amqp.Annotations` |
+| `Deveel.Events.Publisher.MassTransit` | `MassTransit` ≥ 9.1 |
+| `Deveel.Events.Publisher.Webhook` | `Microsoft.Extensions.Http` · `Polly` ≥ 7.2 |
+| `Deveel.Events.Schema` | `CloudNative.CloudEvents` |
+| `Deveel.Events.Schema.Yaml` | `YamlDotNet` ≥ 16.3 |
+| `Deveel.Events.Schema.AsyncApi` | `Saunter` ≥ 0.13 · `YamlDotNet` ≥ 16.3 · ASP.NET Core shared framework |
+
 ## Packages
 
 | Package | Description | NuGet |

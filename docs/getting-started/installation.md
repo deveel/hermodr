@@ -4,8 +4,46 @@ Deveel Events is distributed as a set of NuGet packages.  Install only the packa
 
 ## Prerequisites
 
-- .NET 8, 9, or 10
-- A project that uses Microsoft Dependency Injection (`Microsoft.Extensions.DependencyInjection`)
+### Supported Runtimes
+
+All packages in the Deveel Events solution multi-target the following .NET runtimes:
+
+| Runtime | Version |
+|---------|---------|
+| .NET | 8, 9, 10 |
+
+> **.NET 8** is the current Long-Term Support (LTS) release and the recommended minimum for new projects.  
+> **.NET 10** is the next LTS release (expected November 2025) and is fully supported from day one.
+
+### Required Infrastructure
+
+All packages depend on the **Microsoft Dependency Injection** infrastructure. Make sure your project references:
+
+```bash
+dotnet add package Microsoft.Extensions.DependencyInjection
+```
+
+This is already provided automatically in ASP.NET Core, Worker Service, and most other host-based project templates.
+
+### ASP.NET Core Requirement
+
+The `Deveel.Events.Schema.AsyncApi` package references the **ASP.NET Core shared framework** (`Microsoft.AspNetCore.App`) because it integrates with the [Saunter](https://github.com/tehmantra/saunter) AsyncAPI middleware. It must be used in a project that targets the `Microsoft.NET.Sdk.Web` SDK or explicitly includes the `Microsoft.AspNetCore.App` framework reference.
+
+### Per-Package Dependencies
+
+The table below lists the key NuGet packages that each library brings in as transitive dependencies. You do not need to install these directly — they are declared in each package's `.nuspec` and restored automatically.
+
+| Package | Key Transitive Dependencies |
+|---------|----------------------------|
+| `Deveel.Events.Annotations` | *(none — pure attribute library)* |
+| `Deveel.Events.Publisher` | `CloudNative.CloudEvents` · `Microsoft.Extensions.Options` · `Microsoft.Extensions.Logging.Abstractions` |
+| `Deveel.Events.Publisher.AzureServiceBus` | `Azure.Messaging.ServiceBus` ≥ 7.20 |
+| `Deveel.Events.Publisher.RabbitMq` | `RabbitMQ.Client` ≥ 7.2 · `Deveel.Events.Amqp.Annotations` |
+| `Deveel.Events.Publisher.MassTransit` | `MassTransit` ≥ 9.1 |
+| `Deveel.Events.Publisher.Webhook` | `Microsoft.Extensions.Http` · `Polly` ≥ 7.2 |
+| `Deveel.Events.Schema` | `CloudNative.CloudEvents` |
+| `Deveel.Events.Schema.Yaml` | `YamlDotNet` ≥ 16.3 |
+| `Deveel.Events.Schema.AsyncApi` | `Saunter` ≥ 0.13 · `YamlDotNet` ≥ 16.3 · ASP.NET Core shared framework |
 
 ## Core package
 
