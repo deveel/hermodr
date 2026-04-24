@@ -80,10 +80,10 @@ namespace Deveel.Events
             // Message serializers — keyed by format string
             _serializers = new Dictionary<string, IEventSerializer>(StringComparer.OrdinalIgnoreCase)
             {
-                [WebhookMessageFormat.Json]           = JsonEventSerializer.Default,
-                [WebhookMessageFormat.Xml]            = XmlEventSerializer.Default,
-                [WebhookMessageFormat.CloudEventsJson] = CloudEventsJsonSerializer.Default,
-                [WebhookMessageFormat.CloudEventsXml]  = CloudEventsXmlSerializer.Default,
+                [EventMessageFormat.Json]           = JsonEventSerializer.Default,
+                [EventMessageFormat.Xml]            = XmlEventSerializer.Default,
+                [EventMessageFormat.CloudEventsJson] = CloudEventsJsonSerializer.Default,
+                [EventMessageFormat.CloudEventsXml]  = CloudEventsXmlSerializer.Default,
             };
             if (serializers != null)
                 foreach (var s in serializers)
@@ -256,8 +256,7 @@ namespace Deveel.Events
         {
             if (_serializers.TryGetValue(format, out var s)) return s;
             throw new NotSupportedException(
-                $"No serializer registered for webhook message format '{format}'. " +
-                $"Register a custom {nameof(IEventSerializer)} via {nameof(EventPublisherBuilderExtensions.UseWebhookMessageSerializer)}.");
+                $"No serializer registered for webhook message format '{format}'.");
         }
 
         private IWebhookSignatureProvider GetSignatureProvider(WebhookSignatureAlgorithm alg)
@@ -357,7 +356,7 @@ namespace Deveel.Events
             public double RetryBackoffMultiplier { get; init; }
             public TimeSpan RequestTimeout { get; init; }
             public string? HttpClientName { get; init; }
-            public string Format { get; init; } = WebhookMessageFormat.Json;
+            public string Format { get; init; } = EventMessageFormat.Json;
             public WebhookSignatureAlgorithm SignatureAlgorithm { get; init; }
             public IDictionary<string, string> AdditionalHeaders { get; init; }
                 = new Dictionary<string, string>();

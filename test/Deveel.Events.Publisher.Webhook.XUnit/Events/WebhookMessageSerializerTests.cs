@@ -32,7 +32,7 @@ namespace Deveel.Events
         public void Json_ContentType_IsCloudEventsJson()
         {
             var s = CloudEventsJsonSerializer.Default;
-            Assert.Equal(WebhookMessageFormat.CloudEventsJson, s.Format);
+            Assert.Equal(EventMessageFormat.CloudEventsJson, s.Format);
             Assert.StartsWith("application/cloudevents+json", s.ContentType);
         }
 
@@ -51,7 +51,7 @@ namespace Deveel.Events
         public void Xml_ContentType_IsCloudEventsXml()
         {
             var s = CloudEventsXmlSerializer.Default;
-            Assert.Equal(WebhookMessageFormat.CloudEventsXml, s.Format);
+            Assert.Equal(EventMessageFormat.CloudEventsXml, s.Format);
             Assert.StartsWith("application/cloudevents+xml", s.ContentType);
         }
 

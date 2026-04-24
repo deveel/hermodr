@@ -66,7 +66,7 @@ builder.Services
 | `EventTypeHeaderName` | `string` | `X-Webhook-Event` | Header carrying the event type |
 | `TimestampHeaderName` | `string` | `X-Webhook-Timestamp` | Unix-epoch timestamp header (used in signature payload to prevent replay attacks) |
 | `AdditionalHeaders` | `IDictionary<string, string>` | `{}` | Extra HTTP headers added to every request |
-| `MessageFormat` | `string` | `"json"` | Serialisation format: `"json"`, `"xml"`, `"cloudevents+json"`, `"cloudevents+xml"` |
+| `MessageFormat` | `string` | `"json"` | Serialisation format. Use `EventMessageFormat` constants (for built-ins: `"json"`, `"xml"`, `"cloudevents+json"`, `"cloudevents+xml"`) or a custom serializer format key |
 | `MaxRetryCount` | `int` | `3` | Maximum delivery attempts; `0` disables retries |
 | `RetryDelay` | `TimeSpan` | 1 s | Initial delay between retries |
 | `RetryBackoffMultiplier` | `double` | `2.0` | Multiplier for exponential backoff |
@@ -87,12 +87,14 @@ The signature is computed over `<timestamp>.<body>` and sent in the configured s
 
 ## Message formats
 
+Use `EventMessageFormat` constants when selecting a built-in format.
+
 | `MessageFormat` value | Content-Type | Description |
 |-----------------------|--------------|-------------|
-| `"json"` | `application/json` | Plain JSON payload (default) |
-| `"xml"` | `application/xml` | Plain XML payload |
-| `"cloudevents+json"` | `application/cloudevents+json` | Full CloudEvents JSON envelope |
-| `"cloudevents+xml"` | `application/cloudevents+xml` | Full CloudEvents XML envelope |
+| `"json"` (`EventMessageFormat.Json`) | `application/json` | Plain JSON payload (default) |
+| `"xml"` (`EventMessageFormat.Xml`) | `application/xml` | Plain XML payload |
+| `"cloudevents+json"` (`EventMessageFormat.CloudEventsJson`) | `application/cloudevents+json` | Full CloudEvents JSON envelope |
+| `"cloudevents+xml"` (`EventMessageFormat.CloudEventsXml`) | `application/cloudevents+xml` | Full CloudEvents XML envelope |
 
 ## Per-delivery options
 

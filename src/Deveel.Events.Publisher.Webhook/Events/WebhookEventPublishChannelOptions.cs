@@ -92,12 +92,12 @@ namespace Deveel.Events
         /// <summary>
         /// The serialization format for the request body.
         /// Must match the <see cref="IEventSerializer.Format"/> of a registered
-        /// serializer. Use constants from <see cref="WebhookMessageFormat"/> or supply
+        /// serializer. Use constants from <see cref="EventMessageFormat"/> or supply
         /// any string that identifies a custom-registered serializer.
-        /// Defaults to <see cref="WebhookMessageFormat.Json"/> (plain JSON).
+        /// Defaults to <see cref="EventMessageFormat.Json"/> (plain JSON).
         /// Can be overridden per delivery via <see cref="WebhookPublishOptions.MessageFormat"/>.
         /// </summary>
-        public string MessageFormat { get; set; } = WebhookMessageFormat.Json;
+        public string MessageFormat { get; set; } = EventMessageFormat.Json;
 
         /// <summary>
         /// The HMAC algorithm used to sign request bodies.
