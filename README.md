@@ -74,13 +74,22 @@ Full documentation — installation, quick-start, concept guides, channel refere
 
 ## Future Work
 
-The framework is still evolving. Among the areas we plan to address:
+The framework is still evolving. See the [ROADMAP](ROADMAP.md) for the full list of planned features, including:
 
-- Supporting custom event serialisers and deserialisers
-- Consumer-side support (deserialising events from channels)
-- Named-channel selection at publish time
+- [ ] **Event Subscription & Routing** — subscribe to event types with attribute-based filtering
+- [ ] **Dead-Letter Handling & Replay** — capture and resubmit failed events
+- [ ] **Outbox Pattern** — guaranteed exactly-once publishing via a transactional outbox
+- [ ] **Middleware Pipeline** — composable cross-cutting hooks (logging, validation, tracing)
+- [ ] **OpenTelemetry Integration** — end-to-end distributed tracing across service boundaries
+- [ ] **Schema Validation at Publish Time** — validate events against their registered schema before dispatch
+- [ ] **Event Versioning & Compatibility** — breaking-change detection and upcasting
+- [ ] **HTTP & gRPC Channels** — direct service-to-service delivery without a broker
+- [ ] **Event Scheduler** — defer event publishing to a future time or after a delay
+- [ ] **Event Store & Audit Log** — append-only persistence for auditing and read-model rebuilding
+- [ ] **AsyncAPI / Schema Export Improvements** — assembly scanning, CLI tooling, OpenAPI 3.1 webhooks
+- [ ] **Expanded Testing Utilities** — fluent publish assertions and an in-memory event bus
 
-Monitor the [open issues](https://github.com/deveel/deveel.events/issues) to see what is being worked on.
+Monitor the [open issues](https://github.com/deveel/deveel.events/issues) to see what is being actively worked on.
 
 ## Contributing
 
