@@ -50,7 +50,9 @@ namespace Deveel.Events
             } else if (!String.IsNullOrWhiteSpace(dataVersion))
             {
                 if (PublisherOptions.DataSchemaBaseUri == null)
-                    throw new InvalidOperationException("The base URI for the data schema is not set");
+                    throw new InvalidOperationException(
+                        $"The event type '{eventType}' uses [Event] DataVersion '{dataVersion}', but EventPublisherOptions.DataSchemaBaseUri is not configured. " +
+                        "Configure it via services.AddEventPublisher(options => options.DataSchemaBaseUri = new Uri(\"https://schemas.example.com/events\")).");
 
                 var schemaUriBuilder = new UriBuilder(PublisherOptions.DataSchemaBaseUri);
                 schemaUriBuilder.Path = $"{schemaUriBuilder.Path}/{eventType}/{dataVersion}";

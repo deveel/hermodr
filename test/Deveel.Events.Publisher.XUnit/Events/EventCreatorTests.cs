@@ -95,8 +95,11 @@ namespace Deveel.Events
             services.AddEventPublisher();  // DataSchemaBaseUri not set
             var creator = services.BuildServiceProvider().GetRequiredService<IEventCreator>();
 
-            Assert.Throws<InvalidOperationException>(() =>
+            var ex = Assert.Throws<InvalidOperationException>(() =>
                 creator.CreateEventFromData(typeof(PersonCreatedByVersion), new PersonCreatedByVersion()));
+
+            Assert.Contains("EventPublisherOptions.DataSchemaBaseUri", ex.Message);
+            Assert.Contains("AddEventPublisher", ex.Message);
         }
 
         [Fact]

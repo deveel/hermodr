@@ -5,6 +5,7 @@
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 
 namespace Deveel.Events {
     /// <summary>
@@ -23,7 +24,9 @@ namespace Deveel.Events {
         public IServiceCollection Services { get; }
 
 		private void AddDefaultServices() {
-			Services.AddOptions<EventPublisherOptions>();
+			Services.AddOptions<EventPublisherOptions>()
+				.ValidateOnStart();
+			Services.TryAddSingleton<IValidateOptions<EventPublisherOptions>>(_ => new EventPublisherOptionsValidator(Services));
 			Services.TryAddSingleton<EventPublisher>();
 			Services.TryAddSingleton<IEventIdGenerator>(EventGuidGenerator.Default);
 			Services.TryAddSingleton<IEventSystemTime>(EventSystemTime.Instance);
