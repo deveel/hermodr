@@ -32,6 +32,13 @@ namespace Deveel.Events
             var eventType = eventAttribute.EventType;
             var dataSchema = eventAttribute.DataSchema;
             var dataVersion = eventAttribute.DataVersion;
+            var contentType = eventAttribute.ContentType;
+            
+            if (String.IsNullOrWhiteSpace(contentType))
+                contentType = PublisherOptions.DefaultContentType;
+            
+            if (String.IsNullOrWhiteSpace(contentType))
+                throw new InvalidOperationException("The content type for the event is not set");
 
             Uri? schemaUri = null;
             if (dataSchema == null && String.IsNullOrWhiteSpace(dataVersion))
@@ -50,13 +57,11 @@ namespace Deveel.Events
                 schemaUri = schemaUriBuilder.Uri;
             }
 
-            // TODO: discover an optional content type attribute and 
-            //       use it to determine the content type of the data
             var @event = new CloudEvent
             {
                 Type = eventType,
                 DataSchema = schemaUri,
-                DataContentType = "application/cloudevents+json",
+                DataContentType = contentType,
                 Data = JsonSerializer.Serialize(data, PublisherOptions.JsonSerializerOptions)
             };
 

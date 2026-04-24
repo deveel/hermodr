@@ -44,5 +44,12 @@ namespace Deveel.Events {
         /// when the schema is not specified in the event.
         /// </summary>
 		public Uri? DataSchemaBaseUri { get; set; }
+        
+        /// <summary>
+        /// A default content type to use for the data of the events, when
+        /// the content type is not specified in the event.
+        /// The default value is "application/cloudevents+json".
+        /// </summary>
+        public string? DefaultContentType { get; set; } = "application/cloudevents+json";
 	}
 }

@@ -39,7 +39,7 @@ public class OrderPlacedData
 | `DataVersion` | `string?` | SemVer version string (set when the second argument is not a URI). |
 | `DataSchema` | `Uri?` | Absolute URI to the schema (set when the second argument is a URI). |
 | `Description` | `string?` | Human-readable description for documentation purposes. |
-| `ContentType` | `string?` | MIME content type of the data payload (e.g. `"application/json"`). |
+| `ContentType` | `string?` | MIME content type of the data payload (e.g. `"application/json"`). When not set, publishing uses `EventPublisherOptions.DefaultContentType` (default: `"application/cloudevents+json"`), and schema generation defaults to `"object"`. |
 
 ## `[EventProperty]` attribute
 

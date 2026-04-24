@@ -62,7 +62,14 @@ namespace Deveel.Events {
 
         /// <summary>
         /// The MIME content type (e.g. <c>"application/json"</c>) of the event data.
-        /// When not set, the factory defaults to <c>"object"</c>.
+        /// When not set, the default behavior depends on the context:
+        /// <para>
+        /// - For event publishing, defaults to <c>EventPublisherOptions.DefaultContentType</c> 
+        ///   (default value is <c>"application/cloudevents+json"</c>).
+        /// </para>
+        /// <para>
+        /// - For schema generation, defaults to <c>"object"</c>.
+        /// </para>
         /// </summary>
 		public string? ContentType { get; set; }
 	}
