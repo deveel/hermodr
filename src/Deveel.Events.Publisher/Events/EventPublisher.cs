@@ -193,30 +193,51 @@ namespace Deveel.Events {
         }
 
         /// <summary>
-        /// Publishes the given event to all the configured channels.
+        /// Validates that the given event satisfies the four mandatory CloudEvents
+        /// attributes (<c>id</c>, <c>source</c>, <c>type</c>, <c>specversion</c>)
+        /// after enrichment and before the event is dispatched to any channel.
         /// </summary>
         /// <param name="event">
-		/// The event to publish.
-		/// </param>
-        /// <param name="cancellationToken">
-		/// A token that is used to cancel the operation.
-		/// </param>
-        /// <returns>
-		/// Returns a task that represents the asynchronous operation.
-		/// </returns>
-        /// <exception cref="EventPublishException">
-		/// Thrown when an error occurs while publishing the event,
-		/// and the <see cref="EventPublisherOptions.ThrowOnErrors"/> 
-		/// is set to <c>true</c>.
-		/// </exception>
-        public async Task PublishEventAsync(CloudEvent @event, CancellationToken cancellationToken = default) {
-			// TODO: validate the event before publishing
+        /// The enriched event to validate.
+        /// </param>
+        /// <exception cref="InvalidCloudEventException">
+        /// Thrown when one or more required CloudEvents attributes are absent or empty.
+        /// </exception>
+        protected virtual void ValidateCloudEvent(CloudEvent @event) {
+            var missing = new List<string>();
 
+            if (string.IsNullOrWhiteSpace(@event.Id))
+                missing.Add("id");
+
+            if (@event.Source == null)
+                missing.Add("source");
+
+            if (string.IsNullOrWhiteSpace(@event.Type))
+                missing.Add("type");
+
+            // specversion is always "1.0" when using the CloudNative SDK, but we
+            // check it explicitly so that any unexpected null surfaces clearly.
+            if (string.IsNullOrWhiteSpace(@event.SpecVersion?.VersionId))
+                missing.Add("specversion");
+
+            if (missing.Count > 0)
+                throw new InvalidCloudEventException(missing);
+        }
+
+        /// <inheritdoc cref="IEventPublisher.PublishEventAsync"/>
+        /// <exception cref="InvalidCloudEventException">
+        /// Thrown when any of the required CloudEvents attributes (<c>id</c>,
+        /// <c>source</c>, <c>type</c>, <c>specversion</c>) is still absent after
+        /// enrichment.
+        /// </exception>
+        public async Task PublishEventAsync(CloudEvent @event, CancellationToken cancellationToken = default) {
 			var eventToPublish = @event;
 			@event = SetEventId(@event);
 			@event = SetTimeStamp(@event);
 			@event = SetSource(@event);
 			@event = SetAttributes(@event);
+
+			ValidateCloudEvent(@event);
 
 			foreach (var channel in _channels) {
 				_logger.TraceEventPublishing(@event.Type!, channel.GetType());

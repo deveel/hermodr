@@ -50,6 +50,58 @@ builder.Services.AddEventPublisher("Events:Publisher");
 }
 ```
 
+## Validation
+
+Before an event is dispatched to any channel the publisher checks that the four **required** CloudEvents attributes are present and non-empty.  This guard runs **after** the enrichment steps (id generation, timestamp, source from options, extra attributes), so values that are automatically filled in — such as the auto-generated `id` or a `source` pulled from `EventPublisherOptions` — count towards satisfying the requirement.
+
+| Attribute checked | Auto-filled by publisher? | Must be provided by caller if… |
+|---|---|---|
+| `id` | ✅ via `IEventIdGenerator` | Never (always generated if absent) |
+| `source` | ✅ if `EventPublisherOptions.Source` is set | Options source is `null` and caller did not set it |
+| `type` | ❌ | Always (no default exists) |
+| `specversion` | ✅ by the CloudNative SDK (always `"1.0"`) | Never in practice |
+
+If any required attribute is still missing after enrichment, `PublishEventAsync` throws an `InvalidCloudEventException` **before** touching any channel, so brokers never receive a structurally invalid envelope.
+
+### `InvalidCloudEventException`
+
+`InvalidCloudEventException` is a subclass of `ArgumentException`.  It exposes a `MissingAttributes` property listing every attribute that failed the check, so you can report all problems in a single throw rather than one at a time.
+
+```csharp
+try
+{
+    await publisher.PublishEventAsync(incompleteEvent);
+}
+catch (InvalidCloudEventException ex)
+{
+    // ex.MissingAttributes → e.g. ["type", "source"]
+    Console.WriteLine($"Invalid event: {ex.Message}");
+}
+```
+
+### Overriding the validation logic
+
+`ValidateCloudEvent` is a `protected virtual` method.  Subclass `EventPublisher` to tighten or relax the rules:
+
+```csharp
+public class StrictPublisher : EventPublisher
+{
+    public StrictPublisher(/* … */) : base(/* … */) { }
+
+    protected override void ValidateCloudEvent(CloudEvent @event)
+    {
+        // Run the standard four-attribute check first
+        base.ValidateCloudEvent(@event);
+
+        // Then add application-specific rules
+        if (@event.Subject == null)
+            throw new InvalidCloudEventException(["subject"]);
+    }
+}
+```
+
+> **Note:** Full payload schema validation (checking the `data` field against its declared schema) is a separate, deferred feature targeted at v1.3.0.  See [Schema Validation at Publish Time](../schema/validation.md) in the roadmap for details.
+
 ## Publishing events
 
 ### From an annotated data class
@@ -84,7 +136,13 @@ await publisher.PublishEventAsync(@event);
 
 ### Fan-out behaviour
 
-Every call to `PublishEventAsync` dispatches the event to **all** registered `IEventPublishChannel` instances, one by one.  If `ThrowOnErrors` is `false` (the default), a failing channel is logged but does not prevent delivery to the remaining channels.
+Every call to `PublishEventAsync` follows this sequence:
+
+1. **Enrich** — fill in `id`, `time`, `source`, and publisher-level attributes where they are absent.
+2. **Validate** — assert that the four required CloudEvents attributes (`id`, `source`, `type`, `specversion`) are present; throws `InvalidCloudEventException` if not.
+3. **Dispatch** — send the event to **all** registered `IEventPublishChannel` instances, one by one.
+
+If `ThrowOnErrors` is `false` (the default), a failing channel is logged but does not prevent delivery to the remaining channels.  `InvalidCloudEventException` is always thrown regardless of `ThrowOnErrors`, because an invalid envelope is a programming error rather than a transient delivery failure.
 
 ## Extensibility
 

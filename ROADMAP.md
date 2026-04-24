@@ -138,6 +138,8 @@ This document outlines the planned evolution of the **Deveel Events** framework.
 
 **The problem today:** The `Deveel.Events.Schema` and `Deveel.Events.Publisher` packages are entirely separate. An event with missing required fields or out-of-range values is published without complaint, and the error only surfaces at consumer side — or not at all.
 
+> **Already shipped (patch):** `EventPublisher` now enforces the four required CloudEvents envelope attributes (`id`, `source`, `type`, `specversion`) after enrichment and before channel dispatch, throwing `InvalidCloudEventException` if any are absent. This is a minimal, envelope-only guard. Full _payload_ validation — checking the `data` field against its declared schema — is the scope of this item and remains deferred.
+
 **What we will build:** A schema validation middleware (see item 4) that looks up the schema for a CloudEvent's `type` from the registered `IEventSchemaFactory` and runs the existing `IEventSchemaValidator` before the event reaches any channel. Failed validation can be configured to throw, log, or route to the dead-letter channel.
 
 **Benefits:**
