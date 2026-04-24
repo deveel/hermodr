@@ -43,12 +43,21 @@ namespace Deveel.Events
         string BatchContentType { get; }
 
         /// <summary>Serializes a single <see cref="CloudEvent"/> into bytes.</summary>
+        /// <param name="event">The event to serialize.</param>
+        /// <returns>
+        /// A byte array containing the serialized representation of <paramref name="event"/>
+        /// in the format described by <see cref="ContentType"/>.
+        /// </returns>
         byte[] Serialize(CloudEvent @event);
 
         /// <summary>
         /// Serializes a batch of <see cref="CloudEvent"/> instances into a single byte array.
         /// </summary>
         /// <param name="events">The events to serialize. Must contain at least one element.</param>
+        /// <returns>
+        /// A byte array containing the serialized representation of all <paramref name="events"/>
+        /// in the format described by <see cref="BatchContentType"/>.
+        /// </returns>
         byte[] SerializeBatch(IReadOnlyList<CloudEvent> events);
     }
 }

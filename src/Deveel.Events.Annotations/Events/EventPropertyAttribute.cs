@@ -19,8 +19,15 @@ namespace Deveel.Events {
 		/// The name of the property that is used to identify it
 		/// within the event.
 		/// </param>
-        /// <param name="schemaOrVersion"></param>
-        /// <exception cref="ArgumentException"></exception>
+        /// <param name="schemaOrVersion">
+        /// An optional string that is either an absolute URI pointing to the schema
+        /// of the event this property belongs to, or a version string (e.g. <c>"1.0"</c>).
+        /// Pass <c>null</c> when neither is applicable.
+        /// </param>
+        /// <exception cref="ArgumentException">
+        /// Thrown when <paramref name="schemaOrVersion"/> is non-empty but is neither
+        /// a valid absolute URI nor a valid version string.
+        /// </exception>
         public EventPropertyAttribute(string? name, string? schemaOrVersion = null) {
 			if (!String.IsNullOrWhiteSpace(schemaOrVersion)) {
 				if (System.Version.TryParse(schemaOrVersion, out _))

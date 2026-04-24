@@ -34,7 +34,10 @@ namespace Deveel.Events {
         /// <returns>
 		/// Returns the property with the given name.
 		/// </returns>
-        /// <exception cref="KeyNotFoundException"></exception>
+        /// <exception cref="KeyNotFoundException">
+		/// Thrown when the setter is called and no property with the given
+		/// <paramref name="name"/> exists in the collection.
+		/// </exception>
         public EventProperty? this[string name] {
 			get {
 				ArgumentNullException.ThrowIfNull(name, nameof(name));

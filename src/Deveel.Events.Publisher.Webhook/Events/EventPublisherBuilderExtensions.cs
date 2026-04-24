@@ -58,6 +58,16 @@ namespace Deveel.Events
         /// <summary>
         /// Adds the webhook event publishing channel using the provided configuration action.
         /// </summary>
+        /// <param name="builder">
+        /// The <see cref="EventPublisherBuilder"/> to add the channel to.
+        /// </param>
+        /// <param name="configure">
+        /// An action that configures the <see cref="WebhookEventPublishChannelOptions"/>
+        /// (endpoint URL, signing secret, retry policy, format, etc.).
+        /// </param>
+        /// <returns>
+        /// The same <see cref="EventPublisherBuilder"/> so that additional calls can be chained.
+        /// </returns>
         public static EventPublisherBuilder UseWebhook(
             this EventPublisherBuilder builder,
             Action<WebhookEventPublishChannelOptions> configure)
@@ -71,6 +81,16 @@ namespace Deveel.Events
         /// Adds the webhook event publishing channel, binding options from the
         /// specified configuration section.
         /// </summary>
+        /// <param name="builder">
+        /// The <see cref="EventPublisherBuilder"/> to add the channel to.
+        /// </param>
+        /// <param name="sectionPath">
+        /// The configuration key path (e.g. <c>"Webhook"</c>) whose sub-keys are
+        /// bound to <see cref="WebhookEventPublishChannelOptions"/>.
+        /// </param>
+        /// <returns>
+        /// The same <see cref="EventPublisherBuilder"/> so that additional calls can be chained.
+        /// </returns>
         public static EventPublisherBuilder UseWebhook(
             this EventPublisherBuilder builder,
             string sectionPath)
@@ -84,6 +104,21 @@ namespace Deveel.Events
         /// Adds or replaces the <see cref="IWebhookSignatureProvider"/> for a
         /// specific algorithm.
         /// </summary>
+        /// <typeparam name="TProvider">
+        /// The concrete <see cref="IWebhookSignatureProvider"/> implementation to register.
+        /// If a provider for the same <see cref="IWebhookSignatureProvider.Algorithm"/> is
+        /// already registered, it is replaced.
+        /// </typeparam>
+        /// <param name="builder">
+        /// The <see cref="EventPublisherBuilder"/> to add the provider to.
+        /// </param>
+        /// <param name="lifetime">
+        /// The DI service lifetime to register the provider with.
+        /// Defaults to <see cref="ServiceLifetime.Singleton"/>.
+        /// </param>
+        /// <returns>
+        /// The same <see cref="EventPublisherBuilder"/> so that additional calls can be chained.
+        /// </returns>
         public static EventPublisherBuilder UseWebhookSignatureProvider<TProvider>(
             this EventPublisherBuilder builder,
             ServiceLifetime lifetime = ServiceLifetime.Singleton)
@@ -99,6 +134,19 @@ namespace Deveel.Events
         /// replacing any previously registered serializer for the same
         /// <see cref="IEventSerializer.Format"/>.
         /// </summary>
+        /// <typeparam name="TSerializer">
+        /// The concrete <see cref="IEventSerializer"/> implementation to register.
+        /// </typeparam>
+        /// <param name="builder">
+        /// The <see cref="EventPublisherBuilder"/> to add the serializer to.
+        /// </param>
+        /// <param name="lifetime">
+        /// The DI service lifetime to register the serializer with.
+        /// Defaults to <see cref="ServiceLifetime.Singleton"/>.
+        /// </param>
+        /// <returns>
+        /// The same <see cref="EventPublisherBuilder"/> so that additional calls can be chained.
+        /// </returns>
         public static EventPublisherBuilder UseWebhookMessageSerializer<TSerializer>(
             this EventPublisherBuilder builder,
             ServiceLifetime lifetime = ServiceLifetime.Singleton)

@@ -11,6 +11,11 @@ namespace Deveel.Events {
         /// <summary>
         /// Checks if the property is required.
         /// </summary>
+        /// <param name="property">The property to check.</param>
+        /// <returns>
+        /// <c>true</c> if a <see cref="PropertyRequiredConstraint"/> is present
+        /// in <see cref="IEventProperty.Constraints"/>; otherwise <c>false</c>.
+        /// </returns>
         /// <remarks>
         /// This extension delegates to <see cref="IEventProperty.IsRequired"/> and
         /// is kept for backward compatibility.
@@ -21,6 +26,10 @@ namespace Deveel.Events {
 		/// <summary>
 		/// Checks if the property accepts <c>null</c> values.
 		/// </summary>
+        /// <param name="property">The property to check.</param>
+        /// <returns>
+        /// <c>true</c> if the property is nullable; otherwise <c>false</c>.
+        /// </returns>
 		public static bool IsNullable(this IEventProperty property)
 			=> property.IsNullable;
 	}
