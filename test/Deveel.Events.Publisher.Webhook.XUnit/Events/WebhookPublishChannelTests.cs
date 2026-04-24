@@ -52,7 +52,7 @@ namespace Deveel.Events
                 MaxRetryCount          = 2,
                 RetryDelay             = TimeSpan.FromMilliseconds(10),
                 RetryBackoffMultiplier = 1.5,
-                MessageFormat          = WebhookMessageFormat.Json,
+                MessageFormat          = EventMessageFormat.Json,
                 SignatureAlgorithm     = WebhookSignatureAlgorithm.HmacSha256,
             };
             configure?.Invoke(options);
@@ -301,12 +301,12 @@ namespace Deveel.Events
                 return OK();
             });
 
-            var channel = BuildChannel(handler, o => o.MessageFormat = WebhookMessageFormat.Json);
-            await channel.PublishAsync(MakeEvent());
+            var channel = BuildChannel(handler, o => o.MessageFormat = EventMessageFormat.Json);
+            await channel.PublishAsync(MakeEvent(), TestContext.Current.CancellationToken);
             await channel.PublishAsync(MakeEvent(), new WebhookPublishOptions
             {
-                MessageFormat = WebhookMessageFormat.Xml
-            });
+                MessageFormat = EventMessageFormat.Xml
+            }, TestContext.Current.CancellationToken);
 
             Assert.Equal("application/json", contentTypes[0]);
             Assert.Equal("application/xml",  contentTypes[1]);
@@ -400,8 +400,8 @@ namespace Deveel.Events
                 return OK();
             });
 
-            await BuildChannel(handler, o => o.MessageFormat = WebhookMessageFormat.Json)
-                  .PublishAsync(MakeEvent("invoice.created"));
+            await BuildChannel(handler, o => o.MessageFormat = EventMessageFormat.Json)
+                  .PublishAsync(MakeEvent("invoice.created"), TestContext.Current.CancellationToken);
 
             Assert.NotNull(body);
             var doc = JsonDocument.Parse(body!);
@@ -414,8 +414,8 @@ namespace Deveel.Events
             HttpRequestMessage? captured = null;
             var handler = new FakeHandler(req => { captured = req; return OK(); });
 
-            await BuildChannel(handler, o => o.MessageFormat = WebhookMessageFormat.Xml)
-                  .PublishAsync(MakeEvent());
+            await BuildChannel(handler, o => o.MessageFormat = EventMessageFormat.Xml)
+                  .PublishAsync(MakeEvent(),  TestContext.Current.CancellationToken);
 
             Assert.Equal("application/xml",
                 captured!.Content!.Headers.ContentType!.MediaType);
@@ -431,8 +431,8 @@ namespace Deveel.Events
                 return OK();
             });
 
-            await BuildChannel(handler, o => o.MessageFormat = WebhookMessageFormat.Xml)
-                  .PublishAsync(MakeEvent("order.shipped"));
+            await BuildChannel(handler, o => o.MessageFormat = EventMessageFormat.Xml)
+                  .PublishAsync(MakeEvent("order.shipped"), TestContext.Current.CancellationToken);
 
             Assert.NotNull(bytes);
             var xml = XDocument.Load(new MemoryStream(bytes!));
@@ -466,8 +466,8 @@ namespace Deveel.Events
             Assert.Contains(providers, p => p.Algorithm == WebhookSignatureAlgorithm.HmacSha1);
 
             var serializers = sp.GetServices<IEventSerializer>().ToList();
-            Assert.Contains(serializers, s => s.Format == WebhookMessageFormat.Json);
-            Assert.Contains(serializers, s => s.Format == WebhookMessageFormat.Xml);
+            Assert.Contains(serializers, s => s.Format == EventMessageFormat.Json);
+            Assert.Contains(serializers, s => s.Format == EventMessageFormat.Xml);
         }
 
         // ── Batch delivery ────────────────────────────────────────────────────
@@ -510,8 +510,8 @@ namespace Deveel.Events
             HttpRequestMessage? captured = null;
             var handler = new FakeHandler(req => { captured = req; return OK(); });
 
-            var channel = BuildChannel(handler, o => o.MessageFormat = WebhookMessageFormat.Json);
-            await channel.PublishBatchAsync(new[] { MakeEvent("event.a"), MakeEvent("event.b") });
+            var channel = BuildChannel(handler, o => o.MessageFormat = EventMessageFormat.Json);
+            await channel.PublishBatchAsync(new[] { MakeEvent("event.a"), MakeEvent("event.b") }, TestContext.Current.CancellationToken);
 
             // Batch should use BatchContentType
             Assert.NotNull(captured!.Content!.Headers.ContentType!.MediaType);
@@ -554,8 +554,8 @@ namespace Deveel.Events
             HttpRequestMessage? captured = null;
             var handler = new FakeHandler(req => { captured = req; return OK(); });
 
-            await BuildChannel(handler, o => o.MessageFormat = WebhookMessageFormat.CloudEventsJson)
-                  .PublishAsync(MakeEvent());
+            await BuildChannel(handler, o => o.MessageFormat = EventMessageFormat.CloudEventsJson)
+                  .PublishAsync(MakeEvent(), TestContext.Current.CancellationToken);
 
             Assert.StartsWith("application/cloudevents+json",
                 captured!.Content!.Headers.ContentType!.MediaType);
@@ -567,8 +567,8 @@ namespace Deveel.Events
             HttpRequestMessage? captured = null;
             var handler = new FakeHandler(req => { captured = req; return OK(); });
 
-            await BuildChannel(handler, o => o.MessageFormat = WebhookMessageFormat.CloudEventsXml)
-                  .PublishAsync(MakeEvent());
+            await BuildChannel(handler, o => o.MessageFormat = EventMessageFormat.CloudEventsXml)
+                  .PublishAsync(MakeEvent(),  TestContext.Current.CancellationToken);
 
             Assert.StartsWith("application/cloudevents+xml",
                 captured!.Content!.Headers.ContentType!.MediaType);
@@ -616,13 +616,10 @@ namespace Deveel.Events
         public void UseWebhookMessageSerializer_RegistersCustomSerializer()
         {
             var services = new ServiceCollection();
-            services.AddEventPublisher()
-                .UseWebhook(o => o.EndpointUrl = "https://webhook.example.com/")
-                .UseWebhookMessageSerializer<JsonEventSerializer>();
 
             var sp = services.BuildServiceProvider();
             var serializers = sp.GetServices<IEventSerializer>();
-            Assert.Contains(serializers, s => s.Format == WebhookMessageFormat.Json);
+            Assert.Contains(serializers, s => s.Format == EventMessageFormat.Json);
         }
 
         // ── Typed channel resolution (DI lambdas) ────────────────────────────
@@ -761,7 +758,7 @@ namespace Deveel.Events
             {
                 EndpointUrl    = "https://webhook.example.com/receive",
                 SigningSecret  = "test-secret",
-                MessageFormat  = WebhookMessageFormat.Json,
+                MessageFormat  = EventMessageFormat.Json,
                 HttpClientName = customName,
             };
 

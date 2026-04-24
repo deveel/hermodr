@@ -128,33 +128,5 @@ namespace Deveel.Events
                 new ServiceDescriptor(typeof(IWebhookSignatureProvider), typeof(TProvider), lifetime));
             return builder;
         }
-
-        /// <summary>
-        /// Registers a custom <see cref="IEventSerializer"/> for the webhook channel,
-        /// replacing any previously registered serializer for the same
-        /// <see cref="IEventSerializer.Format"/>.
-        /// </summary>
-        /// <typeparam name="TSerializer">
-        /// The concrete <see cref="IEventSerializer"/> implementation to register.
-        /// </typeparam>
-        /// <param name="builder">
-        /// The <see cref="EventPublisherBuilder"/> to add the serializer to.
-        /// </param>
-        /// <param name="lifetime">
-        /// The DI service lifetime to register the serializer with.
-        /// Defaults to <see cref="ServiceLifetime.Singleton"/>.
-        /// </param>
-        /// <returns>
-        /// The same <see cref="EventPublisherBuilder"/> so that additional calls can be chained.
-        /// </returns>
-        public static EventPublisherBuilder UseWebhookMessageSerializer<TSerializer>(
-            this EventPublisherBuilder builder,
-            ServiceLifetime lifetime = ServiceLifetime.Singleton)
-            where TSerializer : class, IEventSerializer
-        {
-            builder.Services.Add(
-                new ServiceDescriptor(typeof(IEventSerializer), typeof(TSerializer), lifetime));
-            return builder;
-        }
     }
 }

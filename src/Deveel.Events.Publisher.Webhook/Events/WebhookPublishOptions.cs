@@ -40,7 +40,7 @@ namespace Deveel.Events
         /// <summary>
         /// Override the serialization format for this delivery.
         /// Must match the <see cref="IEventSerializer.Format"/> of a
-        /// registered serializer. Use constants from <see cref="WebhookMessageFormat"/>
+        /// registered serializer. Use constants from <see cref="EventMessageFormat"/>
         /// or any string identifying a custom-registered serializer.
         /// </summary>
         public string? MessageFormat { get; set; }
