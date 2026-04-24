@@ -135,6 +135,39 @@ namespace Deveel.Events
             Assert.Empty(options.Value.Attributes);
         }
 
+        [Fact]
+        public static void AddEventPublisher_WithVersionedRegisteredEventType_WithoutDataSchemaBaseUri_FailsValidation()
+        {
+            var services = new ServiceCollection();
+            services.AddSingleton<VersionedRegisteredEventData>();
+            services.AddEventPublisher();
+
+            var provider = services.BuildServiceProvider();
+
+            var ex = Assert.Throws<OptionsValidationException>(() =>
+                _ = provider.GetRequiredService<IOptions<EventPublisherOptions>>().Value);
+
+            Assert.Contains("EventPublisherOptions.DataSchemaBaseUri", ex.Message);
+            Assert.Contains(nameof(VersionedRegisteredEventData), ex.Message);
+        }
+
+        [Fact]
+        public static void AddEventPublisher_WithVersionedRegisteredEventType_AndDataSchemaBaseUri_PassesValidation()
+        {
+            var services = new ServiceCollection();
+            services.AddSingleton<VersionedRegisteredEventData>();
+            services.AddEventPublisher(options =>
+            {
+                options.DataSchemaBaseUri = new Uri("https://schemas.example.com/events");
+            });
+
+            var provider = services.BuildServiceProvider();
+            var options = provider.GetRequiredService<IOptions<EventPublisherOptions>>();
+
+            Assert.NotNull(options.Value);
+            Assert.Equal(new Uri("https://schemas.example.com/events"), options.Value.DataSchemaBaseUri);
+        }
+
         private class CustomEventPublisher : EventPublisher
         {
             public CustomEventPublisher(
@@ -151,6 +184,11 @@ namespace Deveel.Events
         private class CustomSystemTime : IEventSystemTime
         {
             public DateTimeOffset UtcNow => new DateTimeOffset(2024, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        }
+
+        [Event("publisher.registration.versioned", "1.0")]
+        private class VersionedRegisteredEventData
+        {
         }
     }
 }
