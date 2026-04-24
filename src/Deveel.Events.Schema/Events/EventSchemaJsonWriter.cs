@@ -15,6 +15,10 @@ namespace Deveel.Events {
         /// Constructs the writer with the given options to configure
 		/// the JSON writer.
         /// </summary>
+        /// <param name="jsonWriterOptions">
+        /// Optional options to configure the underlying <see cref="System.Text.Json.Utf8JsonWriter"/>.
+        /// When <c>null</c>, default <see cref="System.Text.Json.JsonWriterOptions"/> are used.
+        /// </param>
         public EventSchemaJsonWriter(JsonWriterOptions? jsonWriterOptions = null) {
 			JsonWriterOptions = jsonWriterOptions ?? new JsonWriterOptions();
 		}

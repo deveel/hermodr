@@ -8,7 +8,11 @@ namespace Deveel.Events {
     /// A constraint that is used to restrict the values of a
 	/// property to a range of values.
     /// </summary>
-    /// <typeparam name="TValue"></typeparam>
+    /// <typeparam name="TValue">
+	/// The value type of the range bounds (e.g. <see cref="int"/>, <see cref="double"/>).
+	/// Must be a value type (<c>struct</c>) so it can be made nullable via
+	/// <c>Nullable&lt;TValue&gt;</c>.
+	/// </typeparam>
     public sealed class RangeConstraint<TValue> : IEventPropertyConstraint, IRangeConstraint where TValue : struct {
         /// <summary>
         /// Constructs a constraint that allows only the values

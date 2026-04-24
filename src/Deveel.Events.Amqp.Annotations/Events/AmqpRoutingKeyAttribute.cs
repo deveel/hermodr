@@ -10,8 +10,11 @@
         /// Constructs the attribute with the routing key to be used.
         /// </summary>
         /// <param name="routingKey">
-        /// Thrown when the <paramref name="routingKey"/> is <see langword="null"/>.
+        /// The AMQP routing key that the event should be routed with when published.
         /// </param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown when <paramref name="routingKey"/> is <see langword="null"/>.
+        /// </exception>
         public AmqpRoutingKeyAttribute(string routingKey)
             : base(AmqpCloudEventAttributes.AmqpRoutingKeyAttribute, routingKey)
         {

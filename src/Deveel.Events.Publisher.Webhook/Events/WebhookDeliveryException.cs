@@ -13,6 +13,10 @@ namespace Deveel.Events
         /// <summary>
         /// Initialises the exception with a message and the last HTTP status code received.
         /// </summary>
+        /// <param name="message">The message that describes the delivery failure.</param>
+        /// <param name="statusCode">
+        /// The last HTTP status code returned by the remote endpoint (e.g. 503).
+        /// </param>
         public WebhookDeliveryException(string message, int statusCode)
             : base(message)
         {
@@ -22,6 +26,11 @@ namespace Deveel.Events
         /// <summary>
         /// Initialises the exception with a message and the inner exception that caused the failure.
         /// </summary>
+        /// <param name="message">The message that describes the delivery failure.</param>
+        /// <param name="innerException">
+        /// The underlying exception (e.g. <see cref="System.Net.Http.HttpRequestException"/>
+        /// or <see cref="System.Threading.Tasks.TaskCanceledException"/>) that caused the failure.
+        /// </param>
         public WebhookDeliveryException(string message, Exception innerException)
             : base(message, innerException)
         {

@@ -330,8 +330,13 @@ namespace Deveel.Events {
 		/// A token that is used to cancel the operation.
 		/// </param>
         /// <returns>
-		/// </returns>
-        /// <exception cref="EventPublishException"></exception>
+        /// Returns a task that represents the asynchronous publish operation.
+        /// </returns>
+        /// <exception cref="EventPublishException">
+        /// Thrown when the factory fails to create the event or an error occurs
+        /// while publishing, and <see cref="EventPublisherOptions.ThrowOnErrors"/>
+        /// is set to <c>true</c>.
+        /// </exception>
         public Task PublishEventAsync<T>(T factory, CancellationToken cancellationToken = default)
 			where T : IEventFactory
         {

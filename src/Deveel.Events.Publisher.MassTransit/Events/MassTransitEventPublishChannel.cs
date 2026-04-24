@@ -30,6 +30,19 @@ namespace Deveel.Events
         /// <summary>
         /// Constructs the channel with MassTransit endpoints and options.
         /// </summary>
+        /// <param name="options">
+        /// The options that configure this channel (destination address, header mapping, etc.).
+        /// </param>
+        /// <param name="publishEndpoint">
+        /// The MassTransit publish endpoint used when no
+        /// <see cref="MassTransitEventPublishChannelOptions.DestinationAddress"/> is set.
+        /// </param>
+        /// <param name="sendEndpointProvider">
+        /// The MassTransit send-endpoint provider used when a destination address is configured.
+        /// </param>
+        /// <param name="logger">
+        /// An optional logger; when <c>null</c> a <see cref="Microsoft.Extensions.Logging.Abstractions.NullLogger{T}"/> is used.
+        /// </param>
         public MassTransitEventPublishChannel(
             IOptions<MassTransitEventPublishChannelOptions> options,
             IPublishEndpoint publishEndpoint,

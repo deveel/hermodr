@@ -33,6 +33,21 @@ namespace Deveel.Events
         /// <summary>
         /// Constructs the channel with the options and connection to the RabbitMQ server.
         /// </summary>
+        /// <param name="options">
+        /// The options that configure exchange name, routing key, message format and
+        /// publisher-confirm settings.
+        /// </param>
+        /// <param name="connection">
+        /// An active <see cref="RabbitMQ.Client.IConnection"/> to the RabbitMQ broker.
+        /// The channel borrows this connection and does not dispose it.
+        /// </param>
+        /// <param name="messageFactory">
+        /// The factory used to convert a <see cref="CloudNative.CloudEvents.CloudEvent"/>
+        /// into a <see cref="RabbitMqMessage"/> ready for publishing.
+        /// </param>
+        /// <param name="logger">
+        /// An optional logger; when <c>null</c> a <see cref="Microsoft.Extensions.Logging.Abstractions.NullLogger{T}"/> is used.
+        /// </param>
         public RabbitMqEventPublishChannel(
             IOptions<RabbitMqEventPublishChannelOptions> options,
             IConnection connection,

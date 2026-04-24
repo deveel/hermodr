@@ -31,6 +31,27 @@ namespace Deveel.Events
         private readonly IDictionary<string, IEventSerializer> _serializers;
 
         /// <summary>Initialises the channel.</summary>
+        /// <param name="options">
+        /// Channel-level defaults (endpoint URL, signing secret, retry policy, etc.).
+        /// </param>
+        /// <param name="httpClientFactory">
+        /// The <see cref="IHttpClientFactory"/> used to create named HTTP clients for
+        /// each delivery attempt.
+        /// </param>
+        /// <param name="signatureProviders">
+        /// Optional set of <see cref="IWebhookSignatureProvider"/> implementations.
+        /// When non-<c>null</c>, any provider whose
+        /// <see cref="IWebhookSignatureProvider.Algorithm"/> matches an entry already
+        /// registered replaces the built-in default for that algorithm.
+        /// </param>
+        /// <param name="serializers">
+        /// Optional set of <see cref="IEventSerializer"/> implementations.
+        /// When non-<c>null</c>, any serializer whose
+        /// <see cref="IEventSerializer.Format"/> matches a built-in key replaces the default.
+        /// </param>
+        /// <param name="logger">
+        /// An optional logger; when <c>null</c> a <see cref="Microsoft.Extensions.Logging.Abstractions.NullLogger{T}"/> is used.
+        /// </param>
         public WebhookEventPublishChannel(
             IOptions<WebhookEventPublishChannelOptions> options,
             IHttpClientFactory httpClientFactory,
