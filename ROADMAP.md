@@ -90,17 +90,43 @@ This document outlines the planned evolution of the **Deveel Events** framework.
 
 ### 6. Event Store & Audit Log Channel
 
-> *An append-only channel that persists every published event for auditing, debugging, or read-model rebuilding.*
+> *An append-only channel that persists every published domain event for auditing, debugging, or read-model rebuilding.*
 
 **The problem today:** Once an event is dispatched to a broker it is gone from the application's perspective. Reproducing what happened at a given point in time requires access to broker logs or custom instrumentation.
 
 **What we will build:** A `Deveel.Events.Publisher.EventStore` channel that writes every event to an append-only store (database table or blob storage, with a provider abstraction). The store supports querying by `type`, `source`, `subject`, time range, and custom attributes, and exposes a streaming API for replaying stored events in chronological order.
+
+> **Scope note:** The Event Store records *domain facts* — the event payload, metadata, and CloudEvents attributes — not the operational outcome of the delivery attempt itself. For tracking delivery attempts, retries, error codes, and latency, see item 17 (Publish Delivery Log) below.
 
 **Benefits:**
 - Provides a complete audit trail of all domain events without relying on broker retention policies.
 - Enables event-sourcing-style read-model reconstruction by replaying the stored stream.
 - Useful in regulated industries where an immutable record of domain facts is a compliance requirement.
 - Can be combined with the dead-letter and replay features to correlate failures with their originating events.
+- Shares its storage provider abstraction with the Publish Delivery Log (item 17), so a single backend configuration covers both concerns.
+
+---
+
+### 17. Publish Delivery Log
+
+> *Record the operational outcome of every event publish attempt — channel, timestamp, attempt count, latency, and error details — across pluggable storage backends.*
+
+**The problem today:** There is no built-in way to answer questions like *"how many times did we attempt to send event X before it succeeded?"*, *"which channel is producing the most failures?"*, or *"what was the average delivery latency last week?"*. The dead-letter channel (item 2) captures only failed events for replay, and the Event Store (item 6) records domain facts, not infrastructure telemetry. Ops teams must rely on generic APM tooling or custom logging to reconstruct delivery history.
+
+**What we will build:** A `Deveel.Events.Publisher.DeliveryLog` package providing:
+- An `IPublishDeliveryLog` abstraction that receives a `DeliveryRecord` after every publish attempt (whether successful or not), containing: event ID, channel name, attempt number, UTC timestamp, outcome (`Succeeded` / `Failed` / `Retried`), HTTP/AMQP error code, exception message, and elapsed time.
+- A middleware component (see item 4) that intercepts each publish call and writes a record before and after the channel invocation.
+- Provider implementations for common storage backends: **relational database** (EF Core, supporting SQL Server, PostgreSQL, SQLite), **file system** (NDJSON rolling files), and **in-memory** (for tests and local development).
+- A shared `Deveel.Events.Storage` provider abstraction that is also used by the Event Store (item 6), so applications that need both can configure a single backend.
+- A lightweight query API to retrieve delivery records by event ID, channel, outcome, or time range.
+
+**Benefits:**
+- Gives operations teams full visibility into publishing health without relying on broker-specific dashboards.
+- Makes retry storms and chronic failure patterns immediately visible in application-level logs.
+- The pluggable provider model means no single storage technology is mandated — use SQLite locally, PostgreSQL in staging, and a managed database in production.
+- Sharing the storage abstraction with the Event Store reduces configuration duplication and maintenance overhead.
+- Complements OpenTelemetry tracing (item 5): the delivery log captures structured operational data even when a distributed tracing backend is not available.
+- Useful for SLA reporting: query average latency and success rate per channel over any time window.
 
 ---
 
@@ -203,6 +229,110 @@ This document outlines the planned evolution of the **Deveel Events** framework.
 - Fluent assertion API dramatically reduces test boilerplate.
 - The in-memory bus enables full-stack integration tests that run in milliseconds, without Docker or a real broker.
 - Negative assertions catch regressions where a previously emitted event is accidentally removed.
+
+---
+
+## Event Consumers
+
+### 13. Webhook Consumer for ASP.NET Core
+
+> *Receive and dispatch inbound CloudEvents delivered via HTTP webhooks directly inside an ASP.NET Core application.*
+
+**The problem today:** Deveel Events only covers the *publishing* side of the event lifecycle. Services that need to receive webhook payloads — for example, from a SaaS platform or another Deveel Events publisher — must build their own endpoint, deserialization, signature verification, and routing logic from scratch.
+
+**What we will build:** A `Deveel.Events.Consumer.Webhook` package providing an ASP.NET Core middleware and a minimal-API endpoint registration (`MapCloudEventWebhook(...)`) that:
+- Accepts HTTP POST requests carrying CloudEvents in structured or binary content mode.
+- Verifies optional HMAC signatures or shared-secret headers.
+- Deserialises the payload into a typed `CloudEvent` and routes it through the `IEventSubscription` registry (item 1).
+- Returns appropriate HTTP status codes and problem-detail responses on validation failure.
+
+**Benefits:**
+- Turns any ASP.NET Core application into a capable CloudEvents consumer with a single `UseCloudEventWebhook()` or `MapCloudEventWebhook()` call.
+- Integrates with the existing subscription and routing infrastructure — no separate consumer-side wiring needed.
+- Built-in signature verification reduces the risk of processing forged payloads.
+- Compatible with platforms that deliver events over webhooks (GitHub, Stripe, Azure Event Grid, etc.).
+
+---
+
+### 14. RabbitMQ Consumer
+
+> *Consume CloudEvents from RabbitMQ queues and exchanges and route them through the subscription registry.*
+
+**The problem today:** `Deveel.Events.Publisher.RabbitMq` can publish events to RabbitMQ, but there is no companion consumer. Applications must hand-roll `IBasicConsumer` implementations, CloudEvents deserialization, and error handling separately.
+
+**What we will build:** A `Deveel.Events.Consumer.RabbitMq` package providing a `BackgroundService`-based hosted consumer that:
+- Declares queues and bindings from configuration or attributes.
+- Deserialises incoming AMQP messages to `CloudEvent` objects.
+- Routes them through the `IEventSubscription` registry (item 1).
+- NAcks and optionally dead-letters messages that fail deserialization or handler dispatch.
+- Supports prefetch limits, concurrent handler execution, and graceful shutdown.
+
+**Benefits:**
+- Pairs naturally with the existing RabbitMQ publisher to form a complete publish/subscribe solution.
+- Leverages the shared subscription registry so the same handler registration code works regardless of transport.
+- Dead-letter integration (item 2) provides automatic recovery and replay for failed messages.
+- Configuration-driven queue and binding setup removes broker-specific boilerplate from application code.
+
+---
+
+### 15. Azure Service Bus Consumer
+
+> *Consume CloudEvents from Azure Service Bus queues and topics/subscriptions and route them through the subscription registry.*
+
+**The problem today:** `Deveel.Events.Publisher.AzureServiceBus` covers publishing but not consumption. Teams using Azure Service Bus must integrate the SDK's `ServiceBusProcessor` independently, including CloudEvents mapping and error policies.
+
+**What we will build:** A `Deveel.Events.Consumer.AzureServiceBus` package wrapping `ServiceBusProcessor` in a `BackgroundService` that:
+- Receives messages from configurable queues or topic subscriptions.
+- Maps Azure Service Bus message properties to CloudEvents attributes.
+- Routes deserialized events through the `IEventSubscription` registry (item 1).
+- Handles dead-lettering, lock renewal, and session-aware processing.
+
+**Benefits:**
+- Completes the Azure Service Bus integration with a consistent publish/consume API.
+- Takes advantage of native Service Bus features (sessions, deferred messages, scheduled delivery) through configuration.
+- Uniform handler model means the same event handler works with RabbitMQ, Azure Service Bus, or any future consumer adapter.
+
+---
+
+### 16. MassTransit Consumer Bridge
+
+> *Expose Deveel Events subscriptions as MassTransit consumers, and vice versa, to unify both programming models.*
+
+**The problem today:** `Deveel.Events.Publisher.MassTransit` delegates publishing to MassTransit but does not expose a complementary consumer side. Teams using MassTransit for consumption must maintain two separate routing models.
+
+**What we will build:** A `Deveel.Events.Consumer.MassTransit` package that registers `IEventSubscription` handlers as MassTransit `IConsumer<T>` implementations automatically, and optionally maps inbound MassTransit messages to `CloudEvent` objects before dispatching them through the registry.
+
+**Benefits:**
+- Projects already invested in MassTransit can adopt Deveel Events incrementally, starting with the consumer side, without replacing their existing topology.
+- The shared handler model means a subscription declared once can be driven by MassTransit, RabbitMQ, or any other consumer adapter.
+- Reduces duplication of consumer registration boilerplate in mixed-stack services.
+
+---
+
+## Version Strategy & Milestones
+
+The table below maps each roadmap item to the release milestone in which it is planned to ship. Version numbers follow [Semantic Versioning](https://semver.org/): a **minor** bump (`0.x → 0.x+1`, later `1.x → 1.x+1`) delivers new, backward-compatible capabilities; a **major** bump (`1.x → 2.0`) signals a significant architectural expansion — in this case, the introduction of the consumer side of the framework.
+
+| Milestone | Version | Theme | Items |
+|-----------|---------|-------|-------|
+| **Stable Publisher** | **v1.0.0** | Harden the publishing and schema packages, freeze public APIs, and ship production-ready documentation. | — (current publisher + schema feature set) |
+| **Routing & Middleware** | **v1.1.0** | Introduce the foundational subscription & routing abstraction and the event middleware pipeline, enabling all later consumer-side and observability work. | 1 · 4 |
+| **Reliability** | **v1.2.0** | Add dead-letter capture and replay, the outbox pattern, and the event scheduler to make publishing robust to transient failures and deferred delivery requirements. | 2 · 3 · 10 |
+| **Observability** | **v1.3.0** | End-to-end distributed tracing via OpenTelemetry, schema validation at publish time, the append-only event store / audit log channel, and the publish delivery log for operational delivery telemetry. | 5 · 6 · 7 · 17 |
+| **Schema Governance** | **v1.4.0** | Formal schema versioning, compatibility checking, upcasting, and AsyncAPI / schema export tooling improvements. | 8 · 11 |
+| **New Transports** | **v1.5.0** | HTTP (CloudEvents HTTP binding) and gRPC publisher channels for broker-free, direct service-to-service delivery. | 9 |
+| **Event Consumers** | **v2.0.0** | First-class consumer adapters — ASP.NET Core Webhook, RabbitMQ, Azure Service Bus, and MassTransit — completing the publish / consume lifecycle. This is a **major** release because it introduces a new, independently versioned surface area (`Deveel.Events.Consumer.*` packages) and changes the framing of the framework from a pure publisher to a full event-driven toolkit. | 13 · 14 · 15 · 16 |
+| **Testing & DX** | **v2.1.0** | Expanded testing utilities with fluent publish assertions, an in-memory event bus, and consumer-side test helpers. | 12 |
+
+### Version increment rationale
+
+| Bump | Trigger |
+|------|---------|
+| **Patch** (`x.y.Z`) | Bug fixes, documentation corrections, dependency updates with no API changes. |
+| **Minor** (`x.Y.0`) | New packages or APIs added in a backward-compatible way; no changes to existing public interfaces. |
+| **Major** (`X.0.0`) | Architectural expansion that introduces a fundamentally new surface area (e.g., consumer packages in v2.0), or any breaking change to existing public APIs. |
+
+Pre-release labels (`-alpha`, `-beta`, `-rc`) will be used on feature branches and release-candidate branches in accordance with the existing GitVersion configuration.
 
 ---
 

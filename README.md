@@ -98,20 +98,30 @@ Full documentation — installation, quick-start, concept guides, channel refere
 
 ## Future Work
 
-The framework is still evolving. See the [ROADMAP](ROADMAP.md) for the full list of planned features, including:
+The framework is still evolving. See the [ROADMAP](ROADMAP.md) for the full list of planned features and the version milestone in which each is expected to ship.
 
-- [ ] **Event Subscription & Routing** — subscribe to event types with attribute-based filtering
-- [ ] **Dead-Letter Handling & Replay** — capture and resubmit failed events
-- [ ] **Outbox Pattern** — guaranteed exactly-once publishing via a transactional outbox
-- [ ] **Middleware Pipeline** — composable cross-cutting hooks (logging, validation, tracing)
-- [ ] **OpenTelemetry Integration** — end-to-end distributed tracing across service boundaries
-- [ ] **Schema Validation at Publish Time** — validate events against their registered schema before dispatch
-- [ ] **Event Versioning & Compatibility** — breaking-change detection and upcasting
-- [ ] **HTTP & gRPC Channels** — direct service-to-service delivery without a broker
-- [ ] **Event Scheduler** — defer event publishing to a future time or after a delay
-- [ ] **Event Store & Audit Log** — append-only persistence for auditing and read-model rebuilding
-- [ ] **AsyncAPI / Schema Export Improvements** — assembly scanning, CLI tooling, OpenAPI 3.1 webhooks
-- [ ] **Expanded Testing Utilities** — fluent publish assertions and an in-memory event bus
+### v1.x — Publisher & Schema maturity
+
+- [ ] **Event Subscription & Routing** *(v1.1)* — subscribe to event types with attribute-based filtering
+- [ ] **Event Middleware Pipeline** *(v1.1)* — composable cross-cutting hooks (logging, validation, tracing)
+- [ ] **Dead-Letter Handling & Replay** *(v1.2)* — capture and resubmit failed events
+- [ ] **Outbox Pattern** *(v1.2)* — guaranteed exactly-once publishing via a transactional outbox
+- [ ] **Event Scheduler** *(v1.2)* — defer event publishing to a future time or after a delay
+- [ ] **OpenTelemetry Integration** *(v1.3)* — end-to-end distributed tracing across service boundaries
+- [ ] **Event Store & Audit Log** *(v1.3)* — append-only persistence of domain events for auditing and read-model rebuilding
+- [ ] **Publish Delivery Log** *(v1.3)* — per-attempt operational record of every publish (channel, outcome, error code, latency, retry count) across pluggable storage backends (SQL, file, in-memory)
+- [ ] **Schema Validation at Publish Time** *(v1.3)* — validate events against their registered schema before dispatch
+- [ ] **Event Versioning & Compatibility** *(v1.4)* — breaking-change detection and upcasting
+- [ ] **AsyncAPI / Schema Export Improvements** *(v1.4)* — assembly scanning, CLI tooling, OpenAPI 3.1 webhooks
+- [ ] **HTTP & gRPC Channels** *(v1.5)* — direct service-to-service delivery without a broker
+
+### v2.x — Event Consumers
+
+- [ ] **Webhook Consumer for ASP.NET Core** *(v2.0)* — receive inbound CloudEvents over HTTP with signature verification and automatic routing
+- [ ] **RabbitMQ Consumer** *(v2.0)* — consume CloudEvents from RabbitMQ queues and route them through the subscription registry
+- [ ] **Azure Service Bus Consumer** *(v2.0)* — consume CloudEvents from Service Bus queues and topic subscriptions
+- [ ] **MassTransit Consumer Bridge** *(v2.0)* — expose Deveel Events subscriptions as MassTransit consumers
+- [ ] **Expanded Testing Utilities** *(v2.1)* — fluent publish assertions, in-memory event bus, and consumer-side test helpers
 
 Monitor the [open issues](https://github.com/deveel/deveel.events/issues) to see what is being actively worked on.
 
