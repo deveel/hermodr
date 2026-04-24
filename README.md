@@ -45,6 +45,30 @@ Deveel Events provides a single, consistent way to publish events across any tra
 
 All events are modelled as [`CloudEvent`](https://cloudevents.io/) objects, ensuring maximum interoperability with cloud platforms and services that implement the CNCF CloudEvents specification.
 
+## Requirements
+
+All packages in this solution multi-target the following runtimes:
+
+| Runtime | Version |
+|---------|---------|
+| .NET | 8, 9, 10 |
+
+> **Note:** `Deveel.Events.Schema.AsyncApi` also requires the **ASP.NET Core** shared framework (`Microsoft.AspNetCore.App`), since it integrates with the Saunter AsyncAPI middleware.
+
+Every package requires the **Microsoft Dependency Injection** infrastructure (`Microsoft.Extensions.DependencyInjection`). Below are the additional per-package dependencies automatically pulled in as transitive NuGet references:
+
+| Package | Key Dependencies |
+|---------|-----------------|
+| `Deveel.Events.Annotations` | *(none — pure attribute library)* |
+| `Deveel.Events.Publisher` | `CloudNative.CloudEvents` · `Microsoft.Extensions.Options` · `Microsoft.Extensions.Logging.Abstractions` |
+| `Deveel.Events.Publisher.AzureServiceBus` | `Azure.Messaging.ServiceBus` ≥ 7.20 |
+| `Deveel.Events.Publisher.RabbitMq` | `RabbitMQ.Client` ≥ 7.2 · `Deveel.Events.Amqp.Annotations` |
+| `Deveel.Events.Publisher.MassTransit` | `MassTransit` ≥ 9.1 |
+| `Deveel.Events.Publisher.Webhook` | `Microsoft.Extensions.Http` · `Polly` ≥ 7.2 |
+| `Deveel.Events.Schema` | `CloudNative.CloudEvents` |
+| `Deveel.Events.Schema.Yaml` | `YamlDotNet` ≥ 16.3 |
+| `Deveel.Events.Schema.AsyncApi` | `Saunter` ≥ 0.13 · `YamlDotNet` ≥ 16.3 · ASP.NET Core shared framework |
+
 ## Packages
 
 | Package | Description | NuGet |
@@ -74,13 +98,22 @@ Full documentation — installation, quick-start, concept guides, channel refere
 
 ## Future Work
 
-The framework is still evolving. Among the areas we plan to address:
+The framework is still evolving. See the [ROADMAP](ROADMAP.md) for the full list of planned features, including:
 
-- Supporting custom event serialisers and deserialisers
-- Consumer-side support (deserialising events from channels)
-- Named-channel selection at publish time
+- [ ] **Event Subscription & Routing** — subscribe to event types with attribute-based filtering
+- [ ] **Dead-Letter Handling & Replay** — capture and resubmit failed events
+- [ ] **Outbox Pattern** — guaranteed exactly-once publishing via a transactional outbox
+- [ ] **Middleware Pipeline** — composable cross-cutting hooks (logging, validation, tracing)
+- [ ] **OpenTelemetry Integration** — end-to-end distributed tracing across service boundaries
+- [ ] **Schema Validation at Publish Time** — validate events against their registered schema before dispatch
+- [ ] **Event Versioning & Compatibility** — breaking-change detection and upcasting
+- [ ] **HTTP & gRPC Channels** — direct service-to-service delivery without a broker
+- [ ] **Event Scheduler** — defer event publishing to a future time or after a delay
+- [ ] **Event Store & Audit Log** — append-only persistence for auditing and read-model rebuilding
+- [ ] **AsyncAPI / Schema Export Improvements** — assembly scanning, CLI tooling, OpenAPI 3.1 webhooks
+- [ ] **Expanded Testing Utilities** — fluent publish assertions and an in-memory event bus
 
-Monitor the [open issues](https://github.com/deveel/deveel.events/issues) to see what is being worked on.
+Monitor the [open issues](https://github.com/deveel/deveel.events/issues) to see what is being actively worked on.
 
 ## Contributing
 
