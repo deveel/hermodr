@@ -20,6 +20,7 @@ namespace Deveel.Events {
 	{
 		private readonly IEnumerable<IEventPublishChannel> _channels;
 		private readonly ILogger _logger;
+		private IDictionary<Type, IReadOnlyList<IEventPublishChannel>>? _typedChannels;
 
 		/// <summary>
 		/// Constructs the publisher with the given options 
@@ -339,9 +340,17 @@ namespace Deveel.Events {
 
 		private IReadOnlyList<IEventPublishChannel> GetTypedChannels(Type dataType)
 		{
-			// TODO: cache this result
-			var typedChannel = typeof(IEventPublishChannel<>).MakeGenericType(dataType);
-			return _channels.Where(typedChannel.IsInstanceOfType).ToList();
+			if (_typedChannels == null)
+				_typedChannels = new Dictionary<Type, IReadOnlyList<IEventPublishChannel>>();
+			
+			if (!_typedChannels.TryGetValue(dataType, out var typedChannels))
+			{
+				var channelType = typeof(IEventPublishChannel<>).MakeGenericType(dataType);
+				typedChannels = _channels.Where(channelType.IsInstanceOfType).ToList();
+				_typedChannels[dataType] = typedChannels;
+			}
+			
+			return typedChannels;
 		}
 
 		/// <summary>
