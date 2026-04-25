@@ -17,6 +17,7 @@ namespace Deveel.Events
         private static EventPublisherBuilder AddMassTransitChannel(this EventPublisherBuilder builder)
         {
             builder.Services.AddSingleton<IEventPublishChannel, MassTransitEventPublishChannel>();
+            builder.Services.AddSingleton<IEventPublishChannel<MassTransitEventPublishOptions>, MassTransitEventPublishChannel>();
             return builder;
         }
 
@@ -32,7 +33,7 @@ namespace Deveel.Events
         /// <returns>
         /// Returns the <see cref="EventPublisherBuilder"/> to continue the configuration.
         /// </returns>
-        public static EventPublisherBuilder UseMassTransit(
+        public static EventPublisherBuilder AddMassTransit(
             this EventPublisherBuilder builder,
             Action<MassTransitEventPublishOptions>? configure = null)
         {
@@ -56,7 +57,7 @@ namespace Deveel.Events
         /// <returns>
         /// Returns the <see cref="EventPublisherBuilder"/> to continue the configuration.
         /// </returns>
-        public static EventPublisherBuilder UseMassTransit(
+        public static EventPublisherBuilder AddMassTransit(
             this EventPublisherBuilder builder,
             string sectionPath)
         {

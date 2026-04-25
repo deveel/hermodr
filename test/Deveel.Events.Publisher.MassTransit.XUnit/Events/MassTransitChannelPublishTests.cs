@@ -44,7 +44,7 @@ namespace Deveel.Events
                 options.Source = new Uri("https://api.svc.deveel.com/test-service");
                 options.DataSchemaBaseUri = new Uri("https://example.com/events/schema");
             })
-            .UseMassTransit();
+            .AddMassTransit();
 
             _services = services.BuildServiceProvider();
         }
@@ -142,7 +142,7 @@ namespace Deveel.Events
         {
             var channel = _services.GetRequiredService<IEventPublishChannel>();
             await Assert.ThrowsAsync<ArgumentNullException>(() =>
-                channel.PublishAsync(null!, CancellationToken.None));
+                channel.PublishAsync(null!, null, TestContext.Current.CancellationToken));
         }
 
         [Event("person.created", "1.0")]

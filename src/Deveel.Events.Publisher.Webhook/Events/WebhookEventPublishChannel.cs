@@ -18,7 +18,7 @@ namespace Deveel.Events
 {
     /// <summary>
     /// An <see cref="EventPublishChannelBase{TOptions}"/> and
-    /// <see cref="IBatchEventPublishChannel{TOptions}"/> that delivers
+    /// <see cref="IBatchEventPublishChannel"/> that delivers
     /// <see cref="CloudEvent"/> instances (individually or in batches) to a remote
     /// endpoint via HTTP POST, following webhook best practices.
     /// </summary>
@@ -39,7 +39,7 @@ namespace Deveel.Events
     /// </remarks>
     public class WebhookEventPublishChannel :
         EventPublishChannelBase<WebhookPublishOptions>,
-        IBatchEventPublishChannel<WebhookPublishOptions>
+        IBatchEventPublishChannel
     {
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger _logger;
@@ -175,18 +175,18 @@ namespace Deveel.Events
             return DeliverAsync(payload, contentType, eventType: @event.Type, eventCount: 1, options, cancellationToken);
         }
 
-        // ── IBatchEventPublishChannel<WebhookPublishOptions> ────────────────
+        // ── IBatchEventPublishChannel ────────────────
 
-        /// <inheritdoc/>
-        public Task PublishBatchAsync(
-            IReadOnlyList<CloudEvent> events,
+        Task IBatchEventPublishChannel.PublishBatchAsync(IReadOnlyList<CloudEvent> events, EventPublishChannelOptions? options = null,
             CancellationToken cancellationToken = default)
-            => PublishBatchAsync(events, null, cancellationToken);
+        {
+            return PublishBatchAsync(events, options as WebhookPublishOptions, cancellationToken);
+        }
 
         /// <inheritdoc/>
         public Task PublishBatchAsync(
             IReadOnlyList<CloudEvent> events,
-            WebhookPublishOptions? options,
+            WebhookPublishOptions? options = null,
             CancellationToken cancellationToken = default)
         {
             if (events == null || events.Count == 0)

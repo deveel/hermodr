@@ -19,6 +19,7 @@ namespace Deveel.Events
         private static EventPublisherBuilder AddRabbitMqChannel(this EventPublisherBuilder builder)
         {
             builder.Services.AddSingleton<IEventPublishChannel, RabbitMqEventPublishChannel>();
+            builder.Services.AddSingleton<IEventPublishChannel<RabbitMqEventPublishOptions>, RabbitMqEventPublishChannel>();
             builder.Services.TryAddSingleton<IRabbitMqConnectionFactory, RabbitMqConnectionFactory>();
             builder.Services.TryAddSingleton<IRabbitMqMessageFactory, RabbitMqMessageFactory>();
             builder.Services.TryAddSingleton<IConnection>(sp =>
@@ -44,7 +45,7 @@ namespace Deveel.Events
         /// <returns>
         /// Returns the <see cref="EventPublisherBuilder"/> to continue the configuration.
         /// </returns>
-        public static EventPublisherBuilder UseRabbitMq(this EventPublisherBuilder builder, Action<RabbitMqEventPublishOptions> configure)
+        public static EventPublisherBuilder AddRabbitMq(this EventPublisherBuilder builder, Action<RabbitMqEventPublishOptions> configure)
         {
             builder.Services.AddOptions<RabbitMqEventPublishOptions>()
                 .Configure(configure);
@@ -64,7 +65,7 @@ namespace Deveel.Events
         /// <returns>
         /// Returns the <see cref="EventPublisherBuilder"/> to continue the configuration.
         /// </returns>
-        public static EventPublisherBuilder UseRabbitMq(this EventPublisherBuilder builder, string sectionPath)
+        public static EventPublisherBuilder AddRabbitMq(this EventPublisherBuilder builder, string sectionPath)
         {
             builder.Services.AddOptions<RabbitMqEventPublishOptions>()
                 .BindConfiguration(sectionPath);

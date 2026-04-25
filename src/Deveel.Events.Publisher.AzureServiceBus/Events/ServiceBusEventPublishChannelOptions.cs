@@ -12,7 +12,7 @@ namespace Deveel.Events {
     /// The options for a channel that publishes events 
     /// to an Azure Service Bus.
     /// </summary>
-    public class ServiceBusEventPublishChannelOptions {
+    public class ServiceBusEventPublishChannelOptions : EventPublishChannelOptions {
         /// <summary>
         /// Gets or sets the connection string to the Azure Service Bus
         /// instance that is used to publish the events.

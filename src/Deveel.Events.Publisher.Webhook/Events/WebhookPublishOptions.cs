@@ -21,7 +21,7 @@ namespace Deveel.Events
     /// are always taken from the channel-level defaults and ignored when supplied
     /// in a per-call override.
     /// </remarks>
-    public class WebhookPublishOptions
+    public class WebhookPublishOptions : EventPublishChannelOptions
     {
         // ── Delivery settings — nullable so per-call overrides can be partial ──
 

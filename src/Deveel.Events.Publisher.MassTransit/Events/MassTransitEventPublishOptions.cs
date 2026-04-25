@@ -8,7 +8,7 @@ namespace Deveel.Events
     /// <summary>
     /// Options that configure the <see cref="MassTransitEventPublishChannel"/>.
     /// </summary>
-    public class MassTransitEventPublishOptions
+    public class MassTransitEventPublishOptions : EventPublishChannelOptions
     {
         /// <summary>
         /// Gets or sets the destination address to send the event to.

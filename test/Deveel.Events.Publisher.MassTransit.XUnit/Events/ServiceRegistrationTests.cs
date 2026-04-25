@@ -16,7 +16,7 @@ namespace Deveel.Events
         {
             var services = new ServiceCollection();
             services.AddEventPublisher()
-                .UseMassTransit();
+                .AddMassTransit();
             Assert.Contains(services, d =>
                 d.ServiceType == typeof(IEventPublishChannel) &&
                 d.ImplementationType == typeof(MassTransitEventPublishChannel));
@@ -26,7 +26,7 @@ namespace Deveel.Events
         {
             var services = new ServiceCollection();
             services.AddEventPublisher()
-                .UseMassTransit(options =>
+                .AddMassTransit(options =>
                 {
                     options.DestinationAddress = new Uri("rabbitmq://localhost/my-queue");
                     options.MapAttributesToHeaders = false;
@@ -53,7 +53,7 @@ namespace Deveel.Events
             var services = new ServiceCollection();
             services.AddSingleton<IConfiguration>(configuration);
             services.AddEventPublisher()
-                .UseMassTransit("MassTransit");
+                .AddMassTransit("MassTransit");
             Assert.Contains(services, d =>
                 d.ServiceType == typeof(IEventPublishChannel) &&
                 d.ImplementationType == typeof(MassTransitEventPublishChannel));
@@ -68,7 +68,7 @@ namespace Deveel.Events
         {
             var services = new ServiceCollection();
             services.AddEventPublisher()
-                .UseMassTransit();
+                .AddMassTransit();
             var provider = services.BuildServiceProvider();
             var options = provider.GetRequiredService<IOptions<MassTransitEventPublishOptions>>();
             Assert.NotNull(options.Value);

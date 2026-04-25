@@ -14,14 +14,14 @@ namespace Deveel.Events
     /// This contract is a provision for allowing
     /// the creation of events not using reflection.
     /// </remarks>
-    public interface IEventFactory
+    public interface IEventConvertible
     {
         /// <summary>
-        /// Creates a new event.
+        /// Creates a new event from the object.
         /// </summary>
         /// <returns>
         /// Returns a new <see cref="CloudEvent"/>.
         /// </returns>
-        CloudEvent CreateEvent();
+        CloudEvent ToCloudEvent();
     }
 }

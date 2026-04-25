@@ -39,7 +39,7 @@ namespace Deveel.Events
     /// </list>
     /// </remarks>
     public abstract class EventPublishChannelBase<TOptions> : IEventPublishChannel<TOptions>
-        where TOptions : class
+        where TOptions : EventPublishChannelOptions
     {
         private readonly TOptions _defaultOptions;
         private readonly IEnumerable<IValidateOptions<TOptions>> _validators;
@@ -56,7 +56,7 @@ namespace Deveel.Events
         /// An optional collection of <see cref="IValidateOptions{TOptions}"/> services
         /// registered in the DI container.  When the collection is empty or <c>null</c>
         /// validation falls back to
-        /// <see cref="Validator.ValidateObject"/> (DataAnnotations).
+        /// <see cref="Validator.ValidateObject(object, ValidationContext)"/> (DataAnnotations).
         /// </param>
         protected EventPublishChannelBase(
             TOptions defaultOptions,
@@ -120,8 +120,14 @@ namespace Deveel.Events
         }
 
         /// <inheritdoc/>
-        public Task PublishAsync(CloudEvent @event, CancellationToken cancellationToken = default)
-            => PublishAsync(@event, null, cancellationToken);
+        Task IEventPublishChannel.PublishAsync(CloudEvent @event, EventPublishChannelOptions? options = null,
+            CancellationToken cancellationToken = default)
+        {
+            if (options != null && options is TOptions)
+                throw new ArgumentException($"Per-call options must be of type {typeof(TOptions).Name} or null.", nameof(options));
+            
+            return PublishAsync(@event, options as TOptions, cancellationToken);
+        }
 
         /// <summary>
         /// Merges <paramref name="options"/> with the channel-level defaults, validates the
@@ -141,7 +147,7 @@ namespace Deveel.Events
         /// </exception>
         public async Task PublishAsync(
             CloudEvent @event,
-            TOptions? options,
+            TOptions? options = null,
             CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(@event);

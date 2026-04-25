@@ -303,7 +303,7 @@ namespace Deveel.Events
             });
 
             var channel = BuildChannel(handler, o => o.MessageFormat = EventMessageFormat.Json);
-            await channel.PublishAsync(MakeEvent(), TestContext.Current.CancellationToken);
+            await channel.PublishAsync(MakeEvent(), null, TestContext.Current.CancellationToken);
             await channel.PublishAsync(MakeEvent(), new WebhookPublishOptions
             {
                 MessageFormat = EventMessageFormat.Xml
@@ -402,7 +402,7 @@ namespace Deveel.Events
             });
 
             await BuildChannel(handler, o => o.MessageFormat = EventMessageFormat.Json)
-                  .PublishAsync(MakeEvent("invoice.created"), TestContext.Current.CancellationToken);
+                  .PublishAsync(MakeEvent("invoice.created"), null, TestContext.Current.CancellationToken);
 
             Assert.NotNull(body);
             var doc = JsonDocument.Parse(body!);
@@ -416,7 +416,7 @@ namespace Deveel.Events
             var handler = new FakeHandler(req => { captured = req; return OK(); });
 
             await BuildChannel(handler, o => o.MessageFormat = EventMessageFormat.Xml)
-                  .PublishAsync(MakeEvent(),  TestContext.Current.CancellationToken);
+                  .PublishAsync(MakeEvent(),null, TestContext.Current.CancellationToken);
 
             Assert.Equal("application/xml",
                 captured!.Content!.Headers.ContentType!.MediaType);
@@ -433,7 +433,7 @@ namespace Deveel.Events
             });
 
             await BuildChannel(handler, o => o.MessageFormat = EventMessageFormat.Xml)
-                  .PublishAsync(MakeEvent("order.shipped"), TestContext.Current.CancellationToken);
+                  .PublishAsync(MakeEvent("order.shipped"), null, TestContext.Current.CancellationToken);
 
             Assert.NotNull(bytes);
             var xml = XDocument.Load(new MemoryStream(bytes!));
@@ -512,7 +512,7 @@ namespace Deveel.Events
             var handler = new FakeHandler(req => { captured = req; return OK(); });
 
             var channel = BuildChannel(handler, o => o.MessageFormat = EventMessageFormat.Json);
-            await channel.PublishBatchAsync(new[] { MakeEvent("event.a"), MakeEvent("event.b") }, TestContext.Current.CancellationToken);
+            await channel.PublishBatchAsync(new[] { MakeEvent("event.a"), MakeEvent("event.b") }, null, TestContext.Current.CancellationToken);
 
             // Batch should use BatchContentType
             Assert.NotNull(captured!.Content!.Headers.ContentType!.MediaType);
@@ -556,7 +556,7 @@ namespace Deveel.Events
             var handler = new FakeHandler(req => { captured = req; return OK(); });
 
             await BuildChannel(handler, o => o.MessageFormat = EventMessageFormat.CloudEventsJson)
-                  .PublishAsync(MakeEvent(), TestContext.Current.CancellationToken);
+                  .PublishAsync(MakeEvent(), null, TestContext.Current.CancellationToken);
 
             Assert.StartsWith("application/cloudevents+json",
                 captured!.Content!.Headers.ContentType!.MediaType);
@@ -569,7 +569,7 @@ namespace Deveel.Events
             var handler = new FakeHandler(req => { captured = req; return OK(); });
 
             await BuildChannel(handler, o => o.MessageFormat = EventMessageFormat.CloudEventsXml)
-                  .PublishAsync(MakeEvent(),  TestContext.Current.CancellationToken);
+                  .PublishAsync(MakeEvent(),null, TestContext.Current.CancellationToken);
 
             Assert.StartsWith("application/cloudevents+xml",
                 captured!.Content!.Headers.ContentType!.MediaType);
@@ -642,7 +642,7 @@ namespace Deveel.Events
             });
 
             var sp = services.BuildServiceProvider();
-            var batch = sp.GetService<IBatchEventPublishChannel<WebhookPublishOptions>>();
+            var batch = sp.GetService<IBatchEventPublishChannel>();
             Assert.NotNull(batch);
             Assert.IsType<WebhookEventPublishChannel>(batch);
         }

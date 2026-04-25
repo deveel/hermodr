@@ -16,12 +16,16 @@ namespace Deveel.Events {
         /// <param name="event">
         /// The event to be published.
         /// </param>
+        /// <param name="options">
+        /// The options to use for this publish operation, which can override
+        /// the channel-level defaults.
+        /// </param>
         /// <param name="cancellationToken">
         /// A token to cancel the operation.
         /// </param>
         /// <returns>
         /// Returns a task that represents the asynchronous operation.
         /// </returns>
-		Task PublishAsync(CloudEvent @event, CancellationToken cancellationToken = default);
+		Task PublishAsync(CloudEvent @event, EventPublishChannelOptions? options = null, CancellationToken cancellationToken = default);
 	}
 }
