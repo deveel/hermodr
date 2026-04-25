@@ -188,8 +188,6 @@ namespace Deveel.Events {
 				DateTime _ => CloudEventAttributeType.Timestamp,
                 _ => CloudEventAttributeType.String
 			};
-
-            throw new NotSupportedException($"Values of type {value.GetType()} are not supported");
         }
 
         /// <summary>
@@ -232,12 +230,12 @@ namespace Deveel.Events {
         /// </exception>
         public async Task PublishEventAsync(CloudEvent @event, CancellationToken cancellationToken = default) {
 			var eventToPublish = @event;
-			@event = SetEventId(@event);
-			@event = SetTimeStamp(@event);
-			@event = SetSource(@event);
-			@event = SetAttributes(@event);
+			eventToPublish = SetEventId(eventToPublish);
+			eventToPublish = SetTimeStamp(eventToPublish);
+			eventToPublish = SetSource(eventToPublish);
+			eventToPublish = SetAttributes(eventToPublish);
 
-			ValidateCloudEvent(@event);
+			ValidateCloudEvent(eventToPublish);
 
 			foreach (var channel in _channels) {
 				_logger.TraceEventPublishing(@event.Type!, channel.GetType());
