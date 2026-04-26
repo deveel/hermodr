@@ -26,6 +26,7 @@
   * [AMQP Annotations](publishers/rabbitmq.md#amqp-annotations)
 * [MassTransit](publishers/masstransit.md)
 * [Webhook](publishers/webhook.md)
+* [Typed Channels](publishers/typed-channels.md)
 
 ## Event Schema
 

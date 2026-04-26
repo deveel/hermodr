@@ -19,19 +19,32 @@ You can register more than one channel at a time.  The publisher will fan every 
 ```csharp
 builder.Services
     .AddEventPublisher(options => options.Source = new Uri("https://myapp.example.com"))
-    .AddServiceBusChannel(options =>
+    .AddServiceBus(options =>
     {
         options.ConnectionString = "...";
         options.QueueName = "events";
     })
-    .UseWebhook(options =>
+    .AddWebhooks(options =>
     {
         options.EndpointUrl  = "https://partner.example.com/events";
         options.SigningSecret = "s3cr3t";
     });
 ```
 
+## Typed channels
+
+Every built-in channel supports a **typed** registration variant (`AddRabbitMq<TEvent>()`, `AddServiceBus<TEvent>()`, `AddMassTransit<TEvent>()`, `AddWebhooks<TEvent>()`) that routes **only** events of the specified data class to that channel.  Typed channels also support a two-level options hierarchy — a base set of defaults merged with per-event-type overrides — so you can share common settings and specialise only what differs.
+
+```csharp
+builder.Services
+    .AddEventPublisher()
+    .AddRabbitMq(opts => { opts.ConnectionString = "amqp://..."; opts.ExchangeName = "events"; })
+    .AddRabbitMq<OrderPlacedData>(opts => { opts.ExchangeName = "orders"; opts.QueueName = "order-placed"; });
+```
+
+See [Typed Channels](typed-channels.md) for the full guide.
+
 ## Implementing a custom channel
 
-See [Publish Channels](../concepts/publish-channels.md#implementing-a-custom-channel) for instructions on creating and registering your own `IEventPublishChannel`.
+See [Publish Channels](../concepts/publish-channels.md#implementing-a-custom-channel) for instructions on creating and registering your own `IEventPublishChannel` or `IEventPublishChannel<TEvent>`.
 

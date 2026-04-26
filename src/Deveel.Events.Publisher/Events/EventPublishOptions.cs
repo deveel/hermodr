@@ -25,6 +25,6 @@ namespace Deveel.Events;
 ///   </item>
 /// </list>
 /// </remarks>
-public abstract class EventPublishChannelOptions
+public abstract class EventPublishOptions
 {
 }

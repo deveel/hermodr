@@ -20,7 +20,7 @@ namespace Deveel.Events
     /// <para>
     /// Per-call delivery overrides (e.g. routing key, destination address, signing secret) are
     /// <em>not</em> a responsibility of this interface.  They are passed as strongly-typed
-    /// <see cref="EventPublishChannelOptions"/> subclass instances to the
+    /// <see cref="EventPublishOptions"/> subclass instances to the
     /// <see cref="IEventPublishChannel.PublishAsync"/> method or to the strongly-typed
     /// <c>PublishAsync</c> overload exposed by <see cref="EventPublishChannelBase{TOptions}"/>
     /// on the concrete channel.

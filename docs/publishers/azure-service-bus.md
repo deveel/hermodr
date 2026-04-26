@@ -17,7 +17,7 @@ using Deveel.Events;
 
 builder.Services
     .AddEventPublisher()
-    .AddServiceBusChannel(options =>
+    .AddServiceBus(options =>
     {
         options.ConnectionString = "<your-connection-string>";
         options.QueueName        = "events";
@@ -29,7 +29,7 @@ builder.Services
 ```csharp
 builder.Services
     .AddEventPublisher()
-    .AddServiceBusChannel("Events:ServiceBus");
+    .AddServiceBus("Events:ServiceBus");
 ```
 
 ```json
@@ -46,7 +46,7 @@ builder.Services
 
 ## Options reference
 
-`ServiceBusEventPublishChannelOptions`
+`ServiceBusPublishOptions`
 
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
@@ -54,16 +54,64 @@ builder.Services
 | `QueueName` | `string` | ✅ | Name of the queue or topic to publish to. In a per-call override an empty/whitespace value falls back to the channel default. |
 | `ClientOptions` | `ServiceBusClientOptions` | | Advanced client settings (see Azure SDK docs). `null` in a per-call override falls back to the channel default. |
 
+## Typed channel
+
+Use `AddServiceBus<TEvent>()` to register a channel that receives **only** events whose data class is `TEvent`.  At construction time the typed channel (`ServiceBusEventPublishChannel<TEvent>`) merges the general `ServiceBusPublishOptions` with the type-specific `ServiceBusPublishOptions<TEvent>`: non-empty typed values win; empty or `null` values fall back to the base defaults.
+
+> **Note:** `ServiceBusPublishOptions<TEvent>` re-declares `ConnectionString` and `QueueName` as nullable (`string?`) so that leaving them `null` is the unambiguous signal to inherit from the base options.  The required, non-nullable constraint from the base class is enforced only after merging.
+
+```csharp
+builder.Services
+    .AddEventPublisher()
+    // General channel — shared connection & default queue
+    .AddServiceBus(opts =>
+    {
+        opts.ConnectionString = "<connection-string>";
+        opts.QueueName        = "events";
+    })
+    // OrderPlaced events go to a dedicated queue
+    .AddServiceBus<OrderPlaced>(opts =>
+    {
+        opts.QueueName = "order-placed";
+        // ConnectionString inherited from base options
+    });
+```
+
+From configuration:
+
+```csharp
+builder.Services
+    .AddEventPublisher()
+    .AddServiceBus("Events:ServiceBus")
+    .AddServiceBus<OrderPlaced>("Events:ServiceBus:Orders");
+```
+
+```json
+{
+  "Events": {
+    "ServiceBus": {
+      "ConnectionString": "<connection-string>",
+      "QueueName": "events",
+      "Orders": {
+        "QueueName": "order-placed"
+      }
+    }
+  }
+}
+```
+
+See [Typed Channels](typed-channels.md) for the full merge semantics and further examples.
+
 ## How it works
 
 1. The channel resolves a `ServiceBusClient` via `IServiceBusClientFactory`.
-2. Each `CloudEvent` is serialised to JSON and wrapped in a `ServiceBusMessage`.
+2. Each `CloudEvent` is serialized to JSON and wrapped in a `ServiceBusMessage`.
 3. CloudEvent attributes (`id`, `type`, `source`, `time`, `datacontenttype`) are mapped to message application properties so consumers can filter without parsing the body.
 4. The message is sent using a `ServiceBusSender` for the configured queue name.
 
 ## Per-delivery options
 
-Pass a `ServiceBusEventPublishChannelOptions` instance as the second argument to `PublishAsync` to override individual properties for a single publish call.  Any property you leave empty or `null` in the per-call override falls back to the channel default.
+Pass a `ServiceBusPublishOptions` instance as the second argument to `PublishAsync` to override individual properties for a single publish call.  Any property you leave empty or `null` in the per-call override falls back to the channel default.
 
 ```csharp
 // Resolve the concrete channel directly from DI.
@@ -71,7 +119,7 @@ var channel = serviceProvider.GetRequiredService<ServiceBusEventPublishChannel>(
 
 // Send this particular event to a different queue,
 // while inheriting ConnectionString and ClientOptions from the channel defaults.
-await channel.PublishAsync(@event, new ServiceBusEventPublishChannelOptions
+await channel.PublishAsync(@event, new ServiceBusPublishOptions
 {
     QueueName = "priority-events",
 });
@@ -101,7 +149,7 @@ Then register it (it will replace the built-in factory):
 ```csharp
 builder.Services
     .AddEventPublisher()
-    .AddServiceBusChannel(options => options.QueueName = "events")
+    .AddServiceBus(options => options.QueueName = "events")
     .Services
         .AddSingleton<IServiceBusClientFactory, ManagedIdentityServiceBusClientFactory>();
 ```
@@ -109,5 +157,6 @@ builder.Services
 ## Related pages
 
 - [Publisher Channels Overview](README.md)
+- [Typed Channels](typed-channels.md)
 - [Event Publisher](../concepts/event-publisher.md)
 

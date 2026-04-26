@@ -35,7 +35,7 @@ namespace Deveel.Events
                 d.ServiceType == typeof(IEventPublishChannel) &&
                 d.ImplementationType == typeof(MassTransitEventPublishChannel));
             var provider = services.BuildServiceProvider();
-            var options = provider.GetRequiredService<IOptions<MassTransitEventPublishOptions>>();
+            var options = provider.GetRequiredService<IOptions<MassTransitPublishOptions>>();
             Assert.NotNull(options.Value);
             Assert.Equal(new Uri("rabbitmq://localhost/my-queue"), options.Value.DestinationAddress);
             Assert.False(options.Value.MapAttributesToHeaders);
@@ -58,7 +58,7 @@ namespace Deveel.Events
                 d.ServiceType == typeof(IEventPublishChannel) &&
                 d.ImplementationType == typeof(MassTransitEventPublishChannel));
             var provider = services.BuildServiceProvider();
-            var options = provider.GetRequiredService<IOptions<MassTransitEventPublishOptions>>();
+            var options = provider.GetRequiredService<IOptions<MassTransitPublishOptions>>();
             Assert.NotNull(options.Value);
             Assert.Equal(new Uri("rabbitmq://localhost/my-queue"), options.Value.DestinationAddress);
             Assert.False(options.Value.MapAttributesToHeaders);
@@ -70,7 +70,7 @@ namespace Deveel.Events
             services.AddEventPublisher()
                 .AddMassTransit();
             var provider = services.BuildServiceProvider();
-            var options = provider.GetRequiredService<IOptions<MassTransitEventPublishOptions>>();
+            var options = provider.GetRequiredService<IOptions<MassTransitPublishOptions>>();
             Assert.NotNull(options.Value);
             Assert.Null(options.Value.DestinationAddress);
             // Nullable: null means "use the effective default (true)" during merge.

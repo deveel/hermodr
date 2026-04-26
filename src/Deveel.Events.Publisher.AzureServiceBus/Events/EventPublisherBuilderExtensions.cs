@@ -10,40 +10,44 @@ using Microsoft.Extensions.Options;
 namespace Deveel.Events {
     /// <summary>
     /// Extensions for the <see cref="EventPublisherBuilder"/> to add a channel
-	/// publishing events to an Azure Service Bus.
+    /// publishing events to an Azure Service Bus.
     /// </summary>
     public static class EventPublisherBuilderExtensions {
-        private static EventPublisherBuilder AddServiceBusChannel(this EventPublisherBuilder builder) {
-            // Register the concrete channel once; expose it under its own type so that
-            // callers can resolve it directly and supply per-call option overrides, as
-            // well as under IEventPublishChannel so EventPublisher can discover it.
-            builder.Services.AddSingleton<ServiceBusEventPublishChannel>();
-			builder.Services.AddSingleton<IEventPublishChannel>(sp =>
-                sp.GetRequiredService<ServiceBusEventPublishChannel>());
-			builder.Services.TryAddSingleton<IServiceBusClientFactory, ServiceBusClientFactory>();
-			builder.Services.TryAddSingleton<ServiceBusMessageFactory>();
+        private static EventPublisherBuilder AddServiceBusInfrastructure(this EventPublisherBuilder builder) {
+            builder.Services.TryAddSingleton<IServiceBusClientFactory, ServiceBusClientFactory>();
+            builder.Services.TryAddSingleton<ServiceBusMessageFactory>();
+            return builder;
+        }
+
+        private static EventPublisherBuilder AddServiceBus(this EventPublisherBuilder builder) {
+            builder.AddServiceBusInfrastructure();
+            // Register the concrete channel once under its own type so callers can resolve it
+            // directly and supply per-call option overrides.
+            builder.Services.TryAddSingleton<ServiceBusEventPublishChannel>();
+            // Expose it as IEventPublishChannel (type-based so ImplementationType is preserved).
+			builder.Services.AddSingleton<IEventPublishChannel, ServiceBusEventPublishChannel>();
 			return builder;
 		}
 
         /// <summary>
         /// Adds a channel to the event publisher that publishes events
-		/// to an Azure Service Bus.
+        /// to an Azure Service Bus, binding options from the given configuration section.
         /// </summary>
         /// <param name="builder">
-		/// The instance of the <see cref="EventPublisherBuilder"/> that is
-		/// used to configure the publisher.
-		/// </param>
+        /// The instance of the <see cref="EventPublisherBuilder"/> that is
+        /// used to configure the publisher.
+        /// </param>
         /// <param name="sectionPath">
-		/// The path to the configuration section that contains the options
-		/// to configure the channel.
-		/// </param>
+        /// The path to the configuration section that contains the options
+        /// to configure the channel.
+        /// </param>
         /// <returns>
-		/// Returns the instance of the <see cref="EventPublisherBuilder"/> to
-		/// continue the configuration of the publisher.
-		/// </returns>
-        public static EventPublisherBuilder AddServiceBusChannel(this EventPublisherBuilder builder, string sectionPath) {
-			builder.AddServiceBusChannel();
-			builder.Services.AddOptions<ServiceBusEventPublishChannelOptions>()
+        /// Returns the instance of the <see cref="EventPublisherBuilder"/> to
+        /// continue the configuration of the publisher.
+        /// </returns>
+        public static EventPublisherBuilder AddServiceBus(this EventPublisherBuilder builder, string sectionPath) {
+			builder.AddServiceBus();
+			builder.Services.AddOptions<ServiceBusPublishOptions>()
 				.BindConfiguration(sectionPath)
 				.PostConfigure<IOptions<EventPublisherOptions>>(ConfigureIdentifier);
 
@@ -52,31 +56,106 @@ namespace Deveel.Events {
 
         /// <summary>
         /// Adds a channel to the event publisher that publishes events
-        /// to an Azure Service Bus.
+        /// to an Azure Service Bus, configured with the given action.
         /// </summary>
         /// <param name="builder">
         /// The instance of the <see cref="EventPublisherBuilder"/> that is
         /// used to configure the publisher.
         /// </param>
-		/// <param name="configure">
-		/// The action that configures the options for the channel.
-		/// </param>
+        /// <param name="configure">
+        /// The action that configures the options for the channel.
+        /// </param>
         /// <returns>
         /// Returns the instance of the <see cref="EventPublisherBuilder"/> to
         /// continue the configuration of the publisher.
         /// </returns>
-        public static EventPublisherBuilder AddServiceBusChannel(this EventPublisherBuilder builder, Action<ServiceBusEventPublishChannelOptions> configure) {
-			builder.AddServiceBusChannel();
-			builder.Services.AddOptions<ServiceBusEventPublishChannelOptions>()
+        public static EventPublisherBuilder AddServiceBus(this EventPublisherBuilder builder, Action<ServiceBusPublishOptions> configure) {
+			builder.AddServiceBus();
+			builder.Services.AddOptions<ServiceBusPublishOptions>()
 				.Configure(configure)
 				.PostConfigure<IOptions<EventPublisherOptions>>(ConfigureIdentifier);
 
 			return builder;
 		}
 
-		private static void ConfigureIdentifier(ServiceBusEventPublishChannelOptions channelOptions, IOptions<EventPublisherOptions> publisherOptions) { 
+        /// <summary>
+        /// Adds a typed Azure Service Bus channel to the event publisher, so that only
+        /// events whose data class is <typeparamref name="TEvent"/> are routed to this channel.
+        /// </summary>
+        /// <typeparam name="TEvent">
+        /// The event data class this channel is keyed against.
+        /// </typeparam>
+        /// <param name="builder">
+        /// The instance of the <see cref="EventPublisherBuilder"/> that is
+        /// used to configure the publisher.
+        /// </param>
+        /// <param name="sectionPath">
+        /// The path to the configuration section that contains the type-specific
+        /// <see cref="ServiceBusPublishOptions{TEvent}"/> to bind.
+        /// </param>
+        /// <returns>
+        /// Returns the instance of the <see cref="EventPublisherBuilder"/> to
+        /// continue the configuration of the publisher.
+        /// </returns>
+        public static EventPublisherBuilder AddServiceBus<TEvent>(
+            this EventPublisherBuilder builder,
+            string sectionPath)
+            where TEvent : class
+        {
+            builder.AddServiceBusInfrastructure();
+            builder.Services.AddOptions<ServiceBusPublishOptions<TEvent>>()
+                .BindConfiguration(sectionPath)
+                .PostConfigure<IOptions<EventPublisherOptions>>(ConfigureIdentifierTyped<TEvent>);
+
+            return builder.AddChannel<ServiceBusEventPublishChannel<TEvent>, TEvent>();
+        }
+
+        /// <summary>
+        /// Adds a typed Azure Service Bus channel to the event publisher, so that only
+        /// events whose data class is <typeparamref name="TEvent"/> are routed to this channel.
+        /// </summary>
+        /// <typeparam name="TEvent">
+        /// The event data class this channel is keyed against.
+        /// </typeparam>
+        /// <param name="builder">
+        /// The instance of the <see cref="EventPublisherBuilder"/> that is
+        /// used to configure the publisher.
+        /// </param>
+        /// <param name="configure">
+        /// The action that configures the type-specific
+        /// <see cref="ServiceBusPublishOptions{TEvent}"/> for this channel.
+        /// Non-empty / non-<c>null</c> values override the corresponding base channel options.
+        /// </param>
+        /// <returns>
+        /// Returns the instance of the <see cref="EventPublisherBuilder"/> to
+        /// continue the configuration of the publisher.
+        /// </returns>
+        public static EventPublisherBuilder AddServiceBus<TEvent>(
+            this EventPublisherBuilder builder,
+            Action<ServiceBusPublishOptions<TEvent>> configure)
+            where TEvent : class
+        {
+            builder.AddServiceBusInfrastructure();
+            builder.Services.AddOptions<ServiceBusPublishOptions<TEvent>>()
+                .Configure(configure)
+                .PostConfigure<IOptions<EventPublisherOptions>>(ConfigureIdentifierTyped<TEvent>);
+
+            return builder.AddChannel<ServiceBusEventPublishChannel<TEvent>, TEvent>();
+        }
+
+		private static void ConfigureIdentifier(ServiceBusPublishOptions channelOptions, IOptions<EventPublisherOptions> publisherOptions) { 
 			if (String.IsNullOrWhiteSpace(channelOptions.ClientOptions.Identifier))
 				channelOptions.ClientOptions.Identifier = publisherOptions?.Value.Source?.ToString() ?? "";
 		}
+
+        private static void ConfigureIdentifierTyped<TEvent>(ServiceBusPublishOptions<TEvent> channelOptions, IOptions<EventPublisherOptions> publisherOptions)
+            where TEvent : class
+        {
+            // Only set the identifier on the typed options when the caller hasn't set one explicitly,
+            // and only when a non-null ClientOptions override is present (otherwise the base options handle it).
+            if (channelOptions.ClientOptions != null &&
+                string.IsNullOrWhiteSpace(channelOptions.ClientOptions.Identifier))
+                channelOptions.ClientOptions.Identifier = publisherOptions?.Value.Source?.ToString() ?? "";
+        }
 	}
 }

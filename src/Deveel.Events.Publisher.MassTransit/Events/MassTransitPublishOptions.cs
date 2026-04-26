@@ -8,8 +8,24 @@ namespace Deveel.Events
     /// <summary>
     /// Options that configure the <see cref="MassTransitEventPublishChannel"/>.
     /// </summary>
-    public class MassTransitEventPublishOptions : EventPublishChannelOptions
+    public class MassTransitPublishOptions : EventPublishOptions
     {
+        /// <summary>
+        /// Merges <paramref name="baseOptions"/> with <paramref name="typedOptions"/>,
+        /// where every non-<c>null</c> property in <paramref name="typedOptions"/>
+        /// overrides the corresponding property from <paramref name="baseOptions"/>.
+        /// </summary>
+        public static MassTransitPublishOptions Merge(
+            MassTransitPublishOptions baseOptions,
+            MassTransitPublishOptions typedOptions)
+        {
+            return new MassTransitPublishOptions
+            {
+                DestinationAddress     = typedOptions.DestinationAddress     ?? baseOptions.DestinationAddress,
+                MapAttributesToHeaders = typedOptions.MapAttributesToHeaders ?? baseOptions.MapAttributesToHeaders,
+            };
+        }
+
         /// <summary>
         /// Gets or sets the destination address to send the event to.
         /// When <c>null</c> the event is published using <see cref="MassTransit.IPublishEndpoint"/>;

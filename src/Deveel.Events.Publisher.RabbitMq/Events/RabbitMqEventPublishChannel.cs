@@ -17,8 +17,8 @@ namespace Deveel.Events
     /// The implementation of the <see cref="IEventPublishChannel{TOptions}"/> that
     /// is used to publish events to a RabbitMQ exchange.
     /// </summary>
-    public sealed class RabbitMqEventPublishChannel :
-        EventPublishChannelBase<RabbitMqEventPublishOptions>,
+    public class RabbitMqEventPublishChannel :
+        EventPublishChannelBase<RabbitMqPublishOptions>,
         IAsyncDisposable, IDisposable
     {
         private readonly IRabbitMqMessageFactory _messageFactory;
@@ -47,7 +47,7 @@ namespace Deveel.Events
         /// into a <see cref="RabbitMqMessage"/> ready for publishing.
         /// </param>
         /// <param name="validators">
-        /// Optional collection of <see cref="IValidateOptions{RabbitMqEventPublishOptions}"/>
+        /// Optional collection of <see cref="IValidateOptions{RabbitMqPublishOptions}"/>
         /// services registered in the DI container. When the collection is empty or <c>null</c>
         /// validation falls back to DataAnnotations.
         /// </param>
@@ -55,10 +55,10 @@ namespace Deveel.Events
         /// An optional logger; when <c>null</c> a <see cref="Microsoft.Extensions.Logging.Abstractions.NullLogger{T}"/> is used.
         /// </param>
         public RabbitMqEventPublishChannel(
-            IOptions<RabbitMqEventPublishOptions> options,
+            IOptions<RabbitMqPublishOptions> options,
             IConnection connection,
             IRabbitMqMessageFactory messageFactory,
-            IEnumerable<IValidateOptions<RabbitMqEventPublishOptions>>? validators = null,
+            IEnumerable<IValidateOptions<RabbitMqPublishOptions>>? validators = null,
             ILogger<RabbitMqEventPublishChannel>? logger = null)
             : base(options.Value, validators)
         {
@@ -80,14 +80,14 @@ namespace Deveel.Events
         /// corresponding property from <paramref name="defaults"/>; a <c>null</c>
         /// value signals "use the channel-level default" for that property.
         /// </remarks>
-        protected override RabbitMqEventPublishOptions MergeOptions(
-            RabbitMqEventPublishOptions defaults,
-            RabbitMqEventPublishOptions? perCallOptions)
+        protected override RabbitMqPublishOptions MergeOptions(
+            RabbitMqPublishOptions defaults,
+            RabbitMqPublishOptions? perCallOptions)
         {
             if (perCallOptions == null)
                 return defaults;
 
-            return new RabbitMqEventPublishOptions
+            return new RabbitMqPublishOptions
             {
                 ConnectionString      = perCallOptions.ConnectionString      ?? defaults.ConnectionString,
                 ExchangeName          = perCallOptions.ExchangeName          ?? defaults.ExchangeName,
@@ -109,7 +109,7 @@ namespace Deveel.Events
         /// This must be called while holding <see cref="_channelLock"/>.
         /// </summary>
         private async Task<IChannel> GetOrCreateChannelAsync(
-            RabbitMqEventPublishOptions options,
+            RabbitMqPublishOptions options,
             CancellationToken cancellationToken)
         {
             if (_channel is { IsOpen: true })
@@ -142,7 +142,7 @@ namespace Deveel.Events
         /// <inheritdoc/>
         protected override async Task PublishCoreAsync(
             CloudEvent @event,
-            RabbitMqEventPublishOptions options,
+            RabbitMqPublishOptions options,
             CancellationToken cancellationToken)
         {
             if (_disposed)
@@ -219,7 +219,7 @@ namespace Deveel.Events
             }
         }
 
-        private string? GetRoutingKey(CloudEvent @event, RabbitMqEventPublishOptions options)
+        private string? GetRoutingKey(CloudEvent @event, RabbitMqPublishOptions options)
         {
             var attr = @event.GetAttribute(AmqpCloudEventAttributes.AmqpRoutingKeyAttribute);
             return attr != null && attr.Type == CloudEventAttributeType.String
@@ -227,7 +227,7 @@ namespace Deveel.Events
                 : options.RoutingKey;
         }
 
-        private string? GetExchangeName(CloudEvent @event, RabbitMqEventPublishOptions options)
+        private string? GetExchangeName(CloudEvent @event, RabbitMqPublishOptions options)
         {
             var attr = @event.GetAttribute(AmqpCloudEventAttributes.AmqpExchangeNameAttribute);
             return attr != null && attr.Type == CloudEventAttributeType.String

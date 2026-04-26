@@ -18,7 +18,7 @@ namespace Deveel.Events
     /// </summary>
     public sealed class RabbitMqMessageFactory : IRabbitMqMessageFactory
     {
-        private readonly RabbitMqEventPublishOptions _options;
+        private readonly RabbitMqPublishOptions _options;
 
         /// <summary>
         /// Constructs the factory with the options to use for creating messages.
@@ -26,7 +26,7 @@ namespace Deveel.Events
         /// <param name="options">
         /// The RabbitMQ channel options to use for creating messages.
         /// </param>
-        public RabbitMqMessageFactory(IOptions<RabbitMqEventPublishOptions> options)
+        public RabbitMqMessageFactory(IOptions<RabbitMqPublishOptions> options)
         {
             _options = options.Value;
         }

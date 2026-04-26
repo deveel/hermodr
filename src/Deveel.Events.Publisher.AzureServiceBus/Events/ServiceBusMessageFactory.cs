@@ -13,28 +13,28 @@ using CloudNative.CloudEvents;
 namespace Deveel.Events {
     /// <summary>
     /// A service that is responsible for creating a <see cref="ServiceBusMessage"/>
-	/// instance from a <see cref="CloudEvent"/>.
+    /// instance from a <see cref="CloudEvent"/>.
     /// </summary>
     public class ServiceBusMessageFactory {
         /// <summary>
         /// Gets the binary data from the given content type and data.
         /// </summary>
         /// <param name="contentType">
-		/// The content type of the data.
-		/// </param>
+        /// The content type of the data.
+        /// </param>
         /// <param name="data">
-		/// The data to be converted to binary.
-		/// </param>
+        /// The data to be converted to binary.
+        /// </param>
         /// <returns>
-		/// Returns an instance of <see cref="BinaryData"/> that represents the
-		/// data in binary format.
-		/// </returns>
+        /// Returns an instance of <see cref="BinaryData"/> that represents the
+        /// data in binary format.
+        /// </returns>
         /// <exception cref="ArgumentException">
-		/// Thrown when the content type is not valid.
-		/// </exception>
+        /// Thrown when the content type is not valid.
+        /// </exception>
         /// <exception cref="NotSupportedException">
-		/// Thrown when the content type of the event data is not supported.
-		/// </exception>
+        /// Thrown when the content type of the event data is not supported.
+        /// </exception>
         protected virtual BinaryData? GetBinaryData(string? contentType, object? data) {
 			if (contentType == null)
 				return null;
@@ -80,18 +80,18 @@ namespace Deveel.Events {
         /// Gets the subject of the event.
         /// </summary>
         /// <param name="event">
-		/// The event to get the subject from.
-		/// </param>
+        /// The event to get the subject from.
+        /// </param>
         /// <returns>
-		/// Returns the subject of the event.
-		/// </returns>
+        /// Returns the subject of the event.
+        /// </returns>
         protected virtual string? GetSubject(CloudEvent @event) => @event.Subject;
 
         // TODO: get the correlation id from the event
         //       from a configured attribute
         /// <summary>
         /// Gets the identifier to be used to correlate the event
-		/// in the stream of messages.
+        /// in the stream of messages.
         /// </summary>
         /// <param name="event">
         /// The event to extract the correlation identifier from.
@@ -107,11 +107,11 @@ namespace Deveel.Events {
         /// Adds the event properties to the set of properties of a message.
         /// </summary>
         /// <param name="properties">
-		/// The set of properties to add the event properties to.
-		/// </param>
+        /// The set of properties to add the event properties to.
+        /// </param>
         /// <param name="event">
-		/// The event to extract the properties from.
-		/// </param>
+        /// The event to extract the properties from.
+        /// </param>
         protected virtual void AddProperties(IDictionary<string, object> properties, CloudEvent @event)
 		{
 			if (@event.DataSchema != null)
@@ -127,16 +127,16 @@ namespace Deveel.Events {
 		}
 
         /// <summary>
-        /// Creates a new instance of <see cref="ServiceBusMessage"/> 
-		/// from the given event.
+        /// Creates a new instance of <see cref="ServiceBusMessage"/>
+        /// from the given event.
         /// </summary>
         /// <param name="event">
-		/// The event to create the message from.
-		/// </param>
+        /// The event to create the message from.
+        /// </param>
         /// <returns>
-		/// Returns a new instance of <see cref="ServiceBusMessage"/>
-		/// that represents the event.
-		/// </returns>
+        /// Returns a new instance of <see cref="ServiceBusMessage"/>
+        /// that represents the event.
+        /// </returns>
         public ServiceBusMessage CreateMessage(CloudEvent @event)
 		{
 			var body = GetBinaryData(@event.DataContentType, @event.Data);

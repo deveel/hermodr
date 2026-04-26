@@ -177,11 +177,12 @@ namespace Deveel.Events
 
         // ── IBatchEventPublishChannel ────────────────
 
-        Task IBatchEventPublishChannel.PublishBatchAsync(IReadOnlyList<CloudEvent> events, EventPublishChannelOptions? options = null,
+        Task IBatchEventPublishChannel.PublishBatchAsync(IReadOnlyList<CloudEvent> events, EventPublishOptions? options = null,
             CancellationToken cancellationToken = default)
         {
             return PublishBatchAsync(events, options as WebhookPublishOptions, cancellationToken);
         }
+
 
         /// <inheritdoc/>
         public Task PublishBatchAsync(

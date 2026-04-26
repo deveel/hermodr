@@ -365,6 +365,27 @@ namespace Deveel.Events {
         }
 
         [Fact]
+        public async Task PublishEvent_BinaryAttribute_IsSetCorrectly()
+        {
+            var publishedEvents = new List<CloudEvent>();
+            var services = new ServiceCollection();
+            services.AddEventPublisher(options =>
+            {
+                options.Attributes["binattr"] = new byte[] { 0x01, 0x02, 0x03 };
+            }).AddTestChannel(e => publishedEvents.Add(e));
+
+            var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
+            await publisher.PublishEventAsync(new CloudEvent
+            {
+                Type = "test.event",
+                Source = new Uri("https://api.example.com"),
+            }, null, TestContext.Current.CancellationToken);
+
+            Assert.Single(publishedEvents);
+            Assert.NotNull(publishedEvents[0]["binattr"]);
+        }
+
+        [Fact]
         public async Task PublishEventFactory_NullFactory_Throws()
         {
             await Assert.ThrowsAsync<ArgumentNullException>(() =>
@@ -408,7 +429,7 @@ namespace Deveel.Events {
 
         private class ThrowingChannel : IEventPublishChannel
         {
-            public Task PublishAsync(CloudEvent @event, EventPublishChannelOptions? options = null, CancellationToken cancellationToken = default)
+            public Task PublishAsync(CloudEvent @event, EventPublishOptions? options = null, CancellationToken cancellationToken = default)
                 => throw new InvalidOperationException("Channel failure simulation");
         }
 

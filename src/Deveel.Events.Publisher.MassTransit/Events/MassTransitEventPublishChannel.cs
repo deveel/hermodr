@@ -18,8 +18,8 @@ namespace Deveel.Events
     /// An implementation of <see cref="IEventPublishChannel{TOptions}"/> that publishes
     /// CloudEvents via MassTransit.
     /// </summary>
-    public sealed class MassTransitEventPublishChannel :
-        EventPublishChannelBase<MassTransitEventPublishOptions>
+    public class MassTransitEventPublishChannel :
+        EventPublishChannelBase<MassTransitPublishOptions>
     {
         private readonly IPublishEndpoint _publishEndpoint;
         private readonly ISendEndpointProvider _sendEndpointProvider;
@@ -35,13 +35,13 @@ namespace Deveel.Events
         /// </param>
         /// <param name="publishEndpoint">
         /// The MassTransit publish endpoint used when no
-        /// <see cref="MassTransitEventPublishOptions.DestinationAddress"/> is set.
+        /// <see cref="MassTransitPublishOptions.DestinationAddress"/> is set.
         /// </param>
         /// <param name="sendEndpointProvider">
         /// The MassTransit send-endpoint provider used when a destination address is configured.
         /// </param>
         /// <param name="validators">
-        /// Optional collection of <see cref="IValidateOptions{MassTransitEventPublishOptions}"/>
+        /// Optional collection of <see cref="IValidateOptions{MassTransitPublishOptions}"/>
         /// services registered in the DI container. When the collection is empty or <c>null</c>
         /// validation falls back to DataAnnotations.
         /// </param>
@@ -49,10 +49,10 @@ namespace Deveel.Events
         /// An optional logger; when <c>null</c> a <see cref="Microsoft.Extensions.Logging.Abstractions.NullLogger{T}"/> is used.
         /// </param>
         public MassTransitEventPublishChannel(
-            IOptions<MassTransitEventPublishOptions> options,
+            IOptions<MassTransitPublishOptions> options,
             IPublishEndpoint publishEndpoint,
             ISendEndpointProvider sendEndpointProvider,
-            IEnumerable<IValidateOptions<MassTransitEventPublishOptions>>? validators = null,
+            IEnumerable<IValidateOptions<MassTransitPublishOptions>>? validators = null,
             ILogger<MassTransitEventPublishChannel>? logger = null)
             : base(options.Value, validators)
         {
@@ -68,14 +68,14 @@ namespace Deveel.Events
         /// corresponding property from <paramref name="defaults"/>; a <c>null</c>
         /// value signals "use the channel-level default" for that property.
         /// </remarks>
-        protected override MassTransitEventPublishOptions MergeOptions(
-            MassTransitEventPublishOptions defaults,
-            MassTransitEventPublishOptions? perCallOptions)
+        protected override MassTransitPublishOptions MergeOptions(
+            MassTransitPublishOptions defaults,
+            MassTransitPublishOptions? perCallOptions)
         {
             if (perCallOptions == null)
                 return defaults;
 
-            return new MassTransitEventPublishOptions
+            return new MassTransitPublishOptions
             {
                 DestinationAddress     = perCallOptions.DestinationAddress  ?? defaults.DestinationAddress,
                 MapAttributesToHeaders = perCallOptions.MapAttributesToHeaders ?? defaults.MapAttributesToHeaders,
@@ -85,7 +85,7 @@ namespace Deveel.Events
         /// <inheritdoc/>
         protected override async Task PublishCoreAsync(
             CloudEvent @event,
-            MassTransitEventPublishOptions options,
+            MassTransitPublishOptions options,
             CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(@event);
@@ -120,7 +120,7 @@ namespace Deveel.Events
             }
         }
 
-        private void MapHeaders(SendContext ctx, CloudEvent @event, MassTransitEventPublishOptions options)
+        private void MapHeaders(SendContext ctx, CloudEvent @event, MassTransitPublishOptions options)
         {
             if (!(options.MapAttributesToHeaders ?? true))
                 return;

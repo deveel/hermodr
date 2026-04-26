@@ -10,19 +10,19 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Deveel {
     /// <summary>
     /// Extensions for the <see cref="IServiceCollection"/> to add the event publisher
-	/// into the service collection of an application.
+    /// into the service collection of an application.
     /// </summary>
     public static class ServiceCollectionExtensions {
         /// <summary>
         /// Adds the event publisher into the service collection of an application.
         /// </summary>
         /// <param name="services">
-		/// The service collection to add the event publisher into.
-		/// </param>
+        /// The service collection to add the event publisher into.
+        /// </param>
         /// <returns>
-		/// Returns an instance of the <see cref="EventPublisherBuilder"/> that can be used
-		/// to configure the event publisher.
-		/// </returns>
+        /// Returns an instance of the <see cref="EventPublisherBuilder"/> that can be used
+        /// to configure the event publisher.
+        /// </returns>
         public static EventPublisherBuilder AddEventPublisher(this IServiceCollection services) {
 			return new EventPublisherBuilder(services);
 		}

@@ -17,8 +17,8 @@ namespace Deveel.Events {
     /// <summary>
     /// A channel that publishes events to an Azure Service Bus queue.
     /// </summary>
-    public sealed class ServiceBusEventPublishChannel :
-        EventPublishChannelBase<ServiceBusEventPublishChannelOptions>,
+    public class ServiceBusEventPublishChannel :
+        EventPublishChannelBase<ServiceBusPublishOptions>,
         IAsyncDisposable, IDisposable {
 		private ServiceBusSender? sender;
 		private ServiceBusClient? client;
@@ -28,32 +28,31 @@ namespace Deveel.Events {
 		private bool disposed;
 
         /// <summary>
-        /// Creates a new instance of the channel,
-		/// using the specified options, client factory 
-		/// and message creator.
+        /// Creates a new instance of the channel, using the specified options,
+        /// client factory and message creator.
         /// </summary>
         /// <param name="options">
-		/// The options to configure the channel.
-		/// </param>
+        /// The options to configure the channel.
+        /// </param>
         /// <param name="clientFactory">
-		/// A factory to create the client to the Azure Service Bus.
-		/// </param>
+        /// A factory to create the client to the Azure Service Bus.
+        /// </param>
         /// <param name="messageCreator">
-		/// The factory to create the message to send to the queue.
-		/// </param>
+        /// The factory to create the message to send to the queue.
+        /// </param>
         /// <param name="validators">
-        /// Optional collection of <see cref="IValidateOptions{ServiceBusEventPublishChannelOptions}"/>
+        /// Optional collection of <see cref="IValidateOptions{ServiceBusPublishOptions}"/>
         /// services registered in the DI container. When the collection is empty or <c>null</c>
         /// validation falls back to DataAnnotations.
         /// </param>
         /// <param name="logger">
-		/// A logger to record the operations of the channel.
-		/// </param>
+        /// A logger to record the operations of the channel.
+        /// </param>
         public ServiceBusEventPublishChannel(
-			IOptions<ServiceBusEventPublishChannelOptions> options,
+			IOptions<ServiceBusPublishOptions> options,
 			IServiceBusClientFactory clientFactory,
 			ServiceBusMessageFactory messageCreator,
-			IEnumerable<IValidateOptions<ServiceBusEventPublishChannelOptions>>? validators = null,
+			IEnumerable<IValidateOptions<ServiceBusPublishOptions>>? validators = null,
 			ILogger<ServiceBusEventPublishChannel>? logger = null)
 			: base(options.Value, validators) {
 
@@ -76,17 +75,17 @@ namespace Deveel.Events {
         /// Performs a property-level merge: non-empty string properties in
         /// <paramref name="perCallOptions"/> override the corresponding values from
         /// <paramref name="defaults"/>; an empty or <c>null</c> string signals
-        /// "use the channel-level default".  <see cref="ServiceBusEventPublishChannelOptions.ClientOptions"/>
+        /// "use the channel-level default".  <see cref="ServiceBusPublishOptions.ClientOptions"/>
         /// is taken from <paramref name="perCallOptions"/> when non-<c>null</c>.
         /// </remarks>
-        protected override ServiceBusEventPublishChannelOptions MergeOptions(
-            ServiceBusEventPublishChannelOptions defaults,
-            ServiceBusEventPublishChannelOptions? perCallOptions)
+        protected override ServiceBusPublishOptions MergeOptions(
+            ServiceBusPublishOptions defaults,
+            ServiceBusPublishOptions? perCallOptions)
         {
             if (perCallOptions == null)
                 return defaults;
 
-            return new ServiceBusEventPublishChannelOptions
+            return new ServiceBusPublishOptions
             {
                 ConnectionString = !string.IsNullOrWhiteSpace(perCallOptions.ConnectionString)
                     ? perCallOptions.ConnectionString
@@ -101,7 +100,7 @@ namespace Deveel.Events {
         /// <inheritdoc />
         protected override async Task PublishCoreAsync(
 			CloudEvent @event,
-			ServiceBusEventPublishChannelOptions options,
+			ServiceBusPublishOptions options,
 			CancellationToken cancellationToken) {
 			ThrowIfDisposed();
 			cancellationToken.ThrowIfCancellationRequested();

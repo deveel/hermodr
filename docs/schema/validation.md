@@ -24,21 +24,16 @@ public interface IEventSchemaValidator
 
 ## Registration
 
-Register the schema services alongside the publisher:
+`IEventSchemaFactory` and `EventSchemaFactory` are not automatically wired by the publisher builder.  Register them explicitly:
 
 ```csharp
 using Deveel.Events;
+using Microsoft.Extensions.DependencyInjection;
 
-builder.Services
-    .AddEventPublisher()
-    // Schema services are automatically registered when
-    // Deveel.Events.Schema is referenced and the publisher builder is used.
-    // If you need them independently, call AddEventSchema():
-    .Services
-        .AddEventSchema();  // registers IEventSchemaFactory and IEventSchemaValidator
+builder.Services.AddSingleton<IEventSchemaFactory, EventSchemaFactory>();
 ```
 
-> **Note:** Exact registration method naming may vary with the package version.  Consult the XML docs on `IServiceCollection` extensions for the current API.
+> **Note:** `IEventSchemaValidator` defines the validation contract but its default implementation must be supplied by the application, or you can call the static `EventSchema.FromDataType<T>()` helpers and perform validation inline without a direct DI dependency.
 
 ## Validating before publishing
 

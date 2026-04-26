@@ -9,10 +9,13 @@ using System.Reflection;
 using System.Text.Json.Serialization;
 
 namespace Deveel.Events {
-	// Kept as an internal shim so EventSchema.FromDataType(Type) continues to compile
-	// without changes. All logic now lives in EventSchemaFactory.
-	static class EventSchemaCreator {
-		public static EventSchema FromEventData(Type dataType)
-			=> EventSchemaFactory.Default.CreateFromType(dataType);
-	}
+    /// <summary>
+    /// Internal shim that delegates to <see cref="EventSchemaFactory.Default"/> so that
+    /// the static convenience method <see cref="EventSchema.FromDataType(Type)"/> continues
+    /// to compile without changes while the actual logic lives in <see cref="EventSchemaFactory"/>.
+    /// </summary>
+    static class EventSchemaCreator {
+        public static EventSchema FromEventData(Type dataType)
+            => EventSchemaFactory.Default.CreateFromType(dataType);
+    }
 }

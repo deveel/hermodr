@@ -24,7 +24,7 @@ namespace Deveel.Events
         /// <param name="cancellationToken">A token to cancel the operation.</param>
         Task PublishBatchAsync(
             IReadOnlyList<CloudEvent> events,
-            EventPublishChannelOptions? options = null,
+            EventPublishOptions? options = null,
             CancellationToken cancellationToken = default);
     }
 }

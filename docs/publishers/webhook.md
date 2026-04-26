@@ -81,6 +81,57 @@ Channel-structural settings (always taken from the channel-level defaults; ignor
 | `RetryableStatusCodes` | `ISet<int>` | 429, 500, 502, 503, 504 | HTTP status codes that trigger a retry |
 | `HttpClientName` | `string?` | `null` | Named `HttpClient` resolved from `IHttpClientFactory`; defaults to the internal channel name |
 
+## Typed channel
+
+Use `AddWebhooks<TEvent>()` to register a channel that receives **only** events whose data class is `TEvent`.  At construction time the typed channel (`WebhookEventPublishChannel<TEvent>`) merges the general `WebhookPublishOptions` with the type-specific `WebhookPublishOptions<TEvent>`: non-`null` typed values win; `null` values fall back to the base defaults.  `AdditionalHeaders` are merged at the dictionary level — typed entries win on key collision.  Channel-structural properties (`SignatureHeaderName`, `DeliveryIdHeaderName`, `RetryableStatusCodes`, …) are **always** taken from the base options and cannot be overridden per event type.
+
+```csharp
+builder.Services
+    .AddEventPublisher()
+    // General catch-all webhook
+    .AddWebhooks(opts =>
+    {
+        opts.EndpointUrl       = "https://partner.example.com/events";
+        opts.SigningSecret      = "shared-secret";
+        opts.MaxRetryCount      = 3;
+        opts.SignatureAlgorithm = WebhookSignatureAlgorithm.HmacSha256;
+    })
+    // OrderPlaced delivers to a dedicated endpoint with its own secret
+    .AddWebhooks<OrderPlaced>(opts =>
+    {
+        opts.EndpointUrl  = "https://orders.example.com/hooks";
+        opts.SigningSecret = "order-secret";
+        // MaxRetryCount and SignatureAlgorithm inherited from base
+    });
+```
+
+From configuration:
+
+```csharp
+builder.Services
+    .AddEventPublisher()
+    .AddWebhooks("Events:Webhook")
+    .AddWebhooks<OrderPlacedData>("Events:Webhook:Orders");
+```
+
+```json
+{
+  "Events": {
+    "Webhook": {
+      "EndpointUrl": "https://partner.example.com/events",
+      "SigningSecret": "shared-secret",
+      "MaxRetryCount": 3,
+      "Orders": {
+        "EndpointUrl": "https://orders.example.com/hooks",
+        "SigningSecret": "order-secret"
+      }
+    }
+  }
+}
+```
+
+See [Typed Channels](typed-channels.md) for the full merge semantics and further examples.
+
 ## Signature algorithms
 
 | Value | Algorithm | Note |
@@ -123,7 +174,7 @@ await webhookChannel.PublishAsync(@event, new WebhookPublishOptions
 });
 ```
 
-You can also supply overrides through the non-generic `IEventPublishChannel` interface — casting the options to `EventPublishChannelOptions` works because `WebhookPublishOptions` inherits from it:
+You can also supply overrides through the non-generic `IEventPublishChannel` interface — casting the options to `EventPublishOptions` works because `WebhookPublishOptions` inherits from it:
 
 ```csharp
 IEventPublishChannel channel = serviceProvider.GetRequiredService<WebhookEventPublishChannel>();
@@ -145,38 +196,69 @@ await batchChannel.PublishBatchAsync(events, new WebhookPublishOptions
 
 ## Custom serialiser
 
-Register a custom `IEventSerializer` to support additional content types:
-
-```csharp
-builder.Services
-    .AddEventPublisher()
-    .AddWebhooks(options => options.MessageFormat = "application/x-protobuf")
-    .UseWebhookMessageSerializer<ProtobufEventSerializer>();
-```
+Register a custom `IEventSerializer` by adding it to the service collection as a singleton enumerable entry for `IEventSerializer`.  The channel picks it up by matching its `Format` key.
 
 ```csharp
 public class ProtobufEventSerializer : IEventSerializer
 {
-    public string Format => "application/x-protobuf";
+    public string Format => "protobuf";
+    public string ContentType => "application/x-protobuf";
+    public string BatchContentType => "application/x-protobuf";
 
-    public async Task<byte[]> SerializeAsync(CloudEvent @event, CancellationToken cancellationToken = default)
+    public byte[] Serialize(CloudEvent @event)
     {
         // ... protobuf serialisation
+        throw new NotImplementedException();
+    }
+
+    public byte[] SerializeBatch(IReadOnlyList<CloudEvent> events)
+    {
+        // ... batch serialisation
+        throw new NotImplementedException();
     }
 }
 ```
 
+```csharp
+builder.Services
+    .AddEventPublisher()
+    .AddWebhooks(options => options.MessageFormat = "protobuf");
+
+// Register the custom serializer so the channel discovers it via DI
+builder.Services.AddSingleton<IEventSerializer, ProtobufEventSerializer>();
+```
+
 ## Custom signature provider
+
+Implement `IWebhookSignatureProvider` and register it as a singleton:
+
+```csharp
+public class Ed25519SignatureProvider : IWebhookSignatureProvider
+{
+    public static readonly Ed25519SignatureProvider Default = new();
+    public WebhookSignatureAlgorithm Algorithm => (WebhookSignatureAlgorithm)100; // custom value
+    public string AlgorithmName => "ed25519";
+
+    public string ComputeSignature(byte[] payload, long timestamp, string secret)
+    {
+        // ... Ed25519 signing
+        throw new NotImplementedException();
+    }
+}
+```
 
 ```csharp
 builder.Services
     .AddEventPublisher()
-    .AddWebhooks(options => { /* ... */ })
-    .UseWebhookSignatureProvider<Ed25519SignatureProvider>();
+    .AddWebhooks(options => { /* ... */ });
+
+// Register the custom provider so the channel discovers it via DI
+builder.Services.AddSingleton<IWebhookSignatureProvider, Ed25519SignatureProvider>();
 ```
 
 ## Related pages
 
 - [Publisher Channels Overview](README.md)
+- [Typed Channels](typed-channels.md)
 - [Event Publisher](../concepts/event-publisher.md)
 

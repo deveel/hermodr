@@ -49,7 +49,7 @@ builder.Services
 
 ## Options reference
 
-`RabbitMqEventPublishOptions`
+`RabbitMqPublishOptions`
 
 | Property | Type | Effective default | Description |
 |----------|------|-------------------|-------------|
@@ -70,7 +70,7 @@ builder.Services
 
 ## Per-delivery options
 
-Pass a `RabbitMqEventPublishOptions` instance as the second argument to `PublishAsync` to override individual properties for a single publish call.  Only the properties you set (non-`null`) replace the channel default — all others fall back to the values configured at registration time.
+Pass a `RabbitMqPublishOptions` instance as the second argument to `PublishAsync` to override individual properties for a single publish call.  Only the properties you set (non-`null`) replace the channel default — all others fall back to the values configured at registration time.
 
 ```csharp
 // Resolve the concrete channel directly from DI.
@@ -79,12 +79,64 @@ var channel = serviceProvider.GetRequiredService<RabbitMqEventPublishChannel>();
 // Override only the routing key and make this one message non-persistent.
 // Everything else (ConnectionString, ExchangeName, PublisherConfirms, …)
 // is inherited from the channel-level defaults.
-await channel.PublishAsync(@event, new RabbitMqEventPublishOptions
+await channel.PublishAsync(@event, new RabbitMqPublishOptions
 {
     RoutingKey         = "priority.orders",
     PersistentMessages = false,
 });
 ```
+
+## Typed channel
+
+Use `AddRabbitMq<TEvent>()` to register a channel that receives **only** events whose data class is `TEvent`.  The typed channel subclass (`RabbitMqEventPublishChannel<TEvent>`) merges the general `RabbitMqPublishOptions` with the type-specific `RabbitMqPublishOptions<TEvent>` at construction time: non-`null` typed values win; `null` values fall back to the base defaults.
+
+```csharp
+builder.Services
+    .AddEventPublisher()
+    // Shared defaults
+    .AddRabbitMq(opts =>
+    {
+        opts.ConnectionString    = "amqp://guest:guest@localhost:5672";
+        opts.ExchangeName        = "events";
+        opts.PersistentMessages  = true;
+        opts.PublisherConfirms   = true;
+    })
+    // OrderPlaced events route to a dedicated exchange/queue
+    .AddRabbitMq<OrderPlaced>(opts =>
+    {
+        opts.ExchangeName = "orders";
+        opts.QueueName    = "order-placed";
+        opts.RoutingKey   = "order.placed";
+        // ConnectionString, PersistentMessages, PublisherConfirms inherited from base
+    });
+```
+
+From configuration, bind the typed options from a nested section:
+
+```csharp
+builder.Services
+    .AddEventPublisher()
+    .AddRabbitMq("Events:RabbitMq")
+    .AddRabbitMq<OrderPlaced>("Events:RabbitMq:Orders");
+```
+
+```json
+{
+  "Events": {
+    "RabbitMq": {
+      "ConnectionString": "amqp://guest:guest@localhost:5672",
+      "ExchangeName": "events",
+      "Orders": {
+        "ExchangeName": "orders",
+        "QueueName": "order-placed",
+        "RoutingKey": "order.placed"
+      }
+    }
+  }
+}
+```
+
+See [Typed Channels](typed-channels.md) for a full explanation of the two-level options hierarchy and the merge rules.
 
 ## AMQP Annotations
 
@@ -103,14 +155,14 @@ using Deveel.Events;
 
 [Event("order.placed", "1.0")]
 [AmqpExchange("orders")]
-public class OrderPlacedData
+public class OrderPlaced
 {
     public Guid OrderId { get; set; }
     public decimal Amount { get; set; }
 }
 ```
 
-When the RabbitMQ channel publishes an `OrderPlacedData` event, it targets the `"orders"` exchange, overriding any global `ExchangeName` set in `RabbitMqEventPublishChannelOptions`.
+When the RabbitMQ channel publishes an `OrderPlaced` event, it targets the `"orders"` exchange, overriding any global `ExchangeName` set in `RabbitMqPublishOptions`.
 
 ### `[AmqpRoutingKey]`
 
@@ -120,7 +172,7 @@ Declares the routing key to use when publishing an event to the exchange.
 [Event("order.placed", "1.0")]
 [AmqpExchange("orders")]
 [AmqpRoutingKey("order.placed")]
-public class OrderPlacedData
+public class OrderPlaced
 {
     public Guid OrderId { get; set; }
     public decimal Amount { get; set; }
@@ -132,7 +184,7 @@ public class OrderPlacedData
 When multiple sources of AMQP routing metadata exist, the following priority applies (highest to lowest):
 
 1. Per-event attributes (`[AmqpExchange]`, `[AmqpRoutingKey]`)
-2. `RabbitMqEventPublishChannelOptions.ExchangeName` / `.RoutingKey`
+2. `RabbitMqPublishOptions.ExchangeName` / `.RoutingKey`
 
 ### Complete example
 
@@ -143,7 +195,7 @@ using Deveel.Events;
 [Event("inventory.low-stock", "1.0", Description = "Raised when a product is running low on stock")]
 [AmqpExchange("inventory")]
 [AmqpRoutingKey("inventory.low-stock")]
-public class LowStockData
+public class LowStock
 {
     [Required]
     public string ProductId { get; set; } = default!;
@@ -167,7 +219,7 @@ builder.Services
 
 ```csharp
 // Publishing
-await publisher.PublishAsync(new LowStockData
+await publisher.PublishAsync(new LowStock
 {
     ProductId         = "PROD-42",
     RemainingQuantity = 3
@@ -222,14 +274,15 @@ Register it after the channel:
 ```csharp
 builder.Services
     .AddEventPublisher()
-    .AddRabbitMq(options => { /* ... */ })
-    .Services
-        .AddSingleton<IRabbitMqConnectionFactory, MyConnectionFactory>();
+    .AddRabbitMq(options => { /* ... */ });
+builder.Services
+    .AddSingleton<IRabbitMqConnectionFactory, MyConnectionFactory>();
 ```
 
 ## Related pages
 
 - [Publisher Channels Overview](README.md)
+- [Typed Channels](typed-channels.md)
 - [Event Annotations](../concepts/event-annotations.md)
 
 

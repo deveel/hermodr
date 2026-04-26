@@ -60,9 +60,10 @@ var schema = EventSchema.FromDataType<OrderPlacedData>();
 
 ```csharp
 using Deveel.Events;
+using Microsoft.Extensions.DependencyInjection;
 
-// Register schema services
-builder.Services.AddEventPublisher(); // already registers IEventSchemaFactory when Schema is referenced
+// Register the schema factory
+builder.Services.AddSingleton<IEventSchemaFactory, EventSchemaFactory>();
 
 public class MyService
 {

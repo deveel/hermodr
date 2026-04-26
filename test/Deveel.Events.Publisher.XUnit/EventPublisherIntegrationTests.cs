@@ -270,7 +270,7 @@ namespace Deveel.Events
         {
             private readonly Action<CloudEvent> _callback;
             public CallbackChannel(Action<CloudEvent> callback) => _callback = callback;
-            public Task PublishAsync(CloudEvent @event, EventPublishChannelOptions? options = null,
+            public Task PublishAsync(CloudEvent @event, EventPublishOptions? options = null,
                 CancellationToken cancellationToken = default)
             {
                 _callback(@event);

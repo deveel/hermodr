@@ -6,34 +6,34 @@
 namespace Deveel.Events {
     /// <summary>
     /// Describes the schema of an event that is used to
-	/// validate and describe the properties that are part
-	/// of the event.
+    /// validate and describe the properties that are part
+    /// of the event.
     /// </summary>
     public class EventSchema : IEventSchema, IVersionedElement {
         /// <summary>
         /// Constructs the schema of an event with the given
-		/// type, version and content type.
+        /// type, version and content type.
         /// </summary>
         /// <param name="eventType">
-		/// The type of the event that is being described
-		/// by the schema.
-		/// </param>
+        /// The type of the event that is being described
+        /// by the schema.
+        /// </param>
         /// <param name="version">
-		/// The version of the schema that is being used
-		/// to describe the event.
-		/// </param>
+        /// The version of the schema that is being used
+        /// to describe the event.
+        /// </param>
         /// <param name="contentType">
-		/// The content type of the event that is used to
-		/// represent the format of the data.
-		/// </param>
+        /// The content type of the event that is used to
+        /// represent the format of the data.
+        /// </param>
         /// <exception cref="ArgumentNullException">
-		/// Thrown when <paramref name="eventType"/>, <paramref name="version"/>,
-		/// or <paramref name="contentType"/> is <c>null</c>.
-		/// </exception>
+        /// Thrown when <paramref name="eventType"/>, <paramref name="version"/>,
+        /// or <paramref name="contentType"/> is <c>null</c>.
+        /// </exception>
         /// <exception cref="ArgumentException">
-		/// Thrown when <paramref name="version"/> is not a valid version string
-		/// (i.e. cannot be parsed by <see cref="System.Version.TryParse"/>).
-		/// </exception>
+        /// Thrown when <paramref name="version"/> is not a valid version string
+        /// (i.e. cannot be parsed by <see cref="System.Version.TryParse"/>).
+        /// </exception>
         public EventSchema(string eventType, string version, string contentType) {
 			ArgumentNullException.ThrowIfNull(eventType, nameof(eventType));
 			ArgumentNullException.ThrowIfNull(version, nameof(version));
@@ -74,17 +74,17 @@ namespace Deveel.Events {
 
         /// <summary>
         /// Creates a new schema for an event from the given
-		/// data type using reflection to extract the properties
-		/// and constraints.
+        /// data type using reflection to extract the properties
+        /// and constraints.
         /// </summary>
         /// <param name="dataType">
-		/// The type of the data that is used to describe the
-		/// properties of the event.
-		/// </param>
+        /// The type of the data that is used to describe the
+        /// properties of the event.
+        /// </param>
         /// <returns>
-		/// Returns a new instance of <see cref="EventSchema"/>
-		/// that is created from the given data type.
-		/// </returns>
+        /// Returns a new instance of <see cref="EventSchema"/>
+        /// that is created from the given data type.
+        /// </returns>
         public static EventSchema FromDataType(Type dataType)
 			=> EventSchemaCreator.FromEventData(dataType);
 

@@ -58,7 +58,7 @@ builder.Services
 
 ## Options reference
 
-`MassTransitEventPublishOptions`
+`MassTransitPublishOptions`
 
 | Property | Type | Effective default | Description |
 |----------|------|-------------------|-------------|
@@ -74,9 +74,53 @@ builder.Services
 3. Otherwise, the message is published via `IPublishEndpoint.Publish`, allowing MassTransit's topology to route it.
 4. When `MapAttributesToHeaders` is `true` (or `null`, which defaults to `true`), CloudEvent attributes are written to the outgoing message headers so consumers can inspect them without deserialising the body.
 
+## Typed channel
+
+Use `AddMassTransit<TEvent>()` to register a channel that receives **only** events whose data class is `TEvent`.  At construction time the typed channel (`MassTransitEventPublishChannel<TEvent>`) merges the general `MassTransitPublishOptions` with the type-specific `MassTransitPublishOptions<TEvent>`: non-`null` typed values win; `null` values fall back to the base defaults.
+
+```csharp
+builder.Services
+    .AddEventPublisher()
+    // Default: publish (fan-out) with header mapping
+    .AddMassTransit(opts =>
+    {
+        opts.MapAttributesToHeaders = true;
+    })
+    // OrderPlaced events are sent to a specific endpoint
+    .AddMassTransit<OrderPlaced>(opts =>
+    {
+        opts.DestinationAddress = new Uri("queue:order-placed");
+        // MapAttributesToHeaders inherited from base
+    });
+```
+
+From configuration:
+
+```csharp
+builder.Services
+    .AddEventPublisher()
+    .AddMassTransit("Events:MassTransit")
+    .AddMassTransit<OrderPlaced>("Events:MassTransit:Orders");
+```
+
+```json
+{
+  "Events": {
+    "MassTransit": {
+      "MapAttributesToHeaders": true,
+      "Orders": {
+        "DestinationAddress": "queue:order-placed"
+      }
+    }
+  }
+}
+```
+
+See [Typed Channels](typed-channels.md) for the full merge semantics and further examples.
+
 ## Per-delivery options
 
-Pass a `MassTransitEventPublishOptions` instance as the second argument to `PublishAsync` to override individual properties for a single publish call.  Only the properties you set (non-`null`) replace the channel default — all others fall back to the values configured at registration time.
+Pass a `MassTransitPublishOptions` instance as the second argument to `PublishAsync` to override individual properties for a single publish call.  Only the properties you set (non-`null`) replace the channel default — all others fall back to the values configured at registration time.
 
 ```csharp
 // Resolve the concrete channel directly from DI.
@@ -84,7 +128,7 @@ var channel = serviceProvider.GetRequiredService<MassTransitEventPublishChannel>
 
 // Send this event directly to a specific queue,
 // while still inheriting MapAttributesToHeaders from the channel default.
-await channel.PublishAsync(@event, new MassTransitEventPublishOptions
+await channel.PublishAsync(@event, new MassTransitPublishOptions
 {
     DestinationAddress = new Uri("queue:priority-orders"),
 });
@@ -93,5 +137,6 @@ await channel.PublishAsync(@event, new MassTransitEventPublishOptions
 ## Related pages
 
 - [Publisher Channels Overview](README.md)
+- [Typed Channels](typed-channels.md)
 - [Event Publisher](../concepts/event-publisher.md)
 

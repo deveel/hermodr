@@ -26,7 +26,7 @@ namespace Deveel.Events
         };
 
         // Simple concrete options class with one [Required] property
-        private class SimpleOptions : EventPublishChannelOptions
+        private class SimpleOptions : EventPublishOptions
         {
             [Required]
             public string? Endpoint { get; set; }
