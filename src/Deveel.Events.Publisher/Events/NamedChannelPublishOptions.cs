@@ -15,10 +15,10 @@ namespace Deveel.Events
     /// <c>PublishAsync(event, channelName, cancellationToken)</c>) wrap their
     /// <paramref name="channelName"/> argument in this type internally.
     /// </remarks>
-    public sealed class NamedChannelPublishOptions : EventPublishOptions, INamedChannelFilter
+    public class NamedChannelPublishOptions : EventPublishOptions, INamedChannelFilter
     {
         /// <summary>
-        /// Initialises a new (empty) instance. Set <see cref="INamedChannelFilter.ChannelName"/>
+        /// Initializes a new (empty) instance. Set <see cref="INamedChannelFilter.ChannelName"/>
         /// after construction, or use the
         /// <see cref="NamedChannelPublishOptions(string)"/> constructor.
         /// </summary>

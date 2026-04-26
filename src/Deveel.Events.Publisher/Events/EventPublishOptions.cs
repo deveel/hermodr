@@ -27,4 +27,6 @@ namespace Deveel.Events;
 /// </remarks>
 public abstract class EventPublishOptions
 {
+    public static CombinedPublishOptions Combine(params EventPublishOptions[] options) 
+        => new CombinedPublishOptions(options);
 }

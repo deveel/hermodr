@@ -12,7 +12,7 @@ namespace Deveel.Events
     /// <summary>
     /// Configuration options for a <see cref="RabbitMqEventPublishChannel"/>.
     /// </summary>
-    public class RabbitMqPublishOptions : EventPublishOptions, INamedChannelFilter
+    public class RabbitMqPublishOptions : NamedChannelPublishOptions, INamedChannelFilter
     {
         /// <summary>
         /// Merges <paramref name="baseOptions"/> with <paramref name="typedOptions"/>,
@@ -40,11 +40,7 @@ namespace Deveel.Events
                 Mandatory             = typedOptions.Mandatory             ?? baseOptions.Mandatory,
             };
         }
-
-        /// <inheritdoc/>
-        public string? ChannelName { get; set; }
-
-
+        
         /// <summary>
         /// The name of the exchange to publish events to in the RabbitMQ broker.
         /// When <c>null</c> in a per-call override the channel default is used;
