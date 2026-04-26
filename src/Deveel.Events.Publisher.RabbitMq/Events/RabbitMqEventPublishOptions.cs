@@ -15,6 +15,33 @@ namespace Deveel.Events
     public class RabbitMqEventPublishOptions
     {
         /// <summary>
+        /// Merges <paramref name="baseOptions"/> with <paramref name="typedOptions"/>,
+        /// where every non-<c>null</c> property in <paramref name="typedOptions"/>
+        /// overrides the corresponding property from <paramref name="baseOptions"/>.
+        /// </summary>
+        public static RabbitMqEventPublishOptions Merge(
+            RabbitMqEventPublishOptions baseOptions,
+            RabbitMqEventPublishOptions typedOptions)
+        {
+            return new RabbitMqEventPublishOptions
+            {
+                ConnectionString      = typedOptions.ConnectionString      ?? baseOptions.ConnectionString,
+                ExchangeName          = typedOptions.ExchangeName          ?? baseOptions.ExchangeName,
+                RoutingKey            = typedOptions.RoutingKey            ?? baseOptions.RoutingKey,
+                QueueName             = typedOptions.QueueName             ?? baseOptions.QueueName,
+                ClientName            = typedOptions.ClientName            ?? baseOptions.ClientName,
+                JsonSerializerOptions = typedOptions.JsonSerializerOptions ?? baseOptions.JsonSerializerOptions,
+                MessageFormat         = typedOptions.MessageFormat         ?? baseOptions.MessageFormat,
+                MessageContent        = typedOptions.MessageContent        ?? baseOptions.MessageContent,
+                PersistentMessages    = typedOptions.PersistentMessages    ?? baseOptions.PersistentMessages,
+                PublisherConfirms     = typedOptions.PublisherConfirms     ?? baseOptions.PublisherConfirms,
+                ConfirmTimeout        = typedOptions.ConfirmTimeout        ?? baseOptions.ConfirmTimeout,
+                Mandatory             = typedOptions.Mandatory             ?? baseOptions.Mandatory,
+            };
+        }
+
+
+        /// <summary>
         /// The default exchange name to publish the events to,
         /// when not explicitly defined in the event.
         /// </summary>

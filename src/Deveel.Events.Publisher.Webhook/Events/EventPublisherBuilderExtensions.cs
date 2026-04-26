@@ -14,7 +14,7 @@ namespace Deveel.Events
     /// </summary>
     public static class EventPublisherBuilderExtensions
     {
-        private static EventPublisherBuilder AddWebhookChannel(this EventPublisherBuilder builder)
+        private static EventPublisherBuilder AddWebhookInfrastructure(this EventPublisherBuilder builder)
         {
             builder.Services.AddHttpClient(WebhookDefaults.HttpClientName);
 
@@ -41,11 +41,18 @@ namespace Deveel.Events
             builder.Services.TryAddEnumerable(
                 ServiceDescriptor.Singleton<IEventSerializer, CloudEventsXmlSerializer>());
 
+            return builder;
+        }
 
-            // Register the concrete channel once; expose it under all three service types
-            // so consumers can resolve it as IEventPublishChannel (used by EventPublisher),
-            // IEventPublishChannel<WebhookPublishOptions>, or IBatchEventPublishChannel<WebhookPublishOptions>.
-            builder.Services.AddSingleton<WebhookEventPublishChannel>();
+        private static EventPublisherBuilder AddWebhookChannel(this EventPublisherBuilder builder)
+        {
+            builder.AddWebhookInfrastructure();
+
+            // Register the concrete channel once under its own type so callers can resolve it
+            // directly and supply per-call option overrides.
+            builder.Services.TryAddSingleton<WebhookEventPublishChannel>();
+            // Expose it as IEventPublishChannel and IBatchEventPublishChannel
+            // (type-based so ImplementationType is preserved for service-registration assertions).
             builder.Services.AddSingleton<IEventPublishChannel, WebhookEventPublishChannel>();
             builder.Services.AddSingleton<IEventPublishChannel<WebhookPublishOptions>>(sp =>
                 sp.GetRequiredService<WebhookEventPublishChannel>());
@@ -98,6 +105,67 @@ namespace Deveel.Events
             builder.Services.AddOptions<WebhookPublishOptions>()
                 .BindConfiguration(sectionPath);
             return builder.AddWebhookChannel();
+        }
+
+        /// <summary>
+        /// Adds a typed webhook event publishing channel to the event publisher, so
+        /// that only events whose data class is <typeparamref name="TEvent"/> are
+        /// routed to this channel.
+        /// </summary>
+        /// <typeparam name="TEvent">
+        /// The event data class this channel is keyed against.
+        /// </typeparam>
+        /// <param name="builder">
+        /// The <see cref="EventPublisherBuilder"/> to add the channel to.
+        /// </param>
+        /// <param name="configure">
+        /// An action that configures the type-specific <see cref="WebhookPublishOptions{TEvent}"/>
+        /// for this channel.  Non-<c>null</c> delivery properties override the corresponding
+        /// values from the general <see cref="WebhookPublishOptions"/> (registered via
+        /// <c>AddWebhooks(configure)</c>).  Channel-structural properties are always taken
+        /// from the base options.
+        /// </param>
+        /// <returns>
+        /// The same <see cref="EventPublisherBuilder"/> so that additional calls can be chained.
+        /// </returns>
+        public static EventPublisherBuilder AddWebhooks<TEvent>(
+            this EventPublisherBuilder builder,
+            Action<WebhookPublishOptions<TEvent>> configure)
+            where TEvent : class
+        {
+            builder.Services.AddOptions<WebhookPublishOptions<TEvent>>()
+                .Configure(configure);
+            builder.AddWebhookInfrastructure();
+            return builder.AddChannel<WebhookEventPublishChannel<TEvent>, TEvent>();
+        }
+
+        /// <summary>
+        /// Adds a typed webhook event publishing channel to the event publisher, so
+        /// that only events whose data class is <typeparamref name="TEvent"/> are
+        /// routed to this channel, binding options from the given configuration section.
+        /// </summary>
+        /// <typeparam name="TEvent">
+        /// The event data class this channel is keyed against.
+        /// </typeparam>
+        /// <param name="builder">
+        /// The <see cref="EventPublisherBuilder"/> to add the channel to.
+        /// </param>
+        /// <param name="sectionPath">
+        /// The configuration key path whose sub-keys are bound to the type-specific
+        /// <see cref="WebhookPublishOptions{TEvent}"/>.
+        /// </param>
+        /// <returns>
+        /// The same <see cref="EventPublisherBuilder"/> so that additional calls can be chained.
+        /// </returns>
+        public static EventPublisherBuilder AddWebhooks<TEvent>(
+            this EventPublisherBuilder builder,
+            string sectionPath)
+            where TEvent : class
+        {
+            builder.Services.AddOptions<WebhookPublishOptions<TEvent>>()
+                .BindConfiguration(sectionPath);
+            builder.AddWebhookInfrastructure();
+            return builder.AddChannel<WebhookEventPublishChannel<TEvent>, TEvent>();
         }
 
         /// <summary>

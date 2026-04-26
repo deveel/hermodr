@@ -1,0 +1,71 @@
+//
+// Copyright (c) Antonello Provenzano and other contributors. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for details.
+//
+
+using Azure.Messaging.ServiceBus;
+
+namespace Deveel.Events
+{
+    /// <summary>
+    /// Type-specific publish options for a <see cref="ServiceBusEventPublishChannel{TEvent}"/>
+    /// that routes events of type <typeparamref name="TEvent"/> to an Azure Service Bus queue.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <see cref="ConnectionString"/> and <see cref="QueueName"/> are redeclared as nullable
+    /// so that leaving them unset signals "inherit from the base channel options".
+    /// </para>
+    /// <para>
+    /// Any property left at <c>null</c> (or at its zero-value for strings) will be
+    /// inherited from the general <see cref="ServiceBusEventPublishChannelOptions"/>
+    /// registered alongside the non-typed channel.
+    /// </para>
+    /// </remarks>
+    /// <typeparam name="TEvent">
+    /// The event data class this set of options is keyed against.
+    /// </typeparam>
+    public class ServiceBusEventPublishChannelOptions<TEvent> : ServiceBusEventPublishChannelOptions
+        where TEvent : class
+    {
+        /// <summary>
+        /// Gets or sets the connection string to the Azure Service Bus, or <c>null</c>
+        /// to inherit the value from the base channel options.
+        /// </summary>
+        public new string? ConnectionString { get; set; }
+
+        /// <summary>
+        /// Gets or sets the target queue name, or <c>null</c> to inherit the value
+        /// from the base channel options.
+        /// </summary>
+        public new string? QueueName { get; set; }
+
+        /// <summary>
+        /// Gets or sets the Azure Service Bus client options, or <c>null</c> to
+        /// inherit the value from the base channel options.
+        /// </summary>
+        public new ServiceBusClientOptions? ClientOptions { get; set; }
+
+        /// <summary>
+        /// Merges a base <see cref="ServiceBusEventPublishChannelOptions"/> with the typed
+        /// overrides in <paramref name="typedOpts"/>. Non-null / non-empty values from
+        /// <paramref name="typedOpts"/> take precedence; all other values fall back to
+        /// <paramref name="baseOpts"/>.
+        /// </summary>
+        public static ServiceBusEventPublishChannelOptions Merge(
+            ServiceBusEventPublishChannelOptions baseOpts,
+            ServiceBusEventPublishChannelOptions<TEvent> typedOpts)
+        {
+            return new ServiceBusEventPublishChannelOptions
+            {
+                ConnectionString = !string.IsNullOrWhiteSpace(typedOpts.ConnectionString)
+                    ? typedOpts.ConnectionString!
+                    : baseOpts.ConnectionString,
+                QueueName = !string.IsNullOrWhiteSpace(typedOpts.QueueName)
+                    ? typedOpts.QueueName!
+                    : baseOpts.QueueName,
+                ClientOptions = typedOpts.ClientOptions ?? baseOpts.ClientOptions,
+            };
+        }
+    }
+}

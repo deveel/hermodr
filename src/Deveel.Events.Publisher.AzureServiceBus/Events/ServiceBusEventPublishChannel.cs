@@ -17,7 +17,7 @@ namespace Deveel.Events {
     /// <summary>
     /// A channel that publishes events to an Azure Service Bus queue.
     /// </summary>
-    public sealed class ServiceBusEventPublishChannel :
+    public class ServiceBusEventPublishChannel :
         EventPublishChannelBase<ServiceBusEventPublishChannelOptions>,
         IAsyncDisposable, IDisposable {
 		private ServiceBusSender? sender;

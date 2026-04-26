@@ -23,6 +23,45 @@ namespace Deveel.Events
     /// </remarks>
     public class WebhookPublishOptions
     {
+        /// <summary>
+        /// Merges <paramref name="baseOptions"/> with <paramref name="typedOptions"/>,
+        /// where every non-<c>null</c> delivery property in <paramref name="typedOptions"/>
+        /// overrides the corresponding property from <paramref name="baseOptions"/>.
+        /// Additional headers are merged (typed entries win on key collision).
+        /// Channel-structural fields are always taken from <paramref name="baseOptions"/>.
+        /// </summary>
+        public static WebhookPublishOptions Merge(
+            WebhookPublishOptions baseOptions,
+            WebhookPublishOptions typedOptions)
+        {
+            var mergedHeaders = new Dictionary<string, string>(
+                baseOptions.AdditionalHeaders, StringComparer.OrdinalIgnoreCase);
+            foreach (var kv in typedOptions.AdditionalHeaders)
+                mergedHeaders[kv.Key] = kv.Value;
+
+            return new WebhookPublishOptions
+            {
+                EndpointUrl            = typedOptions.EndpointUrl            ?? baseOptions.EndpointUrl,
+                SigningSecret          = typedOptions.SigningSecret          ?? baseOptions.SigningSecret,
+                MaxRetryCount          = typedOptions.MaxRetryCount          ?? baseOptions.MaxRetryCount,
+                RetryDelay             = typedOptions.RetryDelay             ?? baseOptions.RetryDelay,
+                RetryBackoffMultiplier = typedOptions.RetryBackoffMultiplier ?? baseOptions.RetryBackoffMultiplier,
+                RequestTimeout         = typedOptions.RequestTimeout         ?? baseOptions.RequestTimeout,
+                MessageFormat          = typedOptions.MessageFormat          ?? baseOptions.MessageFormat,
+                SignatureAlgorithm     = typedOptions.SignatureAlgorithm     ?? baseOptions.SignatureAlgorithm,
+                AdditionalHeaders      = mergedHeaders,
+                // Channel-structural — always from base
+                SignatureHeaderName         = baseOptions.SignatureHeaderName,
+                DeliveryIdHeaderName        = baseOptions.DeliveryIdHeaderName,
+                EventTypeHeaderName         = baseOptions.EventTypeHeaderName,
+                TimestampHeaderName         = baseOptions.TimestampHeaderName,
+                SignatureAlgorithmHeaderName = baseOptions.SignatureAlgorithmHeaderName,
+                RetryableStatusCodes        = baseOptions.RetryableStatusCodes,
+                HttpClientName              = baseOptions.HttpClientName,
+            };
+        }
+
+
         // ── Delivery settings — nullable so per-call overrides can be partial ──
 
         /// <summary>

@@ -81,6 +81,57 @@ Channel-structural settings (always taken from the channel-level defaults; ignor
 | `RetryableStatusCodes` | `ISet<int>` | 429, 500, 502, 503, 504 | HTTP status codes that trigger a retry |
 | `HttpClientName` | `string?` | `null` | Named `HttpClient` resolved from `IHttpClientFactory`; defaults to the internal channel name |
 
+## Typed channel
+
+Use `AddWebhooks<TEvent>()` to register a channel that receives **only** events whose data class is `TEvent`.  At construction time the typed channel (`WebhookEventPublishChannel<TEvent>`) merges the general `WebhookPublishOptions` with the type-specific `WebhookPublishOptions<TEvent>`: non-`null` typed values win; `null` values fall back to the base defaults.  `AdditionalHeaders` are merged at the dictionary level — typed entries win on key collision.  Channel-structural properties (`SignatureHeaderName`, `DeliveryIdHeaderName`, `RetryableStatusCodes`, …) are **always** taken from the base options and cannot be overridden per event type.
+
+```csharp
+builder.Services
+    .AddEventPublisher()
+    // General catch-all webhook
+    .AddWebhooks(opts =>
+    {
+        opts.EndpointUrl       = "https://partner.example.com/events";
+        opts.SigningSecret      = "shared-secret";
+        opts.MaxRetryCount      = 3;
+        opts.SignatureAlgorithm = WebhookSignatureAlgorithm.HmacSha256;
+    })
+    // OrderPlaced delivers to a dedicated endpoint with its own secret
+    .AddWebhooks<OrderPlacedData>(opts =>
+    {
+        opts.EndpointUrl  = "https://orders.example.com/hooks";
+        opts.SigningSecret = "order-secret";
+        // MaxRetryCount and SignatureAlgorithm inherited from base
+    });
+```
+
+From configuration:
+
+```csharp
+builder.Services
+    .AddEventPublisher()
+    .AddWebhooks("Events:Webhook")
+    .AddWebhooks<OrderPlacedData>("Events:Webhook:Orders");
+```
+
+```json
+{
+  "Events": {
+    "Webhook": {
+      "EndpointUrl": "https://partner.example.com/events",
+      "SigningSecret": "shared-secret",
+      "MaxRetryCount": 3,
+      "Orders": {
+        "EndpointUrl": "https://orders.example.com/hooks",
+        "SigningSecret": "order-secret"
+      }
+    }
+  }
+}
+```
+
+See [Typed Channels](typed-channels.md) for the full merge semantics and further examples.
+
 ## Signature algorithms
 
 | Value | Algorithm | Note |
@@ -171,5 +222,6 @@ builder.Services
 ## Related pages
 
 - [Publisher Channels Overview](README.md)
+- [Typed Channels](typed-channels.md)
 - [Event Publisher](../concepts/event-publisher.md)
 

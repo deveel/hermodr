@@ -132,5 +132,66 @@ namespace Deveel.Events {
 
 			return this;
 		}
+
+        /// <summary>
+        /// Registers a publish channel of type <typeparamref name="TChannel"/>
+        /// as an <see cref="IEventPublishChannel"/> that receives all events
+        /// dispatched by the <see cref="EventPublisher"/>.
+        /// </summary>
+        /// <typeparam name="TChannel">
+        /// The concrete channel type to register. Must implement
+        /// <see cref="IEventPublishChannel"/>.
+        /// </typeparam>
+        /// <param name="lifetime">
+        /// The <see cref="ServiceLifetime"/> of the channel registration.
+        /// Defaults to <see cref="ServiceLifetime.Singleton"/>.
+        /// </param>
+        /// <returns>
+        /// Returns this <see cref="EventPublisherBuilder"/> instance so that
+        /// further calls can be chained.
+        /// </returns>
+        public EventPublisherBuilder AddChannel<TChannel>(ServiceLifetime lifetime = ServiceLifetime.Singleton)
+            where TChannel : class, IEventPublishChannel
+        {
+            Services.TryAdd(new ServiceDescriptor(typeof(TChannel), typeof(TChannel), lifetime));
+            Services.Add(new ServiceDescriptor(typeof(IEventPublishChannel),
+                sp => sp.GetRequiredService<TChannel>(), lifetime));
+
+            return this;
+        }
+
+        /// <summary>
+        /// Registers a publish channel of type <typeparamref name="TChannel"/>
+        /// as both an <see cref="IEventPublishChannel"/> and an
+        /// <see cref="IEventPublishChannel{TEvent}"/>, so that the channel
+        /// receives only events whose data class is <typeparamref name="TEvent"/>.
+        /// </summary>
+        /// <typeparam name="TChannel">
+        /// The concrete channel type to register. Must implement
+        /// <see cref="IEventPublishChannel{TEvent}"/>.
+        /// </typeparam>
+        /// <typeparam name="TEvent">
+        /// The event data class this channel is keyed against.
+        /// </typeparam>
+        /// <param name="lifetime">
+        /// The <see cref="ServiceLifetime"/> of the channel registration.
+        /// Defaults to <see cref="ServiceLifetime.Singleton"/>.
+        /// </param>
+        /// <returns>
+        /// Returns this <see cref="EventPublisherBuilder"/> instance so that
+        /// further calls can be chained.
+        /// </returns>
+        public EventPublisherBuilder AddChannel<TChannel, TEvent>(ServiceLifetime lifetime = ServiceLifetime.Singleton)
+            where TChannel : class, IEventPublishChannel<TEvent>
+            where TEvent : class
+        {
+            Services.TryAdd(new ServiceDescriptor(typeof(TChannel), typeof(TChannel), lifetime));
+            Services.Add(new ServiceDescriptor(typeof(IEventPublishChannel),
+                sp => sp.GetRequiredService<TChannel>(), lifetime));
+            Services.Add(new ServiceDescriptor(typeof(IEventPublishChannel<TEvent>),
+                sp => sp.GetRequiredService<TChannel>(), lifetime));
+
+            return this;
+        }
 	}
 }

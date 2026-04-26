@@ -54,6 +54,54 @@ builder.Services
 | `QueueName` | `string` | ✅ | Name of the queue or topic to publish to. In a per-call override an empty/whitespace value falls back to the channel default. |
 | `ClientOptions` | `ServiceBusClientOptions` | | Advanced client settings (see Azure SDK docs). `null` in a per-call override falls back to the channel default. |
 
+## Typed channel
+
+Use `AddServiceBusChannel<TEvent>()` to register a channel that receives **only** events whose data class is `TEvent`.  At construction time the typed channel (`ServiceBusEventPublishChannel<TEvent>`) merges the general `ServiceBusEventPublishChannelOptions` with the type-specific `ServiceBusEventPublishChannelOptions<TEvent>`: non-empty typed values win; empty or `null` values fall back to the base defaults.
+
+> **Note:** `ServiceBusEventPublishChannelOptions<TEvent>` re-declares `ConnectionString` and `QueueName` as nullable (`string?`) so that leaving them `null` is the unambiguous signal to inherit from the base options.  The required, non-nullable constraint from the base class is enforced only after merging.
+
+```csharp
+builder.Services
+    .AddEventPublisher()
+    // General channel — shared connection & default queue
+    .AddServiceBusChannel(opts =>
+    {
+        opts.ConnectionString = "<connection-string>";
+        opts.QueueName        = "events";
+    })
+    // OrderPlaced events go to a dedicated queue
+    .AddServiceBusChannel<OrderPlacedData>(opts =>
+    {
+        opts.QueueName = "order-placed";
+        // ConnectionString inherited from base options
+    });
+```
+
+From configuration:
+
+```csharp
+builder.Services
+    .AddEventPublisher()
+    .AddServiceBusChannel("Events:ServiceBus")
+    .AddServiceBusChannel<OrderPlacedData>("Events:ServiceBus:Orders");
+```
+
+```json
+{
+  "Events": {
+    "ServiceBus": {
+      "ConnectionString": "<connection-string>",
+      "QueueName": "events",
+      "Orders": {
+        "QueueName": "order-placed"
+      }
+    }
+  }
+}
+```
+
+See [Typed Channels](typed-channels.md) for the full merge semantics and further examples.
+
 ## How it works
 
 1. The channel resolves a `ServiceBusClient` via `IServiceBusClientFactory`.
@@ -114,5 +162,6 @@ builder.Services
 ## Related pages
 
 - [Publisher Channels Overview](README.md)
+- [Typed Channels](typed-channels.md)
 - [Event Publisher](../concepts/event-publisher.md)
 

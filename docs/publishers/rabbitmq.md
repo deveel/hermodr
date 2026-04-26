@@ -87,6 +87,58 @@ await channel.PublishAsync(@event, new RabbitMqEventPublishOptions
 });
 ```
 
+## Typed channel
+
+Use `AddRabbitMq<TEvent>()` to register a channel that receives **only** events whose data class is `TEvent`.  The typed channel subclass (`RabbitMqEventPublishChannel<TEvent>`) merges the general `RabbitMqEventPublishOptions` with the type-specific `RabbitMqEventPublishOptions<TEvent>` at construction time: non-`null` typed values win; `null` values fall back to the base defaults.
+
+```csharp
+builder.Services
+    .AddEventPublisher()
+    // Shared defaults
+    .AddRabbitMq(opts =>
+    {
+        opts.ConnectionString    = "amqp://guest:guest@localhost:5672";
+        opts.ExchangeName        = "events";
+        opts.PersistentMessages  = true;
+        opts.PublisherConfirms   = true;
+    })
+    // OrderPlaced events route to a dedicated exchange/queue
+    .AddRabbitMq<OrderPlacedData>(opts =>
+    {
+        opts.ExchangeName = "orders";
+        opts.QueueName    = "order-placed";
+        opts.RoutingKey   = "order.placed";
+        // ConnectionString, PersistentMessages, PublisherConfirms inherited from base
+    });
+```
+
+From configuration, bind the typed options from a nested section:
+
+```csharp
+builder.Services
+    .AddEventPublisher()
+    .AddRabbitMq("Events:RabbitMq")
+    .AddRabbitMq<OrderPlacedData>("Events:RabbitMq:Orders");
+```
+
+```json
+{
+  "Events": {
+    "RabbitMq": {
+      "ConnectionString": "amqp://guest:guest@localhost:5672",
+      "ExchangeName": "events",
+      "Orders": {
+        "ExchangeName": "orders",
+        "QueueName": "order-placed",
+        "RoutingKey": "order.placed"
+      }
+    }
+  }
+}
+```
+
+See [Typed Channels](typed-channels.md) for a full explanation of the two-level options hierarchy and the merge rules.
+
 ## AMQP Annotations
 
 Install the `Deveel.Events.Amqp.Annotations` package to declare routing metadata on individual event data classes, overriding the global channel defaults on a per-event-type basis.
@@ -231,6 +283,7 @@ builder.Services
 ## Related pages
 
 - [Publisher Channels Overview](README.md)
+- [Typed Channels](typed-channels.md)
 - [Event Annotations](../concepts/event-annotations.md)
 
 
