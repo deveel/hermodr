@@ -38,7 +38,7 @@ namespace Deveel.Events
         };
 #pragma warning restore CS0618
 
-        private static WebhookEventPublishChannel BuildChannel(
+        private static WebhookPublishChannel BuildChannel(
             HttpMessageHandler handler,
             Action<WebhookPublishOptions>? configure = null)
         {
@@ -61,7 +61,7 @@ namespace Deveel.Events
             var sp      = services.BuildServiceProvider();
             var factory = sp.GetRequiredService<IHttpClientFactory>();
 
-            return new WebhookEventPublishChannel(
+            return new WebhookPublishChannel(
                 Options.Create(options),
                 factory,
                 AllProviders);
@@ -458,7 +458,7 @@ namespace Deveel.Events
             var sp = services.BuildServiceProvider();
 
             var channels = sp.GetServices<IEventPublishChannel>();
-            Assert.Contains(channels, c => c is WebhookEventPublishChannel);
+            Assert.Contains(channels, c => c is WebhookPublishChannel);
 
             var providers = sp.GetServices<IWebhookSignatureProvider>().ToList();
             Assert.Contains(providers, p => p.Algorithm == WebhookSignatureAlgorithm.HmacSha256);
@@ -595,7 +595,7 @@ namespace Deveel.Events
             var sp = services.BuildServiceProvider();
 
             var channels = sp.GetServices<IEventPublishChannel>();
-            Assert.Contains(channels, c => c is WebhookEventPublishChannel);
+            Assert.Contains(channels, c => c is WebhookPublishChannel);
         }
 
         // ── UseWebhookSignatureProvider and UseWebhookMessageSerializer ────────
@@ -628,7 +628,7 @@ namespace Deveel.Events
             var sp = services.BuildServiceProvider();
             var batch = sp.GetService<IBatchEventPublishChannel>();
             Assert.NotNull(batch);
-            Assert.IsType<WebhookEventPublishChannel>(batch);
+            Assert.IsType<WebhookPublishChannel>(batch);
         }
 
         // ── WebhookDeliveryException extra constructor ────────────────────────
@@ -677,7 +677,7 @@ namespace Deveel.Events
 
             var sp      = services.BuildServiceProvider();
             var factory = sp.GetRequiredService<IHttpClientFactory>();
-            var channel = new WebhookEventPublishChannel(
+            var channel = new WebhookPublishChannel(
                 Microsoft.Extensions.Options.Options.Create(options),
                 factory,
                 AllProviders);
@@ -739,7 +739,7 @@ namespace Deveel.Events
 
             var sp      = services.BuildServiceProvider();
             var factory = sp.GetRequiredService<IHttpClientFactory>();
-            var channel = new WebhookEventPublishChannel(
+            var channel = new WebhookPublishChannel(
                 Microsoft.Extensions.Options.Options.Create(options),
                 factory,
                 AllProviders);

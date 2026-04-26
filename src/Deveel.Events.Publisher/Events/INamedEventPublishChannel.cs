@@ -15,7 +15,7 @@ namespace Deveel.Events
     /// <see cref="INamedChannelFilter.ChannelName"/> filter supplied at publish time.
     /// </para>
     /// <para>
-    /// <see cref="EventPublishChannelBase{TOptions}"/> implements this interface
+    /// <see cref="EventPublishChannel{TOptions}"/> implements this interface
     /// automatically: it reads <see cref="Name"/> from the channel-level options when
     /// those options implement <see cref="INamedChannelFilter"/>.
     /// Custom channels can implement this interface directly to provide a name through

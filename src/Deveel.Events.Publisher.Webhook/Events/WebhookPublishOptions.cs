@@ -8,7 +8,7 @@ using System.ComponentModel.DataAnnotations;
 namespace Deveel.Events
 {
     /// <summary>
-    /// Options for the <see cref="WebhookEventPublishChannel"/>, used both as the
+    /// Options for the <see cref="WebhookPublishChannel"/>, used both as the
     /// channel-level configuration (injected via <see cref="Microsoft.Extensions.Options.IOptions{TOptions}"/>)
     /// and as per-delivery overrides passed directly to
     /// <see cref="IEventPublishChannel{TOptions}.PublishAsync"/>.

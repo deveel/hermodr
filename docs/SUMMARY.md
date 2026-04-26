@@ -27,6 +27,7 @@
 * [MassTransit](publishers/masstransit.md)
 * [Webhook](publishers/webhook.md)
 * [Typed Channels](publishers/typed-channels.md)
+* [Named Channels](publishers/named-channels.md)
 
 ## Event Schema
 

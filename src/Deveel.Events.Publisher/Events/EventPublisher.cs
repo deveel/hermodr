@@ -225,7 +225,7 @@ namespace Deveel.Events {
 		/// <remarks>
 		/// <para>
 		/// The method first determines the channel's declared options type
-		/// (<c>TOptions</c> from <see cref="EventPublishChannelBase{TOptions}"/>) and
+		/// (<c>TOptions</c> from <see cref="EventPublishChannel{TOptions}"/>) and
 		/// whether the channel is a <em>typed</em> channel (i.e. implements
 		/// <see cref="IEventPublishChannel{TEvent}"/> for some <c>TEvent</c>).
 		/// </para>
@@ -269,19 +269,19 @@ namespace Deveel.Events {
 			if (options == null)
 				return null;
 
-			// Walk the inheritance chain looking for EventPublishChannelBase<TOptions>.
+			// Walk the inheritance chain looking for EventPublishChannel<TOptions>.
 			var channelType = channel.GetType();
 			Type? expectedOptionsType = null;
 			for (var t = channelType; t != null && t != typeof(object); t = t.BaseType)
 			{
-				if (t.IsGenericType && t.GetGenericTypeDefinition() == typeof(EventPublishChannelBase<>))
+				if (t.IsGenericType && t.GetGenericTypeDefinition() == typeof(EventPublishChannel<>))
 				{
 					expectedOptionsType = t.GetGenericArguments()[0];
 					break;
 				}
 			}
 
-			// Channel does not derive from EventPublishChannelBase<TOptions> – pass null.
+			// Channel does not derive from EventPublishChannel<TOptions> – pass null.
 			if (expectedOptionsType == null)
 				return null;
 

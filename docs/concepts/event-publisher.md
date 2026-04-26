@@ -135,6 +135,7 @@ PublishEventAsync(CloudEvent, options)
   │         → throws InvalidCloudEventException if any are missing
   │
   └─ 3. Dispatch (fan-out) ──────────────────────────────────────────────────
+          FilterChannelsByName(channels, options) → named-channel filter
           for each IEventPublishChannel:
             ResolveChannelOptions(channel, options) → per-channel options
             PublishEventAsync(channel, event, resolvedOptions)
@@ -191,17 +192,13 @@ catch (InvalidCloudEventException ex)
 
 ### Stage 3 — Dispatch
 
-The publisher iterates over every registered `IEventPublishChannel` in order:
+The publisher's dispatch stage has two steps before iterating channels:
 
-1. `ResolveChannelOptions` is called to extract the compatible `EventPublishOptions` entry 
-   for the current channel from the caller-supplied `options` argument 
-   (see [Per-call publish options](#per-call-publish-options)).
-2. `PublishEventAsync(IEventPublishChannel, CloudEvent, EventPublishOptions?)` forwards the 
-   call to `channel.PublishAsync`.
+1. **Name filtering** — `FilterChannelsByName` narrows the channel list when the caller-supplied `options` implement `INamedChannelFilter` with a non-empty `ChannelName`.  Only channels that implement `INamedEventPublishChannel` with a matching `Name` are kept; anonymous channels (those that do not implement `INamedEventPublishChannel`, or have a `null`/empty name) always pass through.  `CombinedPublishOptions` does not implement `INamedChannelFilter`; for combined options, name matching is done per bundled entry inside `ResolveChannelOptions`.
+2. For each remaining channel, `ResolveChannelOptions` is called to extract the compatible `EventPublishOptions` entry for the current channel from the caller-supplied `options` argument (see [Per-call publish options](#per-call-publish-options)).
+3. `PublishEventAsync(IEventPublishChannel, CloudEvent, EventPublishOptions?)` forwards the call to `channel.PublishAsync`.
 
-If a channel throws and `ThrowOnErrors` is `false` (the default), the error is logged and 
-delivery continues to the remaining channels.  When `ThrowOnErrors` is `true` the exception 
-is wrapped in `EventPublishException` and re-thrown, stopping fan-out.
+If a channel throws and `ThrowOnErrors` is `false` (the default), the error is logged and delivery continues to the remaining channels.  When `ThrowOnErrors` is `true` the exception is wrapped in `EventPublishException` and re-thrown, stopping fan-out.
 
 ---
 
@@ -267,6 +264,20 @@ var @event = new CloudEvent
 await publisher.PublishEventAsync(@event);
 ```
 
+### To a named channel
+
+When more than one channel of the same transport type is registered, identify the target by name using the `string channelName` convenience overloads:
+
+```csharp
+// Target a specific named channel by name — no channel-type knowledge needed.
+await publisher.PublishAsync(orderPlaced, channelName: "rabbit-orders");
+await publisher.PublishEventAsync(@event, channelName: "rabbit-notifications");
+```
+
+Channels declare their name through the `ChannelName` property on their options (which implement `INamedChannelFilter`).  Channels that have no name always receive every event regardless of any filter.
+
+See [Named Channels](../publishers/named-channels.md) for the full guide.
+
 ---
 
 ## Per-call publish options
@@ -292,7 +303,7 @@ await publisher.PublishEventAsync(@event, new RabbitMqPublishOptions
 To override a **typed** channel, pass the corresponding typed options class:
 
 ```csharp
-// Only RabbitMqEventPublishChannel<OrderPlaced> picks this up.
+// Only RabbitMqPublishChannel<OrderPlaced> picks this up.
 // The general RabbitMQ channel and all other channels use their defaults.
 await publisher.PublishEventAsync(@event, new RabbitMqPublishOptions<OrderPlaced>
 {
@@ -335,6 +346,8 @@ forwarding it to each channel:
 | A non-generic `XxxPublishOptions` instance | The override (if assignable to the channel's `TOptions`) | `null` → uses its defaults — general options are **not** forwarded to typed channels |
 | A generic `XxxPublishOptions<TEvent>` instance | `null` → typed options are **not** forwarded to general channels | The override if `TEvent` matches the channel; `null` otherwise |
 | `CombinedPublishOptions` | First non-typed bundled entry whose type is assignable to the channel's `TOptions`, or `null` | First bundled entry parameterised with this channel's `TEvent`, or `null` |
+| Any options with `ChannelName` set (implements `INamedChannelFilter`) | The override, **only if** the channel's `INamedEventPublishChannel.Name` matches (or the channel is anonymous) | As above, with the same name-match requirement |
+| `NamedChannelPublishOptions("my-channel")` | `null` — no type-specific override; only the name filter applies | `null` — only the name filter applies |
 
 The discriminator between "general" and "typed" options is the **runtime generic type 
 structure**: an options instance is considered *typed* when its actual type (or any type in 
@@ -375,6 +388,7 @@ override only the specific step they need to change.
 | `SetAttributes(CloudEvent)` | Enrichment | Inject tenant ID, correlation ID, or other context attributes |
 | `ValidateCloudEvent(CloudEvent)` | Validation | Add domain-specific attribute requirements |
 | `CreateEventFromData(Type, object?)` | Event creation | Customise how annotated data classes become `CloudEvent`s |
+| `FilterChannelsByName(IEnumerable<IEventPublishChannel>, EventPublishOptions?)` | Dispatch | Customise how named-channel filtering selects the target channel set |
 | `ResolveChannelOptions(IEventPublishChannel, EventPublishOptions?)` | Dispatch | Implement custom per-channel options matching logic |
 | `PublishEventAsync(IEventPublishChannel, CloudEvent, EventPublishOptions?, CancellationToken)` | Dispatch | Wrap individual channel calls (circuit-breaking, retries, metrics) |
 | `PublishEventAsync(CloudEvent, EventPublishOptions?, CancellationToken)` | Entry point | Intercept or pre-process every publish call before fan-out |
@@ -488,6 +502,7 @@ pipeline.  Typical cases:
 | Completely different fan-out strategy (e.g. priority queues, event sourcing) | Implement `IEventPublisher` directly |
 | Add custom enrichment / context stamping | **Extend `EventPublisher`**, override `SetAttributes` |
 | Stricter or relaxed validation | **Extend `EventPublisher`**, override `ValidateCloudEvent` |
+| Custom channel selection / name-based routing | **Extend `EventPublisher`**, override `FilterChannelsByName` |
 | Custom options matching per channel | **Extend `EventPublisher`**, override `ResolveChannelOptions` |
 | Retry / circuit-breaking around channel calls | **Extend `EventPublisher`**, override `PublishEventAsync(channel, …)` |
 
@@ -531,5 +546,7 @@ public class FrozenSystemTime : IEventSystemTime
 ## Related pages
 
 - [Publish Channels](publish-channels.md)
+- [Named Channels](../publishers/named-channels.md)
+- [Typed Channels](../publishers/typed-channels.md)
 - [Event Annotations](event-annotations.md)
 

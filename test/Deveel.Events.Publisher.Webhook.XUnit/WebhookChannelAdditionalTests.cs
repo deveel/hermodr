@@ -14,7 +14,7 @@ using System.Text.Json;
 namespace Deveel.Events
 {
     /// <summary>
-    /// Additional tests for <see cref="WebhookEventPublishChannel"/> and
+    /// Additional tests for <see cref="WebhookPublishChannel"/> and
     /// <see cref="WebhookPublishOptions"/> covering scenarios not already present
     /// in <c>WebhookPublishChannelTests</c>.
     /// </summary>
@@ -42,7 +42,7 @@ namespace Deveel.Events
         ];
 #pragma warning restore CS0618
 
-        private static WebhookEventPublishChannel BuildChannel(
+        private static WebhookPublishChannel BuildChannel(
             HttpMessageHandler handler,
             Action<WebhookPublishOptions>? configure = null)
         {
@@ -64,7 +64,7 @@ namespace Deveel.Events
             var sp      = services.BuildServiceProvider();
             var factory = sp.GetRequiredService<IHttpClientFactory>();
 
-            return new WebhookEventPublishChannel(
+            return new WebhookPublishChannel(
                 Options.Create(options),
                 factory,
                 AllProviders);

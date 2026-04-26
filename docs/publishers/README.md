@@ -31,6 +31,22 @@ builder.Services
     });
 ```
 
+## Named channels
+
+When two or more channels of the same transport type are registered simultaneously, assign each a **logical name** via the `ChannelName` property on its options.  At publish time, target the right channel by name using the convenience extension methods or by setting `ChannelName` on the per-call options:
+
+```csharp
+builder.Services
+    .AddEventPublisher()
+    .AddRabbitMq(opts => { opts.ChannelName = "rabbit-orders"; opts.ExchangeName = "orders"; })
+    .AddRabbitMq(opts => { opts.ChannelName = "rabbit-notifications"; opts.ExchangeName = "notifications"; });
+
+// Publish only to the "rabbit-orders" channel
+await publisher.PublishAsync(orderPlaced, channelName: "rabbit-orders");
+```
+
+See [Named Channels](named-channels.md) for the full guide.
+
 ## Typed channels
 
 Every built-in channel supports a **typed** registration variant (`AddRabbitMq<TEvent>()`, `AddServiceBus<TEvent>()`, `AddMassTransit<TEvent>()`, `AddWebhooks<TEvent>()`) that routes **only** events of the specified data class to that channel.  Typed channels also support a two-level options hierarchy — a base set of defaults merged with per-event-type overrides — so you can share common settings and specialise only what differs.

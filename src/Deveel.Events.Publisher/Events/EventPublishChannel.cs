@@ -40,7 +40,7 @@ namespace Deveel.Events
     ///   </item>
     /// </list>
     /// </remarks>
-    public abstract class EventPublishChannelBase<TOptions> : IEventPublishChannel, INamedEventPublishChannel
+    public abstract class EventPublishChannel<TOptions> : INamedEventPublishChannel
         where TOptions : EventPublishOptions
     {
         private readonly TOptions _defaultOptions;
@@ -60,7 +60,7 @@ namespace Deveel.Events
         /// validation falls back to
         /// <see cref="Validator.ValidateObject(object, ValidationContext)"/> (DataAnnotations).
         /// </param>
-        protected EventPublishChannelBase(
+        protected EventPublishChannel(
             TOptions defaultOptions,
             IEnumerable<IValidateOptions<TOptions>>? validators = null)
         {
@@ -134,8 +134,8 @@ namespace Deveel.Events
         /// <typeparamref name="TOptions"/>; passing an options object of an incompatible
         /// type throws <see cref="ArgumentException"/>.
         /// </remarks>
-        Task IEventPublishChannel.PublishAsync(CloudEvent @event, EventPublishOptions? options = null,
-            CancellationToken cancellationToken = default)
+        Task IEventPublishChannel.PublishAsync(CloudEvent @event, EventPublishOptions? options,
+            CancellationToken cancellationToken)
         {
             if (options != null && options is not TOptions)
                 throw new ArgumentException($"Per-call options must be of type {typeof(TOptions).Name} or null.", nameof(options));

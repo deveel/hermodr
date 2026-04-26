@@ -14,7 +14,7 @@ namespace Deveel.Events
     /// <remarks>
     /// This is the most widely supported algorithm across webhook providers
     /// (GitHub, Stripe, Slack, Twilio, Shopify, and many others) and is the default
-    /// for <see cref="WebhookEventPublishChannel"/>.
+    /// for <see cref="WebhookPublishChannel"/>.
     /// </remarks>
     public class HmacSha256SignatureProvider : HmacWebhookSignatureProvider
     {
