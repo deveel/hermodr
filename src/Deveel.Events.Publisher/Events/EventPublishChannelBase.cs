@@ -40,7 +40,7 @@ namespace Deveel.Events
     ///   </item>
     /// </list>
     /// </remarks>
-    public abstract class EventPublishChannelBase<TOptions> : IEventPublishChannel
+    public abstract class EventPublishChannelBase<TOptions> : IEventPublishChannel, INamedEventPublishChannel
         where TOptions : EventPublishOptions
     {
         private readonly TOptions _defaultOptions;
@@ -68,6 +68,13 @@ namespace Deveel.Events
             _defaultOptions = defaultOptions;
             _validators = validators ?? [];
         }
+
+        /// <inheritdoc cref="INamedEventPublishChannel.Name"/>
+        /// <remarks>
+        /// The value is read from <see cref="DefaultOptions"/> when those options implement
+        /// <see cref="INamedChannelFilter"/>; otherwise <c>null</c>.
+        /// </remarks>
+        public string? Name => (_defaultOptions as INamedChannelFilter)?.ChannelName;
 
         /// <summary>Gets the channel-level default options.</summary>
         protected TOptions DefaultOptions => _defaultOptions;

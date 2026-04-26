@@ -15,6 +15,7 @@ public static class EventPublisherExtensions
     /// must implement <see cref="IEventConvertible"/> to provide its own
     /// <see cref="CloudEvent"/> representation.
     /// </typeparam>
+    /// <param name="publisher">The publisher to use.</param>
     /// <param name="event">
     /// The data object that will be converted into a <see cref="CloudEvent"/>
     /// and published. Must not be <c>null</c>.
@@ -37,4 +38,44 @@ public static class EventPublisherExtensions
     public static Task PublishAsync<TEvent>(this IEventPublisher publisher, TEvent @event, EventPublishOptions? options = null, CancellationToken cancellationToken = default)
         where TEvent : class
         => publisher.PublishAsync(typeof(TEvent), @event, options, cancellationToken);
+
+    /// <summary>
+    /// Creates a <see cref="CloudEvent"/> from an annotated data object of type
+    /// <typeparamref name="TEvent"/> and publishes it only to the channel(s) whose
+    /// <see cref="IEventPublishChannel.Name"/> matches <paramref name="channelName"/>.
+    /// </summary>
+    /// <typeparam name="TEvent">The event data type.</typeparam>
+    /// <param name="publisher">The publisher to use.</param>
+    /// <param name="event">The data object to publish.</param>
+    /// <param name="channelName">
+    /// The logical name of the target channel. Only channels registered with this
+    /// name (via <see cref="INamedChannelFilter.ChannelName"/> on their options)
+    /// will receive the event.
+    /// </param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>
+    /// A <see cref="Task"/> that completes when the event has been dispatched
+    /// to all matching channels.
+    /// </returns>
+    public static Task PublishAsync<TEvent>(this IEventPublisher publisher, TEvent @event, string channelName, CancellationToken cancellationToken = default)
+        where TEvent : class
+        => publisher.PublishAsync(typeof(TEvent), @event, new NamedChannelPublishOptions(channelName), cancellationToken);
+
+    /// <summary>
+    /// Publishes a <see cref="CloudEvent"/> only to the channel(s) whose
+    /// <see cref="IEventPublishChannel.Name"/> matches <paramref name="channelName"/>.
+    /// </summary>
+    /// <param name="publisher">The publisher to use.</param>
+    /// <param name="event">The <see cref="CloudEvent"/> to publish.</param>
+    /// <param name="channelName">
+    /// The logical name of the target channel(s).
+    /// </param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>
+    /// A <see cref="Task"/> that completes when the event has been dispatched
+    /// to all matching channels.
+    /// </returns>
+    public static Task PublishEventAsync(this IEventPublisher publisher, CloudEvent @event, string channelName, CancellationToken cancellationToken = default)
+        => publisher.PublishEventAsync(@event, new NamedChannelPublishOptions(channelName), cancellationToken);
 }
+

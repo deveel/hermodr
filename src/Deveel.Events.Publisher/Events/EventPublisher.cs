@@ -296,30 +296,88 @@ namespace Deveel.Events {
 				}
 			}
 
-			if (options is CombinedPublishOptions combined)
-			{
-				return channelEventType != null
-					// Typed channel: find the first bundled entry typed for this TEvent.
-					? combined.Options.FirstOrDefault(o =>
-						expectedOptionsType.IsAssignableFrom(o.GetType()) &&
-						IsTypedForEvent(o.GetType(), channelEventType))
-					// General channel: find the first non-typed bundled entry.
-					: combined.Options.FirstOrDefault(o =>
-						expectedOptionsType.IsAssignableFrom(o.GetType()) &&
-						!IsAnyTypedOptions(o.GetType()));
-			}
+		if (options is CombinedPublishOptions combined)
+		{
+			// For combined options each bundled entry may carry its own ChannelName.
+			// Only entries whose name matches the target channel (or carry no name) are eligible.
+			var compatibleEntries = combined.Options.Where(o =>
+				expectedOptionsType.IsInstanceOfType(o) &&
+				NameMatchesChannel(o, channel));
 
-			// Single options instance.
-			if (!expectedOptionsType.IsAssignableFrom(options.GetType()))
-				return null;
-
-			if (channelEventType != null)
-				// Typed channel: only accept options specifically typed for this TEvent.
-				return IsTypedForEvent(options.GetType(), channelEventType) ? options : null;
-
-			// General channel: only accept non-typed options instances.
-			return IsAnyTypedOptions(options.GetType()) ? null : options;
+			return channelEventType != null
+				// Typed channel: find the first bundled entry typed for this TEvent.
+				? compatibleEntries.FirstOrDefault(o => IsTypedForEvent(o.GetType(), channelEventType))
+				// General channel: find the first non-typed bundled entry.
+				: compatibleEntries.FirstOrDefault(o => !IsAnyTypedOptions(o.GetType()));
 		}
+
+		// Single options instance.
+		if (!expectedOptionsType.IsInstanceOfType(options))
+			return null;
+
+		// If the options carry a name filter, the channel must match.
+		if (!NameMatchesChannel(options, channel))
+			return null;
+
+		if (channelEventType != null)
+			// Typed channel: only accept options specifically typed for this TEvent.
+			return IsTypedForEvent(options.GetType(), channelEventType) ? options : null;
+
+		// General channel: only accept non-typed options instances.
+		return IsAnyTypedOptions(options.GetType()) ? null : options;
+	}
+
+	/// <summary>
+	/// Returns <c>true</c> when the <paramref name="options"/> carry no name filter,
+	/// when the <paramref name="channel"/> does not implement
+	/// <see cref="INamedEventPublishChannel"/>, or when their
+	/// <see cref="INamedChannelFilter.ChannelName"/> matches the channel's
+	/// <see cref="INamedEventPublishChannel.Name"/> (case-insensitive).
+	/// </summary>
+	private static bool NameMatchesChannel(EventPublishOptions options, IEventPublishChannel channel)
+	{
+		if (options is not INamedChannelFilter filter || string.IsNullOrEmpty(filter.ChannelName))
+			return true;
+
+		// Anonymous channels (non-INamedEventPublishChannel) receive everything.
+		if (channel is not INamedEventPublishChannel named)
+			return true;
+
+		// A named-channel implementation with a null/empty Name is treated as unnamed.
+		if (string.IsNullOrEmpty(named.Name))
+			return true;
+
+		return string.Equals(filter.ChannelName, named.Name, StringComparison.OrdinalIgnoreCase);
+	}
+
+	/// <summary>
+	/// Filters <paramref name="channels"/> to those whose
+	/// <see cref="INamedEventPublishChannel.Name"/> matches the
+	/// <see cref="INamedChannelFilter.ChannelName"/> specified in
+	/// <paramref name="options"/>.
+	/// </summary>
+	/// <remarks>
+	/// When <paramref name="options"/> is <c>null</c>, does not implement
+	/// <see cref="INamedChannelFilter"/>, or carries an empty/null channel name,
+	/// all channels are returned unchanged.
+	/// Channels that do not implement <see cref="INamedEventPublishChannel"/> are
+	/// treated as anonymous and always pass the filter.
+	/// <see cref="CombinedPublishOptions"/> intentionally does not implement
+	/// <see cref="INamedChannelFilter"/>; its per-entry name filtering is handled
+	/// inside <see cref="ResolveChannelOptions"/>.
+	/// </remarks>
+	protected virtual IEnumerable<IEventPublishChannel> FilterChannelsByName(
+		IEnumerable<IEventPublishChannel> channels,
+		EventPublishOptions? options)
+	{
+		if (options is not INamedChannelFilter { ChannelName: { Length: > 0 } name })
+			return channels;
+
+		return channels.Where(c =>
+			c is not INamedEventPublishChannel named ||
+			string.IsNullOrEmpty(named.Name) ||
+			string.Equals(named.Name, name, StringComparison.OrdinalIgnoreCase));
+	}
 
 		/// <summary>
 		/// Returns <c>true</c> when <paramref name="optionsType"/> or any type in its
@@ -377,13 +435,14 @@ namespace Deveel.Events {
 			return eventToPublish;
 		}
 
-		private async Task PublishEventToChannelsAsync(IEnumerable<IEventPublishChannel> channels, CloudEvent @event, EventPublishOptions? options = null, CancellationToken cancellationToken = default)
-		{
-			var eventToPublish = EnsureEvent(@event);
-			
-			ValidateCloudEvent(@eventToPublish);
-			
-			foreach (var channel in channels)
+	private async Task PublishEventToChannelsAsync(IEnumerable<IEventPublishChannel> channels, CloudEvent @event, EventPublishOptions? options = null, CancellationToken cancellationToken = default)
+	{
+		var targetChannels = FilterChannelsByName(channels, options);
+		var eventToPublish = EnsureEvent(@event);
+		
+		ValidateCloudEvent(@eventToPublish);
+		
+		foreach (var channel in targetChannels)
 			{
 				_logger.TraceEventPublishing(@event.Type!, channel.GetType());
 

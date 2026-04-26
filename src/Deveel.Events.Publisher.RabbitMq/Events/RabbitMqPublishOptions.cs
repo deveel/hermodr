@@ -12,7 +12,7 @@ namespace Deveel.Events
     /// <summary>
     /// Configuration options for a <see cref="RabbitMqEventPublishChannel"/>.
     /// </summary>
-    public class RabbitMqPublishOptions : EventPublishOptions
+    public class RabbitMqPublishOptions : EventPublishOptions, INamedChannelFilter
     {
         /// <summary>
         /// Merges <paramref name="baseOptions"/> with <paramref name="typedOptions"/>,
@@ -25,6 +25,7 @@ namespace Deveel.Events
         {
             return new RabbitMqPublishOptions
             {
+                ChannelName           = typedOptions.ChannelName           ?? baseOptions.ChannelName,
                 ConnectionString      = typedOptions.ConnectionString      ?? baseOptions.ConnectionString,
                 ExchangeName          = typedOptions.ExchangeName          ?? baseOptions.ExchangeName,
                 RoutingKey            = typedOptions.RoutingKey            ?? baseOptions.RoutingKey,
@@ -39,6 +40,9 @@ namespace Deveel.Events
                 Mandatory             = typedOptions.Mandatory             ?? baseOptions.Mandatory,
             };
         }
+
+        /// <inheritdoc/>
+        public string? ChannelName { get; set; }
 
 
         /// <summary>

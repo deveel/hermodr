@@ -21,7 +21,7 @@ namespace Deveel.Events
     /// are always taken from the channel-level defaults and ignored when supplied
     /// in a per-call override.
     /// </remarks>
-    public class WebhookPublishOptions : EventPublishOptions
+    public class WebhookPublishOptions : EventPublishOptions, INamedChannelFilter
     {
         /// <summary>
         /// Merges <paramref name="baseOptions"/> with <paramref name="typedOptions"/>,
@@ -41,6 +41,7 @@ namespace Deveel.Events
 
             return new WebhookPublishOptions
             {
+                ChannelName            = typedOptions.ChannelName            ?? baseOptions.ChannelName,
                 EndpointUrl            = typedOptions.EndpointUrl            ?? baseOptions.EndpointUrl,
                 SigningSecret          = typedOptions.SigningSecret          ?? baseOptions.SigningSecret,
                 MaxRetryCount          = typedOptions.MaxRetryCount          ?? baseOptions.MaxRetryCount,
@@ -60,6 +61,9 @@ namespace Deveel.Events
                 HttpClientName              = baseOptions.HttpClientName,
             };
         }
+
+        /// <inheritdoc/>
+        public string? ChannelName { get; set; }
 
 
         // ── Delivery settings — nullable so per-call overrides can be partial ──

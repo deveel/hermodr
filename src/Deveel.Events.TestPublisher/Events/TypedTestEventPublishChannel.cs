@@ -13,18 +13,22 @@ namespace Deveel.Events {
     /// <typeparam name="TEvent">
     /// The event data class this channel is keyed against.
     /// </typeparam>
-    class TypedTestEventPublishChannel<TEvent> : IEventPublishChannel<TEvent>
+    class TypedTestEventPublishChannel<TEvent> : IEventPublishChannel<TEvent>, INamedEventPublishChannel
         where TEvent : class
     {
         private readonly IEventPublishCallback _callback;
+        private readonly string? _name;
 
-        public TypedTestEventPublishChannel(IEventPublishCallback callback) {
+        public TypedTestEventPublishChannel(IEventPublishCallback callback, string? name = null) {
             _callback = callback;
+            _name = name;
         }
+
+        /// <inheritdoc/>
+        string? INamedEventPublishChannel.Name => _name;
 
         public Task PublishAsync(CloudEvent @event, EventPublishOptions? options = null, CancellationToken cancellationToken = default) {
             return _callback.OnEventPublishedAsync(@event);
         }
     }
 }
-
