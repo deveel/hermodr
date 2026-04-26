@@ -418,48 +418,26 @@ namespace Deveel.Events {
 			return PublishEventToChannelsAsync(_channels, @event, options, cancellationToken);
 		}
 
-		/// <summary>
-		/// Publishes an event that is created from the given 
-		/// data type and the instance of the data.
-		/// </summary>
-		/// <param name="dataType">
-		/// The type of the data that is used to create the event.
-		/// </param>
-		/// <param name="data">
-		/// The instance of the data contained in the event.
-		/// </param>
-		/// <param name="cancellationToken">
-		/// A token that is used to cancel the operation.
-		/// </param>
-		/// <returns>
-		/// Returns a task that represents the asynchronous operation.
-		/// </returns>
+		/// <inheritdoc cref="IEventPublisher.PublishAsync(Type,object,EventPublishOptions,CancellationToken)"/>
 		/// <exception cref="EventPublishException">
-		/// Thrown when an error occurs while creating the event from the data,
-		/// and the <see cref="EventPublisherOptions.ThrowOnErrors"/>
-		/// is set to <c>true</c>.
+		/// Thrown when an error occurs while creating the event from the event and
+		/// <see cref="EventPublisherOptions.ThrowOnErrors"/> is <c>true</c>.
 		/// </exception>
-		/// <exception cref="InvalidCloudEventException">
-		/// Thrown when any of the required CloudEvents attributes (<c>id</c>,
-		/// <c>source</c>, <c>type</c>, <c>specversion</c>) is still absent after
-		/// enrichment.
-		/// </exception>
-		/// <seealso cref="PublishEventAsync(CloudEvent, EventPublishOptions, CancellationToken)"/>
-		public Task PublishAsync(Type dataType, object? data, EventPublishOptions? options = null, CancellationToken cancellationToken = default)
+		public Task PublishAsync(Type eventType, object? @event, EventPublishOptions? options = null, CancellationToken cancellationToken = default)
 		{
-			CloudEvent @event;
+			CloudEvent cloudEvent;
 
 			try
 			{
-				@event = CreateEventFromData(dataType, data);
+				cloudEvent = CreateEventFromData(eventType, @event);
 			}
 			catch (Exception ex)
 			{
-				_logger.LogEventCreateError(ex, dataType);
+				_logger.LogEventCreateError(ex, eventType);
 
 				if (PublisherOptions.ThrowOnErrors)
 					throw new EventPublishException(
-						$"An error occurred while creating an event of type {dataType.FullName} from the provided data",
+						$"An error occurred while creating an event of type {eventType.FullName} from the provided event",
 						ex);
 
 				return Task.CompletedTask;
@@ -468,13 +446,13 @@ namespace Deveel.Events {
 			// First let's try to resolve event publishers specific for this
 			// type of object...
 			
-			var typedChannels = GetTypedChannels(dataType);
+			var typedChannels = GetTypedChannels(eventType);
 			if (typedChannels.Count > 0)
 			{
-				return PublishEventToChannelsAsync(typedChannels, @event, options, cancellationToken);
+				return PublishEventToChannelsAsync(typedChannels, @cloudEvent, options, cancellationToken);
 			}
 
-			return PublishEventAsync(@event, options, cancellationToken);
+			return PublishEventAsync(cloudEvent, options, cancellationToken);
 		}
 
 		private IReadOnlyList<IEventPublishChannel> GetTypedChannels(Type dataType)
@@ -516,26 +494,7 @@ namespace Deveel.Events {
 			return EventCreator.CreateEventFromData(dataType, data);
 		}
 
-		/// <summary>
-		/// Publishes an event of the given type of data.
-		/// </summary>
-		/// <typeparam name="TData">
-		/// The type of the data that is used to create the event.
-		/// </typeparam>
-		/// <param name="data">
-		/// The instance of the data contained in the event.
-		/// </param>
-		/// <param name="cancellationToken">
-		/// A token that is used to cancel the operation.
-		/// </param>
-		/// <returns>
-		/// Returns a task that represents the asynchronous operation.
-		/// </returns>
-		/// <exception cref="InvalidCloudEventException">
-		/// Thrown when any of the required CloudEvents attributes (<c>id</c>,
-		/// <c>source</c>, <c>type</c>, <c>specversion</c>) is still absent after
-		/// enrichment and before dispatch to any channel.
-		/// </exception>
+		/// <inheritdoc cref="IEventPublisher.PublishAsync{TData}(TData,EventPublishOptions,CancellationToken)"/>
 		public Task PublishAsync<TData>(TData data, EventPublishOptions? options = null, CancellationToken cancellationToken = default)
 		{
 			ArgumentNullException.ThrowIfNull(data);
