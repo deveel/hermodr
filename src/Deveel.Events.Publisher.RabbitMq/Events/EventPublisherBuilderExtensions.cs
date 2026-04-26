@@ -53,9 +53,9 @@ namespace Deveel.Events
         /// <returns>
         /// Returns the <see cref="EventPublisherBuilder"/> to continue the configuration.
         /// </returns>
-        public static EventPublisherBuilder AddRabbitMq(this EventPublisherBuilder builder, Action<RabbitMqEventPublishOptions> configure)
+        public static EventPublisherBuilder AddRabbitMq(this EventPublisherBuilder builder, Action<RabbitMqPublishOptions> configure)
         {
-            builder.Services.AddOptions<RabbitMqEventPublishOptions>()
+            builder.Services.AddOptions<RabbitMqPublishOptions>()
                 .Configure(configure);
 
             return builder.AddRabbitMqChannel();
@@ -75,7 +75,7 @@ namespace Deveel.Events
         /// </returns>
         public static EventPublisherBuilder AddRabbitMq(this EventPublisherBuilder builder, string sectionPath)
         {
-            builder.Services.AddOptions<RabbitMqEventPublishOptions>()
+            builder.Services.AddOptions<RabbitMqPublishOptions>()
                 .BindConfiguration(sectionPath);
 
             return builder.AddRabbitMqChannel();
@@ -93,9 +93,9 @@ namespace Deveel.Events
         /// The <see cref="EventPublisherBuilder"/> to add the channel to.
         /// </param>
         /// <param name="configure">
-        /// An action to configure the type-specific <see cref="RabbitMqEventPublishOptions{TEvent}"/>
+        /// An action to configure the type-specific <see cref="RabbitMqPublishOptions{TEvent}"/>
         /// for this channel.  Non-<c>null</c> values override the corresponding properties
-        /// from the general <see cref="RabbitMqEventPublishOptions"/> (registered via
+        /// from the general <see cref="RabbitMqPublishOptions"/> (registered via
         /// <c>AddRabbitMq(configure)</c>), enabling a two-level configuration hierarchy.
         /// </param>
         /// <returns>
@@ -103,10 +103,10 @@ namespace Deveel.Events
         /// </returns>
         public static EventPublisherBuilder AddRabbitMq<TEvent>(
             this EventPublisherBuilder builder,
-            Action<RabbitMqEventPublishOptions<TEvent>> configure)
+            Action<RabbitMqPublishOptions<TEvent>> configure)
             where TEvent : class
         {
-            builder.Services.AddOptions<RabbitMqEventPublishOptions<TEvent>>()
+            builder.Services.AddOptions<RabbitMqPublishOptions<TEvent>>()
                 .Configure(configure);
 
             builder.AddRabbitMqInfrastructure();
@@ -126,7 +126,7 @@ namespace Deveel.Events
         /// </param>
         /// <param name="sectionPath">
         /// The configuration section path to bind the type-specific
-        /// <see cref="RabbitMqEventPublishOptions{TEvent}"/> from.
+        /// <see cref="RabbitMqPublishOptions{TEvent}"/> from.
         /// </param>
         /// <returns>
         /// Returns the <see cref="EventPublisherBuilder"/> to continue the configuration.
@@ -136,7 +136,7 @@ namespace Deveel.Events
             string sectionPath)
             where TEvent : class
         {
-            builder.Services.AddOptions<RabbitMqEventPublishOptions<TEvent>>()
+            builder.Services.AddOptions<RabbitMqPublishOptions<TEvent>>()
                 .BindConfiguration(sectionPath);
 
             builder.AddRabbitMqInfrastructure();

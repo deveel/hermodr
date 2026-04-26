@@ -26,6 +26,6 @@ namespace Deveel.Events {
         /// <returns>
         /// Returns a task that represents the asynchronous operation.
         /// </returns>
-		Task PublishAsync(CloudEvent @event, EventPublishChannelOptions? options = null, CancellationToken cancellationToken = default);
+		Task PublishAsync(CloudEvent @event, EventPublishOptions? options = null, CancellationToken cancellationToken = default);
 	}
 }

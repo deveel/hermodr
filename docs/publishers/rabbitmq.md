@@ -49,7 +49,7 @@ builder.Services
 
 ## Options reference
 
-`RabbitMqEventPublishOptions`
+`RabbitMqPublishOptions`
 
 | Property | Type | Effective default | Description |
 |----------|------|-------------------|-------------|
@@ -70,7 +70,7 @@ builder.Services
 
 ## Per-delivery options
 
-Pass a `RabbitMqEventPublishOptions` instance as the second argument to `PublishAsync` to override individual properties for a single publish call.  Only the properties you set (non-`null`) replace the channel default — all others fall back to the values configured at registration time.
+Pass a `RabbitMqPublishOptions` instance as the second argument to `PublishAsync` to override individual properties for a single publish call.  Only the properties you set (non-`null`) replace the channel default — all others fall back to the values configured at registration time.
 
 ```csharp
 // Resolve the concrete channel directly from DI.
@@ -79,7 +79,7 @@ var channel = serviceProvider.GetRequiredService<RabbitMqEventPublishChannel>();
 // Override only the routing key and make this one message non-persistent.
 // Everything else (ConnectionString, ExchangeName, PublisherConfirms, …)
 // is inherited from the channel-level defaults.
-await channel.PublishAsync(@event, new RabbitMqEventPublishOptions
+await channel.PublishAsync(@event, new RabbitMqPublishOptions
 {
     RoutingKey         = "priority.orders",
     PersistentMessages = false,
@@ -88,7 +88,7 @@ await channel.PublishAsync(@event, new RabbitMqEventPublishOptions
 
 ## Typed channel
 
-Use `AddRabbitMq<TEvent>()` to register a channel that receives **only** events whose data class is `TEvent`.  The typed channel subclass (`RabbitMqEventPublishChannel<TEvent>`) merges the general `RabbitMqEventPublishOptions` with the type-specific `RabbitMqEventPublishOptions<TEvent>` at construction time: non-`null` typed values win; `null` values fall back to the base defaults.
+Use `AddRabbitMq<TEvent>()` to register a channel that receives **only** events whose data class is `TEvent`.  The typed channel subclass (`RabbitMqEventPublishChannel<TEvent>`) merges the general `RabbitMqPublishOptions` with the type-specific `RabbitMqPublishOptions<TEvent>` at construction time: non-`null` typed values win; `null` values fall back to the base defaults.
 
 ```csharp
 builder.Services
@@ -162,7 +162,7 @@ public class OrderPlaced
 }
 ```
 
-When the RabbitMQ channel publishes an `OrderPlaced` event, it targets the `"orders"` exchange, overriding any global `ExchangeName` set in `RabbitMqEventPublishChannelOptions`.
+When the RabbitMQ channel publishes an `OrderPlaced` event, it targets the `"orders"` exchange, overriding any global `ExchangeName` set in `RabbitMqPublishOptions`.
 
 ### `[AmqpRoutingKey]`
 
@@ -184,7 +184,7 @@ public class OrderPlaced
 When multiple sources of AMQP routing metadata exist, the following priority applies (highest to lowest):
 
 1. Per-event attributes (`[AmqpExchange]`, `[AmqpRoutingKey]`)
-2. `RabbitMqEventPublishChannelOptions.ExchangeName` / `.RoutingKey`
+2. `RabbitMqPublishOptions.ExchangeName` / `.RoutingKey`
 
 ### Complete example
 

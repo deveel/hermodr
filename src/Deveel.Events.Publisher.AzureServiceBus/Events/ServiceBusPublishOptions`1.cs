@@ -18,27 +18,27 @@ namespace Deveel.Events
     /// </para>
     /// <para>
     /// Any property left at <c>null</c> (or at its zero-value for strings) will be
-    /// inherited from the general <see cref="ServiceBusEventPublishOptions"/>
+    /// inherited from the general <see cref="ServiceBusPublishOptions"/>
     /// registered alongside the non-typed channel.
     /// </para>
     /// </remarks>
     /// <typeparam name="TEvent">
     /// The event data class this set of options is keyed against.
     /// </typeparam>
-    public class ServiceBusEventPublishOptions<TEvent> : ServiceBusEventPublishOptions
+    public class ServiceBusPublishOptions<TEvent> : ServiceBusPublishOptions
         where TEvent : class
     {
         /// <summary>
-        /// Merges a base <see cref="ServiceBusEventPublishOptions"/> with the typed
+        /// Merges a base <see cref="ServiceBusPublishOptions"/> with the typed
         /// overrides in <paramref name="typedOpts"/>. Non-null / non-empty values from
         /// <paramref name="typedOpts"/> take precedence; all other values fall back to
         /// <paramref name="baseOpts"/>.
         /// </summary>
-        public static ServiceBusEventPublishOptions Merge(
-            ServiceBusEventPublishOptions baseOpts,
-            ServiceBusEventPublishOptions<TEvent> typedOpts)
+        public static ServiceBusPublishOptions Merge(
+            ServiceBusPublishOptions baseOpts,
+            ServiceBusPublishOptions<TEvent> typedOpts)
         {
-            return new ServiceBusEventPublishOptions
+            return new ServiceBusPublishOptions
             {
                 ConnectionString = !string.IsNullOrWhiteSpace(typedOpts.ConnectionString)
                     ? typedOpts.ConnectionString!

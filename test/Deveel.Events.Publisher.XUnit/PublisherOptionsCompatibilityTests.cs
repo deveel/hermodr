@@ -11,7 +11,7 @@ namespace Deveel.Events
 {
     /// <summary>
     /// Verifies that <see cref="EventPublisher"/> correctly resolves per-call
-    /// <see cref="EventPublishChannelOptions"/> compatibility for each channel
+    /// <see cref="EventPublishOptions"/> compatibility for each channel
     /// in the pipeline before forwarding the options.
     /// </summary>
     [Trait("Function", "Publisher")]
@@ -21,13 +21,13 @@ namespace Deveel.Events
         // ── helpers ────────────────────────────────────────────────────────────
 
         /// <summary>A simple concrete options type used by <see cref="AlphaChannel"/>.</summary>
-        private sealed class AlphaOptions : EventPublishChannelOptions
+        private class AlphaOptions : EventPublishOptions
         {
             public string? Tag { get; init; }
         }
 
         /// <summary>A different concrete options type used by <see cref="BetaChannel"/>.</summary>
-        private sealed class BetaOptions : EventPublishChannelOptions
+        private sealed class BetaOptions : EventPublishOptions
         {
             public int Priority { get; init; }
         }
@@ -79,11 +79,11 @@ namespace Deveel.Events
         /// </summary>
         private sealed class RawChannel : IEventPublishChannel
         {
-            public EventPublishChannelOptions? LastOptions { get; private set; }
+            public EventPublishOptions? LastOptions { get; private set; }
 
             public Task PublishAsync(
                 CloudEvent @event,
-                EventPublishChannelOptions? options = null,
+                EventPublishOptions? options = null,
                 CancellationToken cancellationToken = default)
             {
                 LastOptions = options;
@@ -259,7 +259,117 @@ namespace Deveel.Events
             Assert.Equal("default", channel.LastEffectiveOptions.Tag);
         }
 
-        // ── CombinedEventPublishOptions tests ─────────────────────────────────
+        // ── Typed-channel options routing tests ───────────────────────────────
+
+        /// <summary>A typed options subclass keyed to a specific event type.</summary>
+        private sealed class AlphaOptions<TEvent> : AlphaOptions where TEvent : class
+        {
+            // No extra properties — the generic type argument is the discriminator.
+        }
+
+        /// <summary>
+        /// A channel that accepts only <typeparamref name="TEvent"/> events
+        /// and is wired to <see cref="AlphaOptions"/>.
+        /// </summary>
+        private sealed class TypedAlphaChannel<TEvent> :
+            EventPublishChannelBase<AlphaOptions>,
+            IEventPublishChannel<TEvent>
+            where TEvent : class
+        {
+            public TypedAlphaChannel(AlphaOptions defaults) : base(defaults) { }
+
+            public AlphaOptions? LastEffectiveOptions { get; private set; }
+
+            protected override Task PublishCoreAsync(
+                CloudEvent @event,
+                AlphaOptions options,
+                CancellationToken cancellationToken)
+            {
+                LastEffectiveOptions = options;
+                return Task.CompletedTask;
+            }
+        }
+
+        private class TypedEventA { }
+        private class TypedEventB { }
+
+        [Fact]
+        public async Task PublishEvent_GeneralOptions_NotForwardedToTypedChannel()
+        {
+            // Arrange — general channel + typed channel, both backed by AlphaOptions
+            var generalChannel = new AlphaChannel(new AlphaOptions { Tag = "general-default" });
+            var typedChannel   = new TypedAlphaChannel<TypedEventA>(new AlphaOptions { Tag = "typed-default" });
+            var publisher      = BuildPublisher(generalChannel, typedChannel);
+
+            // A non-generic (general) options override
+            var generalOpts = new AlphaOptions { Tag = "general-override" };
+
+            // Act
+            await publisher.PublishEventAsync(MakeEvent(), generalOpts, TestContext.Current.CancellationToken);
+
+            // Assert — general channel received the override
+            Assert.NotNull(generalChannel.LastEffectiveOptions);
+            Assert.Equal("general-override", generalChannel.LastEffectiveOptions.Tag);
+
+            // Assert — typed channel must NOT have received the general override;
+            // it should have used its own registered defaults instead.
+            Assert.NotNull(typedChannel.LastEffectiveOptions);
+            Assert.Equal("typed-default", typedChannel.LastEffectiveOptions.Tag);
+        }
+
+        [Fact]
+        public async Task PublishEvent_TypedOptions_OnlyForwardedToMatchingTypedChannel()
+        {
+            // Arrange — one general channel + two typed channels for different event types
+            var generalChannel  = new AlphaChannel(new AlphaOptions { Tag = "general-default" });
+            var typedChannelA   = new TypedAlphaChannel<TypedEventA>(new AlphaOptions { Tag = "typed-a-default" });
+            var typedChannelB   = new TypedAlphaChannel<TypedEventB>(new AlphaOptions { Tag = "typed-b-default" });
+            var publisher       = BuildPublisher(generalChannel, typedChannelA, typedChannelB);
+
+            // A typed override aimed at TypedEventA only
+            var typedOptsA = new AlphaOptions<TypedEventA> { Tag = "typed-a-override" };
+
+            // Act
+            await publisher.PublishEventAsync(MakeEvent(), typedOptsA, TestContext.Current.CancellationToken);
+
+            // Assert — TypedEventA channel received the typed override
+            Assert.NotNull(typedChannelA.LastEffectiveOptions);
+            Assert.Equal("typed-a-override", typedChannelA.LastEffectiveOptions.Tag);
+
+            // Assert — TypedEventB channel must NOT have received the override
+            Assert.NotNull(typedChannelB.LastEffectiveOptions);
+            Assert.Equal("typed-b-default", typedChannelB.LastEffectiveOptions.Tag);
+
+            // Assert — general channel must NOT have received a typed override
+            Assert.NotNull(generalChannel.LastEffectiveOptions);
+            Assert.Equal("general-default", generalChannel.LastEffectiveOptions.Tag);
+        }
+
+        [Fact]
+        public async Task PublishEvent_CombinedOptions_GeneralAndTyped_EachChannelReceivesCorrectOverride()
+        {
+            // Arrange — general + two typed channels
+            var generalChannel = new AlphaChannel(new AlphaOptions { Tag = "general-default" });
+            var typedChannelA  = new TypedAlphaChannel<TypedEventA>(new AlphaOptions { Tag = "typed-a-default" });
+            var typedChannelB  = new TypedAlphaChannel<TypedEventB>(new AlphaOptions { Tag = "typed-b-default" });
+            var publisher      = BuildPublisher(generalChannel, typedChannelA, typedChannelB);
+
+            var combined = new CombinedPublishOptions(
+                new AlphaOptions           { Tag = "general-override" },
+                new AlphaOptions<TypedEventA> { Tag = "typed-a-override" }
+                // no entry for TypedEventB → it should fall back to its defaults
+            );
+
+            // Act
+            await publisher.PublishEventAsync(MakeEvent(), combined, TestContext.Current.CancellationToken);
+
+            // Assert — each channel received only what it should
+            Assert.Equal("general-override",  generalChannel.LastEffectiveOptions!.Tag);
+            Assert.Equal("typed-a-override",  typedChannelA.LastEffectiveOptions!.Tag);
+            Assert.Equal("typed-b-default",   typedChannelB.LastEffectiveOptions!.Tag);
+        }
+
+        // ── CombinedPublishOptions tests ─────────────────────────────────
 
         [Fact]
         public async Task PublishEvent_CombinedOptions_EachChannelReceivesItsOwnOptions()
@@ -269,7 +379,7 @@ namespace Deveel.Events
             var betaChannel  = new BetaChannel(new BetaOptions  { Priority = 0 });
             var publisher    = BuildPublisher(alphaChannel, betaChannel);
 
-            var combined = new CombinedEventPublishOptions(
+            var combined = new CombinedPublishOptions(
                 new AlphaOptions { Tag = "alpha-per-call" },
                 new BetaOptions  { Priority = 42 });
 
@@ -293,7 +403,7 @@ namespace Deveel.Events
             var betaChannel  = new BetaChannel(new BetaOptions  { Priority = 99 });
             var publisher    = BuildPublisher(alphaChannel, betaChannel);
 
-            var combined = new CombinedEventPublishOptions(
+            var combined = new CombinedPublishOptions(
                 new AlphaOptions { Tag = "alpha-per-call" });
 
             // Act
@@ -315,7 +425,7 @@ namespace Deveel.Events
             var rawChannel = new RawChannel();
             var publisher  = BuildPublisher(rawChannel);
 
-            var combined = new CombinedEventPublishOptions(
+            var combined = new CombinedPublishOptions(
                 new AlphaOptions { Tag = "alpha" },
                 new BetaOptions  { Priority = 1 });
 
@@ -327,42 +437,42 @@ namespace Deveel.Events
         }
 
         [Fact]
-        public void CombinedEventPublishOptions_GetOptions_Generic_ReturnsCorrectEntry()
+        public void CombinedPublishOptions_GetOptions_Generic_ReturnsCorrectEntry()
         {
             var alphaOpts = new AlphaOptions { Tag = "alpha" };
             var betaOpts  = new BetaOptions  { Priority = 7 };
-            var combined  = new CombinedEventPublishOptions(alphaOpts, betaOpts);
+            var combined  = new CombinedPublishOptions(alphaOpts, betaOpts);
 
             Assert.Same(alphaOpts, combined.GetOptions<AlphaOptions>());
             Assert.Same(betaOpts,  combined.GetOptions<BetaOptions>());
         }
 
         [Fact]
-        public void CombinedEventPublishOptions_GetOptions_ByType_ReturnsCorrectEntry()
+        public void CombinedPublishOptions_GetOptions_ByType_ReturnsCorrectEntry()
         {
             var alphaOpts = new AlphaOptions { Tag = "alpha" };
             var betaOpts  = new BetaOptions  { Priority = 3 };
-            var combined  = new CombinedEventPublishOptions(alphaOpts, betaOpts);
+            var combined  = new CombinedPublishOptions(alphaOpts, betaOpts);
 
             Assert.Same(alphaOpts, combined.GetOptions(typeof(AlphaOptions)));
             Assert.Same(betaOpts,  combined.GetOptions(typeof(BetaOptions)));
         }
 
         [Fact]
-        public void CombinedEventPublishOptions_GetOptions_MissingType_ReturnsNull()
+        public void CombinedPublishOptions_GetOptions_MissingType_ReturnsNull()
         {
-            var combined = new CombinedEventPublishOptions(new AlphaOptions { Tag = "x" });
+            var combined = new CombinedPublishOptions(new AlphaOptions { Tag = "x" });
 
             Assert.Null(combined.GetOptions<BetaOptions>());
             Assert.Null(combined.GetOptions(typeof(BetaOptions)));
         }
 
         [Fact]
-        public void CombinedEventPublishOptions_Options_ReflectsAllEntries()
+        public void CombinedPublishOptions_Options_ReflectsAllEntries()
         {
             var alphaOpts = new AlphaOptions { Tag = "a" };
             var betaOpts  = new BetaOptions  { Priority = 1 };
-            var combined  = new CombinedEventPublishOptions(alphaOpts, betaOpts);
+            var combined  = new CombinedPublishOptions(alphaOpts, betaOpts);
 
             Assert.Equal(2, combined.Options.Count);
             Assert.Contains(alphaOpts, combined.Options);

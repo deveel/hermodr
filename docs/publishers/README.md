@@ -19,7 +19,7 @@ You can register more than one channel at a time.  The publisher will fan every 
 ```csharp
 builder.Services
     .AddEventPublisher(options => options.Source = new Uri("https://myapp.example.com"))
-    .AddServiceBusChannel(options =>
+    .AddServiceBus(options =>
     {
         options.ConnectionString = "...";
         options.QueueName = "events";
@@ -33,7 +33,7 @@ builder.Services
 
 ## Typed channels
 
-Every built-in channel supports a **typed** registration variant (`AddRabbitMq<TEvent>()`, `AddServiceBusChannel<TEvent>()`, `AddMassTransit<TEvent>()`, `AddWebhooks<TEvent>()`) that routes **only** events of the specified data class to that channel.  Typed channels also support a two-level options hierarchy — a base set of defaults merged with per-event-type overrides — so you can share common settings and specialise only what differs.
+Every built-in channel supports a **typed** registration variant (`AddRabbitMq<TEvent>()`, `AddServiceBus<TEvent>()`, `AddMassTransit<TEvent>()`, `AddWebhooks<TEvent>()`) that routes **only** events of the specified data class to that channel.  Typed channels also support a two-level options hierarchy — a base set of defaults merged with per-event-type overrides — so you can share common settings and specialise only what differs.
 
 ```csharp
 builder.Services

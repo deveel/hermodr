@@ -174,7 +174,7 @@ await webhookChannel.PublishAsync(@event, new WebhookPublishOptions
 });
 ```
 
-You can also supply overrides through the non-generic `IEventPublishChannel` interface — casting the options to `EventPublishChannelOptions` works because `WebhookPublishOptions` inherits from it:
+You can also supply overrides through the non-generic `IEventPublishChannel` interface — casting the options to `EventPublishOptions` works because `WebhookPublishOptions` inherits from it:
 
 ```csharp
 IEventPublishChannel channel = serviceProvider.GetRequiredService<WebhookEventPublishChannel>();

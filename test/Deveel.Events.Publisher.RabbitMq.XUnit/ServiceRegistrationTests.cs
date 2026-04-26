@@ -55,7 +55,7 @@ namespace Deveel.Events
                     options.ConfirmTimeout = TimeSpan.FromSeconds(10);
                 });
             var provider = services.BuildServiceProvider();
-            var options = provider.GetRequiredService<IOptions<RabbitMqEventPublishOptions>>();
+            var options = provider.GetRequiredService<IOptions<RabbitMqPublishOptions>>();
             Assert.NotNull(options.Value);
             Assert.Equal(ValidConnectionString, options.Value.ConnectionString);
             Assert.Equal("my-exchange", options.Value.ExchangeName);
@@ -79,7 +79,7 @@ namespace Deveel.Events
                     options.ConnectionString = ValidConnectionString;
                 });
             var provider = services.BuildServiceProvider();
-            var options = provider.GetRequiredService<IOptions<RabbitMqEventPublishOptions>>();
+            var options = provider.GetRequiredService<IOptions<RabbitMqPublishOptions>>();
             Assert.NotNull(options.Value);
             // Nullable value-type properties are null when not explicitly configured;
             // the effective defaults (true/false/5s etc.) are applied during MergeOptions.
@@ -113,7 +113,7 @@ namespace Deveel.Events
                 d.ServiceType == typeof(IEventPublishChannel) &&
                 d.ImplementationType == typeof(RabbitMqEventPublishChannel));
             var provider = services.BuildServiceProvider();
-            var options = provider.GetRequiredService<IOptions<RabbitMqEventPublishOptions>>();
+            var options = provider.GetRequiredService<IOptions<RabbitMqPublishOptions>>();
             Assert.NotNull(options.Value);
             Assert.Equal(ValidConnectionString, options.Value.ConnectionString);
             Assert.Equal("config-exchange", options.Value.ExchangeName);

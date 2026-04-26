@@ -429,7 +429,7 @@ namespace Deveel.Events {
 
         private class ThrowingChannel : IEventPublishChannel
         {
-            public Task PublishAsync(CloudEvent @event, EventPublishChannelOptions? options = null, CancellationToken cancellationToken = default)
+            public Task PublishAsync(CloudEvent @event, EventPublishOptions? options = null, CancellationToken cancellationToken = default)
                 => throw new InvalidOperationException("Channel failure simulation");
         }
 

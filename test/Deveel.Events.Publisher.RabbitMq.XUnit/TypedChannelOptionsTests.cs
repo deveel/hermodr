@@ -17,7 +17,7 @@ namespace Deveel.Events
         [Fact]
         public static void Merge_BothSet_TypedWins()
         {
-            var baseOpts = new RabbitMqEventPublishOptions
+            var baseOpts = new RabbitMqPublishOptions
             {
                 ConnectionString = "amqp://base:base@localhost/",
                 ExchangeName     = "base-exchange",
@@ -32,7 +32,7 @@ namespace Deveel.Events
                 ConfirmTimeout     = TimeSpan.FromSeconds(5),
             };
 
-            var typedOpts = new RabbitMqEventPublishOptions
+            var typedOpts = new RabbitMqPublishOptions
             {
                 ConnectionString = "amqp://typed:typed@localhost/",
                 ExchangeName     = "typed-exchange",
@@ -47,7 +47,7 @@ namespace Deveel.Events
                 ConfirmTimeout     = TimeSpan.FromSeconds(10),
             };
 
-            var merged = RabbitMqEventPublishOptions.Merge(baseOpts, typedOpts);
+            var merged = RabbitMqPublishOptions.Merge(baseOpts, typedOpts);
 
             Assert.Equal("amqp://typed:typed@localhost/", merged.ConnectionString);
             Assert.Equal("typed-exchange", merged.ExchangeName);
@@ -64,7 +64,7 @@ namespace Deveel.Events
         [Fact]
         public static void Merge_OnlyBaseSet_BaseValuesUsed()
         {
-            var baseOpts = new RabbitMqEventPublishOptions
+            var baseOpts = new RabbitMqPublishOptions
             {
                 ConnectionString = "amqp://base:base@localhost/",
                 ExchangeName     = "base-exchange",
@@ -72,9 +72,9 @@ namespace Deveel.Events
                 RoutingKey       = "base-key",
                 PersistentMessages = true,
             };
-            var typedOpts = new RabbitMqEventPublishOptions(); // all nulls
+            var typedOpts = new RabbitMqPublishOptions(); // all nulls
 
-            var merged = RabbitMqEventPublishOptions.Merge(baseOpts, typedOpts);
+            var merged = RabbitMqPublishOptions.Merge(baseOpts, typedOpts);
 
             Assert.Equal("amqp://base:base@localhost/", merged.ConnectionString);
             Assert.Equal("base-exchange", merged.ExchangeName);
@@ -86,8 +86,8 @@ namespace Deveel.Events
         [Fact]
         public static void Merge_OnlyTypedSet_TypedValuesUsed()
         {
-            var baseOpts  = new RabbitMqEventPublishOptions(); // all nulls
-            var typedOpts = new RabbitMqEventPublishOptions
+            var baseOpts  = new RabbitMqPublishOptions(); // all nulls
+            var typedOpts = new RabbitMqPublishOptions
             {
                 ConnectionString = "amqp://typed:typed@localhost/",
                 ExchangeName     = "typed-exchange",
@@ -95,7 +95,7 @@ namespace Deveel.Events
                 Mandatory        = true,
             };
 
-            var merged = RabbitMqEventPublishOptions.Merge(baseOpts, typedOpts);
+            var merged = RabbitMqPublishOptions.Merge(baseOpts, typedOpts);
 
             Assert.Equal("amqp://typed:typed@localhost/", merged.ConnectionString);
             Assert.Equal("typed-exchange", merged.ExchangeName);
@@ -121,7 +121,7 @@ namespace Deveel.Events
 
             // Typed options descriptor present
             Assert.Contains(services, d =>
-                d.ServiceType == typeof(IConfigureOptions<RabbitMqEventPublishOptions<OrderPlaced>>));
+                d.ServiceType == typeof(IConfigureOptions<RabbitMqPublishOptions<OrderPlaced>>));
 
             // Typed channel registered as IEventPublishChannel<OrderPlaced>
             Assert.Contains(services, d =>
@@ -145,8 +145,8 @@ namespace Deveel.Events
 
             var provider = services.BuildServiceProvider();
 
-            var baseOptions  = provider.GetRequiredService<IOptions<RabbitMqEventPublishOptions>>();
-            var typedOptions = provider.GetRequiredService<IOptions<RabbitMqEventPublishOptions<OrderPlaced>>>();
+            var baseOptions  = provider.GetRequiredService<IOptions<RabbitMqPublishOptions>>();
+            var typedOptions = provider.GetRequiredService<IOptions<RabbitMqPublishOptions<OrderPlaced>>>();
 
             Assert.Equal("base-exchange",  baseOptions.Value.ExchangeName);
             Assert.Equal("order-exchange", typedOptions.Value.ExchangeName);
@@ -162,18 +162,18 @@ namespace Deveel.Events
             // We can't easily verify the merged options without a working AMQ connection,
             // but we CAN verify that Merge() produces the expected result when called
             // with the same values that DI would supply.
-            var baseValue = new RabbitMqEventPublishOptions
+            var baseValue = new RabbitMqPublishOptions
             {
                 ConnectionString = "amqp://base:base@localhost/",
                 ExchangeName     = "base-exchange",
                 QueueName        = "base-queue",
             };
-            var typedValue = new RabbitMqEventPublishOptions<OrderPlaced>
+            var typedValue = new RabbitMqPublishOptions<OrderPlaced>
             {
                 ExchangeName = "order-exchange",
             };
 
-            var merged = RabbitMqEventPublishOptions.Merge(baseValue, typedValue);
+            var merged = RabbitMqPublishOptions.Merge(baseValue, typedValue);
 
             Assert.Equal("amqp://base:base@localhost/", merged.ConnectionString); // falls back to base
             Assert.Equal("order-exchange", merged.ExchangeName);                  // typed wins

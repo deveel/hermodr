@@ -16,9 +16,9 @@ namespace Deveel.Events
     /// routes events of type <typeparamref name="TEvent"/> exclusively to this channel.
     /// </summary>
     /// <remarks>
-    /// At construction time the type-specific <see cref="RabbitMqEventPublishOptions{TEvent}"/>
-    /// are merged with the general <see cref="RabbitMqEventPublishOptions"/> (if any) using
-    /// <see cref="RabbitMqEventPublishOptions.Merge"/>.  Non-<c>null</c> values in the
+    /// At construction time the type-specific <see cref="RabbitMqPublishOptions{TEvent}"/>
+    /// are merged with the general <see cref="RabbitMqPublishOptions"/> (if any) using
+    /// <see cref="RabbitMqPublishOptions.Merge"/>.  Non-<c>null</c> values in the
     /// typed options take precedence; <c>null</c> values fall back to the base defaults.
     /// </remarks>
     /// <typeparam name="TEvent">
@@ -39,7 +39,7 @@ namespace Deveel.Events
         /// <paramref name="baseOptions"/>.
         /// </param>
         /// <param name="baseOptions">
-        /// The general <see cref="RabbitMqEventPublishOptions"/> registered via
+        /// The general <see cref="RabbitMqPublishOptions"/> registered via
         /// <c>AddRabbitMq(configure)</c>.  When only the typed overload is used these
         /// will contain default values that are overridden by <paramref name="typedOptions"/>.
         /// </param>
@@ -48,14 +48,14 @@ namespace Deveel.Events
         /// <param name="validators">Optional DI-registered options validators.</param>
         /// <param name="logger">Optional logger; falls back to NullLogger when <c>null</c>.</param>
         public RabbitMqEventPublishChannel(
-            IOptions<RabbitMqEventPublishOptions<TEvent>> typedOptions,
-            IOptions<RabbitMqEventPublishOptions> baseOptions,
+            IOptions<RabbitMqPublishOptions<TEvent>> typedOptions,
+            IOptions<RabbitMqPublishOptions> baseOptions,
             IConnection connection,
             IRabbitMqMessageFactory messageFactory,
-            IEnumerable<IValidateOptions<RabbitMqEventPublishOptions>>? validators = null,
+            IEnumerable<IValidateOptions<RabbitMqPublishOptions>>? validators = null,
             ILogger<RabbitMqEventPublishChannel>? logger = null)
             : base(
-                Options.Create(RabbitMqEventPublishOptions.Merge(baseOptions.Value, typedOptions.Value)),
+                Options.Create(RabbitMqPublishOptions.Merge(baseOptions.Value, typedOptions.Value)),
                 connection,
                 messageFactory,
                 validators,

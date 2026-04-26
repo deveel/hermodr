@@ -13,12 +13,12 @@ namespace Deveel.Events
 {
     /// <summary>
     /// Provides a base implementation of <see cref="IEventPublishChannel"/> that
-    /// merges per-call <see cref="EventPublishChannelOptions"/> overrides with the
+    /// merges per-call <see cref="EventPublishOptions"/> overrides with the
     /// channel-level defaults, validates the effective options, and then delegates to
     /// the concrete channel delivery logic.
     /// </summary>
     /// <typeparam name="TOptions">
-    /// The concrete <see cref="EventPublishChannelOptions"/> subtype that carries the
+    /// The concrete <see cref="EventPublishOptions"/> subtype that carries the
     /// channel-level defaults and any per-call overrides.
     /// When a call-specific instance is not supplied the channel-level defaults are
     /// used as-is; when one is supplied the two are merged via <see cref="MergeOptions"/>
@@ -41,7 +41,7 @@ namespace Deveel.Events
     /// </list>
     /// </remarks>
     public abstract class EventPublishChannelBase<TOptions> : IEventPublishChannel
-        where TOptions : EventPublishChannelOptions
+        where TOptions : EventPublishOptions
     {
         private readonly TOptions _defaultOptions;
         private readonly IEnumerable<IValidateOptions<TOptions>> _validators;
@@ -127,7 +127,7 @@ namespace Deveel.Events
         /// <typeparamref name="TOptions"/>; passing an options object of an incompatible
         /// type throws <see cref="ArgumentException"/>.
         /// </remarks>
-        Task IEventPublishChannel.PublishAsync(CloudEvent @event, EventPublishChannelOptions? options = null,
+        Task IEventPublishChannel.PublishAsync(CloudEvent @event, EventPublishOptions? options = null,
             CancellationToken cancellationToken = default)
         {
             if (options != null && options is not TOptions)

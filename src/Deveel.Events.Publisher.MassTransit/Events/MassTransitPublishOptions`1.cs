@@ -11,13 +11,13 @@ namespace Deveel.Events
     /// </summary>
     /// <remarks>
     /// Any property left at its default (<c>null</c>) will be inherited from the
-    /// general-purpose <see cref="MassTransitEventPublishOptions"/> registered alongside
+    /// general-purpose <see cref="MassTransitPublishOptions"/> registered alongside
     /// the non-typed channel.
     /// </remarks>
     /// <typeparam name="TEvent">
     /// The event data class this set of options is keyed against.
     /// </typeparam>
-    public class MassTransitEventPublishOptions<TEvent> : MassTransitEventPublishOptions
+    public class MassTransitPublishOptions<TEvent> : MassTransitPublishOptions
         where TEvent : class
     {
     }

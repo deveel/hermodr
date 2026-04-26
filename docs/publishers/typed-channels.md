@@ -6,7 +6,7 @@ A **typed channel** is a channel that handles only events whose data class match
 
 By default every registered channel receives **all** events.  When you need event-type-specific routing (different queue per event, different endpoint URL per domain type, different signing secret, …) you have two options:
 
-1. **Per-call overrides** — pass a `EventPublishChannelOptions` subclass to every `PublishAsync` call. Simple, but invasive; the publishing code must know the routing details.
+1. **Per-call overrides** — pass a `EventPublishOptions` subclass to every `PublishAsync` call. Simple, but invasive; the publishing code must know the routing details.
 2. **Typed channels** — configure a separate channel instance at startup; the `EventPublisher` routes automatically. The publishing code stays free of routing concerns.
 
 ## How routing works
@@ -71,7 +71,7 @@ builder.Services
     });
 ```
 
-The typed channel binds `IOptions<RabbitMqEventPublishOptions<OrderPlaced>>` and merges it with the base `IOptions<RabbitMqEventPublishOptions>` at construction time.  `ConnectionString`, `PersistentMessages`, and `PublisherConfirms` are inherited from the base; `ExchangeName`, `QueueName`, and `RoutingKey` are overridden by the typed options.
+The typed channel binds `IOptions<RabbitMqPublishOptions<OrderPlaced>>` and merges it with the base `IOptions<RabbitMqPublishOptions>` at construction time.  `ConnectionString`, `PersistentMessages`, and `PublisherConfirms` are inherited from the base; `ExchangeName`, `QueueName`, and `RoutingKey` are overridden by the typed options.
 
 From configuration:
 
@@ -104,13 +104,13 @@ builder.Services
 builder.Services
     .AddEventPublisher()
     // General channel — all untyped events go here
-    .AddServiceBusChannel(opts =>
+    .AddServiceBus(opts =>
     {
         opts.ConnectionString = "<connection-string>";
         opts.QueueName        = "events";
     })
     // OrderPlaced events go to a dedicated queue
-    .AddServiceBusChannel<OrderPlaced>(opts =>
+    .AddServiceBus<OrderPlaced>(opts =>
     {
         opts.QueueName = "order-placed";
         // ConnectionString inherited from the base options
@@ -122,11 +122,11 @@ From configuration:
 ```csharp
 builder.Services
     .AddEventPublisher()
-    .AddServiceBusChannel("Events:ServiceBus")
-    .AddServiceBusChannel<OrderPlaced>("Events:ServiceBus:Orders");
+    .AddServiceBus("Events:ServiceBus")
+    .AddServiceBus<OrderPlaced>("Events:ServiceBus:Orders");
 ```
 
-> **Note:** `ServiceBusEventPublishOptions<TEvent>` re-declares `ConnectionString` and `QueueName` as _nullable_ (`string?`) so that leaving them unset is the unambiguous signal to "inherit from the base channel".  The non-nullable constraint is enforced on the _merged_ result only.
+> **Note:** `ServiceBusPublishOptions<TEvent>` re-declares `ConnectionString` and `QueueName` as _nullable_ (`string?`) so that leaving them unset is the unambiguous signal to "inherit from the base channel".  The non-nullable constraint is enforced on the _merged_ result only.
 
 ### MassTransit
 
@@ -221,19 +221,19 @@ builder.Services
 
 ## Typed options classes
 
-Each built-in channel exposes a typed options class `TOptions<TEvent>` (e.g. `RabbitMqEventPublishOptions<OrderPlaced>`) that inherits from the base options class.  It carries no additional properties; its sole purpose is to give DI a distinct key so base and typed options are bound independently.
+Each built-in channel exposes a typed options class `TOptions<TEvent>` (e.g. `RabbitMqPublishOptions<OrderPlaced>`) that inherits from the base options class.  It carries no additional properties; its sole purpose is to give DI a distinct key so base and typed options are bound independently.
 
 | Channel | Typed options class |
 |---------|---------------------|
-| RabbitMQ | `RabbitMqEventPublishOptions<TEvent>` |
-| Azure Service Bus | `ServiceBusEventPublishOptions<TEvent>` |
-| MassTransit | `MassTransitEventPublishOptions<TEvent>` |
+| RabbitMQ | `RabbitMqPublishOptions<TEvent>` |
+| Azure Service Bus | `ServiceBusPublishOptions<TEvent>` |
+| MassTransit | `MassTransitPublishOptions<TEvent>` |
 | Webhook | `WebhookPublishOptions<TEvent>` |
 
 You can use these directly to pre-populate DI options outside the builder convenience methods if needed:
 
 ```csharp
-services.AddOptions<RabbitMqEventPublishOptions<OrderPlaced>>()
+services.AddOptions<RabbitMqPublishOptions<OrderPlaced>>()
     .Configure(opts =>
     {
         opts.ExchangeName = "orders";
@@ -241,9 +241,35 @@ services.AddOptions<RabbitMqEventPublishOptions<OrderPlaced>>()
     });
 ```
 
+## Per-call overrides across multiple typed channels
+
+When you publish an event and want to provide per-call options overrides to **more than one** channel at the same time, use `CombinedPublishOptions`.  It bundles several channel-specific options into a single object that the publisher can unwrap.
+
+The publisher automatically routes each bundled entry to the right channel based on whether the options instance is **general** (non-generic) or **typed** (a closed generic type such as `RabbitMqPublishOptions<TEvent>`):
+
+- A non-generic options instance (e.g. `new RabbitMqPublishOptions { … }`) is forwarded only to the **general** channel — typed channels are not affected.
+- A typed options instance (e.g. `new RabbitMqPublishOptions<OrderPlaced> { … }`) is forwarded only to the **typed** channel registered for that event type — no other channels are affected.
+
+```csharp
+var overrides = new CombinedPublishOptions(
+    // → general RabbitMQ channel
+    new RabbitMqPublishOptions    { RoutingKey   = "general.priority" },
+    // → typed RabbitMQ channel for OrderPlaced only
+    new RabbitMqPublishOptions<OrderPlaced> { RoutingKey = "orders.priority" },
+    // → general Webhook channel
+    new WebhookPublishOptions     { EndpointUrl  = "https://partner.example.com/priority-hook" });
+
+await publisher.PublishEventAsync(@event, overrides);
+```
+
+Channels with no matching entry in the bundle fall back to their registered defaults.
+
+See [Per-call publish options](../concepts/event-publisher.md#per-call-publish-options) for the full resolution rules and `CombinedPublishOptions` API reference.
+
 ## Related pages
 
 - [Publish Channels — core interfaces](../concepts/publish-channels.md)
+- [Event Publisher](../concepts/event-publisher.md)
 - [RabbitMQ Channel](rabbitmq.md)
 - [Azure Service Bus Channel](azure-service-bus.md)
 - [MassTransit Channel](masstransit.md)

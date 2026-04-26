@@ -26,7 +26,7 @@ namespace Deveel.Events {
 				options.DataSchemaBaseUri = new Uri("http://example.com/events/schema");
                 options.Source = new Uri("https://api.svc.deveel.com/test-service");
 			})
-			.AddServiceBusChannel(options =>
+			.AddServiceBus(options =>
 			{
 				options.ConnectionString = "Endpoint=sb://test.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc12345";
 				options.QueueName = "test-queue";

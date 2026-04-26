@@ -17,19 +17,19 @@ namespace Deveel.Events
         [Fact]
         public static void Merge_BothSet_TypedWins()
         {
-            var baseOpts = new MassTransitEventPublishOptions
+            var baseOpts = new MassTransitPublishOptions
             {
                 DestinationAddress     = new Uri("rabbitmq://localhost/base-queue"),
                 MapAttributesToHeaders = false,
             };
 
-            var typedOpts = new MassTransitEventPublishOptions
+            var typedOpts = new MassTransitPublishOptions
             {
                 DestinationAddress     = new Uri("rabbitmq://localhost/typed-queue"),
                 MapAttributesToHeaders = true,
             };
 
-            var merged = MassTransitEventPublishOptions.Merge(baseOpts, typedOpts);
+            var merged = MassTransitPublishOptions.Merge(baseOpts, typedOpts);
 
             Assert.Equal(new Uri("rabbitmq://localhost/typed-queue"), merged.DestinationAddress);
             Assert.True(merged.MapAttributesToHeaders);
@@ -38,14 +38,14 @@ namespace Deveel.Events
         [Fact]
         public static void Merge_OnlyBaseSet_BaseValuesUsed()
         {
-            var baseOpts  = new MassTransitEventPublishOptions
+            var baseOpts  = new MassTransitPublishOptions
             {
                 DestinationAddress     = new Uri("rabbitmq://localhost/base-queue"),
                 MapAttributesToHeaders = true,
             };
-            var typedOpts = new MassTransitEventPublishOptions(); // all nulls
+            var typedOpts = new MassTransitPublishOptions(); // all nulls
 
-            var merged = MassTransitEventPublishOptions.Merge(baseOpts, typedOpts);
+            var merged = MassTransitPublishOptions.Merge(baseOpts, typedOpts);
 
             Assert.Equal(new Uri("rabbitmq://localhost/base-queue"), merged.DestinationAddress);
             Assert.True(merged.MapAttributesToHeaders);
@@ -54,14 +54,14 @@ namespace Deveel.Events
         [Fact]
         public static void Merge_OnlyTypedSet_TypedValuesUsed()
         {
-            var baseOpts  = new MassTransitEventPublishOptions(); // all nulls
-            var typedOpts = new MassTransitEventPublishOptions
+            var baseOpts  = new MassTransitPublishOptions(); // all nulls
+            var typedOpts = new MassTransitPublishOptions
             {
                 DestinationAddress     = new Uri("rabbitmq://localhost/typed-queue"),
                 MapAttributesToHeaders = false,
             };
 
-            var merged = MassTransitEventPublishOptions.Merge(baseOpts, typedOpts);
+            var merged = MassTransitPublishOptions.Merge(baseOpts, typedOpts);
 
             Assert.Equal(new Uri("rabbitmq://localhost/typed-queue"), merged.DestinationAddress);
             Assert.False(merged.MapAttributesToHeaders);
@@ -84,7 +84,7 @@ namespace Deveel.Events
 
             // Typed options configure action registered
             Assert.Contains(services, d =>
-                d.ServiceType == typeof(IConfigureOptions<MassTransitEventPublishOptions<OrderPlaced>>));
+                d.ServiceType == typeof(IConfigureOptions<MassTransitPublishOptions<OrderPlaced>>));
 
             // Typed channel registered as IEventPublishChannel<OrderPlaced>
             Assert.Contains(services, d =>
@@ -108,8 +108,8 @@ namespace Deveel.Events
 
             var provider = services.BuildServiceProvider();
 
-            var baseOpts  = provider.GetRequiredService<IOptions<MassTransitEventPublishOptions>>();
-            var typedOpts = provider.GetRequiredService<IOptions<MassTransitEventPublishOptions<OrderPlaced>>>();
+            var baseOpts  = provider.GetRequiredService<IOptions<MassTransitPublishOptions>>();
+            var typedOpts = provider.GetRequiredService<IOptions<MassTransitPublishOptions<OrderPlaced>>>();
 
             Assert.Equal(new Uri("rabbitmq://localhost/base-queue"),  baseOpts.Value.DestinationAddress);
             Assert.Equal(new Uri("rabbitmq://localhost/order-queue"), typedOpts.Value.DestinationAddress);
@@ -121,17 +121,17 @@ namespace Deveel.Events
         [Fact]
         public static void AddMassTransit_Typed_MergeAppliedAtConstruction()
         {
-            var baseValue = new MassTransitEventPublishOptions
+            var baseValue = new MassTransitPublishOptions
             {
                 DestinationAddress     = new Uri("rabbitmq://localhost/base-queue"),
                 MapAttributesToHeaders = true,
             };
-            var typedValue = new MassTransitEventPublishOptions<OrderPlaced>
+            var typedValue = new MassTransitPublishOptions<OrderPlaced>
             {
                 DestinationAddress = new Uri("rabbitmq://localhost/order-queue"),
             };
 
-            var merged = MassTransitEventPublishOptions.Merge(baseValue, typedValue);
+            var merged = MassTransitPublishOptions.Merge(baseValue, typedValue);
 
             Assert.Equal(new Uri("rabbitmq://localhost/order-queue"), merged.DestinationAddress);  // typed wins
             Assert.True(merged.MapAttributesToHeaders);                                             // falls back to base

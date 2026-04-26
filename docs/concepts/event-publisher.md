@@ -144,6 +144,80 @@ Every call to `PublishEventAsync` follows this sequence:
 
 If `ThrowOnErrors` is `false` (the default), a failing channel is logged but does not prevent delivery to the remaining channels.  `InvalidCloudEventException` is always thrown regardless of `ThrowOnErrors`, because an invalid envelope is a programming error rather than a transient delivery failure.
 
+## Per-call publish options
+
+Every `PublishAsync` and `PublishEventAsync` overload accepts an optional `EventPublishOptions?` parameter.  Passing a value lets you override channel-level defaults **for a single call** without changing the registered configuration.
+
+### Single-channel override
+
+Pass an instance of the concrete options type that matches the target channel.
+
+```csharp
+// Only the general RabbitMQ channel picks this up;
+// every typed RabbitMQ channel and every other channel uses its defaults.
+await publisher.PublishEventAsync(@event, new RabbitMqPublishOptions
+{
+    RoutingKey = "orders.priority",
+    ExchangeName = "priority-exchange",
+});
+```
+
+To override a **typed** channel, pass the corresponding typed options class:
+
+```csharp
+// Only RabbitMqEventPublishChannel<OrderPlaced> picks this up.
+// The general RabbitMQ channel and all other channels use their defaults.
+await publisher.PublishEventAsync(@event, new RabbitMqPublishOptions<OrderPlaced>
+{
+    RoutingKey = "orders.priority",
+});
+```
+
+### Multi-channel override with `CombinedPublishOptions`
+
+When more than one channel must receive different per-call overrides in the same call, wrap all the options in a `CombinedPublishOptions`:
+
+```csharp
+var overrides = new CombinedPublishOptions(
+    // → general RabbitMQ channel
+    new RabbitMqPublishOptions     { RoutingKey   = "orders.priority" },
+    // → RabbitMQ channel typed for OrderPlaced
+    new RabbitMqPublishOptions<OrderPlaced> { ExchangeName = "priority-orders" },
+    // → general Webhook channel
+    new WebhookPublishOptions      { EndpointUrl  = "https://partner.example.com/priority-hook" },
+    // → Service Bus channel typed for OrderPlaced
+    new ServiceBusPublishOptions<OrderPlaced> { QueueName = "priority-queue" });
+
+await publisher.PublishEventAsync(@event, overrides);
+```
+
+The publisher inspects every registered channel in turn and extracts the **first compatible entry** from the bundle — matching general options to general channels and typed options to their corresponding typed channels.  Channels that have no compatible entry fall back silently to their registered defaults.
+
+### Options resolution rules
+
+The following table summarises how the publisher resolves the `options` parameter before forwarding it to each channel:
+
+| `options` value passed | General channel receives | Typed channel `IEventPublishChannel<TEvent>` receives |
+|---|---|---|
+| `null` | `null` → uses its registered defaults | `null` → uses its registered defaults |
+| A non-generic `XxxPublishOptions` instance | The override (if assignable to the channel's `TOptions`) | `null` → uses its defaults — general options are **not** forwarded to typed channels |
+| A generic `XxxPublishOptions<TEvent>` instance | `null` → typed options are **not** forwarded to general channels | The override if `TEvent` matches the channel; `null` otherwise |
+| `CombinedPublishOptions` | First non-typed bundled entry whose type is assignable to the channel's `TOptions`, or `null` | First bundled entry parameterised with this channel's `TEvent`, or `null` |
+
+The discriminator between "general" and "typed" options is the **runtime generic type structure**: an options instance is considered *typed* when its actual type (or any type in its inheritance chain) is a closed generic type whose type arguments include the target event type.  Built-in typed options classes (`RabbitMqPublishOptions<TEvent>`, `ServiceBusPublishOptions<TEvent>`, etc.) satisfy this automatically.
+
+> **Note:** Options resolution is handled by the `protected virtual ResolveChannelOptions(IEventPublishChannel, EventPublishOptions?)` method on `EventPublisher`.  Subclasses can override it to implement custom matching logic.
+
+### `CombinedPublishOptions` API
+
+| Member | Description |
+|---|---|
+| `CombinedPublishOptions(params EventPublishOptions[])` | Creates the bundle from a params array. Order is preserved; first match wins. |
+| `CombinedPublishOptions(IEnumerable<EventPublishOptions>)` | Creates the bundle from any sequence. |
+| `Options` | Read-only list of all bundled entries. |
+| `GetOptions<TOptions>()` | Returns the first entry assignable to `TOptions`, or `null`. |
+| `GetOptions(Type)` | Non-generic equivalent — useful when the options type is only known at runtime. |
+
 ## Extensibility
 
 ### Custom publisher

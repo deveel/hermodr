@@ -29,7 +29,7 @@ namespace Deveel.Events
         /// <exception cref="ArgumentException">
         /// Thrown when the connection string is not a valid URI.
         /// </exception>
-        public RabbitMqConnectionFactory(IOptions<RabbitMqEventPublishOptions> options)
+        public RabbitMqConnectionFactory(IOptions<RabbitMqPublishOptions> options)
         {
             if (!Uri.TryCreate(options.Value.ConnectionString, UriKind.Absolute, out var connectionUri))
                 throw new ArgumentException("The connection string is not a valid URI", nameof(options));

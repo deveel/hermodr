@@ -15,7 +15,7 @@ namespace Deveel.Events
         {
             var services = new ServiceCollection();
             services.AddEventPublisher()
-                .AddServiceBusChannel(options =>
+                .AddServiceBus(options =>
                 {
                     options.ConnectionString = "Endpoint=sb://my-namespace.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc12345";
                     options.QueueName = "my-queue";
@@ -29,7 +29,7 @@ namespace Deveel.Events
             Assert.IsType<ServiceBusEventPublishChannel>(serviceProvider.GetService<IEventPublishChannel>());
             Assert.NotNull(serviceProvider.GetService<IServiceBusClientFactory>());
 
-            var options = serviceProvider.GetService<IOptions<ServiceBusEventPublishOptions>>();
+            var options = serviceProvider.GetService<IOptions<ServiceBusPublishOptions>>();
             Assert.NotNull(options);
             Assert.Equal("my-queue", options.Value.QueueName);
             Assert.Equal("Endpoint=sb://my-namespace.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc12345", options.Value.ConnectionString);
@@ -38,7 +38,7 @@ namespace Deveel.Events
         }
 
         [Fact]
-        public static void AddServiceBusChannel_WithSectionPath_BindsOptionsFromConfiguration()
+        public static void AddServiceBus_WithSectionPath_BindsOptionsFromConfiguration()
         {
             var configuration = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
@@ -51,7 +51,7 @@ namespace Deveel.Events
             var services = new ServiceCollection();
             services.AddSingleton<IConfiguration>(configuration);
             services.AddEventPublisher()
-                .AddServiceBusChannel("ServiceBus");
+                .AddServiceBus("ServiceBus");
 
             var provider = services.BuildServiceProvider();
 
@@ -59,7 +59,7 @@ namespace Deveel.Events
             Assert.NotNull(provider.GetService<IEventPublishChannel>());
             Assert.IsType<ServiceBusEventPublishChannel>(provider.GetService<IEventPublishChannel>());
 
-            var options = provider.GetService<IOptions<ServiceBusEventPublishOptions>>();
+            var options = provider.GetService<IOptions<ServiceBusPublishOptions>>();
             Assert.NotNull(options);
             Assert.Equal("my-queue-from-config", options!.Value.QueueName);
             Assert.Equal(

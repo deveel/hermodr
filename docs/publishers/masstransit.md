@@ -58,7 +58,7 @@ builder.Services
 
 ## Options reference
 
-`MassTransitEventPublishOptions`
+`MassTransitPublishOptions`
 
 | Property | Type | Effective default | Description |
 |----------|------|-------------------|-------------|
@@ -76,7 +76,7 @@ builder.Services
 
 ## Typed channel
 
-Use `AddMassTransit<TEvent>()` to register a channel that receives **only** events whose data class is `TEvent`.  At construction time the typed channel (`MassTransitEventPublishChannel<TEvent>`) merges the general `MassTransitEventPublishOptions` with the type-specific `MassTransitEventPublishOptions<TEvent>`: non-`null` typed values win; `null` values fall back to the base defaults.
+Use `AddMassTransit<TEvent>()` to register a channel that receives **only** events whose data class is `TEvent`.  At construction time the typed channel (`MassTransitEventPublishChannel<TEvent>`) merges the general `MassTransitPublishOptions` with the type-specific `MassTransitPublishOptions<TEvent>`: non-`null` typed values win; `null` values fall back to the base defaults.
 
 ```csharp
 builder.Services
@@ -120,7 +120,7 @@ See [Typed Channels](typed-channels.md) for the full merge semantics and further
 
 ## Per-delivery options
 
-Pass a `MassTransitEventPublishOptions` instance as the second argument to `PublishAsync` to override individual properties for a single publish call.  Only the properties you set (non-`null`) replace the channel default — all others fall back to the values configured at registration time.
+Pass a `MassTransitPublishOptions` instance as the second argument to `PublishAsync` to override individual properties for a single publish call.  Only the properties you set (non-`null`) replace the channel default — all others fall back to the values configured at registration time.
 
 ```csharp
 // Resolve the concrete channel directly from DI.
@@ -128,7 +128,7 @@ var channel = serviceProvider.GetRequiredService<MassTransitEventPublishChannel>
 
 // Send this event directly to a specific queue,
 // while still inheriting MapAttributesToHeaders from the channel default.
-await channel.PublishAsync(@event, new MassTransitEventPublishOptions
+await channel.PublishAsync(@event, new MassTransitPublishOptions
 {
     DestinationAddress = new Uri("queue:priority-orders"),
 });

@@ -19,20 +19,20 @@ namespace Deveel.Events
         [Fact]
         public static void Merge_BothSet_TypedWins()
         {
-            var baseOpts = new ServiceBusEventPublishOptions
+            var baseOpts = new ServiceBusPublishOptions
             {
                 ConnectionString = "Endpoint=sb://base.servicebus.windows.net/;SharedAccessKeyName=K;SharedAccessKey=base",
                 QueueName        = "base-queue",
             };
 
-            var typedOpts = new ServiceBusEventPublishOptions<OrderPlaced>
+            var typedOpts = new ServiceBusPublishOptions<OrderPlaced>
             {
                 ConnectionString = "Endpoint=sb://typed.servicebus.windows.net/;SharedAccessKeyName=K;SharedAccessKey=typed",
                 QueueName        = "typed-queue",
                 ClientOptions    = new ServiceBusClientOptions { TransportType = ServiceBusTransportType.AmqpWebSockets },
             };
 
-            var merged = ServiceBusEventPublishOptions<OrderPlaced>.Merge(baseOpts, typedOpts);
+            var merged = ServiceBusPublishOptions<OrderPlaced>.Merge(baseOpts, typedOpts);
 
             Assert.Equal("Endpoint=sb://typed.servicebus.windows.net/;SharedAccessKeyName=K;SharedAccessKey=typed",
                 merged.ConnectionString);
@@ -44,14 +44,14 @@ namespace Deveel.Events
         [Fact]
         public static void Merge_OnlyBaseSet_BaseValuesUsed()
         {
-            var baseOpts = new ServiceBusEventPublishOptions
+            var baseOpts = new ServiceBusPublishOptions
             {
                 ConnectionString = "Endpoint=sb://base.servicebus.windows.net/;SharedAccessKeyName=K;SharedAccessKey=base",
                 QueueName        = "base-queue",
             };
-            var typedOpts = new ServiceBusEventPublishOptions<OrderPlaced>(); // all nulls
+            var typedOpts = new ServiceBusPublishOptions<OrderPlaced>(); // all nulls
 
-            var merged = ServiceBusEventPublishOptions<OrderPlaced>.Merge(baseOpts, typedOpts);
+            var merged = ServiceBusPublishOptions<OrderPlaced>.Merge(baseOpts, typedOpts);
 
             Assert.Equal("Endpoint=sb://base.servicebus.windows.net/;SharedAccessKeyName=K;SharedAccessKey=base",
                 merged.ConnectionString);
@@ -61,14 +61,14 @@ namespace Deveel.Events
         [Fact]
         public static void Merge_OnlyTypedSet_TypedValuesUsed()
         {
-            var baseOpts  = new ServiceBusEventPublishOptions(); // empty strings
-            var typedOpts = new ServiceBusEventPublishOptions<OrderPlaced>
+            var baseOpts  = new ServiceBusPublishOptions(); // empty strings
+            var typedOpts = new ServiceBusPublishOptions<OrderPlaced>
             {
                 ConnectionString = "Endpoint=sb://typed.servicebus.windows.net/;SharedAccessKeyName=K;SharedAccessKey=typed",
                 QueueName        = "typed-queue",
             };
 
-            var merged = ServiceBusEventPublishOptions<OrderPlaced>.Merge(baseOpts, typedOpts);
+            var merged = ServiceBusPublishOptions<OrderPlaced>.Merge(baseOpts, typedOpts);
 
             Assert.Equal("Endpoint=sb://typed.servicebus.windows.net/;SharedAccessKeyName=K;SharedAccessKey=typed",
                 merged.ConnectionString);
@@ -80,23 +80,23 @@ namespace Deveel.Events
         private class OrderPlaced { }
 
         [Fact]
-        public static void AddServiceBusChannel_Typed_RegistersTypedOptionsAndChannel()
+        public static void AddServiceBus_Typed_RegistersTypedOptionsAndChannel()
         {
             var services = new ServiceCollection();
             services.AddEventPublisher()
-                .AddServiceBusChannel(opts =>
+                .AddServiceBus(opts =>
                 {
                     opts.ConnectionString = "Endpoint=sb://base.servicebus.windows.net/;SharedAccessKeyName=K;SharedAccessKey=base";
                     opts.QueueName = "base-queue";
                 })
-                .AddServiceBusChannel<OrderPlaced>(opts =>
+                .AddServiceBus<OrderPlaced>(opts =>
                 {
                     opts.QueueName = "order-queue";
                 });
 
             // Typed options configured
             Assert.Contains(services, d =>
-                d.ServiceType == typeof(IConfigureOptions<ServiceBusEventPublishOptions<OrderPlaced>>));
+                d.ServiceType == typeof(IConfigureOptions<ServiceBusPublishOptions<OrderPlaced>>));
 
             // Typed channel registered as IEventPublishChannel<OrderPlaced>
             Assert.Contains(services, d =>
@@ -104,24 +104,24 @@ namespace Deveel.Events
         }
 
         [Fact]
-        public static void AddServiceBusChannel_Typed_OptionsAreIndependentFromBase()
+        public static void AddServiceBus_Typed_OptionsAreIndependentFromBase()
         {
             var services = new ServiceCollection();
             services.AddEventPublisher()
-                .AddServiceBusChannel(opts =>
+                .AddServiceBus(opts =>
                 {
                     opts.ConnectionString = "Endpoint=sb://base.servicebus.windows.net/;SharedAccessKeyName=K;SharedAccessKey=base";
                     opts.QueueName = "base-queue";
                 })
-                .AddServiceBusChannel<OrderPlaced>(opts =>
+                .AddServiceBus<OrderPlaced>(opts =>
                 {
                     opts.QueueName = "order-queue";
                 });
 
             var provider = services.BuildServiceProvider();
 
-            var baseOpts  = provider.GetRequiredService<IOptions<ServiceBusEventPublishOptions>>();
-            var typedOpts = provider.GetRequiredService<IOptions<ServiceBusEventPublishOptions<OrderPlaced>>>();
+            var baseOpts  = provider.GetRequiredService<IOptions<ServiceBusPublishOptions>>();
+            var typedOpts = provider.GetRequiredService<IOptions<ServiceBusPublishOptions<OrderPlaced>>>();
 
             Assert.Equal("base-queue",  baseOpts.Value.QueueName);
             Assert.Equal("order-queue", typedOpts.Value.QueueName);
@@ -131,19 +131,19 @@ namespace Deveel.Events
         }
 
         [Fact]
-        public static void AddServiceBusChannel_Typed_MergeAppliedAtConstruction()
+        public static void AddServiceBus_Typed_MergeAppliedAtConstruction()
         {
-            var baseValue = new ServiceBusEventPublishOptions
+            var baseValue = new ServiceBusPublishOptions
             {
                 ConnectionString = "Endpoint=sb://base.servicebus.windows.net/;SharedAccessKeyName=K;SharedAccessKey=base",
                 QueueName        = "base-queue",
             };
-            var typedValue = new ServiceBusEventPublishOptions<OrderPlaced>
+            var typedValue = new ServiceBusPublishOptions<OrderPlaced>
             {
                 QueueName = "order-queue",
             };
 
-            var merged = ServiceBusEventPublishOptions<OrderPlaced>.Merge(baseValue, typedValue);
+            var merged = ServiceBusPublishOptions<OrderPlaced>.Merge(baseValue, typedValue);
 
             // ConnectionString falls back to base (typed left it null)
             Assert.Equal("Endpoint=sb://base.servicebus.windows.net/;SharedAccessKeyName=K;SharedAccessKey=base",

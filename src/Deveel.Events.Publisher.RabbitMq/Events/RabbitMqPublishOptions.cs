@@ -12,18 +12,18 @@ namespace Deveel.Events
     /// <summary>
     /// Configuration options for a <see cref="RabbitMqEventPublishChannel"/>.
     /// </summary>
-    public class RabbitMqEventPublishOptions : EventPublishChannelOptions
+    public class RabbitMqPublishOptions : EventPublishOptions
     {
         /// <summary>
         /// Merges <paramref name="baseOptions"/> with <paramref name="typedOptions"/>,
         /// where every non-<c>null</c> property in <paramref name="typedOptions"/>
         /// overrides the corresponding property from <paramref name="baseOptions"/>.
         /// </summary>
-        public static RabbitMqEventPublishOptions Merge(
-            RabbitMqEventPublishOptions baseOptions,
-            RabbitMqEventPublishOptions typedOptions)
+        public static RabbitMqPublishOptions Merge(
+            RabbitMqPublishOptions baseOptions,
+            RabbitMqPublishOptions typedOptions)
         {
-            return new RabbitMqEventPublishOptions
+            return new RabbitMqPublishOptions
             {
                 ConnectionString      = typedOptions.ConnectionString      ?? baseOptions.ConnectionString,
                 ExchangeName          = typedOptions.ExchangeName          ?? baseOptions.ExchangeName,

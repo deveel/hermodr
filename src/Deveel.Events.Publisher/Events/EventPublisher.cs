@@ -220,46 +220,135 @@ namespace Deveel.Events {
 
 
 		/// <summary>
-		/// Resolves the options to pass to the given channel. If <paramref name="options"/>
-		/// is a <see cref="CombinedEventPublishOptions"/>, the first entry compatible with the
-		/// channel's declared options type is extracted. If <paramref name="options"/> is a
-		/// single object that is incompatible with the channel's declared options type,
-		/// <c>null</c> is returned so that the channel falls back to its registered defaults.
+		/// Resolves the options to pass to the given channel.
 		/// </summary>
+		/// <remarks>
+		/// <para>
+		/// The method first determines the channel's declared options type
+		/// (<c>TOptions</c> from <see cref="EventPublishChannelBase{TOptions}"/>) and
+		/// whether the channel is a <em>typed</em> channel (i.e. implements
+		/// <see cref="IEventPublishChannel{TEvent}"/> for some <c>TEvent</c>).
+		/// </para>
+		/// <para>
+		/// Matching rules for per-call <paramref name="options"/>:
+		/// <list type="bullet">
+		///   <item>
+		///     <description>
+		///       <strong>Typed channel</strong> (<c>IEventPublishChannel&lt;TEvent&gt;</c>) —
+		///       only accepts options whose runtime type (or an ancestor in its hierarchy) is a
+		///       closed generic type parameterised with <c>TEvent</c>
+		///       (e.g. <c>RabbitMqPublishOptions&lt;OrderPlaced&gt;</c>).
+		///       A non-generic options instance (e.g. bare <c>RabbitMqPublishOptions</c>)
+		///       is <strong>not</strong> forwarded; the channel falls back to its registered
+		///       defaults instead.
+		///     </description>
+		///   </item>
+		///   <item>
+		///     <description>
+		///       <strong>General channel</strong> (no <c>IEventPublishChannel&lt;TEvent&gt;</c>) —
+		///       only accepts options whose runtime type (and every ancestor) is
+		///       a non-generic type.  Typed options (e.g.
+		///       <c>RabbitMqPublishOptions&lt;OrderPlaced&gt;</c>) are
+		///       <strong>not</strong> forwarded to general channels.
+		///     </description>
+		///   </item>
+		/// </list>
+		/// </para>
+		/// <para>
+		/// When <paramref name="options"/> is a <see cref="CombinedPublishOptions"/> the same
+		/// rules are applied to each bundled entry; the first compatible entry wins.
+		/// </para>
+		/// </remarks>
 		/// <param name="channel">The target channel.</param>
 		/// <param name="options">The caller-supplied per-call options, or <c>null</c>.</param>
 		/// <returns>
 		/// Compatible options for the channel, or <c>null</c> to use the channel defaults.
 		/// </returns>
-		protected virtual EventPublishChannelOptions? ResolveChannelOptions(IEventPublishChannel channel, EventPublishChannelOptions? options)
+		protected virtual EventPublishOptions? ResolveChannelOptions(IEventPublishChannel channel, EventPublishOptions? options)
 		{
 			if (options == null)
 				return null;
 
 			// Walk the inheritance chain looking for EventPublishChannelBase<TOptions>.
 			var channelType = channel.GetType();
+			Type? expectedOptionsType = null;
 			for (var t = channelType; t != null && t != typeof(object); t = t.BaseType)
 			{
-				if (!t.IsGenericType)
-					continue;
-
-				if (t.GetGenericTypeDefinition() != typeof(EventPublishChannelBase<>))
-					continue;
-
-				// Found the base – determine the channel's expected options type.
-				var expectedOptionsType = t.GetGenericArguments()[0];
-
-				// When the caller supplied a CombinedEventPublishOptions, pick the first
-				// bundled entry that is compatible with this channel's TOptions.
-				if (options is CombinedEventPublishOptions combined)
-					return combined.GetOptions(expectedOptionsType);
-
-				// Otherwise fall back to the original single-options compatibility check.
-				return expectedOptionsType.IsInstanceOfType(options) ? options : null;
+				if (t.IsGenericType && t.GetGenericTypeDefinition() == typeof(EventPublishChannelBase<>))
+				{
+					expectedOptionsType = t.GetGenericArguments()[0];
+					break;
+				}
 			}
 
 			// Channel does not derive from EventPublishChannelBase<TOptions> – pass null.
-			return null;
+			if (expectedOptionsType == null)
+				return null;
+
+			// Determine whether this is a typed channel (IEventPublishChannel<TEvent>).
+			Type? channelEventType = null;
+			foreach (var iface in channelType.GetInterfaces())
+			{
+				if (iface.IsGenericType && iface.GetGenericTypeDefinition() == typeof(IEventPublishChannel<>))
+				{
+					channelEventType = iface.GetGenericArguments()[0];
+					break;
+				}
+			}
+
+			if (options is CombinedPublishOptions combined)
+			{
+				return channelEventType != null
+					// Typed channel: find the first bundled entry typed for this TEvent.
+					? combined.Options.FirstOrDefault(o =>
+						expectedOptionsType.IsAssignableFrom(o.GetType()) &&
+						IsTypedForEvent(o.GetType(), channelEventType))
+					// General channel: find the first non-typed bundled entry.
+					: combined.Options.FirstOrDefault(o =>
+						expectedOptionsType.IsAssignableFrom(o.GetType()) &&
+						!IsAnyTypedOptions(o.GetType()));
+			}
+
+			// Single options instance.
+			if (!expectedOptionsType.IsAssignableFrom(options.GetType()))
+				return null;
+
+			if (channelEventType != null)
+				// Typed channel: only accept options specifically typed for this TEvent.
+				return IsTypedForEvent(options.GetType(), channelEventType) ? options : null;
+
+			// General channel: only accept non-typed options instances.
+			return IsAnyTypedOptions(options.GetType()) ? null : options;
+		}
+
+		/// <summary>
+		/// Returns <c>true</c> when <paramref name="optionsType"/> or any type in its
+		/// inheritance chain is a closed generic type that carries <paramref name="eventType"/>
+		/// as one of its type arguments.
+		/// </summary>
+		private static bool IsTypedForEvent(Type optionsType, Type eventType)
+		{
+			for (var t = optionsType; t != null && t != typeof(object); t = t.BaseType)
+			{
+				if (t.IsGenericType && t.GetGenericArguments().Any(arg => arg == eventType))
+					return true;
+			}
+			return false;
+		}
+
+		/// <summary>
+		/// Returns <c>true</c> when <paramref name="optionsType"/> or any type in its
+		/// inheritance chain is a generic type (indicating typed-channel options such as
+		/// <c>RabbitMqPublishOptions&lt;TEvent&gt;</c>).
+		/// </summary>
+		private static bool IsAnyTypedOptions(Type optionsType)
+		{
+			for (var t = optionsType; t != null && t != typeof(object); t = t.BaseType)
+			{
+				if (t.IsGenericType)
+					return true;
+			}
+			return false;
 		}
 
 		/// <summary>
@@ -269,7 +358,7 @@ namespace Deveel.Events {
 		/// <param name="event">The event to publish.</param>
 		/// <param name="options">Optional per-call options; incompatible types are resolved to <c>null</c>.</param>
 		/// <param name="cancellationToken">A token to cancel the operation.</param>
-		protected virtual Task PublishEventAsync(IEventPublishChannel channel, CloudEvent @event, EventPublishChannelOptions? options = null,
+		protected virtual Task PublishEventAsync(IEventPublishChannel channel, CloudEvent @event, EventPublishOptions? options = null,
 			CancellationToken cancellationToken = default)
 		{
 			var resolvedOptions = ResolveChannelOptions(channel, options);
@@ -288,7 +377,7 @@ namespace Deveel.Events {
 			return eventToPublish;
 		}
 
-		private async Task PublishEventToChannelsAsync(IEnumerable<IEventPublishChannel> channels, CloudEvent @event, EventPublishChannelOptions? options = null, CancellationToken cancellationToken = default)
+		private async Task PublishEventToChannelsAsync(IEnumerable<IEventPublishChannel> channels, CloudEvent @event, EventPublishOptions? options = null, CancellationToken cancellationToken = default)
 		{
 			var eventToPublish = EnsureEvent(@event);
 			
@@ -324,7 +413,7 @@ namespace Deveel.Events {
 		/// <c>source</c>, <c>type</c>, <c>specversion</c>) is still absent after
 		/// enrichment.
 		/// </exception>
-		public virtual Task PublishEventAsync(CloudEvent @event, EventPublishChannelOptions? options = null, CancellationToken cancellationToken = default)
+		public virtual Task PublishEventAsync(CloudEvent @event, EventPublishOptions? options = null, CancellationToken cancellationToken = default)
 		{
 			return PublishEventToChannelsAsync(_channels, @event, options, cancellationToken);
 		}
@@ -355,8 +444,8 @@ namespace Deveel.Events {
 		/// <c>source</c>, <c>type</c>, <c>specversion</c>) is still absent after
 		/// enrichment.
 		/// </exception>
-		/// <seealso cref="PublishEventAsync(CloudEvent, EventPublishChannelOptions, CancellationToken)"/>
-		public Task PublishAsync(Type dataType, object? data, EventPublishChannelOptions? options = null, CancellationToken cancellationToken = default)
+		/// <seealso cref="PublishEventAsync(CloudEvent, EventPublishOptions, CancellationToken)"/>
+		public Task PublishAsync(Type dataType, object? data, EventPublishOptions? options = null, CancellationToken cancellationToken = default)
 		{
 			CloudEvent @event;
 
@@ -447,7 +536,7 @@ namespace Deveel.Events {
 		/// <c>source</c>, <c>type</c>, <c>specversion</c>) is still absent after
 		/// enrichment and before dispatch to any channel.
 		/// </exception>
-		public Task PublishAsync<TData>(TData data, EventPublishChannelOptions? options = null, CancellationToken cancellationToken = default)
+		public Task PublishAsync<TData>(TData data, EventPublishOptions? options = null, CancellationToken cancellationToken = default)
 		{
 			ArgumentNullException.ThrowIfNull(data);
 

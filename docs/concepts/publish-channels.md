@@ -9,13 +9,13 @@ A **publish channel** is responsible for taking a `CloudEvent` and delivering it
 ```csharp
 public interface IEventPublishChannel
 {
-    Task PublishAsync(CloudEvent @event, EventPublishChannelOptions? options = null, CancellationToken cancellationToken = default);
+    Task PublishAsync(CloudEvent @event, EventPublishOptions? options = null, CancellationToken cancellationToken = default);
 }
 ```
 
 The `EventPublisher` resolves **all** registered `IEventPublishChannel` services and calls `PublishAsync` on each one in sequence for every outgoing event.
 
-The optional `options` parameter accepts any `EventPublishChannelOptions` subclass and allows per-call delivery overrides.  All built-in channels extend `EventPublishChannelBase<TOptions>`, which performs a **property-level merge** of the per-call overrides with the channel-level defaults before delivery:
+The optional `options` parameter accepts any `EventPublishOptions` subclass and allows per-call delivery overrides.  All built-in channels extend `EventPublishChannelBase<TOptions>`, which performs a **property-level merge** of the per-call overrides with the channel-level defaults before delivery:
 
 - **Nullable reference-type properties** (`string?`, `Uri?`, `JsonSerializerOptions?`, …): a `null` value in the per-call options means *"leave this field at the channel default"*; a non-`null` value overrides it.
 - **Nullable value-type properties** (`bool?`, `TimeSpan?`, enum `?`, …): same rule — `null` inherits the channel default, any explicit value overrides it.
@@ -36,7 +36,7 @@ public interface IEventPublishChannel<TEvent> : IEventPublishChannel
 }
 ```
 
-> ⚠️ The type argument `TEvent` must be the **event data class** (e.g. `OrderPlacedData`), not a channel options type.  Per-call delivery overrides are supplied as a typed `EventPublishChannelOptions` subclass instance passed directly to `PublishAsync` — they do not require a separate typed channel registration.
+> ⚠️ The type argument `TEvent` must be the **event data class** (e.g. `OrderPlacedData`), not a channel options type.  Per-call delivery overrides are supplied as a typed `EventPublishOptions` subclass instance passed directly to `PublishAsync` — they do not require a separate typed channel registration.
 
 ### `IBatchEventPublishChannel`
 
@@ -47,7 +47,7 @@ public interface IBatchEventPublishChannel : IEventPublishChannel
 {
     Task PublishBatchAsync(
         IReadOnlyList<CloudEvent> events,
-        EventPublishChannelOptions? options = null,
+        EventPublishOptions? options = null,
         CancellationToken cancellationToken = default);
 }
 ```
@@ -59,7 +59,7 @@ The Webhook channel implements both `IEventPublishChannel` and `IBatchEventPubli
 
 | Channel | Package | Registration method | Typed overload |
 |---------|---------|---------------------|----------------|
-| Azure Service Bus | `Deveel.Events.Publisher.AzureServiceBus` | `.AddServiceBusChannel(...)` | `.AddServiceBusChannel<TEvent>(...)` |
+| Azure Service Bus | `Deveel.Events.Publisher.AzureServiceBus` | `.AddServiceBus(...)` | `.AddServiceBus<TEvent>(...)` |
 | RabbitMQ | `Deveel.Events.Publisher.RabbitMq` | `.AddRabbitMq(...)` | `.AddRabbitMq<TEvent>(...)` |
 | MassTransit | `Deveel.Events.Publisher.MassTransit` | `.AddMassTransit(...)` | `.AddMassTransit<TEvent>(...)` |
 | Webhook (HTTP) | `Deveel.Events.Publisher.Webhook` | `.AddWebhooks(...)` | `.AddWebhooks<TEvent>(...)` |
@@ -84,7 +84,7 @@ public class KafkaEventPublishChannel : IEventPublishChannel
         _options = options.Value;
     }
 
-    public async Task PublishAsync(CloudEvent @event, EventPublishChannelOptions? options = null, CancellationToken cancellationToken = default)
+    public async Task PublishAsync(CloudEvent @event, EventPublishOptions? options = null, CancellationToken cancellationToken = default)
     {
         // ... serialise and send via Confluent.Kafka
     }
@@ -113,7 +113,7 @@ To restrict a channel to a single event data class, implement `IEventPublishChan
 ```csharp
 public class KafkaOrderChannel : IEventPublishChannel<OrderPlacedData>
 {
-    public async Task PublishAsync(CloudEvent @event, EventPublishChannelOptions? options = null, CancellationToken cancellationToken = default)
+    public async Task PublishAsync(CloudEvent @event, EventPublishOptions? options = null, CancellationToken cancellationToken = default)
     {
         // ... send only OrderPlacedData events to Kafka
     }

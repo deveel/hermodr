@@ -21,7 +21,7 @@ namespace Deveel.Events
     /// are always taken from the channel-level defaults and ignored when supplied
     /// in a per-call override.
     /// </remarks>
-    public class WebhookPublishOptions : EventPublishChannelOptions
+    public class WebhookPublishOptions : EventPublishOptions
     {
         /// <summary>
         /// Merges <paramref name="baseOptions"/> with <paramref name="typedOptions"/>,

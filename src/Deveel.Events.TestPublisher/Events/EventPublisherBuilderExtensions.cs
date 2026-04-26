@@ -77,9 +77,9 @@ namespace Deveel.Events {
         /// Adds a typed test channel to the event publisher that will be invoked
         /// only when an event whose data class is <typeparamref name="TEvent"/> is
         /// published via
-        /// <see cref="EventPublisher.PublishAsync{TData}(TData,EventPublishChannelOptions?,CancellationToken)"/>
+        /// <see cref="EventPublisher.PublishAsync{TData}(TData,EventPublishOptions?,CancellationToken)"/>
         /// or
-        /// <see cref="EventPublisher.PublishAsync(Type,object?,EventPublishChannelOptions?,CancellationToken)"/>.
+        /// <see cref="EventPublisher.PublishAsync(Type,object?,EventPublishOptions?,CancellationToken)"/>.
         /// </summary>
         /// <typeparam name="TEvent">
         /// The event data class this channel is keyed against.

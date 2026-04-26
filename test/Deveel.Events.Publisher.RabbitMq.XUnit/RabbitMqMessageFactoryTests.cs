@@ -23,7 +23,7 @@ namespace Deveel.Events
             RabbitMqMessageContent? content = null,
             RabbitMqMessageFormat? format = null)
         {
-            var options = new RabbitMqEventPublishOptions
+            var options = new RabbitMqPublishOptions
             {
                 MessageContent = content,
                 MessageFormat = format,

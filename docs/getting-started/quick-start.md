@@ -56,7 +56,7 @@ builder.Services
     {
         options.Source = new Uri("https://myapp.example.com");
     })
-    .AddServiceBusChannel(options =>
+    .AddServiceBus(options =>
     {
         options.ConnectionString = builder.Configuration["ServiceBus:ConnectionString"]!;
         options.QueueName        = builder.Configuration["ServiceBus:QueueName"]!;

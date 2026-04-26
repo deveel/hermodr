@@ -45,9 +45,9 @@ namespace Deveel.Events
         /// </returns>
         public static EventPublisherBuilder AddMassTransit(
             this EventPublisherBuilder builder,
-            Action<MassTransitEventPublishOptions>? configure = null)
+            Action<MassTransitPublishOptions>? configure = null)
         {
-            var optBuilder = builder.Services.AddOptions<MassTransitEventPublishOptions>();
+            var optBuilder = builder.Services.AddOptions<MassTransitPublishOptions>();
             if (configure is not null)
                 optBuilder.Configure(configure);
 
@@ -71,7 +71,7 @@ namespace Deveel.Events
             this EventPublisherBuilder builder,
             string sectionPath)
         {
-            builder.Services.AddOptions<MassTransitEventPublishOptions>()
+            builder.Services.AddOptions<MassTransitPublishOptions>()
                 .BindConfiguration(sectionPath);
 
             return builder.AddMassTransitChannel();
@@ -90,9 +90,9 @@ namespace Deveel.Events
         /// </param>
         /// <param name="configure">
         /// An optional action to configure the type-specific
-        /// <see cref="MassTransitEventPublishOptions{TEvent}"/> for this channel.
+        /// <see cref="MassTransitPublishOptions{TEvent}"/> for this channel.
         /// Non-<c>null</c> values override the corresponding properties from the general
-        /// <see cref="MassTransitEventPublishOptions"/> (registered via
+        /// <see cref="MassTransitPublishOptions"/> (registered via
         /// <c>AddMassTransit(configure)</c>).
         /// </param>
         /// <returns>
@@ -100,10 +100,10 @@ namespace Deveel.Events
         /// </returns>
         public static EventPublisherBuilder AddMassTransit<TEvent>(
             this EventPublisherBuilder builder,
-            Action<MassTransitEventPublishOptions<TEvent>>? configure = null)
+            Action<MassTransitPublishOptions<TEvent>>? configure = null)
             where TEvent : class
         {
-            var optBuilder = builder.Services.AddOptions<MassTransitEventPublishOptions<TEvent>>();
+            var optBuilder = builder.Services.AddOptions<MassTransitPublishOptions<TEvent>>();
             if (configure is not null)
                 optBuilder.Configure(configure);
 
@@ -124,7 +124,7 @@ namespace Deveel.Events
         /// </param>
         /// <param name="sectionPath">
         /// The configuration section path to bind the type-specific
-        /// <see cref="MassTransitEventPublishOptions{TEvent}"/> from.
+        /// <see cref="MassTransitPublishOptions{TEvent}"/> from.
         /// </param>
         /// <returns>
         /// Returns the <see cref="EventPublisherBuilder"/> to continue the configuration.
@@ -134,7 +134,7 @@ namespace Deveel.Events
             string sectionPath)
             where TEvent : class
         {
-            builder.Services.AddOptions<MassTransitEventPublishOptions<TEvent>>()
+            builder.Services.AddOptions<MassTransitPublishOptions<TEvent>>()
                 .BindConfiguration(sectionPath);
 
             builder.AddMassTransitInfrastructure();

@@ -11,7 +11,7 @@ namespace Deveel.Events
     /// </summary>
     /// <remarks>
     /// Any property left at its default (<c>null</c>) will be inherited from the
-    /// general-purpose <see cref="RabbitMqEventPublishOptions"/> registered alongside
+    /// general-purpose <see cref="RabbitMqPublishOptions"/> registered alongside
     /// the non-typed channel, giving a two-level configuration hierarchy:
     /// <list type="bullet">
     ///   <item>Base channel options → shared defaults for all event types.</item>
@@ -21,7 +21,7 @@ namespace Deveel.Events
     /// <typeparam name="TEvent">
     /// The event data class this set of options is keyed against.
     /// </typeparam>
-    public class RabbitMqEventPublishOptions<TEvent> : RabbitMqEventPublishOptions
+    public class RabbitMqPublishOptions<TEvent> : RabbitMqPublishOptions
         where TEvent : class
     {
     }

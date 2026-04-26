@@ -16,9 +16,9 @@ namespace Deveel.Events
     /// routes events of type <typeparamref name="TEvent"/> exclusively to this channel.
     /// </summary>
     /// <remarks>
-    /// At construction time the type-specific <see cref="MassTransitEventPublishOptions{TEvent}"/>
-    /// are merged with the general <see cref="MassTransitEventPublishOptions"/> (if any) using
-    /// <see cref="MassTransitEventPublishOptions.Merge"/>.  Non-<c>null</c> values in the
+    /// At construction time the type-specific <see cref="MassTransitPublishOptions{TEvent}"/>
+    /// are merged with the general <see cref="MassTransitPublishOptions"/> (if any) using
+    /// <see cref="MassTransitPublishOptions.Merge"/>.  Non-<c>null</c> values in the
     /// typed options take precedence; <c>null</c> values fall back to the base defaults.
     /// </remarks>
     /// <typeparam name="TEvent">
@@ -37,7 +37,7 @@ namespace Deveel.Events
         /// Type-specific options for <typeparamref name="TEvent"/> events.
         /// </param>
         /// <param name="baseOptions">
-        /// The general <see cref="MassTransitEventPublishOptions"/> registered via
+        /// The general <see cref="MassTransitPublishOptions"/> registered via
         /// <c>AddMassTransit(configure)</c>.  Unset typed values fall back to these defaults.
         /// </param>
         /// <param name="publishEndpoint">MassTransit publish endpoint.</param>
@@ -45,14 +45,14 @@ namespace Deveel.Events
         /// <param name="validators">Optional DI-registered options validators.</param>
         /// <param name="logger">Optional logger; falls back to NullLogger when <c>null</c>.</param>
         public MassTransitEventPublishChannel(
-            IOptions<MassTransitEventPublishOptions<TEvent>> typedOptions,
-            IOptions<MassTransitEventPublishOptions> baseOptions,
+            IOptions<MassTransitPublishOptions<TEvent>> typedOptions,
+            IOptions<MassTransitPublishOptions> baseOptions,
             IPublishEndpoint publishEndpoint,
             ISendEndpointProvider sendEndpointProvider,
-            IEnumerable<IValidateOptions<MassTransitEventPublishOptions>>? validators = null,
+            IEnumerable<IValidateOptions<MassTransitPublishOptions>>? validators = null,
             ILogger<MassTransitEventPublishChannel>? logger = null)
             : base(
-                Options.Create(MassTransitEventPublishOptions.Merge(baseOptions.Value, typedOptions.Value)),
+                Options.Create(MassTransitPublishOptions.Merge(baseOptions.Value, typedOptions.Value)),
                 publishEndpoint,
                 sendEndpointProvider,
                 validators,
