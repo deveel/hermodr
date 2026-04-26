@@ -17,7 +17,7 @@ using Deveel.Events;
 
 builder.Services
     .AddEventPublisher()
-    .UseWebhook(options =>
+    .AddWebhooks(options =>
     {
         options.EndpointUrl      = "https://partner.example.com/events";
         options.SigningSecret     = "s3cr3t";
@@ -31,7 +31,7 @@ builder.Services
 ```csharp
 builder.Services
     .AddEventPublisher()
-    .UseWebhook("Events:Webhook");
+    .AddWebhooks("Events:Webhook");
 ```
 
 ```json
@@ -156,13 +156,13 @@ Use `EventMessageFormat` constants when selecting a built-in format.
 
 ## Per-delivery options
 
-The channel also implements `IEventPublishChannel<WebhookPublishOptions>`, allowing you to override options per event.  Only the properties you set (non-`null`) replace the channel default — all others fall back to the values configured at registration time.  `AdditionalHeaders` are merged: per-call entries win on key collision.
+Pass a `WebhookPublishOptions` instance as the second argument to `PublishAsync`.  Only the properties you set (non-`null`) override the channel default — all others fall back to the values configured at registration time.  `AdditionalHeaders` are merged: per-call entries win on key collision.
 
 ```csharp
 using Deveel.Events;
 
-// Resolve via DI
-var webhookChannel = serviceProvider.GetRequiredService<IEventPublishChannel<WebhookPublishOptions>>();
+// Resolve the concrete channel directly from DI.
+var webhookChannel = serviceProvider.GetRequiredService<WebhookEventPublishChannel>();
 
 // Override endpoint and secret for this delivery only;
 // everything else (MaxRetryCount, SignatureAlgorithm, …) is inherited.
@@ -174,12 +174,19 @@ await webhookChannel.PublishAsync(@event, new WebhookPublishOptions
 });
 ```
 
-## Batch delivery
-
-The channel implements `IBatchEventPublishChannel<WebhookPublishOptions>` for dispatching multiple events in a single HTTP call:
+You can also supply overrides through the non-generic `IEventPublishChannel` interface — casting the options to `EventPublishChannelOptions` works because `WebhookPublishOptions` inherits from it:
 
 ```csharp
-var batchChannel = serviceProvider.GetRequiredService<IBatchEventPublishChannel<WebhookPublishOptions>>();
+IEventPublishChannel channel = serviceProvider.GetRequiredService<WebhookEventPublishChannel>();
+await channel.PublishAsync(@event, new WebhookPublishOptions { EndpointUrl = "https://..." });
+```
+
+## Batch delivery
+
+The channel implements `IBatchEventPublishChannel` for dispatching multiple events in a single HTTP call:
+
+```csharp
+var batchChannel = serviceProvider.GetRequiredService<IBatchEventPublishChannel>();
 
 await batchChannel.PublishBatchAsync(events, new WebhookPublishOptions
 {
@@ -194,7 +201,7 @@ Register a custom `IEventSerializer` to support additional content types:
 ```csharp
 builder.Services
     .AddEventPublisher()
-    .UseWebhook(options => options.MessageFormat = "application/x-protobuf")
+    .AddWebhooks(options => options.MessageFormat = "application/x-protobuf")
     .UseWebhookMessageSerializer<ProtobufEventSerializer>();
 ```
 
@@ -215,7 +222,7 @@ public class ProtobufEventSerializer : IEventSerializer
 ```csharp
 builder.Services
     .AddEventPublisher()
-    .UseWebhook(options => { /* ... */ })
+    .AddWebhooks(options => { /* ... */ })
     .UseWebhookSignatureProvider<Ed25519SignatureProvider>();
 ```
 

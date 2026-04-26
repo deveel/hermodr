@@ -11,7 +11,7 @@ namespace Deveel.Events
 {
     /// <summary>
     /// Verifies that <see cref="EventPublisher"/> correctly resolves per-call
-    /// <see cref="EventPublishOptions"/> compatibility for each channel
+    /// <see cref="EventPublishChannelOptions"/> compatibility for each channel
     /// in the pipeline before forwarding the options.
     /// </summary>
     [Trait("Function", "Publisher")]
@@ -21,13 +21,13 @@ namespace Deveel.Events
         // ── helpers ────────────────────────────────────────────────────────────
 
         /// <summary>A simple concrete options type used by <see cref="AlphaChannel"/>.</summary>
-        private sealed class AlphaOptions : EventPublishOptions
+        private sealed class AlphaOptions : EventPublishChannelOptions
         {
             public string? Tag { get; init; }
         }
 
         /// <summary>A different concrete options type used by <see cref="BetaChannel"/>.</summary>
-        private sealed class BetaOptions : EventPublishOptions
+        private sealed class BetaOptions : EventPublishChannelOptions
         {
             public int Priority { get; init; }
         }
@@ -79,11 +79,11 @@ namespace Deveel.Events
         /// </summary>
         private sealed class RawChannel : IEventPublishChannel
         {
-            public EventPublishOptions? LastOptions { get; private set; }
+            public EventPublishChannelOptions? LastOptions { get; private set; }
 
             public Task PublishAsync(
                 CloudEvent @event,
-                EventPublishOptions? options = null,
+                EventPublishChannelOptions? options = null,
                 CancellationToken cancellationToken = default)
             {
                 LastOptions = options;
@@ -376,7 +376,7 @@ namespace Deveel.Events
 
         private class TestConvertibleEvent : IEventConvertible
         {
-            public CloudEvent ToEvent() => new CloudEvent
+            public CloudEvent ToCloudEvent() => new CloudEvent
             {
                 Type = "test.factory.event",
                 Source = new Uri("https://api.example.com"),

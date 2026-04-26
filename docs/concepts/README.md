@@ -11,9 +11,9 @@ This section explains the fundamental building blocks of the Deveel Events frame
 │   ┌──────────────┐      ┌──────────────────────────┐ │
 │   │  Event data  │─────▶│     IEventPublisher      │ │
 │   │  (annotated  │      └──────────┬───────────────┘ │
-│   │   classes)   │                 │ fan-out          │
-│   └──────────────┘        ┌────────┴────────┐         │
-│                           │                 │         │
+│   │   classes)   │                 │ fan-out         │
+│   └──────────────┘        ┌────────┴────────┐        │
+│                           │                 │        │
 │                   ┌───────▼─────┐   ┌───────▼──────┐ │
 │                   │  Channel A  │   │  Channel B   │ │
 │                   │ (Azure SB)  │   │  (Webhook)   │ │
@@ -32,7 +32,7 @@ This section explains the fundamental building blocks of the Deveel Events frame
 |-------------|------|
 | `IEventPublisher` | The single entry point for publishing events |
 | `IEventPublishChannel` | One transport target (Azure Service Bus queue, RabbitMQ exchange, …) |
-| `IBatchEventPublishChannel<TOptions>` | A channel that supports per-call delivery options (e.g. webhook URL) |
+| `IBatchEventPublishChannel` | A channel that also supports delivering multiple events in a single batched call |
 | `IEventCreator` | Converts an annotated data object into a `CloudEvent` |
 | `IEventIdGenerator` | Generates unique identifiers for events (default: GUID) |
 | `IEventSystemTime` | Supplies the event timestamp (replaceable for testing) |

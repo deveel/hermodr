@@ -8,7 +8,7 @@ namespace Deveel.Events
     /// <summary>
     /// Options that configure the <see cref="MassTransitEventPublishChannel"/>.
     /// </summary>
-    public class MassTransitEventPublishOptions : EventPublishOptions
+    public class MassTransitEventPublishOptions : EventPublishChannelOptions
     {
         /// <summary>
         /// Merges <paramref name="baseOptions"/> with <paramref name="typedOptions"/>,
@@ -25,7 +25,6 @@ namespace Deveel.Events
                 MapAttributesToHeaders = typedOptions.MapAttributesToHeaders ?? baseOptions.MapAttributesToHeaders,
             };
         }
-
 
         /// <summary>
         /// Gets or sets the destination address to send the event to.

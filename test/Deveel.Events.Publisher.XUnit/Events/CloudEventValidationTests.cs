@@ -7,6 +7,7 @@ using CloudNative.CloudEvents;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Deveel.Events {
     /// <summary>
@@ -182,10 +183,15 @@ namespace Deveel.Events {
         // ── helper sub-class that skips id generation ─────────────────────────
 
         private sealed class NoIdPublisher : EventPublisher {
+            private readonly IEnumerable<IEventPublishChannel> _channels;
+
             public NoIdPublisher(IServiceProvider provider)
                 : base(
-                    provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<EventPublisherOptions>>(),
-                    provider.GetRequiredService<IEnumerable<IEventPublishChannel>>()) { }
+                    provider.GetRequiredService<IOptions<EventPublisherOptions>>(),
+                    provider.GetServices<IEventPublishChannel>())
+            {
+                _channels = provider.GetServices<IEventPublishChannel>();
+            }
 
             // Override to skip setting the id so the validator sees a null id.
             protected override CloudEvent SetEventId(CloudEvent @event) => @event;

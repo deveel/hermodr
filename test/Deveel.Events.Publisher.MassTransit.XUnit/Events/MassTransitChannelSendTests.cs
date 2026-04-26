@@ -215,7 +215,7 @@ namespace Deveel.Events
             var channel = BuildChannel(options, publishEndpoint, sendProvider);
 
             await Assert.ThrowsAsync<ArgumentNullException>(() =>
-                channel.PublishAsync(null!, CancellationToken.None));
+                channel.PublishAsync(null!));
         }
 
         [Fact]
@@ -238,7 +238,7 @@ namespace Deveel.Events
             var channel = BuildChannel(options, publishEndpoint, sendProvider);
 
             await Assert.ThrowsAsync<OperationCanceledException>(() =>
-                channel.PublishAsync(MakeSampleEvent(), cts.Token));
+                channel.PublishAsync(MakeSampleEvent(), null, cts.Token));
         }
     }
 }

@@ -18,7 +18,7 @@ namespace Deveel.Events
 {
     /// <summary>
     /// An <see cref="EventPublishChannelBase{TOptions}"/> and
-    /// <see cref="IBatchEventPublishChannel{TOptions}"/> that delivers
+    /// <see cref="IBatchEventPublishChannel"/> that delivers
     /// <see cref="CloudEvent"/> instances (individually or in batches) to a remote
     /// endpoint via HTTP POST, following webhook best practices.
     /// </summary>
@@ -175,12 +175,14 @@ namespace Deveel.Events
             return DeliverAsync(payload, contentType, eventType: @event.Type, eventCount: 1, options, cancellationToken);
         }
 
-        // ── IBatchEventPublishChannel<WebhookPublishOptions> ────────────────
-        Task IBatchEventPublishChannel.PublishBatchAsync(
-            IReadOnlyList<CloudEvent> events,
-            EventPublishOptions? options,
-            CancellationToken cancellationToken)
-            => PublishBatchAsync(events, options as WebhookPublishOptions, cancellationToken);
+        // ── IBatchEventPublishChannel ────────────────
+
+        Task IBatchEventPublishChannel.PublishBatchAsync(IReadOnlyList<CloudEvent> events, EventPublishChannelOptions? options = null,
+            CancellationToken cancellationToken = default)
+        {
+            return PublishBatchAsync(events, options as WebhookPublishOptions, cancellationToken);
+        }
+
 
         /// <inheritdoc/>
         public Task PublishBatchAsync(

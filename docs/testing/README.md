@@ -48,7 +48,7 @@ public class MyTestCallback : IEventPublishCallback
 {
     public List<CloudEvent> Events { get; } = new();
 
-    public Task OnPublishedAsync(CloudEvent @event, CancellationToken cancellationToken = default)
+    public Task OnEventPublishedAsync(CloudEvent @event)
     {
         Events.Add(@event);
         return Task.CompletedTask;
@@ -105,7 +105,7 @@ public class OrderServiceTests
 ```csharp
 public interface IEventPublishCallback
 {
-    Task OnPublishedAsync(CloudEvent @event, CancellationToken cancellationToken = default);
+    Task OnEventPublishedAsync(CloudEvent @event);
 }
 ```
 

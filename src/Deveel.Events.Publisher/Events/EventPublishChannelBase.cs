@@ -12,15 +12,17 @@ using System.ComponentModel.DataAnnotations;
 namespace Deveel.Events
 {
     /// <summary>
-    /// Provides a base implementation of <see cref="IOptionsEventPublishChannel{TOptions}"/> that
-    /// merges per-call overrides with the channel-level defaults and validates the effective
-    /// options before delegating to the concrete channel delivery.
+    /// Provides a base implementation of <see cref="IEventPublishChannel"/> that
+    /// merges per-call <see cref="EventPublishChannelOptions"/> overrides with the
+    /// channel-level defaults, validates the effective options, and then delegates to
+    /// the concrete channel delivery logic.
     /// </summary>
     /// <typeparam name="TOptions">
-    /// The type that carries the channel-level defaults and any per-call overrides.
-    /// When an operation-specific instance is not supplied the channel-level defaults
-    /// are used as-is; when one is supplied the two are merged via
-    /// <see cref="MergeOptions"/> and then validated via <see cref="ValidateOptions"/>.
+    /// The concrete <see cref="EventPublishChannelOptions"/> subtype that carries the
+    /// channel-level defaults and any per-call overrides.
+    /// When a call-specific instance is not supplied the channel-level defaults are
+    /// used as-is; when one is supplied the two are merged via <see cref="MergeOptions"/>
+    /// and then validated via <see cref="ValidateOptions"/>.
     /// </typeparam>
     /// <remarks>
     /// Validation is performed in two steps:
@@ -39,7 +41,7 @@ namespace Deveel.Events
     /// </list>
     /// </remarks>
     public abstract class EventPublishChannelBase<TOptions> : IEventPublishChannel
-        where TOptions : EventPublishOptions
+        where TOptions : EventPublishChannelOptions
     {
         private readonly TOptions _defaultOptions;
         private readonly IEnumerable<IValidateOptions<TOptions>> _validators;
@@ -56,7 +58,7 @@ namespace Deveel.Events
         /// An optional collection of <see cref="IValidateOptions{TOptions}"/> services
         /// registered in the DI container.  When the collection is empty or <c>null</c>
         /// validation falls back to
-        /// <see cref="Validator.ValidateObject"/> (DataAnnotations).
+        /// <see cref="Validator.ValidateObject(object, ValidationContext)"/> (DataAnnotations).
         /// </param>
         protected EventPublishChannelBase(
             TOptions defaultOptions,
@@ -121,21 +123,18 @@ namespace Deveel.Events
 
         /// <inheritdoc/>
         /// <remarks>
-        /// When <paramref name="options"/> is non-<c>null</c> it is cast to
-        /// <typeparamref name="TOptions"/>; if the cast fails (the caller supplied an
-        /// incompatible options type) <c>null</c> is used instead and the channel falls
-        /// back to its registered defaults.
+        /// When <paramref name="options"/> is non-<c>null</c> it must be castable to
+        /// <typeparamref name="TOptions"/>; passing an options object of an incompatible
+        /// type throws <see cref="ArgumentException"/>.
         /// </remarks>
-        public Task PublishAsync(CloudEvent @event, EventPublishOptions? options = null, CancellationToken cancellationToken = default)
-            => PublishAsync(@event, options as TOptions, cancellationToken);
+        Task IEventPublishChannel.PublishAsync(CloudEvent @event, EventPublishChannelOptions? options = null,
+            CancellationToken cancellationToken = default)
+        {
+            if (options != null && options is not TOptions)
+                throw new ArgumentException($"Per-call options must be of type {typeof(TOptions).Name} or null.", nameof(options));
 
-        /// <summary>
-        /// Publishes the given event using the channel's registered defaults.
-        /// </summary>
-        /// <param name="event">The event to deliver.</param>
-        /// <param name="cancellationToken">A token to cancel the operation.</param>
-        public Task PublishAsync(CloudEvent @event, CancellationToken cancellationToken)
-            => PublishAsync(@event, (TOptions?)null, cancellationToken);
+            return PublishAsync(@event, options as TOptions, cancellationToken);
+        }
 
         /// <summary>
         /// Merges <paramref name="options"/> with the channel-level defaults, validates the
@@ -155,7 +154,7 @@ namespace Deveel.Events
         /// </exception>
         public async Task PublishAsync(
             CloudEvent @event,
-            TOptions? options,
+            TOptions? options = null,
             CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(@event);

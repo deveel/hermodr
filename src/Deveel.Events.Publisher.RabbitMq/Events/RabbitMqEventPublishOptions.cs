@@ -12,7 +12,7 @@ namespace Deveel.Events
     /// <summary>
     /// Configuration options for a <see cref="RabbitMqEventPublishChannel"/>.
     /// </summary>
-    public class RabbitMqEventPublishOptions : EventPublishOptions
+    public class RabbitMqEventPublishOptions : EventPublishChannelOptions
     {
         /// <summary>
         /// Merges <paramref name="baseOptions"/> with <paramref name="typedOptions"/>,
@@ -41,10 +41,6 @@ namespace Deveel.Events
         }
 
 
-        /// <summary>
-        /// The default exchange name to publish the events to,
-        /// when not explicitly defined in the event.
-        /// </summary>
         public string? ExchangeName { get; set; }
 
         /// <summary>

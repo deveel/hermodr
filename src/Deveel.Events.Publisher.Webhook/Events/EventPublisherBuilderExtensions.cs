@@ -54,8 +54,7 @@ namespace Deveel.Events
             // Expose it as IEventPublishChannel, IOptionsEventPublishChannel and IBatchEventPublishChannel
             // (type-based so ImplementationType is preserved for service-registration assertions).
             builder.Services.AddSingleton<IEventPublishChannel, WebhookEventPublishChannel>();
-            builder.Services.AddSingleton<IBatchEventPublishChannel>(sp =>
-                sp.GetRequiredService<WebhookEventPublishChannel>());
+            builder.Services.AddSingleton<IBatchEventPublishChannel, WebhookEventPublishChannel>();
 
             return builder;
         }

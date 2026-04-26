@@ -100,7 +100,7 @@ namespace DeveelEventsBenchmarks
 
             public string LastName { get; set; }
 
-            public CloudEvent ToEvent()
+            public CloudEvent ToCloudEvent()
             {
                 return new CloudEvent
                 {

@@ -3,20 +3,34 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 //
 
-using CloudNative.CloudEvents;
-
 namespace Deveel.Events
 {
     /// <summary>
-    /// Extends <see cref="IEventPublishChannel"/> with a strongly-typed event marker,
-    /// allowing the <see cref="EventPublisher"/> to route events of type
-    /// <typeparamref name="TEvent"/> exclusively to this channel.
+    /// A marker interface for a <see cref="IEventPublishChannel"/> that is associated
+    /// with a specific annotated event data type.
     /// </summary>
     /// <typeparam name="TEvent">
-    /// The type of event handled by this channel.  This parameter is used purely as a
-    /// routing key for DI resolution; the channel still publishes <see cref="CloudEvent"/>
-    /// instances via the inherited <see cref="IEventPublishChannel.PublishAsync"/> method.
+    /// The annotated event data class this channel is keyed against.
+    /// <see cref="EventPublisher"/> uses <c>IEventPublishChannel&lt;TEvent&gt;</c> to locate
+    /// channels registered for a particular event data class and routes the event to those
+    /// channels instead of (or in addition to) the general-purpose ones registered as
+    /// <see cref="IEventPublishChannel"/>.
     /// </typeparam>
+    /// <remarks>
+    /// <para>
+    /// Per-call delivery overrides (e.g. routing key, destination address, signing secret) are
+    /// <em>not</em> a responsibility of this interface.  They are passed as strongly-typed
+    /// <see cref="EventPublishChannelOptions"/> subclass instances to the
+    /// <see cref="IEventPublishChannel.PublishAsync"/> method or to the strongly-typed
+    /// <c>PublishAsync</c> overload exposed by <see cref="EventPublishChannelBase{TOptions}"/>
+    /// on the concrete channel.
+    /// </para>
+    /// <para>
+    /// Register a channel under this interface when you need it to receive only events whose
+    /// data class is annotated with <c>[Event("&lt;type&gt;")]</c> and you want those events
+    /// to be routed to this specific channel, bypassing the general-purpose broadcast.
+    /// </para>
+    /// </remarks>
     public interface IEventPublishChannel<TEvent> : IEventPublishChannel
         where TEvent : class
     {

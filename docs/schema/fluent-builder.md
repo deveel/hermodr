@@ -41,7 +41,7 @@ var schema = EventSchema.Build("order.placed")
 | `.Nullable()` | Marks the property as nullable |
 | `.WithDescription(string)` | Sets a human-readable description |
 | `.WithRange<T>(min, max)` | Adds a range constraint |
-| `.WithEnum(values)` | Restricts the property to a set of allowed values |
+| `.WithAllowedValues<T>(IReadOnlyList<T>)` | Restricts the property to a set of allowed values |
 
 ## Property data types
 
@@ -80,7 +80,7 @@ var schema = EventSchema.Build("user.registered")
     .AddProperty("role", p => p
         .OfType("string")
         .Required()
-        .WithEnum("admin", "user", "guest"))
+        .WithAllowedValues<string>(["admin", "user", "guest"]))
     .AddProperty("nickname", p => p
         .OfType("string")
         .Nullable())

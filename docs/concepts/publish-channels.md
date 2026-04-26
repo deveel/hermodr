@@ -56,6 +56,7 @@ The Webhook channel implements both `IEventPublishChannel` and `IBatchEventPubli
 
 ## Built-in channels
 
+
 | Channel | Package | Registration method | Typed overload |
 |---------|---------|---------------------|----------------|
 | Azure Service Bus | `Deveel.Events.Publisher.AzureServiceBus` | `.AddServiceBusChannel(...)` | `.AddServiceBusChannel<TEvent>(...)` |

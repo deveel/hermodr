@@ -6,7 +6,7 @@
 namespace Deveel.Events
 {
     /// <summary>
-    /// An <see cref="EventPublishOptions"/> implementation that bundles multiple
+    /// An <see cref="EventPublishChannelOptions"/> implementation that bundles multiple
     /// per-channel options together so that a single instance can be passed to any
     /// <see cref="IEventPublisher"/> publish call spanning several heterogeneous
     /// channels.
@@ -32,9 +32,9 @@ namespace Deveel.Events
     /// </code>
     /// </para>
     /// </remarks>
-    public sealed class CombinedEventPublishOptions : EventPublishOptions
+    public sealed class CombinedEventPublishOptions : EventPublishChannelOptions
     {
-        private readonly IReadOnlyList<EventPublishOptions> _options;
+        private readonly IReadOnlyList<EventPublishChannelOptions> _options;
 
         /// <summary>
         /// Initialises a new instance with the given collection of per-channel options.
@@ -46,7 +46,7 @@ namespace Deveel.Events
         /// <exception cref="ArgumentNullException">
         /// Thrown when <paramref name="options"/> is <c>null</c>.
         /// </exception>
-        public CombinedEventPublishOptions(IEnumerable<EventPublishOptions> options)
+        public CombinedEventPublishOptions(IEnumerable<EventPublishChannelOptions> options)
         {
             ArgumentNullException.ThrowIfNull(options);
             _options = options.ToList().AsReadOnly();
@@ -59,15 +59,15 @@ namespace Deveel.Events
         /// The options to bundle.  The order of the parameters is preserved; the first
         /// compatible entry wins when <see cref="GetOptions(Type)"/> is called.
         /// </param>
-        public CombinedEventPublishOptions(params EventPublishOptions[] options)
-            : this((IEnumerable<EventPublishOptions>)options)
+        public CombinedEventPublishOptions(params EventPublishChannelOptions[] options)
+            : this((IEnumerable<EventPublishChannelOptions>)options)
         {
         }
 
         /// <summary>
         /// Gets the read-only list of bundled options.
         /// </summary>
-        public IReadOnlyList<EventPublishOptions> Options => _options;
+        public IReadOnlyList<EventPublishChannelOptions> Options => _options;
 
         /// <summary>
         /// Returns the first bundled options instance whose type is assignable to
@@ -78,7 +78,7 @@ namespace Deveel.Events
         /// The first matching <typeparamref name="TOptions"/> entry, or <c>null</c>.
         /// </returns>
         public TOptions? GetOptions<TOptions>()
-            where TOptions : EventPublishOptions
+            where TOptions : EventPublishChannelOptions
             => _options.OfType<TOptions>().FirstOrDefault();
 
         /// <summary>
@@ -87,12 +87,12 @@ namespace Deveel.Events
         /// </summary>
         /// <param name="optionsType">The expected options type.</param>
         /// <returns>
-        /// The first matching <see cref="EventPublishOptions"/> entry, or <c>null</c>.
+        /// The first matching <see cref="EventPublishChannelOptions"/> entry, or <c>null</c>.
         /// </returns>
         /// <exception cref="ArgumentNullException">
         /// Thrown when <paramref name="optionsType"/> is <c>null</c>.
         /// </exception>
-        public EventPublishOptions? GetOptions(Type optionsType)
+        public EventPublishChannelOptions? GetOptions(Type optionsType)
         {
             ArgumentNullException.ThrowIfNull(optionsType);
             return _options.FirstOrDefault(o => optionsType.IsInstanceOfType(o));

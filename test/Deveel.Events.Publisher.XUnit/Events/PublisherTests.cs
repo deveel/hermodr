@@ -65,7 +65,7 @@ namespace Deveel.Events {
 				Id = "123",
 				FirstName = "John",
 				LastName = "Doe"
-			}, null, TestContext.Current.CancellationToken);
+			},  null, TestContext.Current.CancellationToken);
 
 			Assert.Single(Events);
 			Assert.Equal("person.created", Events[0].Type);
@@ -126,7 +126,7 @@ namespace Deveel.Events {
                 Source = new Uri("https://api.svc.deveel.com/test-service"),
             };
 
-            await Publisher.PublishEventAsync(@event, null,  TestContext.Current.CancellationToken);
+            await Publisher.PublishEventAsync(@event, null, TestContext.Current.CancellationToken);
 
             Assert.Single(Events);
             Assert.Equal(existingId, Events[0].Id);
@@ -173,7 +173,7 @@ namespace Deveel.Events {
                 Type = "test.event",
             };
 
-            await Publisher.PublishEventAsync(@event,  null, TestContext.Current.CancellationToken);
+            await Publisher.PublishEventAsync(@event, null, TestContext.Current.CancellationToken);
 
             Assert.Single(Events);
             Assert.Equal(new Uri("https://api.svc.deveel.com/test-service"), Events[0].Source);
@@ -203,7 +203,7 @@ namespace Deveel.Events {
                 Source = new Uri("https://api.svc.deveel.com"),
             };
 
-            await Publisher.PublishEventAsync(@event,  null, TestContext.Current.CancellationToken);
+            await Publisher.PublishEventAsync(@event, null, TestContext.Current.CancellationToken);
 
             Assert.Single(Events);
             Assert.NotNull(Events[0].Id);
@@ -296,7 +296,7 @@ namespace Deveel.Events {
             );
 
             // ThrowOnErrors = false by default, should swallow
-            await publisher.PublishAsync(typeof(PersonCreated), new PersonCreated { Id = "1" }, null, TestContext.Current.CancellationToken);
+            await publisher.PublishAsync(typeof(PersonCreated), new PersonCreated { Id = "1" },  null, TestContext.Current.CancellationToken);
         }
 
         [Fact]
@@ -317,7 +317,7 @@ namespace Deveel.Events {
             );
 
             await Assert.ThrowsAsync<EventPublishException>(() =>
-                publisher.PublishAsync(typeof(PersonCreated), new PersonCreated { Id = "1" }, null, TestContext.Current.CancellationToken));
+                publisher.PublishAsync(typeof(PersonCreated), new PersonCreated { Id = "1" },  null, TestContext.Current.CancellationToken));
         }
 
         [Fact]
@@ -332,7 +332,7 @@ namespace Deveel.Events {
             var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
 
             // Should not throw
-            await publisher.PublishAsync(new BrokenConvertibleEvent(), null, TestContext.Current.CancellationToken);
+            await publisher.PublishAsync(new BrokenConvertible(), null, TestContext.Current.CancellationToken);
         }
 
         [Fact]
@@ -347,7 +347,7 @@ namespace Deveel.Events {
             var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
 
             await Assert.ThrowsAsync<EventPublishException>(() =>
-                publisher.PublishAsync(new BrokenConvertibleEvent(), null, TestContext.Current.CancellationToken));
+                publisher.PublishAsync(new BrokenConvertible(), null, TestContext.Current.CancellationToken));
         }
 
         [Fact]
@@ -365,25 +365,10 @@ namespace Deveel.Events {
         }
 
         [Fact]
-        public async Task PublishEventConvertibleThrowErrorDisabled_NullEvent_NotThrows()
+        public async Task PublishEventFactory_NullFactory_Throws()
         {
-            await Publisher.PublishAsync<PersonDeleted>(null!, null, TestContext.Current.CancellationToken);
-        }
-
-        [Fact]
-        public async Task PublishEventConvertibleThrowErrorEnabled_NullEvent_Throws()
-        {
-            var services = new ServiceCollection();
-            services.AddEventPublisher(options =>
-            {
-                options.Source = new Uri("https://api.svc.deveel.com/test-service");
-                options.ThrowOnErrors = true;
-            }).AddTestChannel(_ => { });
-
-            var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
-
-            await Assert.ThrowsAsync<EventPublishException>(() =>
-                publisher.PublishAsync<PersonDeleted>(null!, null, TestContext.Current.CancellationToken));
+            await Assert.ThrowsAsync<ArgumentNullException>(() =>
+                Publisher.PublishAsync<PersonDeleted>(null!, null, TestContext.Current.CancellationToken));
         }
 
         [Event("person.created", "https://example.com/events/person.created/1.0")]
@@ -406,7 +391,7 @@ namespace Deveel.Events {
 
             public string LastName { get; set; }
 
-            public CloudEvent ToEvent()
+            public CloudEvent ToCloudEvent()
 			{
                 return new CloudEvent
                 {
@@ -423,13 +408,13 @@ namespace Deveel.Events {
 
         private class ThrowingChannel : IEventPublishChannel
         {
-            public Task PublishAsync(CloudEvent @event, EventPublishOptions? options = null, CancellationToken cancellationToken = default)
+            public Task PublishAsync(CloudEvent @event, EventPublishChannelOptions? options = null, CancellationToken cancellationToken = default)
                 => throw new InvalidOperationException("Channel failure simulation");
         }
 
-        private class BrokenConvertibleEvent : IEventConvertible
+        private class BrokenConvertible : IEventConvertible
         {
-            public CloudEvent ToEvent() => throw new InvalidOperationException("Factory broken");
+            public CloudEvent ToCloudEvent() => throw new InvalidOperationException("Factory broken");
         }
     }
 }

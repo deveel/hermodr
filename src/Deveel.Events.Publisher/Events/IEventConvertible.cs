@@ -8,20 +8,25 @@ using CloudNative.CloudEvents;
 namespace Deveel.Events
 {
     /// <summary>
-    /// Provides a factory for creating events.
+    /// Implemented by a data object that can convert itself directly into a
+    /// <see cref="CloudEvent"/> without requiring the reflection-based
+    /// <see cref="IEventCreator"/> factory.
     /// </summary>
     /// <remarks>
-    /// This contract is a provision for allowing
-    /// the creation of events not using reflection.
+    /// When <see cref="EventPublisher"/> receives a data object that implements
+    /// this interface, it calls <see cref="ToCloudEvent"/> instead of delegating
+    /// to <see cref="IEventCreator"/>.  This allows strongly-typed data classes to
+    /// control their own CloudEvent representation without relying on
+    /// <c>[Event]</c> / <c>[EventProperty]</c> annotation reflection.
     /// </remarks>
     public interface IEventConvertible
     {
         /// <summary>
-        /// Creates a new event.
+        /// Converts this object to a <see cref="CloudEvent"/>.
         /// </summary>
         /// <returns>
-        /// Returns a new <see cref="CloudEvent"/>.
+        /// A fully populated <see cref="CloudEvent"/> that represents this object.
         /// </returns>
-        CloudEvent ToEvent();
+        CloudEvent ToCloudEvent();
     }
 }
