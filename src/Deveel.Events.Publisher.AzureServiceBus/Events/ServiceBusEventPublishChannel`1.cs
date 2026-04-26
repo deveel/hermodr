@@ -16,8 +16,8 @@ namespace Deveel.Events
     /// routes events of type <typeparamref name="TEvent"/> exclusively to this channel.
     /// </summary>
     /// <remarks>
-    /// At construction time the type-specific <see cref="ServiceBusEventPublishChannelOptions{TEvent}"/>
-    /// are merged with the general <see cref="ServiceBusEventPublishChannelOptions"/> (if any).
+    /// At construction time the type-specific <see cref="ServiceBusEventPublishOptions{TEvent}"/>
+    /// are merged with the general <see cref="ServiceBusEventPublishOptions"/> (if any).
     /// Non-empty / non-<c>null</c> typed values take precedence; unset values fall back to the
     /// base defaults.
     /// </remarks>
@@ -39,7 +39,7 @@ namespace Deveel.Events
         /// <paramref name="baseOptions"/>.
         /// </param>
         /// <param name="baseOptions">
-        /// The general <see cref="ServiceBusEventPublishChannelOptions"/> registered via
+        /// The general <see cref="ServiceBusEventPublishOptions"/> registered via
         /// <c>AddServiceBusChannel(configure)</c>.  When only the typed overload is used these
         /// will contain default values that are overridden by <paramref name="typedOptions"/>.
         /// </param>
@@ -48,14 +48,14 @@ namespace Deveel.Events
         /// <param name="validators">Optional DI-registered options validators.</param>
         /// <param name="logger">Optional logger; falls back to NullLogger when <c>null</c>.</param>
         public ServiceBusEventPublishChannel(
-            IOptions<ServiceBusEventPublishChannelOptions<TEvent>> typedOptions,
-            IOptions<ServiceBusEventPublishChannelOptions> baseOptions,
+            IOptions<ServiceBusEventPublishOptions<TEvent>> typedOptions,
+            IOptions<ServiceBusEventPublishOptions> baseOptions,
             IServiceBusClientFactory clientFactory,
             ServiceBusMessageFactory messageCreator,
-            IEnumerable<IValidateOptions<ServiceBusEventPublishChannelOptions>>? validators = null,
+            IEnumerable<IValidateOptions<ServiceBusEventPublishOptions>>? validators = null,
             ILogger<ServiceBusEventPublishChannel>? logger = null)
             : base(
-                Options.Create(ServiceBusEventPublishChannelOptions<TEvent>.Merge(baseOptions.Value, typedOptions.Value)),
+                Options.Create(ServiceBusEventPublishOptions<TEvent>.Merge(baseOptions.Value, typedOptions.Value)),
                 clientFactory,
                 messageCreator,
                 validators,

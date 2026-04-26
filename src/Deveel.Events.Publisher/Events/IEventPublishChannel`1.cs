@@ -8,24 +8,17 @@ using CloudNative.CloudEvents;
 namespace Deveel.Events
 {
     /// <summary>
-    /// Extends <see cref="IEventPublishChannel"/> with a typed per-delivery options
-    /// parameter, allowing callers to override channel defaults on a per-call basis.
+    /// Extends <see cref="IEventPublishChannel"/> with a strongly-typed event marker,
+    /// allowing the <see cref="EventPublisher"/> to route events of type
+    /// <typeparamref name="TEvent"/> exclusively to this channel.
     /// </summary>
-    /// <typeparam name="TOptions">
-    /// The options type accepted by this channel alongside a <see cref="CloudEvent"/>.
+    /// <typeparam name="TEvent">
+    /// The type of event handled by this channel.  This parameter is used purely as a
+    /// routing key for DI resolution; the channel still publishes <see cref="CloudEvent"/>
+    /// instances via the inherited <see cref="IEventPublishChannel.PublishAsync"/> method.
     /// </typeparam>
-    public interface IEventPublishChannel<in TOptions> : IEventPublishChannel
-        where TOptions : class
+    public interface IEventPublishChannel<TEvent> : IEventPublishChannel
+        where TEvent : class
     {
-        /// <summary>
-        /// Publishes the given event to the channel, applying <paramref name="options"/>
-        /// on top of the channel-level defaults for this delivery only.
-        /// </summary>
-        /// <param name="event">The event to publish.</param>
-        /// <param name="options">
-        /// Per-delivery overrides; pass <c>null</c> to use the channel defaults.
-        /// </param>
-        /// <param name="cancellationToken">A token to cancel the operation.</param>
-        Task PublishAsync(CloudEvent @event, TOptions? options, CancellationToken cancellationToken = default);
     }
 }

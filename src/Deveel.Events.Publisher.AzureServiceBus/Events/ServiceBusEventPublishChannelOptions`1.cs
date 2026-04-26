@@ -18,45 +18,27 @@ namespace Deveel.Events
     /// </para>
     /// <para>
     /// Any property left at <c>null</c> (or at its zero-value for strings) will be
-    /// inherited from the general <see cref="ServiceBusEventPublishChannelOptions"/>
+    /// inherited from the general <see cref="ServiceBusEventPublishOptions"/>
     /// registered alongside the non-typed channel.
     /// </para>
     /// </remarks>
     /// <typeparam name="TEvent">
     /// The event data class this set of options is keyed against.
     /// </typeparam>
-    public class ServiceBusEventPublishChannelOptions<TEvent> : ServiceBusEventPublishChannelOptions
+    public class ServiceBusEventPublishOptions<TEvent> : ServiceBusEventPublishOptions
         where TEvent : class
     {
         /// <summary>
-        /// Gets or sets the connection string to the Azure Service Bus, or <c>null</c>
-        /// to inherit the value from the base channel options.
-        /// </summary>
-        public new string? ConnectionString { get; set; }
-
-        /// <summary>
-        /// Gets or sets the target queue name, or <c>null</c> to inherit the value
-        /// from the base channel options.
-        /// </summary>
-        public new string? QueueName { get; set; }
-
-        /// <summary>
-        /// Gets or sets the Azure Service Bus client options, or <c>null</c> to
-        /// inherit the value from the base channel options.
-        /// </summary>
-        public new ServiceBusClientOptions? ClientOptions { get; set; }
-
-        /// <summary>
-        /// Merges a base <see cref="ServiceBusEventPublishChannelOptions"/> with the typed
+        /// Merges a base <see cref="ServiceBusEventPublishOptions"/> with the typed
         /// overrides in <paramref name="typedOpts"/>. Non-null / non-empty values from
         /// <paramref name="typedOpts"/> take precedence; all other values fall back to
         /// <paramref name="baseOpts"/>.
         /// </summary>
-        public static ServiceBusEventPublishChannelOptions Merge(
-            ServiceBusEventPublishChannelOptions baseOpts,
-            ServiceBusEventPublishChannelOptions<TEvent> typedOpts)
+        public static ServiceBusEventPublishOptions Merge(
+            ServiceBusEventPublishOptions baseOpts,
+            ServiceBusEventPublishOptions<TEvent> typedOpts)
         {
-            return new ServiceBusEventPublishChannelOptions
+            return new ServiceBusEventPublishOptions
             {
                 ConnectionString = !string.IsNullOrWhiteSpace(typedOpts.ConnectionString)
                     ? typedOpts.ConnectionString!

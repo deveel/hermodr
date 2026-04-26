@@ -44,7 +44,7 @@ namespace Deveel.Events
                 options.Source = new Uri("https://api.svc.deveel.com/test-service");
                 options.DataSchemaBaseUri = new Uri("https://example.com/events/schema");
             })
-            .UseMassTransit();
+            .AddMassTransit();
 
             _services = services.BuildServiceProvider();
         }

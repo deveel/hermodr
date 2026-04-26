@@ -12,7 +12,7 @@ using System.ComponentModel.DataAnnotations;
 namespace Deveel.Events
 {
     /// <summary>
-    /// Provides a base implementation of <see cref="IEventPublishChannel{TOptions}"/> that
+    /// Provides a base implementation of <see cref="IOptionsEventPublishChannel{TOptions}"/> that
     /// merges per-call overrides with the channel-level defaults and validates the effective
     /// options before delegating to the concrete channel delivery.
     /// </summary>
@@ -38,8 +38,8 @@ namespace Deveel.Events
     ///   </item>
     /// </list>
     /// </remarks>
-    public abstract class EventPublishChannelBase<TOptions> : IEventPublishChannel<TOptions>
-        where TOptions : class
+    public abstract class EventPublishChannelBase<TOptions> : IEventPublishChannel
+        where TOptions : EventPublishOptions
     {
         private readonly TOptions _defaultOptions;
         private readonly IEnumerable<IValidateOptions<TOptions>> _validators;

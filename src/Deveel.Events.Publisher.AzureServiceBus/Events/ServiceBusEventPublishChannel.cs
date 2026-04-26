@@ -18,7 +18,7 @@ namespace Deveel.Events {
     /// A channel that publishes events to an Azure Service Bus queue.
     /// </summary>
     public class ServiceBusEventPublishChannel :
-        EventPublishChannelBase<ServiceBusEventPublishChannelOptions>,
+        EventPublishChannelBase<ServiceBusEventPublishOptions>,
         IAsyncDisposable, IDisposable {
 		private ServiceBusSender? sender;
 		private ServiceBusClient? client;
@@ -42,7 +42,7 @@ namespace Deveel.Events {
 		/// The factory to create the message to send to the queue.
 		/// </param>
         /// <param name="validators">
-        /// Optional collection of <see cref="IValidateOptions{ServiceBusEventPublishChannelOptions}"/>
+        /// Optional collection of <see cref="IValidateOptions{ServiceBusEventPublishOptions}"/>
         /// services registered in the DI container. When the collection is empty or <c>null</c>
         /// validation falls back to DataAnnotations.
         /// </param>
@@ -50,10 +50,10 @@ namespace Deveel.Events {
 		/// A logger to record the operations of the channel.
 		/// </param>
         public ServiceBusEventPublishChannel(
-			IOptions<ServiceBusEventPublishChannelOptions> options,
+			IOptions<ServiceBusEventPublishOptions> options,
 			IServiceBusClientFactory clientFactory,
 			ServiceBusMessageFactory messageCreator,
-			IEnumerable<IValidateOptions<ServiceBusEventPublishChannelOptions>>? validators = null,
+			IEnumerable<IValidateOptions<ServiceBusEventPublishOptions>>? validators = null,
 			ILogger<ServiceBusEventPublishChannel>? logger = null)
 			: base(options.Value, validators) {
 
@@ -76,17 +76,17 @@ namespace Deveel.Events {
         /// Performs a property-level merge: non-empty string properties in
         /// <paramref name="perCallOptions"/> override the corresponding values from
         /// <paramref name="defaults"/>; an empty or <c>null</c> string signals
-        /// "use the channel-level default".  <see cref="ServiceBusEventPublishChannelOptions.ClientOptions"/>
+        /// "use the channel-level default".  <see cref="ServiceBusEventPublishOptions.ClientOptions"/>
         /// is taken from <paramref name="perCallOptions"/> when non-<c>null</c>.
         /// </remarks>
-        protected override ServiceBusEventPublishChannelOptions MergeOptions(
-            ServiceBusEventPublishChannelOptions defaults,
-            ServiceBusEventPublishChannelOptions? perCallOptions)
+        protected override ServiceBusEventPublishOptions MergeOptions(
+            ServiceBusEventPublishOptions defaults,
+            ServiceBusEventPublishOptions? perCallOptions)
         {
             if (perCallOptions == null)
                 return defaults;
 
-            return new ServiceBusEventPublishChannelOptions
+            return new ServiceBusEventPublishOptions
             {
                 ConnectionString = !string.IsNullOrWhiteSpace(perCallOptions.ConnectionString)
                     ? perCallOptions.ConnectionString
@@ -101,7 +101,7 @@ namespace Deveel.Events {
         /// <inheritdoc />
         protected override async Task PublishCoreAsync(
 			CloudEvent @event,
-			ServiceBusEventPublishChannelOptions options,
+			ServiceBusEventPublishOptions options,
 			CancellationToken cancellationToken) {
 			ThrowIfDisposed();
 			cancellationToken.ThrowIfCancellationRequested();

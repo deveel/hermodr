@@ -17,7 +17,7 @@ namespace Deveel.Events
         {
             var services = new ServiceCollection();
             services.AddEventPublisher()
-                .UseRabbitMq(options =>
+                .AddRabbitMq(options =>
                 {
                     options.ConnectionString = ValidConnectionString;
                     options.ExchangeName = "my-exchange";
@@ -40,7 +40,7 @@ namespace Deveel.Events
         {
             var services = new ServiceCollection();
             services.AddEventPublisher()
-                .UseRabbitMq(options =>
+                .AddRabbitMq(options =>
                 {
                     options.ConnectionString = ValidConnectionString;
                     options.ExchangeName = "my-exchange";
@@ -74,7 +74,7 @@ namespace Deveel.Events
         {
             var services = new ServiceCollection();
             services.AddEventPublisher()
-                .UseRabbitMq(options =>
+                .AddRabbitMq(options =>
                 {
                     options.ConnectionString = ValidConnectionString;
                 });
@@ -108,7 +108,7 @@ namespace Deveel.Events
             var services = new ServiceCollection();
             services.AddSingleton<IConfiguration>(configuration);
             services.AddEventPublisher()
-                .UseRabbitMq("RabbitMq");
+                .AddRabbitMq("RabbitMq");
             Assert.Contains(services, d =>
                 d.ServiceType == typeof(IEventPublishChannel) &&
                 d.ImplementationType == typeof(RabbitMqEventPublishChannel));
@@ -130,7 +130,7 @@ namespace Deveel.Events
             var customFactory = new CustomRabbitMqConnectionFactory();
             services.AddSingleton<IRabbitMqConnectionFactory>(customFactory);
             services.AddEventPublisher()
-                .UseRabbitMq(options =>
+                .AddRabbitMq(options =>
                 {
                     options.ConnectionString = ValidConnectionString;
                 });

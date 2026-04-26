@@ -26,7 +26,7 @@ namespace Deveel.Events
                 options.DataSchemaBaseUri = new System.Uri("http://example.com/events/schema");
                 options.Source = new System.Uri("https://api.svc.deveel.com");
             })
-                .UseRabbitMq(options =>
+                .AddRabbitMq(options =>
                 {
                     options.ConnectionString = testServer.ConnectionString;
                     // Disable confirms in tests to keep setup simple

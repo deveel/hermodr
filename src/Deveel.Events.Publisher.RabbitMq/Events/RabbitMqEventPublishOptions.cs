@@ -12,7 +12,7 @@ namespace Deveel.Events
     /// <summary>
     /// Configuration options for a <see cref="RabbitMqEventPublishChannel"/>.
     /// </summary>
-    public class RabbitMqEventPublishOptions
+    public class RabbitMqEventPublishOptions : EventPublishOptions
     {
         /// <summary>
         /// Merges <paramref name="baseOptions"/> with <paramref name="typedOptions"/>,

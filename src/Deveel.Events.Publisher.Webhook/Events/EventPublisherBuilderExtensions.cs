@@ -51,12 +51,10 @@ namespace Deveel.Events
             // Register the concrete channel once under its own type so callers can resolve it
             // directly and supply per-call option overrides.
             builder.Services.TryAddSingleton<WebhookEventPublishChannel>();
-            // Expose it as IEventPublishChannel and IBatchEventPublishChannel
+            // Expose it as IEventPublishChannel, IOptionsEventPublishChannel and IBatchEventPublishChannel
             // (type-based so ImplementationType is preserved for service-registration assertions).
             builder.Services.AddSingleton<IEventPublishChannel, WebhookEventPublishChannel>();
-            builder.Services.AddSingleton<IEventPublishChannel<WebhookPublishOptions>>(sp =>
-                sp.GetRequiredService<WebhookEventPublishChannel>());
-            builder.Services.AddSingleton<IBatchEventPublishChannel<WebhookPublishOptions>>(sp =>
+            builder.Services.AddSingleton<IBatchEventPublishChannel>(sp =>
                 sp.GetRequiredService<WebhookEventPublishChannel>());
 
             return builder;
@@ -75,7 +73,7 @@ namespace Deveel.Events
         /// <returns>
         /// The same <see cref="EventPublisherBuilder"/> so that additional calls can be chained.
         /// </returns>
-        public static EventPublisherBuilder UseWebhook(
+        public static EventPublisherBuilder AddWebhooks(
             this EventPublisherBuilder builder,
             Action<WebhookPublishOptions> configure)
         {
@@ -98,7 +96,7 @@ namespace Deveel.Events
         /// <returns>
         /// The same <see cref="EventPublisherBuilder"/> so that additional calls can be chained.
         /// </returns>
-        public static EventPublisherBuilder UseWebhook(
+        public static EventPublisherBuilder AddWebhooks(
             this EventPublisherBuilder builder,
             string sectionPath)
         {

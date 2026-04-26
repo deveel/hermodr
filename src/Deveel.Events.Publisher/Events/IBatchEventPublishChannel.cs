@@ -8,24 +8,14 @@ using CloudNative.CloudEvents;
 namespace Deveel.Events
 {
     /// <summary>
-    /// An <see cref="IEventPublishChannel{TOptions}"/> that also supports delivering
+    /// An <see cref="IOptionsEventPublishChannel{TOptions}"/> that also supports delivering
     /// multiple events in a single message (batch delivery).
     /// </summary>
     /// <typeparam name="TOptions">
     /// The per-delivery options type accepted by this channel.
     /// </typeparam>
-    public interface IBatchEventPublishChannel<TOptions> : IEventPublishChannel<TOptions>
-        where TOptions : class
+    public interface IBatchEventPublishChannel
     {
-        /// <summary>
-        /// Publishes a batch of events using the channel-level defaults.
-        /// </summary>
-        /// <param name="events">The events to deliver. Must not be empty.</param>
-        /// <param name="cancellationToken">A token to cancel the operation.</param>
-        Task PublishBatchAsync(
-            IReadOnlyList<CloudEvent> events,
-            CancellationToken cancellationToken = default);
-
         /// <summary>
         /// Publishes a batch of events, applying <paramref name="options"/> on top
         /// of the channel-level defaults for this delivery only.
@@ -35,7 +25,7 @@ namespace Deveel.Events
         /// <param name="cancellationToken">A token to cancel the operation.</param>
         Task PublishBatchAsync(
             IReadOnlyList<CloudEvent> events,
-            TOptions? options,
+            EventPublishOptions? options = null,
             CancellationToken cancellationToken = default);
     }
 }

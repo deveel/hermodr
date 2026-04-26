@@ -39,7 +39,7 @@ namespace Deveel.Events
     /// </remarks>
     public class WebhookEventPublishChannel :
         EventPublishChannelBase<WebhookPublishOptions>,
-        IBatchEventPublishChannel<WebhookPublishOptions>
+        IBatchEventPublishChannel
     {
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger _logger;
@@ -176,17 +176,16 @@ namespace Deveel.Events
         }
 
         // ── IBatchEventPublishChannel<WebhookPublishOptions> ────────────────
+        Task IBatchEventPublishChannel.PublishBatchAsync(
+            IReadOnlyList<CloudEvent> events,
+            EventPublishOptions? options,
+            CancellationToken cancellationToken)
+            => PublishBatchAsync(events, options as WebhookPublishOptions, cancellationToken);
 
         /// <inheritdoc/>
         public Task PublishBatchAsync(
             IReadOnlyList<CloudEvent> events,
-            CancellationToken cancellationToken = default)
-            => PublishBatchAsync(events, null, cancellationToken);
-
-        /// <inheritdoc/>
-        public Task PublishBatchAsync(
-            IReadOnlyList<CloudEvent> events,
-            WebhookPublishOptions? options,
+            WebhookPublishOptions? options = null,
             CancellationToken cancellationToken = default)
         {
             if (events == null || events.Count == 0)

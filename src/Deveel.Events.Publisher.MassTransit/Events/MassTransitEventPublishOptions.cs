@@ -8,7 +8,7 @@ namespace Deveel.Events
     /// <summary>
     /// Options that configure the <see cref="MassTransitEventPublishChannel"/>.
     /// </summary>
-    public class MassTransitEventPublishOptions
+    public class MassTransitEventPublishOptions : EventPublishOptions
     {
         /// <summary>
         /// Merges <paramref name="baseOptions"/> with <paramref name="typedOptions"/>,

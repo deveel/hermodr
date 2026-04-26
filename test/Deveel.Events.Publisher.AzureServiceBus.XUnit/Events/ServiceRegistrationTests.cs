@@ -28,7 +28,7 @@ namespace Deveel.Events
             Assert.IsType<ServiceBusEventPublishChannel>(serviceProvider.GetService<IEventPublishChannel>());
             Assert.NotNull(serviceProvider.GetService<IServiceBusClientFactory>());
 
-            var options = serviceProvider.GetService<IOptions<ServiceBusEventPublishChannelOptions>>();
+            var options = serviceProvider.GetService<IOptions<ServiceBusEventPublishOptions>>();
             Assert.NotNull(options);
             Assert.Equal("my-queue", options.Value.QueueName);
             Assert.Equal("Endpoint=sb://my-namespace.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc12345", options.Value.ConnectionString);

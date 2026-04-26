@@ -47,7 +47,7 @@ namespace Deveel.Events {
 		/// </returns>
         public static EventPublisherBuilder AddServiceBusChannel(this EventPublisherBuilder builder, string sectionPath) {
 			builder.AddServiceBusChannel();
-			builder.Services.AddOptions<ServiceBusEventPublishChannelOptions>()
+			builder.Services.AddOptions<ServiceBusEventPublishOptions>()
 				.BindConfiguration(sectionPath)
 				.PostConfigure<IOptions<EventPublisherOptions>>(ConfigureIdentifier);
 
@@ -69,9 +69,9 @@ namespace Deveel.Events {
         /// Returns the instance of the <see cref="EventPublisherBuilder"/> to
         /// continue the configuration of the publisher.
         /// </returns>
-        public static EventPublisherBuilder AddServiceBusChannel(this EventPublisherBuilder builder, Action<ServiceBusEventPublishChannelOptions> configure) {
+        public static EventPublisherBuilder AddServiceBusChannel(this EventPublisherBuilder builder, Action<ServiceBusEventPublishOptions> configure) {
 			builder.AddServiceBusChannel();
-			builder.Services.AddOptions<ServiceBusEventPublishChannelOptions>()
+			builder.Services.AddOptions<ServiceBusEventPublishOptions>()
 				.Configure(configure)
 				.PostConfigure<IOptions<EventPublisherOptions>>(ConfigureIdentifier);
 
@@ -91,7 +91,7 @@ namespace Deveel.Events {
         /// </param>
         /// <param name="sectionPath">
         /// The path to the configuration section that contains the type-specific
-        /// <see cref="ServiceBusEventPublishChannelOptions{TEvent}"/> to bind.
+        /// <see cref="ServiceBusEventPublishOptions{TEvent}"/> to bind.
         /// </param>
         /// <returns>
         /// Returns the instance of the <see cref="EventPublisherBuilder"/> to
@@ -103,7 +103,7 @@ namespace Deveel.Events {
             where TEvent : class
         {
             builder.AddServiceBusInfrastructure();
-            builder.Services.AddOptions<ServiceBusEventPublishChannelOptions<TEvent>>()
+            builder.Services.AddOptions<ServiceBusEventPublishOptions<TEvent>>()
                 .BindConfiguration(sectionPath)
                 .PostConfigure<IOptions<EventPublisherOptions>>(ConfigureIdentifierTyped<TEvent>);
 
@@ -123,7 +123,7 @@ namespace Deveel.Events {
         /// </param>
         /// <param name="configure">
         /// The action that configures the type-specific
-        /// <see cref="ServiceBusEventPublishChannelOptions{TEvent}"/> for this channel.
+        /// <see cref="ServiceBusEventPublishOptions{TEvent}"/> for this channel.
         /// Non-empty / non-<c>null</c> values override the corresponding base channel options.
         /// </param>
         /// <returns>
@@ -132,23 +132,23 @@ namespace Deveel.Events {
         /// </returns>
         public static EventPublisherBuilder AddServiceBusChannel<TEvent>(
             this EventPublisherBuilder builder,
-            Action<ServiceBusEventPublishChannelOptions<TEvent>> configure)
+            Action<ServiceBusEventPublishOptions<TEvent>> configure)
             where TEvent : class
         {
             builder.AddServiceBusInfrastructure();
-            builder.Services.AddOptions<ServiceBusEventPublishChannelOptions<TEvent>>()
+            builder.Services.AddOptions<ServiceBusEventPublishOptions<TEvent>>()
                 .Configure(configure)
                 .PostConfigure<IOptions<EventPublisherOptions>>(ConfigureIdentifierTyped<TEvent>);
 
             return builder.AddChannel<ServiceBusEventPublishChannel<TEvent>, TEvent>();
         }
 
-		private static void ConfigureIdentifier(ServiceBusEventPublishChannelOptions channelOptions, IOptions<EventPublisherOptions> publisherOptions) { 
+		private static void ConfigureIdentifier(ServiceBusEventPublishOptions channelOptions, IOptions<EventPublisherOptions> publisherOptions) { 
 			if (String.IsNullOrWhiteSpace(channelOptions.ClientOptions.Identifier))
 				channelOptions.ClientOptions.Identifier = publisherOptions?.Value.Source?.ToString() ?? "";
 		}
 
-        private static void ConfigureIdentifierTyped<TEvent>(ServiceBusEventPublishChannelOptions<TEvent> channelOptions, IOptions<EventPublisherOptions> publisherOptions)
+        private static void ConfigureIdentifierTyped<TEvent>(ServiceBusEventPublishOptions<TEvent> channelOptions, IOptions<EventPublisherOptions> publisherOptions)
             where TEvent : class
         {
             // Only set the identifier on the typed options when the caller hasn't set one explicitly,

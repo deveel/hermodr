@@ -449,7 +449,7 @@ namespace Deveel.Events
         public void UseWebhook_RegistersAllProviders()
         {
             var services = new ServiceCollection();
-            services.AddEventPublisher().UseWebhook(o =>
+            services.AddEventPublisher().AddWebhooks(o =>
             {
                 o.EndpointUrl   = "https://webhook.example.com/";
                 o.SigningSecret = "secret";
@@ -512,7 +512,7 @@ namespace Deveel.Events
             var handler = new FakeHandler(req => { captured = req; return OK(); });
 
             var channel = BuildChannel(handler, o => o.MessageFormat = EventMessageFormat.Json);
-            await channel.PublishBatchAsync(new[] { MakeEvent("event.a"), MakeEvent("event.b") }, TestContext.Current.CancellationToken);
+            await channel.PublishBatchAsync(new[] { MakeEvent("event.a"), MakeEvent("event.b") });
 
             // Batch should use BatchContentType
             Assert.NotNull(captured!.Content!.Headers.ContentType!.MediaType);
@@ -590,7 +590,7 @@ namespace Deveel.Events
 
             var services = new ServiceCollection();
             services.AddSingleton<Microsoft.Extensions.Configuration.IConfiguration>(configuration);
-            services.AddEventPublisher().UseWebhook("Webhook");
+            services.AddEventPublisher().AddWebhooks("Webhook");
 
             var sp = services.BuildServiceProvider();
 
@@ -605,7 +605,7 @@ namespace Deveel.Events
         {
             var services = new ServiceCollection();
             services.AddEventPublisher()
-                .UseWebhook(o => o.EndpointUrl = "https://webhook.example.com/")
+                .AddWebhooks(o => o.EndpointUrl = "https://webhook.example.com/")
                 .UseWebhookSignatureProvider<HmacSha256SignatureProvider>();
 
             var sp = services.BuildServiceProvider();
@@ -613,39 +613,6 @@ namespace Deveel.Events
             Assert.Contains(providers, p => p.Algorithm == WebhookSignatureAlgorithm.HmacSha256);
         }
         
-        // ── Typed channel resolution (DI lambdas) ────────────────────────────
-
-        [Fact]
-        public void UseWebhook_TypedChannelPublishOptions_Resolved()
-        {
-            var services = new ServiceCollection();
-            services.AddEventPublisher().UseWebhook(o =>
-            {
-                o.EndpointUrl   = "https://webhook.example.com/";
-                o.SigningSecret = "secret";
-            });
-
-            var sp = services.BuildServiceProvider();
-            var typed = sp.GetService<IEventPublishChannel<WebhookPublishOptions>>();
-            Assert.NotNull(typed);
-            Assert.IsType<WebhookEventPublishChannel>(typed);
-        }
-
-        [Fact]
-        public void UseWebhook_TypedBatchChannelPublishOptions_Resolved()
-        {
-            var services = new ServiceCollection();
-            services.AddEventPublisher().UseWebhook(o =>
-            {
-                o.EndpointUrl   = "https://webhook.example.com/";
-                o.SigningSecret = "secret";
-            });
-
-            var sp = services.BuildServiceProvider();
-            var batch = sp.GetService<IBatchEventPublishChannel<WebhookPublishOptions>>();
-            Assert.NotNull(batch);
-            Assert.IsType<WebhookEventPublishChannel>(batch);
-        }
 
         // ── WebhookDeliveryException extra constructor ────────────────────────
 
