@@ -4,12 +4,10 @@
 //
 
 using CloudNative.CloudEvents;
-using CloudNative.CloudEvents.SystemTextJson;
 
 using MassTransit;
 
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
+using Microsoft.Extensions.DependencyInjection;
 
 using NSubstitute;
 
@@ -21,17 +19,21 @@ namespace Deveel.Events
     [Trait("Function", "Send")]
     public class MassTransitChannelSendTests
     {
-        private static MassTransitEventPublishChannel BuildChannel(
+        private static IEventPublishChannel BuildChannel(
             MassTransitPublishOptions options,
             IPublishEndpoint publishEndpoint,
             ISendEndpointProvider sendEndpointProvider)
         {
-            return new MassTransitEventPublishChannel(
-                Options.Create(options),
-                publishEndpoint,
-                sendEndpointProvider,
-                validators: null,
-                NullLogger<MassTransitEventPublishChannel>.Instance);
+            var services = new ServiceCollection();
+            services.AddSingleton(publishEndpoint);
+            services.AddSingleton(sendEndpointProvider);
+            services.AddEventPublisher()
+                .AddMassTransit(o =>
+                {
+                    o.DestinationAddress = options.DestinationAddress;
+                    o.MapAttributesToHeaders = options.MapAttributesToHeaders;
+                });
+            return services.BuildServiceProvider().GetRequiredService<IEventPublishChannel>();
         }
 
         private static CloudEvent MakeSampleEvent() => new CloudEvent

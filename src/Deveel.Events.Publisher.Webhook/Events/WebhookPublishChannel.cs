@@ -17,7 +17,7 @@ using System.Net.Http.Headers;
 namespace Deveel.Events
 {
     /// <summary>
-    /// An <see cref="EventPublishChannelBase{TOptions}"/> and
+    /// An <see cref="EventPublishChannel{TOptions}"/> and
     /// <see cref="IBatchEventPublishChannel"/> that delivers
     /// <see cref="CloudEvent"/> instances (individually or in batches) to a remote
     /// endpoint via HTTP POST, following webhook best practices.
@@ -28,7 +28,7 @@ namespace Deveel.Events
     /// for both the channel-level defaults and per-call overrides. On every
     /// <c>PublishAsync</c> / <c>PublishBatchAsync</c> call the per-call overrides are
     /// merged with the channel defaults via <see cref="MergeOptions"/> and the result
-    /// is validated by <see cref="EventPublishChannelBase{TOptions}.ValidateOptions"/>
+    /// is validated by <see cref="EventPublishChannel{TOptions}.ValidateOptions"/>
     /// before the HTTP delivery is attempted.
     /// </para>
     /// <para>
@@ -37,8 +37,8 @@ namespace Deveel.Events
     /// from the channel-level defaults and ignored in per-call overrides.
     /// </para>
     /// </remarks>
-    public class WebhookEventPublishChannel :
-        EventPublishChannelBase<WebhookPublishOptions>,
+    class WebhookPublishChannel :
+        EventPublishChannel<WebhookPublishOptions>,
         IBatchEventPublishChannel
     {
         private readonly IHttpClientFactory _httpClientFactory;
@@ -76,17 +76,17 @@ namespace Deveel.Events
         /// An optional logger; when <c>null</c> a
         /// <see cref="Microsoft.Extensions.Logging.Abstractions.NullLogger{T}"/> is used.
         /// </param>
-        public WebhookEventPublishChannel(
+        public WebhookPublishChannel(
             IOptions<WebhookPublishOptions> options,
             IHttpClientFactory httpClientFactory,
             IEnumerable<IWebhookSignatureProvider>? signatureProviders = null,
             IEnumerable<IEventSerializer>? serializers = null,
             IEnumerable<IValidateOptions<WebhookPublishOptions>>? validators = null,
-            ILogger<WebhookEventPublishChannel>? logger = null)
+            ILogger<WebhookPublishChannel>? logger = null)
             : base(options.Value, validators)
         {
             _httpClientFactory = httpClientFactory;
-            _logger            = logger ?? NullLogger<WebhookEventPublishChannel>.Instance;
+            _logger            = logger ?? NullLogger<WebhookPublishChannel>.Instance;
 
             // Signature providers
             _signatureProviders = new Dictionary<WebhookSignatureAlgorithm, IWebhookSignatureProvider>
@@ -115,7 +115,7 @@ namespace Deveel.Events
                     _serializers[s.Format] = s;
         }
 
-        // ── EventPublishChannelBase<WebhookPublishOptions> ──────────────────
+        // ── EventPublishChannel<WebhookPublishOptions> ──────────────────
 
         /// <summary>
         /// Performs a property-level merge: each nullable delivery field in

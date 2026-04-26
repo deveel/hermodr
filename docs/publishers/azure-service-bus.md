@@ -56,7 +56,7 @@ builder.Services
 
 ## Typed channel
 
-Use `AddServiceBus<TEvent>()` to register a channel that receives **only** events whose data class is `TEvent`.  At construction time the typed channel (`ServiceBusEventPublishChannel<TEvent>`) merges the general `ServiceBusPublishOptions` with the type-specific `ServiceBusPublishOptions<TEvent>`: non-empty typed values win; empty or `null` values fall back to the base defaults.
+Use `AddServiceBus<TEvent>()` to register a channel that receives **only** events whose data class is `TEvent`.  At construction time the typed channel (`ServiceBusPublishChannel<TEvent>`) merges the general `ServiceBusPublishOptions` with the type-specific `ServiceBusPublishOptions<TEvent>`: non-empty typed values win; empty or `null` values fall back to the base defaults.
 
 > **Note:** `ServiceBusPublishOptions<TEvent>` re-declares `ConnectionString` and `QueueName` as nullable (`string?`) so that leaving them `null` is the unambiguous signal to inherit from the base options.  The required, non-nullable constraint from the base class is enforced only after merging.
 
@@ -115,7 +115,7 @@ Pass a `ServiceBusPublishOptions` instance as the second argument to `PublishAsy
 
 ```csharp
 // Resolve the concrete channel directly from DI.
-var channel = serviceProvider.GetRequiredService<ServiceBusEventPublishChannel>();
+var channel = serviceProvider.GetRequiredService<ServiceBusPublishChannel>();
 
 // Send this particular event to a different queue,
 // while inheriting ConnectionString and ClientOptions from the channel defaults.

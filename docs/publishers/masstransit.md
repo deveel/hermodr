@@ -69,14 +69,14 @@ builder.Services
 
 ## How it works
 
-1. The `MassTransitEventPublishChannel` wraps a `CloudEvent` in a `CloudEventMessage` — an `ICloudEventMessage` implementation that MassTransit can serialise.
+1. The `MassTransitPublishChannel` wraps a `CloudEvent` in a `CloudEventMessage` — an `ICloudEventMessage` implementation that MassTransit can serialise.
 2. If `DestinationAddress` is set, the message is sent to that endpoint via `ISendEndpointProvider.GetSendEndpoint`.
 3. Otherwise, the message is published via `IPublishEndpoint.Publish`, allowing MassTransit's topology to route it.
 4. When `MapAttributesToHeaders` is `true` (or `null`, which defaults to `true`), CloudEvent attributes are written to the outgoing message headers so consumers can inspect them without deserialising the body.
 
 ## Typed channel
 
-Use `AddMassTransit<TEvent>()` to register a channel that receives **only** events whose data class is `TEvent`.  At construction time the typed channel (`MassTransitEventPublishChannel<TEvent>`) merges the general `MassTransitPublishOptions` with the type-specific `MassTransitPublishOptions<TEvent>`: non-`null` typed values win; `null` values fall back to the base defaults.
+Use `AddMassTransit<TEvent>()` to register a channel that receives **only** events whose data class is `TEvent`.  At construction time the typed channel (`MassTransitPublishChannel<TEvent>`) merges the general `MassTransitPublishOptions` with the type-specific `MassTransitPublishOptions<TEvent>`: non-`null` typed values win; `null` values fall back to the base defaults.
 
 ```csharp
 builder.Services
@@ -124,7 +124,7 @@ Pass a `MassTransitPublishOptions` instance as the second argument to `PublishAs
 
 ```csharp
 // Resolve the concrete channel directly from DI.
-var channel = serviceProvider.GetRequiredService<MassTransitEventPublishChannel>();
+var channel = serviceProvider.GetRequiredService<MassTransitPublishChannel>();
 
 // Send this event directly to a specific queue,
 // while still inheriting MapAttributesToHeaders from the channel default.

@@ -11,7 +11,7 @@ using Azure.Messaging.ServiceBus;
 namespace Deveel.Events
 {
     /// <summary>
-    /// A <see cref="ServiceBusEventPublishChannel"/> subclass that also implements
+    /// A <see cref="ServiceBusPublishChannel"/> subclass that also implements
     /// <see cref="IEventPublishChannel{TEvent}"/>, so the <see cref="EventPublisher"/>
     /// routes events of type <typeparamref name="TEvent"/> exclusively to this channel.
     /// </summary>
@@ -24,8 +24,8 @@ namespace Deveel.Events
     /// <typeparam name="TEvent">
     /// The event data class this channel is keyed against.
     /// </typeparam>
-    class ServiceBusEventPublishChannel<TEvent> :
-        ServiceBusEventPublishChannel,
+    class ServiceBusPublishChannel<TEvent> :
+        ServiceBusPublishChannel,
         IEventPublishChannel<TEvent>
         where TEvent : class
     {
@@ -47,13 +47,13 @@ namespace Deveel.Events
         /// <param name="messageCreator">Factory that converts a CloudEvent into a Service Bus message.</param>
         /// <param name="validators">Optional DI-registered options validators.</param>
         /// <param name="logger">Optional logger; falls back to NullLogger when <c>null</c>.</param>
-        public ServiceBusEventPublishChannel(
+        public ServiceBusPublishChannel(
             IOptions<ServiceBusPublishOptions<TEvent>> typedOptions,
             IOptions<ServiceBusPublishOptions> baseOptions,
             IServiceBusClientFactory clientFactory,
             ServiceBusMessageFactory messageCreator,
             IEnumerable<IValidateOptions<ServiceBusPublishOptions>>? validators = null,
-            ILogger<ServiceBusEventPublishChannel>? logger = null)
+            ILogger<ServiceBusPublishChannel>? logger = null)
             : base(
                 Options.Create(ServiceBusPublishOptions<TEvent>.Merge(baseOptions.Value, typedOptions.Value)),
                 clientFactory,

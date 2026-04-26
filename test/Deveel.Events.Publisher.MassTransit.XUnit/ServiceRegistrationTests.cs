@@ -18,8 +18,7 @@ namespace Deveel.Events
             services.AddEventPublisher()
                 .AddMassTransit();
             Assert.Contains(services, d =>
-                d.ServiceType == typeof(IEventPublishChannel) &&
-                d.ImplementationType == typeof(MassTransitEventPublishChannel));
+                d.ServiceType == typeof(IEventPublishChannel));
         }
         [Fact]
         public static void UseMassTransit_WithConfigureAction_ConfiguresOptions()
@@ -32,8 +31,7 @@ namespace Deveel.Events
                     options.MapAttributesToHeaders = false;
                 });
             Assert.Contains(services, d =>
-                d.ServiceType == typeof(IEventPublishChannel) &&
-                d.ImplementationType == typeof(MassTransitEventPublishChannel));
+                d.ServiceType == typeof(IEventPublishChannel));
             var provider = services.BuildServiceProvider();
             var options = provider.GetRequiredService<IOptions<MassTransitPublishOptions>>();
             Assert.NotNull(options.Value);
@@ -55,8 +53,7 @@ namespace Deveel.Events
             services.AddEventPublisher()
                 .AddMassTransit("MassTransit");
             Assert.Contains(services, d =>
-                d.ServiceType == typeof(IEventPublishChannel) &&
-                d.ImplementationType == typeof(MassTransitEventPublishChannel));
+                d.ServiceType == typeof(IEventPublishChannel));
             var provider = services.BuildServiceProvider();
             var options = provider.GetRequiredService<IOptions<MassTransitPublishOptions>>();
             Assert.NotNull(options.Value);

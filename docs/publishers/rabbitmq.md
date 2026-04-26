@@ -74,7 +74,7 @@ Pass a `RabbitMqPublishOptions` instance as the second argument to `PublishAsync
 
 ```csharp
 // Resolve the concrete channel directly from DI.
-var channel = serviceProvider.GetRequiredService<RabbitMqEventPublishChannel>();
+var channel = serviceProvider.GetRequiredService<RabbitMqPublishChannel>();
 
 // Override only the routing key and make this one message non-persistent.
 // Everything else (ConnectionString, ExchangeName, PublisherConfirms, …)
@@ -88,7 +88,7 @@ await channel.PublishAsync(@event, new RabbitMqPublishOptions
 
 ## Typed channel
 
-Use `AddRabbitMq<TEvent>()` to register a channel that receives **only** events whose data class is `TEvent`.  The typed channel subclass (`RabbitMqEventPublishChannel<TEvent>`) merges the general `RabbitMqPublishOptions` with the type-specific `RabbitMqPublishOptions<TEvent>` at construction time: non-`null` typed values win; `null` values fall back to the base defaults.
+Use `AddRabbitMq<TEvent>()` to register a channel that receives **only** events whose data class is `TEvent`.  The typed channel subclass (`RabbitMqPublishChannel<TEvent>`) merges the general `RabbitMqPublishOptions` with the type-specific `RabbitMqPublishOptions<TEvent>` at construction time: non-`null` typed values win; `null` values fall back to the base defaults.
 
 ```csharp
 builder.Services

@@ -11,7 +11,7 @@ using RabbitMQ.Client;
 namespace Deveel.Events
 {
     /// <summary>
-    /// A <see cref="RabbitMqEventPublishChannel"/> subclass that also implements
+    /// A <see cref="RabbitMqPublishChannel"/> subclass that also implements
     /// <see cref="IEventPublishChannel{TEvent}"/>, so the <see cref="EventPublisher"/>
     /// routes events of type <typeparamref name="TEvent"/> exclusively to this channel.
     /// </summary>
@@ -24,8 +24,8 @@ namespace Deveel.Events
     /// <typeparam name="TEvent">
     /// The event data class this channel is keyed against.
     /// </typeparam>
-    class RabbitMqEventPublishChannel<TEvent> :
-        RabbitMqEventPublishChannel,
+    class RabbitMqPublishChannel<TEvent> :
+        RabbitMqPublishChannel,
         IEventPublishChannel<TEvent>
         where TEvent : class
     {
@@ -47,13 +47,13 @@ namespace Deveel.Events
         /// <param name="messageFactory">Factory that converts a CloudEvent into a RabbitMQ message.</param>
         /// <param name="validators">Optional DI-registered options validators.</param>
         /// <param name="logger">Optional logger; falls back to NullLogger when <c>null</c>.</param>
-        public RabbitMqEventPublishChannel(
+        public RabbitMqPublishChannel(
             IOptions<RabbitMqPublishOptions<TEvent>> typedOptions,
             IOptions<RabbitMqPublishOptions> baseOptions,
             IConnection connection,
             IRabbitMqMessageFactory messageFactory,
             IEnumerable<IValidateOptions<RabbitMqPublishOptions>>? validators = null,
-            ILogger<RabbitMqEventPublishChannel>? logger = null)
+            ILogger<RabbitMqPublishChannel>? logger = null)
             : base(
                 Options.Create(RabbitMqPublishOptions.Merge(baseOptions.Value, typedOptions.Value)),
                 connection,

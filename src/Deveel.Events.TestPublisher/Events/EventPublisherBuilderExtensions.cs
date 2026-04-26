@@ -24,12 +24,17 @@ namespace Deveel.Events {
         /// <param name="callback">
         /// A callback that is invoked when an event is published.
         /// </param>
+        /// <param name="channelName">
+        /// An optional logical name for this channel instance. When set the channel
+        /// will only receive events whose publish options carry the same
+        /// <see cref="INamedChannelFilter.ChannelName"/>.
+        /// </param>
         /// <returns>
         /// Returns the instance of the <see cref="EventPublisherBuilder"/> with the
         /// test channel added.
         /// </returns>
-        public static EventPublisherBuilder AddTestChannel(this EventPublisherBuilder builder, IEventPublishCallback callback) {
-			builder.Services.AddSingleton<IEventPublishChannel, TestEventPublishChannel>();
+        public static EventPublisherBuilder AddTestChannel(this EventPublisherBuilder builder, IEventPublishCallback callback, string? channelName = null) {
+			builder.Services.AddSingleton<IEventPublishChannel>(_ => new TestEventPublishChannel(callback, channelName));
 			builder.Services.AddSingleton<IEventPublishCallback>(callback);
 
 			return builder;
@@ -46,13 +51,15 @@ namespace Deveel.Events {
         /// <param name="callback">
         /// A callback that is invoked when an event is published.
         /// </param>
+        /// <param name="channelName">
+        /// An optional logical name for this channel instance.
+        /// </param>
         /// <returns>
         /// Returns the instance of the <see cref="EventPublisherBuilder"/> with the
         /// test channel added.
         /// </returns>
-        /// <seealso cref="AddTestChannel(EventPublisherBuilder, IEventPublishCallback)"/>
-        public static EventPublisherBuilder AddTestChannel(this EventPublisherBuilder builder, Func<CloudEvent, Task> callback)
-			=> AddTestChannel(builder, new DelegatedEventPublishCallback(callback));
+        public static EventPublisherBuilder AddTestChannel(this EventPublisherBuilder builder, Func<CloudEvent, Task> callback, string? channelName = null)
+			=> AddTestChannel(builder, new DelegatedEventPublishCallback(callback), channelName);
 
         /// <summary>
         /// Adds a test channel to the event publisher that will
@@ -65,21 +72,20 @@ namespace Deveel.Events {
         /// <param name="callback">
         /// A callback that is invoked when an event is published.
         /// </param>
+        /// <param name="channelName">
+        /// An optional logical name for this channel instance.
+        /// </param>
         /// <returns>
         /// Returns the instance of the <see cref="EventPublisherBuilder"/> with the
         /// test channel added.
         /// </returns>
-        /// <seealso cref="AddTestChannel(EventPublisherBuilder, IEventPublishCallback)"/>
-        public static EventPublisherBuilder AddTestChannel(this EventPublisherBuilder builder, Action<CloudEvent> callback)
-			=> AddTestChannel(builder, new DelegatedEventPublishCallback(callback));
+        public static EventPublisherBuilder AddTestChannel(this EventPublisherBuilder builder, Action<CloudEvent> callback, string? channelName = null)
+			=> AddTestChannel(builder, new DelegatedEventPublishCallback(callback), channelName);
 
         /// <summary>
         /// Adds a typed test channel to the event publisher that will be invoked
         /// only when an event whose data class is <typeparamref name="TEvent"/> is
-        /// published via
-        /// <see cref="EventPublisher.PublishAsync{TData}(TData,EventPublishOptions?,CancellationToken)"/>
-        /// or
-        /// <see cref="EventPublisher.PublishAsync(Type,object?,EventPublishOptions?,CancellationToken)"/>.
+        /// published.
         /// </summary>
         /// <typeparam name="TEvent">
         /// The event data class this channel is keyed against.
@@ -91,17 +97,21 @@ namespace Deveel.Events {
         /// A callback invoked with the enriched <see cref="CloudEvent"/> when
         /// the channel receives an event.
         /// </param>
+        /// <param name="channelName">
+        /// An optional logical name for this channel instance.
+        /// </param>
         /// <returns>
         /// Returns the <see cref="EventPublisherBuilder"/> to continue the
         /// configuration of the publisher.
         /// </returns>
         public static EventPublisherBuilder AddTestChannel<TEvent>(
             this EventPublisherBuilder builder,
-            Action<CloudEvent> callback)
+            Action<CloudEvent> callback,
+            string? channelName = null)
             where TEvent : class
         {
             IEventPublishChannel<TEvent> channel = new TypedTestEventPublishChannel<TEvent>(
-                new DelegatedEventPublishCallback(callback));
+                new DelegatedEventPublishCallback(callback), channelName);
             return builder.AddChannel<TEvent>(channel);
         }
 
@@ -120,17 +130,21 @@ namespace Deveel.Events {
         /// An asynchronous callback invoked with the enriched <see cref="CloudEvent"/>
         /// when the channel receives an event.
         /// </param>
+        /// <param name="channelName">
+        /// An optional logical name for this channel instance.
+        /// </param>
         /// <returns>
         /// Returns the <see cref="EventPublisherBuilder"/> to continue the
         /// configuration of the publisher.
         /// </returns>
         public static EventPublisherBuilder AddTestChannel<TEvent>(
             this EventPublisherBuilder builder,
-            Func<CloudEvent, Task> callback)
+            Func<CloudEvent, Task> callback,
+            string? channelName = null)
             where TEvent : class
         {
             IEventPublishChannel<TEvent> channel = new TypedTestEventPublishChannel<TEvent>(
-                new DelegatedEventPublishCallback(callback));
+                new DelegatedEventPublishCallback(callback), channelName);
             return builder.AddChannel<TEvent>(channel);
         }
 	}

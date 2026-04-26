@@ -33,10 +33,10 @@ namespace Deveel.Events
         }
 
         /// <summary>
-        /// A channel built on <see cref="EventPublishChannelBase{TOptions}"/> that records
+        /// A channel built on <see cref="EventPublishChannel{TOptions}"/> that records
         /// the effective options it received for the last publish call.
         /// </summary>
-        private sealed class AlphaChannel : EventPublishChannelBase<AlphaOptions>
+        private sealed class AlphaChannel : EventPublishChannel<AlphaOptions>
         {
             public AlphaChannel(AlphaOptions defaults) : base(defaults) { }
 
@@ -57,7 +57,7 @@ namespace Deveel.Events
         /// A second channel with a different options type. Records the effective options
         /// it received so tests can assert them.
         /// </summary>
-        private sealed class BetaChannel : EventPublishChannelBase<BetaOptions>
+        private sealed class BetaChannel : EventPublishChannel<BetaOptions>
         {
             public BetaChannel(BetaOptions defaults) : base(defaults) { }
 
@@ -75,7 +75,7 @@ namespace Deveel.Events
 
         /// <summary>
         /// A raw <see cref="IEventPublishChannel"/> implementation (no
-        /// <see cref="EventPublishChannelBase{TOptions}"/>) that records what it receives.
+        /// <see cref="EventPublishChannel{TOptions}"/>) that records what it receives.
         /// </summary>
         private sealed class RawChannel : IEventPublishChannel
         {
@@ -194,7 +194,7 @@ namespace Deveel.Events
         [Fact]
         public async Task PublishEvent_RawChannel_IncompatibleOptions_ChannelReceivesNull()
         {
-            // Arrange – a channel that does NOT extend EventPublishChannelBase<TOptions>;
+            // Arrange – a channel that does NOT extend EventPublishChannel<TOptions>;
             // ResolveChannelOptions should return null for it regardless of what options are passed.
             var rawChannel = new RawChannel();
             var publisher  = BuildPublisher(rawChannel);
@@ -272,7 +272,7 @@ namespace Deveel.Events
         /// and is wired to <see cref="AlphaOptions"/>.
         /// </summary>
         private sealed class TypedAlphaChannel<TEvent> :
-            EventPublishChannelBase<AlphaOptions>,
+            EventPublishChannel<AlphaOptions>,
             IEventPublishChannel<TEvent>
             where TEvent : class
         {
@@ -421,7 +421,7 @@ namespace Deveel.Events
         [Fact]
         public async Task PublishEvent_CombinedOptions_RawChannel_ReceivesNull()
         {
-            // Arrange – raw channel not derived from EventPublishChannelBase<TOptions>
+            // Arrange – raw channel not derived from EventPublishChannel<TOptions>
             var rawChannel = new RawChannel();
             var publisher  = BuildPublisher(rawChannel);
 

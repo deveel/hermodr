@@ -8,7 +8,7 @@ using System.ComponentModel.DataAnnotations;
 namespace Deveel.Events
 {
     /// <summary>
-    /// Options for the <see cref="WebhookEventPublishChannel"/>, used both as the
+    /// Options for the <see cref="WebhookPublishChannel"/>, used both as the
     /// channel-level configuration (injected via <see cref="Microsoft.Extensions.Options.IOptions{TOptions}"/>)
     /// and as per-delivery overrides passed directly to
     /// <see cref="IEventPublishChannel{TOptions}.PublishAsync"/>.
@@ -21,7 +21,7 @@ namespace Deveel.Events
     /// are always taken from the channel-level defaults and ignored when supplied
     /// in a per-call override.
     /// </remarks>
-    public class WebhookPublishOptions : EventPublishOptions
+    public class WebhookPublishOptions : NamedChannelPublishOptions, INamedChannelFilter
     {
         /// <summary>
         /// Merges <paramref name="baseOptions"/> with <paramref name="typedOptions"/>,
@@ -41,6 +41,7 @@ namespace Deveel.Events
 
             return new WebhookPublishOptions
             {
+                ChannelName            = typedOptions.ChannelName            ?? baseOptions.ChannelName,
                 EndpointUrl            = typedOptions.EndpointUrl            ?? baseOptions.EndpointUrl,
                 SigningSecret          = typedOptions.SigningSecret          ?? baseOptions.SigningSecret,
                 MaxRetryCount          = typedOptions.MaxRetryCount          ?? baseOptions.MaxRetryCount,

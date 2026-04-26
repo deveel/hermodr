@@ -18,7 +18,7 @@ namespace Deveel.Events
     /// <see cref="CombinedPublishOptions"/> that method searches the bundled
     /// collection for the first entry whose concrete type is assignable to the options
     /// type declared by the target channel (i.e. the <c>TOptions</c> of
-    /// <see cref="EventPublishChannelBase{TOptions}"/>).  The matching entry is
+    /// <see cref="EventPublishChannel{TOptions}"/>).  The matching entry is
     /// forwarded; if none is found the channel falls back to its registered defaults.
     /// </para>
     /// <para>

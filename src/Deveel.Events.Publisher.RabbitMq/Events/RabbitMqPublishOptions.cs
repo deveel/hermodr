@@ -10,9 +10,9 @@ using System.Text.Json;
 namespace Deveel.Events
 {
     /// <summary>
-    /// Configuration options for a <see cref="RabbitMqEventPublishChannel"/>.
+    /// Configuration options for a <see cref="RabbitMqPublishChannel"/>.
     /// </summary>
-    public class RabbitMqPublishOptions : EventPublishOptions
+    public class RabbitMqPublishOptions : NamedChannelPublishOptions, INamedChannelFilter
     {
         /// <summary>
         /// Merges <paramref name="baseOptions"/> with <paramref name="typedOptions"/>,
@@ -25,6 +25,7 @@ namespace Deveel.Events
         {
             return new RabbitMqPublishOptions
             {
+                ChannelName           = typedOptions.ChannelName           ?? baseOptions.ChannelName,
                 ConnectionString      = typedOptions.ConnectionString      ?? baseOptions.ConnectionString,
                 ExchangeName          = typedOptions.ExchangeName          ?? baseOptions.ExchangeName,
                 RoutingKey            = typedOptions.RoutingKey            ?? baseOptions.RoutingKey,
@@ -39,8 +40,7 @@ namespace Deveel.Events
                 Mandatory             = typedOptions.Mandatory             ?? baseOptions.Mandatory,
             };
         }
-
-
+        
         /// <summary>
         /// The name of the exchange to publish events to in the RabbitMQ broker.
         /// When <c>null</c> in a per-call override the channel default is used;

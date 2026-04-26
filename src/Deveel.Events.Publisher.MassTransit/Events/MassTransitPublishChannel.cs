@@ -18,8 +18,8 @@ namespace Deveel.Events
     /// An implementation of <see cref="IEventPublishChannel{TOptions}"/> that publishes
     /// CloudEvents via MassTransit.
     /// </summary>
-    public class MassTransitEventPublishChannel :
-        EventPublishChannelBase<MassTransitPublishOptions>
+    internal class MassTransitPublishChannel :
+        EventPublishChannel<MassTransitPublishOptions>
     {
         private readonly IPublishEndpoint _publishEndpoint;
         private readonly ISendEndpointProvider _sendEndpointProvider;
@@ -48,17 +48,17 @@ namespace Deveel.Events
         /// <param name="logger">
         /// An optional logger; when <c>null</c> a <see cref="Microsoft.Extensions.Logging.Abstractions.NullLogger{T}"/> is used.
         /// </param>
-        public MassTransitEventPublishChannel(
+        public MassTransitPublishChannel(
             IOptions<MassTransitPublishOptions> options,
             IPublishEndpoint publishEndpoint,
             ISendEndpointProvider sendEndpointProvider,
             IEnumerable<IValidateOptions<MassTransitPublishOptions>>? validators = null,
-            ILogger<MassTransitEventPublishChannel>? logger = null)
+            ILogger<MassTransitPublishChannel>? logger = null)
             : base(options.Value, validators)
         {
             _publishEndpoint = publishEndpoint;
             _sendEndpointProvider = sendEndpointProvider;
-            _logger = logger ?? NullLogger<MassTransitEventPublishChannel>.Instance;
+            _logger = logger ?? NullLogger<MassTransitPublishChannel>.Instance;
         }
 
         /// <inheritdoc/>

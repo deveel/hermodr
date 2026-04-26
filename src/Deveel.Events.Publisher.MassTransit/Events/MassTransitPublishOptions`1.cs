@@ -6,7 +6,7 @@
 namespace Deveel.Events
 {
     /// <summary>
-    /// Type-specific publish options for a <see cref="MassTransitEventPublishChannel{TEvent}"/>
+    /// Type-specific publish options for a <see cref="MassTransitPublishChannel{TEvent}"/>
     /// that routes events of type <typeparamref name="TEvent"/> via MassTransit.
     /// </summary>
     /// <remarks>

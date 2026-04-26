@@ -12,9 +12,9 @@ using System.ComponentModel.DataAnnotations;
 namespace Deveel.Events
 {
     /// <summary>
-    /// Unit tests for <see cref="EventPublishChannelBase{TOptions}"/>.
+    /// Unit tests for <see cref="EventPublishChannel{TOptions}"/>.
     /// </summary>
-    public class EventPublishChannelBaseTests
+    public class EventPublishChannelTests
     {
         // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -35,7 +35,7 @@ namespace Deveel.Events
         }
 
         // Minimal concrete channel that records delivered events + effective options
-        private class SimpleChannel : EventPublishChannelBase<SimpleOptions>
+        private class SimpleChannel : EventPublishChannel<SimpleOptions>
         {
             public SimpleChannel(
                 SimpleOptions defaults,
@@ -209,7 +209,7 @@ namespace Deveel.Events
                 => ValidateOptionsResult.Success;
         }
 
-        private sealed class InspectableChannel : EventPublishChannelBase<SimpleOptions>
+        private sealed class InspectableChannel : EventPublishChannel<SimpleOptions>
         {
             public InspectableChannel(SimpleOptions defaults) : base(defaults) { }
             public SimpleOptions ExposedDefaults => DefaultOptions;
@@ -217,7 +217,7 @@ namespace Deveel.Events
                 => Task.CompletedTask;
         }
 
-        private sealed class SlowChannel : EventPublishChannelBase<SimpleOptions>
+        private sealed class SlowChannel : EventPublishChannel<SimpleOptions>
         {
             public SlowChannel(SimpleOptions defaults) : base(defaults) { }
             protected override async Task PublishCoreAsync(CloudEvent @event, SimpleOptions options, CancellationToken ct)

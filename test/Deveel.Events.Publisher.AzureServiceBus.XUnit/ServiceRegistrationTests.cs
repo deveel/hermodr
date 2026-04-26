@@ -11,7 +11,7 @@ namespace Deveel.Events
     public static class ServiceRegistrationTests
     {
         [Fact]
-        public static void AddServiceBusEventPublishChannel_WasSuccessful()
+        public static void AddServiceBusPublishChannel_WasSuccessful()
         {
             var services = new ServiceCollection();
             services.AddEventPublisher()
@@ -26,7 +26,7 @@ namespace Deveel.Events
 
             Assert.NotNull(serviceProvider.GetService<EventPublisher>());
             Assert.NotNull(serviceProvider.GetService<IEventPublishChannel>());
-            Assert.IsType<ServiceBusEventPublishChannel>(serviceProvider.GetService<IEventPublishChannel>());
+            Assert.Equal("ServiceBusPublishChannel", serviceProvider.GetService<IEventPublishChannel>()!.GetType().Name);
             Assert.NotNull(serviceProvider.GetService<IServiceBusClientFactory>());
 
             var options = serviceProvider.GetService<IOptions<ServiceBusPublishOptions>>();
@@ -57,7 +57,7 @@ namespace Deveel.Events
 
             Assert.NotNull(provider.GetService<EventPublisher>());
             Assert.NotNull(provider.GetService<IEventPublishChannel>());
-            Assert.IsType<ServiceBusEventPublishChannel>(provider.GetService<IEventPublishChannel>());
+            Assert.Equal("ServiceBusPublishChannel", provider.GetService<IEventPublishChannel>()!.GetType().Name);
 
             var options = provider.GetService<IOptions<ServiceBusPublishOptions>>();
             Assert.NotNull(options);

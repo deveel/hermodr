@@ -6,7 +6,7 @@
 namespace Deveel.Events
 {
     /// <summary>
-    /// Type-specific publish options for a <see cref="WebhookEventPublishChannel{TEvent}"/>
+    /// Type-specific publish options for a <see cref="WebhookPublishChannel{TEvent}"/>
     /// that routes events of type <typeparamref name="TEvent"/> to a webhook endpoint.
     /// </summary>
     /// <remarks>

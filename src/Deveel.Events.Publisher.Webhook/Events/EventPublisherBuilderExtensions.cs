@@ -50,11 +50,11 @@ namespace Deveel.Events
 
             // Register the concrete channel once under its own type so callers can resolve it
             // directly and supply per-call option overrides.
-            builder.Services.TryAddSingleton<WebhookEventPublishChannel>();
+            builder.Services.TryAddSingleton<WebhookPublishChannel>();
             // Expose it as IEventPublishChannel, IOptionsEventPublishChannel and IBatchEventPublishChannel
             // (type-based so ImplementationType is preserved for service-registration assertions).
-            builder.Services.AddSingleton<IEventPublishChannel, WebhookEventPublishChannel>();
-            builder.Services.AddSingleton<IBatchEventPublishChannel, WebhookEventPublishChannel>();
+            builder.Services.AddSingleton<IEventPublishChannel, WebhookPublishChannel>();
+            builder.Services.AddSingleton<IBatchEventPublishChannel, WebhookPublishChannel>();
 
             return builder;
         }
@@ -133,7 +133,7 @@ namespace Deveel.Events
             builder.Services.AddOptions<WebhookPublishOptions<TEvent>>()
                 .Configure(configure);
             builder.AddWebhookInfrastructure();
-            return builder.AddChannel<WebhookEventPublishChannel<TEvent>, TEvent>();
+            return builder.AddChannel<WebhookPublishChannel<TEvent>, TEvent>();
         }
 
         /// <summary>
@@ -162,7 +162,7 @@ namespace Deveel.Events
             builder.Services.AddOptions<WebhookPublishOptions<TEvent>>()
                 .BindConfiguration(sectionPath);
             builder.AddWebhookInfrastructure();
-            return builder.AddChannel<WebhookEventPublishChannel<TEvent>, TEvent>();
+            return builder.AddChannel<WebhookPublishChannel<TEvent>, TEvent>();
         }
 
         /// <summary>

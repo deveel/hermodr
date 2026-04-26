@@ -6,9 +6,9 @@
 namespace Deveel.Events
 {
     /// <summary>
-    /// Options that configure the <see cref="MassTransitEventPublishChannel"/>.
+    /// Options that configure the <see cref="MassTransitPublishChannel"/>.
     /// </summary>
-    public class MassTransitPublishOptions : EventPublishOptions
+    public class MassTransitPublishOptions : NamedChannelPublishOptions, INamedChannelFilter
     {
         /// <summary>
         /// Merges <paramref name="baseOptions"/> with <paramref name="typedOptions"/>,
@@ -21,6 +21,7 @@ namespace Deveel.Events
         {
             return new MassTransitPublishOptions
             {
+                ChannelName            = typedOptions.ChannelName            ?? baseOptions.ChannelName,
                 DestinationAddress     = typedOptions.DestinationAddress     ?? baseOptions.DestinationAddress,
                 MapAttributesToHeaders = typedOptions.MapAttributesToHeaders ?? baseOptions.MapAttributesToHeaders,
             };

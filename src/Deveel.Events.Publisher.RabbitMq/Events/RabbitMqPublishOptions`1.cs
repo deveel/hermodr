@@ -6,7 +6,7 @@
 namespace Deveel.Events
 {
     /// <summary>
-    /// Type-specific publish options for a <see cref="RabbitMqEventPublishChannel{TEvent}"/>
+    /// Type-specific publish options for a <see cref="RabbitMqPublishChannel{TEvent}"/>
     /// that routes events of type <typeparamref name="TEvent"/> to a RabbitMQ exchange.
     /// </summary>
     /// <remarks>

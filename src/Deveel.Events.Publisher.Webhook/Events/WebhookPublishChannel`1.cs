@@ -9,7 +9,7 @@ using Microsoft.Extensions.Options;
 namespace Deveel.Events
 {
     /// <summary>
-    /// A <see cref="WebhookEventPublishChannel"/> subclass that also implements
+    /// A <see cref="WebhookPublishChannel"/> subclass that also implements
     /// <see cref="IEventPublishChannel{TEvent}"/>, so the <see cref="EventPublisher"/>
     /// routes events of type <typeparamref name="TEvent"/> exclusively to this channel.
     /// </summary>
@@ -23,8 +23,8 @@ namespace Deveel.Events
     /// <typeparam name="TEvent">
     /// The event data class this channel is keyed against.
     /// </typeparam>
-    class WebhookEventPublishChannel<TEvent> :
-        WebhookEventPublishChannel,
+    class WebhookPublishChannel<TEvent> :
+        WebhookPublishChannel,
         IEventPublishChannel<TEvent>
         where TEvent : class
     {
@@ -44,14 +44,14 @@ namespace Deveel.Events
         /// <param name="serializers">Optional event serializers.</param>
         /// <param name="validators">Optional DI-registered options validators.</param>
         /// <param name="logger">Optional logger; falls back to NullLogger when <c>null</c>.</param>
-        public WebhookEventPublishChannel(
+        public WebhookPublishChannel(
             IOptions<WebhookPublishOptions<TEvent>> typedOptions,
             IOptions<WebhookPublishOptions> baseOptions,
             IHttpClientFactory httpClientFactory,
             IEnumerable<IWebhookSignatureProvider>? signatureProviders = null,
             IEnumerable<IEventSerializer>? serializers = null,
             IEnumerable<IValidateOptions<WebhookPublishOptions>>? validators = null,
-            ILogger<WebhookEventPublishChannel>? logger = null)
+            ILogger<WebhookPublishChannel>? logger = null)
             : base(
                 Options.Create(WebhookPublishOptions.Merge(baseOptions.Value, typedOptions.Value)),
                 httpClientFactory,

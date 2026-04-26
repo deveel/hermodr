@@ -2,7 +2,7 @@
 {
     /// <summary>
     /// The MassTransit message contract used to wrap a structured-mode
-    /// CloudEvent payload for publishing via <see cref="MassTransitEventPublishChannel"/>.
+    /// CloudEvent payload for publishing via <see cref="MassTransitPublishChannel"/>.
     /// </summary>
     /// <remarks>
     /// MassTransit uses this interface as the message type when calling

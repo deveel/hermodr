@@ -83,7 +83,7 @@ Channel-structural settings (always taken from the channel-level defaults; ignor
 
 ## Typed channel
 
-Use `AddWebhooks<TEvent>()` to register a channel that receives **only** events whose data class is `TEvent`.  At construction time the typed channel (`WebhookEventPublishChannel<TEvent>`) merges the general `WebhookPublishOptions` with the type-specific `WebhookPublishOptions<TEvent>`: non-`null` typed values win; `null` values fall back to the base defaults.  `AdditionalHeaders` are merged at the dictionary level — typed entries win on key collision.  Channel-structural properties (`SignatureHeaderName`, `DeliveryIdHeaderName`, `RetryableStatusCodes`, …) are **always** taken from the base options and cannot be overridden per event type.
+Use `AddWebhooks<TEvent>()` to register a channel that receives **only** events whose data class is `TEvent`.  At construction time the typed channel (`WebhookPublishChannel<TEvent>`) merges the general `WebhookPublishOptions` with the type-specific `WebhookPublishOptions<TEvent>`: non-`null` typed values win; `null` values fall back to the base defaults.  `AdditionalHeaders` are merged at the dictionary level — typed entries win on key collision.  Channel-structural properties (`SignatureHeaderName`, `DeliveryIdHeaderName`, `RetryableStatusCodes`, …) are **always** taken from the base options and cannot be overridden per event type.
 
 ```csharp
 builder.Services
@@ -162,7 +162,7 @@ Pass a `WebhookPublishOptions` instance as the second argument to `PublishAsync`
 using Deveel.Events;
 
 // Resolve the concrete channel directly from DI.
-var webhookChannel = serviceProvider.GetRequiredService<WebhookEventPublishChannel>();
+var webhookChannel = serviceProvider.GetRequiredService<WebhookPublishChannel>();
 
 // Override endpoint and secret for this delivery only;
 // everything else (MaxRetryCount, SignatureAlgorithm, …) is inherited.
@@ -177,7 +177,7 @@ await webhookChannel.PublishAsync(@event, new WebhookPublishOptions
 You can also supply overrides through the non-generic `IEventPublishChannel` interface — casting the options to `EventPublishOptions` works because `WebhookPublishOptions` inherits from it:
 
 ```csharp
-IEventPublishChannel channel = serviceProvider.GetRequiredService<WebhookEventPublishChannel>();
+IEventPublishChannel channel = serviceProvider.GetRequiredService<WebhookPublishChannel>();
 await channel.PublishAsync(@event, new WebhookPublishOptions { EndpointUrl = "https://..." });
 ```
 

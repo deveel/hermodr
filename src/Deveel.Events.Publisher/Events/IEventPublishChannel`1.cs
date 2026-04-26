@@ -22,7 +22,7 @@ namespace Deveel.Events
     /// <em>not</em> a responsibility of this interface.  They are passed as strongly-typed
     /// <see cref="EventPublishOptions"/> subclass instances to the
     /// <see cref="IEventPublishChannel.PublishAsync"/> method or to the strongly-typed
-    /// <c>PublishAsync</c> overload exposed by <see cref="EventPublishChannelBase{TOptions}"/>
+    /// <c>PublishAsync</c> overload exposed by <see cref="EventPublishChannel{TOptions}"/>
     /// on the concrete channel.
     /// </para>
     /// <para>

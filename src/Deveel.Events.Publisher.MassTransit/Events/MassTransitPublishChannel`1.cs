@@ -11,7 +11,7 @@ using Microsoft.Extensions.Options;
 namespace Deveel.Events
 {
     /// <summary>
-    /// A <see cref="MassTransitEventPublishChannel"/> subclass that also implements
+    /// A <see cref="MassTransitPublishChannel"/> subclass that also implements
     /// <see cref="IEventPublishChannel{TEvent}"/>, so the <see cref="EventPublisher"/>
     /// routes events of type <typeparamref name="TEvent"/> exclusively to this channel.
     /// </summary>
@@ -24,8 +24,8 @@ namespace Deveel.Events
     /// <typeparam name="TEvent">
     /// The event data class this channel is keyed against.
     /// </typeparam>
-    class MassTransitEventPublishChannel<TEvent> :
-        MassTransitEventPublishChannel,
+    class MassTransitPublishChannel<TEvent> :
+        MassTransitPublishChannel,
         IEventPublishChannel<TEvent>
         where TEvent : class
     {
@@ -44,13 +44,13 @@ namespace Deveel.Events
         /// <param name="sendEndpointProvider">MassTransit send-endpoint provider.</param>
         /// <param name="validators">Optional DI-registered options validators.</param>
         /// <param name="logger">Optional logger; falls back to NullLogger when <c>null</c>.</param>
-        public MassTransitEventPublishChannel(
+        public MassTransitPublishChannel(
             IOptions<MassTransitPublishOptions<TEvent>> typedOptions,
             IOptions<MassTransitPublishOptions> baseOptions,
             IPublishEndpoint publishEndpoint,
             ISendEndpointProvider sendEndpointProvider,
             IEnumerable<IValidateOptions<MassTransitPublishOptions>>? validators = null,
-            ILogger<MassTransitEventPublishChannel>? logger = null)
+            ILogger<MassTransitPublishChannel>? logger = null)
             : base(
                 Options.Create(MassTransitPublishOptions.Merge(baseOptions.Value, typedOptions.Value)),
                 publishEndpoint,

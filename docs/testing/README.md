@@ -100,6 +100,21 @@ public class OrderServiceTests
 }
 ```
 
+## Named test channels
+
+When the code under test publishes to a **named channel**, register the test channel with the same name by passing the optional `channelName` parameter:
+
+```csharp
+var ordersEvents       = new List<CloudEvent>();
+var notificationEvents = new List<CloudEvent>();
+
+services.AddEventPublisher()
+        .AddTestChannel(@ev => ordersEvents.Add(@ev),       channelName: "rabbit-orders")
+        .AddTestChannel(@ev => notificationEvents.Add(@ev), channelName: "rabbit-notifications");
+```
+
+Each named test channel fires only for events whose per-call options carry the matching `ChannelName`.  A test channel registered without a name (or with `channelName: null`) is treated as anonymous and receives every event, just like any unnamed production channel.
+
 ## `IEventPublishCallback`
 
 ```csharp

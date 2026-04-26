@@ -8,7 +8,7 @@ using Azure.Messaging.ServiceBus;
 namespace Deveel.Events
 {
     /// <summary>
-    /// Type-specific publish options for a <see cref="ServiceBusEventPublishChannel{TEvent}"/>
+    /// Type-specific publish options for a <see cref="ServiceBusPublishChannel{TEvent}"/>
     /// that routes events of type <typeparamref name="TEvent"/> to an Azure Service Bus queue.
     /// </summary>
     /// <remarks>
