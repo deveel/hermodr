@@ -37,7 +37,7 @@ namespace Deveel.Events
     /// from the channel-level defaults and ignored in per-call overrides.
     /// </para>
     /// </remarks>
-    public class WebhookPublishChannel :
+    class WebhookPublishChannel :
         EventPublishChannel<WebhookPublishOptions>,
         IBatchEventPublishChannel
     {

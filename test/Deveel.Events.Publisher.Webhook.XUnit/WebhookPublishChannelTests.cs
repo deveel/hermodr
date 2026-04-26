@@ -28,43 +28,30 @@ namespace Deveel.Events
             Time    = DateTimeOffset.UtcNow
         };
 
-#pragma warning disable CS0618
-        private static readonly IWebhookSignatureProvider[] AllProviders = new IWebhookSignatureProvider[]
-        {
-            HmacSha256SignatureProvider.Default,
-            HmacSha384SignatureProvider.Default,
-            HmacSha512SignatureProvider.Default,
-            HmacSha1SignatureProvider.Default,
-        };
-#pragma warning restore CS0618
-
-        private static WebhookPublishChannel BuildChannel(
+        private static IBatchEventPublishChannel BuildChannel(
             HttpMessageHandler handler,
             Action<WebhookPublishOptions>? configure = null)
         {
             var services = new ServiceCollection();
+            services.AddEventPublisher()
+                    .AddWebhooks(o =>
+                    {
+                        o.EndpointUrl            = "https://webhook.example.com/receive";
+                        o.SigningSecret          = "test-secret";
+                        o.MaxRetryCount          = 2;
+                        o.RetryDelay             = TimeSpan.FromMilliseconds(10);
+                        o.RetryBackoffMultiplier = 1.5;
+                        o.MessageFormat          = EventMessageFormat.Json;
+                        o.SignatureAlgorithm     = WebhookSignatureAlgorithm.HmacSha256;
+                        configure?.Invoke(o);
+                    });
+
+            // Override the default HTTP message handler with the fake one
             services.AddHttpClient(WebhookDefaults.HttpClientName)
                     .ConfigurePrimaryHttpMessageHandler(() => handler);
 
-            var options = new WebhookPublishOptions
-            {
-                EndpointUrl            = "https://webhook.example.com/receive",
-                SigningSecret          = "test-secret",
-                MaxRetryCount          = 2,
-                RetryDelay             = TimeSpan.FromMilliseconds(10),
-                RetryBackoffMultiplier = 1.5,
-                MessageFormat          = EventMessageFormat.Json,
-                SignatureAlgorithm     = WebhookSignatureAlgorithm.HmacSha256,
-            };
-            configure?.Invoke(options);
-
-            var sp      = services.BuildServiceProvider();
-            var factory = sp.GetRequiredService<IHttpClientFactory>();
-
-            return new WebhookPublishChannel(
-                Options.Create(options),
-                factory,
-                AllProviders);
+            return services.BuildServiceProvider()
+                           .GetRequiredService<IBatchEventPublishChannel>();
         }
 
         // --- Basic delivery --------------------------------------------------
@@ -458,7 +445,7 @@ namespace Deveel.Events
             var sp = services.BuildServiceProvider();
 
             var channels = sp.GetServices<IEventPublishChannel>();
-            Assert.Contains(channels, c => c is WebhookPublishChannel);
+            Assert.Contains(channels, c => c is IBatchEventPublishChannel);
 
             var providers = sp.GetServices<IWebhookSignatureProvider>().ToList();
             Assert.Contains(providers, p => p.Algorithm == WebhookSignatureAlgorithm.HmacSha256);
@@ -595,7 +582,7 @@ namespace Deveel.Events
             var sp = services.BuildServiceProvider();
 
             var channels = sp.GetServices<IEventPublishChannel>();
-            Assert.Contains(channels, c => c is WebhookPublishChannel);
+            Assert.Contains(channels, c => c is IBatchEventPublishChannel);
         }
 
         // ── UseWebhookSignatureProvider and UseWebhookMessageSerializer ────────
@@ -628,7 +615,6 @@ namespace Deveel.Events
             var sp = services.BuildServiceProvider();
             var batch = sp.GetService<IBatchEventPublishChannel>();
             Assert.NotNull(batch);
-            Assert.IsType<WebhookPublishChannel>(batch);
         }
 
         // ── WebhookDeliveryException extra constructor ────────────────────────
@@ -664,23 +650,20 @@ namespace Deveel.Events
         public async Task PublishAsync_UnsupportedFormat_ThrowsNotSupported()
         {
             var handler = new FakeHandler(_ => OK());
+
             var services = new ServiceCollection();
+            services.AddEventPublisher()
+                    .AddWebhooks(o =>
+                    {
+                        o.EndpointUrl   = "https://webhook.example.com/receive";
+                        o.SigningSecret = "test-secret";
+                        o.MessageFormat = "unsupported-format";
+                    });
             services.AddHttpClient(WebhookDefaults.HttpClientName)
                     .ConfigurePrimaryHttpMessageHandler(() => handler);
 
-            var options = new WebhookPublishOptions
-            {
-                EndpointUrl    = "https://webhook.example.com/receive",
-                SigningSecret  = "test-secret",
-                MessageFormat  = "unsupported-format",
-            };
-
-            var sp      = services.BuildServiceProvider();
-            var factory = sp.GetRequiredService<IHttpClientFactory>();
-            var channel = new WebhookPublishChannel(
-                Microsoft.Extensions.Options.Options.Create(options),
-                factory,
-                AllProviders);
+            var channel = services.BuildServiceProvider()
+                                  .GetRequiredService<IEventPublishChannel>();
 
             await Assert.ThrowsAsync<NotSupportedException>(
                 () => channel.PublishAsync(MakeEvent()));
@@ -728,21 +711,17 @@ namespace Deveel.Events
             var services = new ServiceCollection();
             services.AddHttpClient(customName)
                     .ConfigurePrimaryHttpMessageHandler(() => handler);
+            services.AddEventPublisher()
+                    .AddWebhooks(o =>
+                    {
+                        o.EndpointUrl    = "https://webhook.example.com/receive";
+                        o.SigningSecret  = "test-secret";
+                        o.MessageFormat  = EventMessageFormat.Json;
+                        o.HttpClientName = customName;
+                    });
 
-            var options = new WebhookPublishOptions
-            {
-                EndpointUrl    = "https://webhook.example.com/receive",
-                SigningSecret  = "test-secret",
-                MessageFormat  = EventMessageFormat.Json,
-                HttpClientName = customName,
-            };
-
-            var sp      = services.BuildServiceProvider();
-            var factory = sp.GetRequiredService<IHttpClientFactory>();
-            var channel = new WebhookPublishChannel(
-                Microsoft.Extensions.Options.Options.Create(options),
-                factory,
-                AllProviders);
+            var channel = services.BuildServiceProvider()
+                                  .GetRequiredService<IEventPublishChannel>();
 
             await channel.PublishAsync(MakeEvent());
             Assert.Single(requests);

@@ -17,7 +17,7 @@ namespace Deveel.Events
     /// The implementation of the <see cref="IEventPublishChannel{TOptions}"/> that
     /// is used to publish events to a RabbitMQ exchange.
     /// </summary>
-    public class RabbitMqPublishChannel :
+    class RabbitMqPublishChannel :
         EventPublishChannel<RabbitMqPublishOptions>,
         IAsyncDisposable, IDisposable
     {

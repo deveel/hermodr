@@ -32,42 +32,29 @@ namespace Deveel.Events
             Time            = DateTimeOffset.UtcNow,
         };
 
-#pragma warning disable CS0618
-        private static readonly IWebhookSignatureProvider[] AllProviders =
-        [
-            HmacSha256SignatureProvider.Default,
-            HmacSha384SignatureProvider.Default,
-            HmacSha512SignatureProvider.Default,
-            HmacSha1SignatureProvider.Default,
-        ];
-#pragma warning restore CS0618
-
-        private static WebhookPublishChannel BuildChannel(
+        private static IBatchEventPublishChannel BuildChannel(
             HttpMessageHandler handler,
             Action<WebhookPublishOptions>? configure = null)
         {
             var services = new ServiceCollection();
+            services.AddEventPublisher()
+                    .AddWebhooks(o =>
+                    {
+                        o.EndpointUrl        = "https://webhook.example.com/receive";
+                        o.SigningSecret      = "test-secret";
+                        o.MaxRetryCount      = 2;
+                        o.RetryDelay         = TimeSpan.FromMilliseconds(10);
+                        o.MessageFormat      = EventMessageFormat.Json;
+                        o.SignatureAlgorithm = WebhookSignatureAlgorithm.HmacSha256;
+                        configure?.Invoke(o);
+                    });
+
+            // Override the default HTTP message handler with the fake one
             services.AddHttpClient(WebhookDefaults.HttpClientName)
                     .ConfigurePrimaryHttpMessageHandler(() => handler);
 
-            var options = new WebhookPublishOptions
-            {
-                EndpointUrl        = "https://webhook.example.com/receive",
-                SigningSecret      = "test-secret",
-                MaxRetryCount      = 2,
-                RetryDelay         = TimeSpan.FromMilliseconds(10),
-                MessageFormat      = EventMessageFormat.Json,
-                SignatureAlgorithm = WebhookSignatureAlgorithm.HmacSha256,
-            };
-            configure?.Invoke(options);
-
-            var sp      = services.BuildServiceProvider();
-            var factory = sp.GetRequiredService<IHttpClientFactory>();
-
-            return new WebhookPublishChannel(
-                Options.Create(options),
-                factory,
-                AllProviders);
+            return services.BuildServiceProvider()
+                           .GetRequiredService<IBatchEventPublishChannel>();
         }
 
         private static HttpResponseMessage OK()   => new(HttpStatusCode.OK);

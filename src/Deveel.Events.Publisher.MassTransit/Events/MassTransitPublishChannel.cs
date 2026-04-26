@@ -18,7 +18,7 @@ namespace Deveel.Events
     /// An implementation of <see cref="IEventPublishChannel{TOptions}"/> that publishes
     /// CloudEvents via MassTransit.
     /// </summary>
-    public class MassTransitPublishChannel :
+    internal class MassTransitPublishChannel :
         EventPublishChannel<MassTransitPublishOptions>
     {
         private readonly IPublishEndpoint _publishEndpoint;
