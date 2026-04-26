@@ -11,7 +11,7 @@ namespace Deveel.Events
 {
     /// <summary>
     /// A factory to create a connection to a RabbitMQ server
-    /// to be used by the <see cref="RabbitMqEventPublishChannel"/>.
+    /// to be used by the <see cref="RabbitMqPublishChannel"/>.
     /// </summary>
     public interface IRabbitMqConnectionFactory
     {

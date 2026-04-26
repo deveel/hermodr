@@ -17,8 +17,8 @@ namespace Deveel.Events {
     /// <summary>
     /// A channel that publishes events to an Azure Service Bus queue.
     /// </summary>
-    public class ServiceBusEventPublishChannel :
-        EventPublishChannelBase<ServiceBusPublishOptions>,
+    public class ServiceBusPublishChannel :
+        EventPublishChannel<ServiceBusPublishOptions>,
         IAsyncDisposable, IDisposable {
 		private ServiceBusSender? sender;
 		private ServiceBusClient? client;
@@ -48,12 +48,12 @@ namespace Deveel.Events {
         /// <param name="logger">
         /// A logger to record the operations of the channel.
         /// </param>
-        public ServiceBusEventPublishChannel(
+        public ServiceBusPublishChannel(
 			IOptions<ServiceBusPublishOptions> options,
 			IServiceBusClientFactory clientFactory,
 			ServiceBusMessageFactory messageCreator,
 			IEnumerable<IValidateOptions<ServiceBusPublishOptions>>? validators = null,
-			ILogger<ServiceBusEventPublishChannel>? logger = null)
+			ILogger<ServiceBusPublishChannel>? logger = null)
 			: base(options.Value, validators) {
 
 			var clientOptions = options.Value.ClientOptions ?? new ServiceBusClientOptions();
@@ -62,12 +62,12 @@ namespace Deveel.Events {
 
 			sender = client.CreateSender(options.Value.QueueName);
 			this.messageCreator = messageCreator;
-			this.logger = logger ?? NullLogger<ServiceBusEventPublishChannel>.Instance;
+			this.logger = logger ?? NullLogger<ServiceBusPublishChannel>.Instance;
 		}
 
 		private void ThrowIfDisposed() {
 			if (disposed)
-				throw new ObjectDisposedException(nameof(ServiceBusEventPublishChannel));
+				throw new ObjectDisposedException(nameof(ServiceBusPublishChannel));
 		}
 
         /// <inheritdoc/>

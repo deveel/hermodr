@@ -21,17 +21,17 @@ namespace Deveel.Events
     [Trait("Function", "Send")]
     public class MassTransitChannelSendTests
     {
-        private static MassTransitEventPublishChannel BuildChannel(
+        private static MassTransitPublishChannel BuildChannel(
             MassTransitPublishOptions options,
             IPublishEndpoint publishEndpoint,
             ISendEndpointProvider sendEndpointProvider)
         {
-            return new MassTransitEventPublishChannel(
+            return new MassTransitPublishChannel(
                 Options.Create(options),
                 publishEndpoint,
                 sendEndpointProvider,
                 validators: null,
-                NullLogger<MassTransitEventPublishChannel>.Instance);
+                NullLogger<MassTransitPublishChannel>.Instance);
         }
 
         private static CloudEvent MakeSampleEvent() => new CloudEvent

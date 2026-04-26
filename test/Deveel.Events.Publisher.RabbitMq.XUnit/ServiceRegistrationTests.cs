@@ -25,7 +25,7 @@ namespace Deveel.Events
                 });
             Assert.Contains(services, d =>
                 d.ServiceType == typeof(IEventPublishChannel) &&
-                d.ImplementationType == typeof(RabbitMqEventPublishChannel));
+                d.ImplementationType == typeof(RabbitMqPublishChannel));
             Assert.Contains(services, d =>
                 d.ServiceType == typeof(IRabbitMqConnectionFactory) &&
                 d.ImplementationType == typeof(RabbitMqConnectionFactory));
@@ -111,7 +111,7 @@ namespace Deveel.Events
                 .AddRabbitMq("RabbitMq");
             Assert.Contains(services, d =>
                 d.ServiceType == typeof(IEventPublishChannel) &&
-                d.ImplementationType == typeof(RabbitMqEventPublishChannel));
+                d.ImplementationType == typeof(RabbitMqPublishChannel));
             var provider = services.BuildServiceProvider();
             var options = provider.GetRequiredService<IOptions<RabbitMqPublishOptions>>();
             Assert.NotNull(options.Value);

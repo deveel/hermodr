@@ -10,7 +10,7 @@ using System.Text.Json;
 namespace Deveel.Events
 {
     /// <summary>
-    /// Configuration options for a <see cref="RabbitMqEventPublishChannel"/>.
+    /// Configuration options for a <see cref="RabbitMqPublishChannel"/>.
     /// </summary>
     public class RabbitMqPublishOptions : NamedChannelPublishOptions, INamedChannelFilter
     {

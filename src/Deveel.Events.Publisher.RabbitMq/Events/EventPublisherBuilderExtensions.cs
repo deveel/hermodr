@@ -35,9 +35,9 @@ namespace Deveel.Events
             builder.AddRabbitMqInfrastructure();
             // Register the concrete channel once under its own type so callers can resolve it
             // directly and supply per-call option overrides.
-            builder.Services.TryAddSingleton<RabbitMqEventPublishChannel>();
+            builder.Services.TryAddSingleton<RabbitMqPublishChannel>();
             // Expose it as IEventPublishChannel (type-based so ImplementationType is preserved).
-            builder.Services.AddSingleton<IEventPublishChannel, RabbitMqEventPublishChannel>();
+            builder.Services.AddSingleton<IEventPublishChannel, RabbitMqPublishChannel>();
             return builder;
         }
 
@@ -110,7 +110,7 @@ namespace Deveel.Events
                 .Configure(configure);
 
             builder.AddRabbitMqInfrastructure();
-            return builder.AddChannel<RabbitMqEventPublishChannel<TEvent>, TEvent>();
+            return builder.AddChannel<RabbitMqPublishChannel<TEvent>, TEvent>();
         }
 
         /// <summary>
@@ -140,7 +140,7 @@ namespace Deveel.Events
                 .BindConfiguration(sectionPath);
 
             builder.AddRabbitMqInfrastructure();
-            return builder.AddChannel<RabbitMqEventPublishChannel<TEvent>, TEvent>();
+            return builder.AddChannel<RabbitMqPublishChannel<TEvent>, TEvent>();
         }
     }
 }

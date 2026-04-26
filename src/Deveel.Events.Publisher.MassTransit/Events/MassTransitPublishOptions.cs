@@ -6,7 +6,7 @@
 namespace Deveel.Events
 {
     /// <summary>
-    /// Options that configure the <see cref="MassTransitEventPublishChannel"/>.
+    /// Options that configure the <see cref="MassTransitPublishChannel"/>.
     /// </summary>
     public class MassTransitPublishOptions : NamedChannelPublishOptions, INamedChannelFilter
     {

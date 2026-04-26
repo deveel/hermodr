@@ -17,8 +17,8 @@ namespace Deveel.Events
     /// The implementation of the <see cref="IEventPublishChannel{TOptions}"/> that
     /// is used to publish events to a RabbitMQ exchange.
     /// </summary>
-    public class RabbitMqEventPublishChannel :
-        EventPublishChannelBase<RabbitMqPublishOptions>,
+    public class RabbitMqPublishChannel :
+        EventPublishChannel<RabbitMqPublishOptions>,
         IAsyncDisposable, IDisposable
     {
         private readonly IRabbitMqMessageFactory _messageFactory;
@@ -54,17 +54,17 @@ namespace Deveel.Events
         /// <param name="logger">
         /// An optional logger; when <c>null</c> a <see cref="Microsoft.Extensions.Logging.Abstractions.NullLogger{T}"/> is used.
         /// </param>
-        public RabbitMqEventPublishChannel(
+        public RabbitMqPublishChannel(
             IOptions<RabbitMqPublishOptions> options,
             IConnection connection,
             IRabbitMqMessageFactory messageFactory,
             IEnumerable<IValidateOptions<RabbitMqPublishOptions>>? validators = null,
-            ILogger<RabbitMqEventPublishChannel>? logger = null)
+            ILogger<RabbitMqPublishChannel>? logger = null)
             : base(options.Value, validators)
         {
             _connection = connection;
             _messageFactory = messageFactory;
-            _logger = logger ?? new NullLogger<RabbitMqEventPublishChannel>();
+            _logger = logger ?? new NullLogger<RabbitMqPublishChannel>();
         }
 
         // ── Effective defaults for nullable value-type properties ──────────────────
@@ -146,7 +146,7 @@ namespace Deveel.Events
             CancellationToken cancellationToken)
         {
             if (_disposed)
-                throw new ObjectDisposedException(nameof(RabbitMqEventPublishChannel));
+                throw new ObjectDisposedException(nameof(RabbitMqPublishChannel));
 
             _logger.TracePublishingEvent(@event.Type);
 
