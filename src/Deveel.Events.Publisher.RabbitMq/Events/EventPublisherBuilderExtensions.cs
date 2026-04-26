@@ -18,12 +18,7 @@ namespace Deveel.Events
     {
         private static EventPublisherBuilder AddRabbitMqChannel(this EventPublisherBuilder builder)
         {
-            // Register the concrete channel once; expose it under its own type so that
-            // callers can resolve it directly and supply per-call option overrides, as
-            // well as under IEventPublishChannel so EventPublisher can discover it.
-            builder.Services.AddSingleton<RabbitMqEventPublishChannel>();
-            builder.Services.AddSingleton<IEventPublishChannel>(sp =>
-                sp.GetRequiredService<RabbitMqEventPublishChannel>());
+            builder.Services.AddSingleton<IEventPublishChannel, RabbitMqEventPublishChannel>();
             builder.Services.TryAddSingleton<IRabbitMqConnectionFactory, RabbitMqConnectionFactory>();
             builder.Services.TryAddSingleton<IRabbitMqMessageFactory, RabbitMqMessageFactory>();
             builder.Services.TryAddSingleton<IConnection>(sp =>
