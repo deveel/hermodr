@@ -50,7 +50,7 @@ namespace Deveel.Events {
             };
 
             var ex = await Assert.ThrowsAsync<InvalidCloudEventException>(
-                () => _publisher.PublishEventAsync(@event, TestContext.Current.CancellationToken));
+                () => _publisher.PublishEventAsync(@event, null, TestContext.Current.CancellationToken));
 
             Assert.Contains("type", ex.MissingAttributes);
             Assert.Empty(_published);
@@ -67,7 +67,7 @@ namespace Deveel.Events {
             };
 
             var ex = await Assert.ThrowsAsync<InvalidCloudEventException>(
-                () => _publisher.PublishEventAsync(@event, TestContext.Current.CancellationToken));
+                () => _publisher.PublishEventAsync(@event, null, TestContext.Current.CancellationToken));
 
             Assert.Contains("source", ex.MissingAttributes);
             Assert.Empty(_published);
@@ -102,7 +102,7 @@ namespace Deveel.Events {
             };
 
             var ex = await Assert.ThrowsAsync<InvalidCloudEventException>(
-                () => publisher.PublishEventAsync(@event, TestContext.Current.CancellationToken));
+                () => publisher.PublishEventAsync(@event, null, TestContext.Current.CancellationToken));
 
             Assert.Contains("id", ex.MissingAttributes);
             Assert.Empty(published);
@@ -116,7 +116,7 @@ namespace Deveel.Events {
             var @event = new CloudEvent();
 
             var ex = await Assert.ThrowsAsync<InvalidCloudEventException>(
-                () => _publisher.PublishEventAsync(@event, TestContext.Current.CancellationToken));
+                () => _publisher.PublishEventAsync(@event, null, TestContext.Current.CancellationToken));
 
             Assert.Contains("type",   ex.MissingAttributes);
             Assert.Contains("source", ex.MissingAttributes);
@@ -129,7 +129,7 @@ namespace Deveel.Events {
         public async Task PublishEvent_AllRequiredAttributesPresent_Succeeds() {
             var @event = ValidEvent();
 
-            await _publisher.PublishEventAsync(@event, TestContext.Current.CancellationToken);
+            await _publisher.PublishEventAsync(@event, null, TestContext.Current.CancellationToken);
 
             Assert.Single(_published);
             Assert.Equal("test.event", _published[0].Type);
@@ -154,7 +154,7 @@ namespace Deveel.Events {
                 // Source intentionally omitted – should be filled from options
             };
 
-            await optionalPublisher.PublishEventAsync(@event, TestContext.Current.CancellationToken);
+            await optionalPublisher.PublishEventAsync(@event, null, TestContext.Current.CancellationToken);
 
             Assert.Single(published);
             Assert.Equal(new Uri("https://options.example.com"), published[0].Source);

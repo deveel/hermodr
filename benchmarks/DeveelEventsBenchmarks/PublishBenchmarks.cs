@@ -94,13 +94,13 @@ namespace DeveelEventsBenchmarks
             public string LastName { get; set; }
         }
 
-        class PersonDeleted : IEventFactory
+        class PersonDeleted : IEventConvertible
         {
             public string FirstName { get; set; }
 
             public string LastName { get; set; }
 
-            public CloudEvent CreateEvent()
+            public CloudEvent ToEvent()
             {
                 return new CloudEvent
                 {

@@ -21,6 +21,7 @@ namespace Deveel.Events {
 		private readonly IEventSystemTime _systemTime;
 		private readonly IEventIdGenerator _idGenerator;
 		private readonly ILogger _logger;
+		private Dictionary<Type, IReadOnlyList<IEventPublishChannel>>? _typedChannelCache;
 
         /// <summary>
         /// Constructs the publisher with the given options 
@@ -70,6 +71,49 @@ namespace Deveel.Events {
         protected IEventCreator? EventCreator { get; }
 
         /// <summary>
+        /// Resolves the options to pass to the given channel.  If <paramref name="options"/>
+        /// is not compatible with the options type declared by the channel (i.e. the channel
+        /// extends <see cref="EventPublishChannelBase{TOptions}"/> with a different
+        /// <c>TOptions</c>), <c>null</c> is returned so that the channel falls back to its
+        /// registered defaults.
+        /// </summary>
+        /// <param name="channel">The target channel.</param>
+        /// <param name="options">The caller-supplied per-call options, or <c>null</c>.</param>
+        /// <returns>
+        /// <paramref name="options"/> when compatible with the channel; otherwise <c>null</c>.
+        /// </returns>
+        protected virtual EventPublishOptions? ResolveChannelOptions(IEventPublishChannel channel, EventPublishOptions? options)
+        {
+            if (options == null)
+                return null;
+
+            // Walk the inheritance chain looking for EventPublishChannelBase<TOptions>.
+            var channelType = channel.GetType();
+            for (var t = channelType; t != null && t != typeof(object); t = t.BaseType)
+            {
+                if (!t.IsGenericType)
+                    continue;
+
+                if (t.GetGenericTypeDefinition() != typeof(EventPublishChannelBase<>))
+                    continue;
+
+                // Found the base – determine the channel's expected options type.
+                var expectedOptionsType = t.GetGenericArguments()[0];
+
+                // When the caller supplied a CombinedEventPublishOptions, pick the first
+                // bundled entry that is compatible with this channel's TOptions.
+                if (options is CombinedEventPublishOptions combined)
+                    return combined.GetOptions(expectedOptionsType);
+
+                // Otherwise fall back to the original single-options compatibility check.
+                return expectedOptionsType.IsInstanceOfType(options) ? options : null;
+            }
+
+            // Channel does not derive from EventPublishChannelBase<TOptions> – pass null.
+            return null;
+        }
+
+        /// <summary>
         /// Publishes the event to the given channel.
         /// </summary>
         /// <param name="channel">
@@ -79,14 +123,20 @@ namespace Deveel.Events {
         /// <param name="event">
 		/// The event that is to be published.
 		/// </param>
+        /// <param name="options">
+        /// Optional per-call publish options.  The publisher checks whether the channel
+        /// supports the concrete options type before forwarding; if the types are
+        /// incompatible <c>null</c> is passed and the channel uses its registered defaults.
+        /// </param>
         /// <param name="cancellationToken">
 		/// A token that is used to cancel the operation.
 		/// </param>
         /// <returns>
 		/// Returns a task that represents the asynchronous operation.
 		/// </returns>
-        protected virtual Task PublishEventAsync(IEventPublishChannel channel, CloudEvent @event, CancellationToken cancellationToken) {
-			return channel.PublishAsync(@event, cancellationToken);
+        protected virtual Task PublishEventAsync(IEventPublishChannel channel, CloudEvent @event, EventPublishOptions? options, CancellationToken cancellationToken) {
+			var resolvedOptions = ResolveChannelOptions(channel, options);
+			return channel.PublishAsync(@event, resolvedOptions, cancellationToken);
 		}
 
         /// <summary>
@@ -222,48 +272,112 @@ namespace Deveel.Events {
                 throw new InvalidCloudEventException(missing);
         }
 
+        /// <summary>
+        /// Enriches the given event by setting the identifier, timestamp,
+        /// source, and any configured extension attributes, then validates that
+        /// all required CloudEvents attributes are present.
+        /// </summary>
+        /// <param name="event">The raw event to prepare.</param>
+        /// <returns>The enriched and validated event.</returns>
+        /// <exception cref="InvalidCloudEventException">
+        /// Thrown when a required CloudEvents attribute is missing after enrichment.
+        /// </exception>
+        protected virtual CloudEvent PrepareEvent(CloudEvent @event)
+        {
+            @event = SetEventId(@event);
+            @event = SetTimeStamp(@event);
+            @event = SetSource(@event);
+            @event = SetAttributes(@event);
+            ValidateCloudEvent(@event);
+            return @event;
+        }
+
+        /// <summary>
+        /// Returns the <see cref="IEventPublishChannel"/> instances that are
+        /// registered as <c>IEventPublishChannel&lt;<paramref name="eventType"/>&gt;</c>.
+        /// The result is cached so that the reflection cost is paid only once per type.
+        /// </summary>
+        /// <param name="eventType">The event data type to look up.</param>
+        /// <returns>
+        /// A (possibly empty) read-only list of channels keyed to
+        /// <paramref name="eventType"/>.
+        /// </returns>
+        protected IReadOnlyList<IEventPublishChannel> GetTypedChannels(Type eventType)
+        {
+            _typedChannelCache ??= new Dictionary<Type, IReadOnlyList<IEventPublishChannel>>();
+
+            if (!_typedChannelCache.TryGetValue(eventType, out var typed))
+            {
+                var channelType = typeof(IEventPublishChannel<>).MakeGenericType(eventType);
+                typed = _channels.Where(channelType.IsInstanceOfType).ToList();
+                _typedChannelCache[eventType] = typed;
+            }
+
+            return typed;
+        }
+
+        /// <summary>
+        /// Dispatches the already-enriched <paramref name="event"/> to each channel
+        /// in <paramref name="channels"/> in sequence.
+        /// </summary>
+        /// <param name="event">The enriched event to dispatch.</param>
+        /// <param name="channels">The channels to publish to.</param>
+        /// <param name="options">Optional per-call publish options.</param>
+        /// <param name="cancellationToken">A token to cancel the operation.</param>
+        protected virtual async Task PublishEventToChannelsAsync(
+            CloudEvent @event,
+            IEnumerable<IEventPublishChannel> channels,
+            EventPublishOptions? options,
+            CancellationToken cancellationToken)
+        {
+            foreach (var channel in channels)
+            {
+                _logger.TraceEventPublishing(@event.Type!, channel.GetType());
+
+                try
+                {
+                    await PublishEventAsync(channel, @event, options, cancellationToken);
+
+                    _logger.TraceEventPublished(@event.Type!, channel.GetType());
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogEventPublishError(ex, @event.Type!, channel.GetType());
+
+                    if (PublisherOptions.ThrowOnErrors)
+                        throw new EventPublishException(
+                            $"An error occurred while publishing an event of type {@event.Type} to the channel '{channel.GetType().Name}'",
+                            ex);
+                }
+            }
+        }
+
         /// <inheritdoc cref="IEventPublisher.PublishEventAsync"/>
         /// <exception cref="InvalidCloudEventException">
         /// Thrown when any of the required CloudEvents attributes (<c>id</c>,
         /// <c>source</c>, <c>type</c>, <c>specversion</c>) is still absent after
         /// enrichment.
         /// </exception>
-        public async Task PublishEventAsync(CloudEvent @event, CancellationToken cancellationToken = default) {
-			var eventToPublish = @event;
-			eventToPublish = SetEventId(eventToPublish);
-			eventToPublish = SetTimeStamp(eventToPublish);
-			eventToPublish = SetSource(eventToPublish);
-			eventToPublish = SetAttributes(eventToPublish);
-
-			ValidateCloudEvent(eventToPublish);
-
-			foreach (var channel in _channels) {
-				_logger.TraceEventPublishing(@event.Type!, channel.GetType());
-
-				try {
-					await PublishEventAsync(channel, @eventToPublish, cancellationToken);
-
-					_logger.TraceEventPublished(@event.Type!, channel.GetType());
-				} catch (Exception ex) {
-					_logger.LogEventPublishError(ex, @event.Type!, channel.GetType());
-					
-					if (PublisherOptions.ThrowOnErrors) {
-						throw new EventPublishException($"An error occurred while publishing an event of type {@event.Type} to the channel '{channel.GetType().Name}'", ex);
-					}
-				}
-			}
+        public async Task PublishEventAsync(CloudEvent @event, EventPublishOptions? options = null, CancellationToken cancellationToken = default) {
+			var eventToPublish = PrepareEvent(@event);
+			await PublishEventToChannelsAsync(eventToPublish, _channels, options, cancellationToken);
 		}
-
+        
         /// <summary>
         /// Publishes an event that is created from the given 
 		/// data type and the instance of the data.
         /// </summary>
-        /// <param name="dataType">
+        /// <param name="eventType">
 		/// The type of the data that is used to create the event.
 		/// </param>
         /// <param name="data">
 		/// The instance of the data contained in the event.
 		/// </param>
+        /// <param name="options">
+        /// Optional per-call publish options forwarded to compatible channels.
+        /// Channels that do not recognise the options type receive <c>null</c> and
+        /// fall back to their registered defaults.
+        /// </param>
         /// <param name="cancellationToken">
 		/// A token that is used to cancel the operation.
 		/// </param>
@@ -275,24 +389,32 @@ namespace Deveel.Events {
 		/// and the <see cref="EventPublisherOptions.ThrowOnErrors"/>
 		/// is set to <c>true</c>.
 		/// </exception>
-		/// <seealso cref="PublishEventAsync(CloudEvent, CancellationToken)"/>
-        public Task PublishAsync(Type dataType, object? data, CancellationToken cancellationToken = default) {
+		/// <seealso cref="PublishEventAsync(CloudEvent, EventPublishOptions, CancellationToken)"/>
+        public Task PublishAsync(Type eventType, object? data, EventPublishOptions? options = null, CancellationToken cancellationToken = default) {
 			CloudEvent @event;
 
 			try {
-				@event = CreateEventFromData(dataType, data);
+				@event = CreateEventFromData(eventType, data);
 			} catch (Exception ex) {
-				_logger.LogEventCreateError(ex, dataType);
+				_logger.LogEventCreateError(ex, eventType);
 
 				if (PublisherOptions.ThrowOnErrors)
-					throw new EventPublishException($"An error occurred while creating an event of type {dataType.FullName} from the provided data", ex);
+					throw new EventPublishException($"An error occurred while creating an event of type {eventType.FullName} from the provided data", ex);
 
 				return Task.CompletedTask;
 			}
-			
-			return PublishEventAsync(@event, cancellationToken);
-		}
 
+			// Prefer channels registered specifically for this event data type;
+			// fall back to the general untyped channels when none are found.
+			var typedChannels = GetTypedChannels(eventType);
+			var channels = typedChannels.Count > 0
+				? (IEnumerable<IEventPublishChannel>)typedChannels
+				: _channels;
+
+			var eventToPublish = PrepareEvent(@event);
+			return PublishEventToChannelsAsync(eventToPublish, channels, options, cancellationToken);
+		}
+        
         /// <summary>
         /// Creates an event from the given data type and 
 		/// the instance of the data.
@@ -311,6 +433,12 @@ namespace Deveel.Events {
 		/// </exception>
         protected virtual CloudEvent CreateEventFromData(Type dataType, object? data)
         {
+	        ArgumentNullException.ThrowIfNull(dataType, nameof(dataType));
+	        ArgumentNullException.ThrowIfNull(data, nameof(data));
+	        
+	        if (typeof(IEventConvertible).IsAssignableFrom(dataType))
+		        return ((IEventConvertible)data!).ToEvent();
+	        
             if (EventCreator == null)
                 throw new NotSupportedException("Cannot create events from the data");
 
@@ -318,65 +446,27 @@ namespace Deveel.Events {
         }
 
         /// <summary>
-        /// Publishes an event of the given type of data.
+        /// Publishes an event of the given typeevent.
         /// </summary>
-        /// <typeparam name="TData">
-		/// The type of the data that is used to create the event.
+        /// <typeparam name="TEvent">
+		/// The type of event the event to publish.
 		/// </typeparam>
-        /// <param name="data">
-		/// The instance of the data contained in the event.
+        /// <param name="event">
+		/// The instance of the event to publish.
 		/// </param>
+        /// <param name="options">
+        /// Optional per-call publish options forwarded to compatible channels.
+        /// Channels that do not recognise the options type receive <c>null</c> and
+        /// fall back to their registered defaults.
+        /// </param>
         /// <param name="cancellationToken">
 		/// A token that is used to cancel the operation.
 		/// </param>
         /// <returns>
 		/// Returns a task that represents the asynchronous operation.
 		/// </returns>
-        public Task PublishAsync<TData>(TData data, CancellationToken cancellationToken = default)
-			=> PublishAsync(typeof(TData), data, cancellationToken);
-
-        /// <summary>
-        /// Publishes an event that is created from the given 
-		/// factory instance.
-        /// </summary>
-        /// <typeparam name="T">
-		/// The type of the factory that is used to create the event.
-		/// </typeparam>
-        /// <param name="factory">
-		/// The instance of the factory that is used to create the event.
-		/// </param>
-        /// <param name="cancellationToken">
-		/// A token that is used to cancel the operation.
-		/// </param>
-        /// <returns>
-        /// Returns a task that represents the asynchronous publish operation.
-        /// </returns>
-        /// <exception cref="EventPublishException">
-        /// Thrown when the factory fails to create the event or an error occurs
-        /// while publishing, and <see cref="EventPublisherOptions.ThrowOnErrors"/>
-        /// is set to <c>true</c>.
-        /// </exception>
-        public Task PublishEventAsync<T>(T factory, CancellationToken cancellationToken = default)
-			where T : IEventFactory
-        {
-            ArgumentNullException.ThrowIfNull(factory, nameof(factory));
-
-            CloudEvent @event;
-
-            try
-            {
-                @event = factory.CreateEvent();
-            } catch (Exception ex)
-            {
-                _logger.LogEventFactoryError(ex, factory.GetType());
-
-                if (PublisherOptions.ThrowOnErrors)
-                    throw new EventPublishException($"An error occurred while creating an event using the factory {factory.GetType().FullName}", ex);
-
-                return Task.CompletedTask;
-            }
-
-            return PublishEventAsync(@event, cancellationToken);
-        }
+        public Task PublishAsync<TEvent>(TEvent @event, EventPublishOptions? options = null, CancellationToken cancellationToken = default)
+			=> PublishAsync(typeof(TEvent), @event, options, cancellationToken);
+        
     }
 }

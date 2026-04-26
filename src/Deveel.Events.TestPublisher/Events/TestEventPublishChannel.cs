@@ -13,7 +13,7 @@ namespace Deveel.Events {
 			_callback = callback;
 		}
 
-		public Task PublishAsync(CloudEvent @event, CancellationToken cancellationToken = default) {
+		public Task PublishAsync(CloudEvent @event, EventPublishOptions? options = null, CancellationToken cancellationToken = default) {
 			return _callback.OnEventPublishedAsync(@event);
 		}
 	}

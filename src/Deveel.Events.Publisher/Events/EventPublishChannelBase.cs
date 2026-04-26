@@ -120,8 +120,22 @@ namespace Deveel.Events
         }
 
         /// <inheritdoc/>
-        public Task PublishAsync(CloudEvent @event, CancellationToken cancellationToken = default)
-            => PublishAsync(@event, null, cancellationToken);
+        /// <remarks>
+        /// When <paramref name="options"/> is non-<c>null</c> it is cast to
+        /// <typeparamref name="TOptions"/>; if the cast fails (the caller supplied an
+        /// incompatible options type) <c>null</c> is used instead and the channel falls
+        /// back to its registered defaults.
+        /// </remarks>
+        public Task PublishAsync(CloudEvent @event, EventPublishOptions? options = null, CancellationToken cancellationToken = default)
+            => PublishAsync(@event, options as TOptions, cancellationToken);
+
+        /// <summary>
+        /// Publishes the given event using the channel's registered defaults.
+        /// </summary>
+        /// <param name="event">The event to deliver.</param>
+        /// <param name="cancellationToken">A token to cancel the operation.</param>
+        public Task PublishAsync(CloudEvent @event, CancellationToken cancellationToken)
+            => PublishAsync(@event, (TOptions?)null, cancellationToken);
 
         /// <summary>
         /// Merges <paramref name="options"/> with the channel-level defaults, validates the

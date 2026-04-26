@@ -161,6 +161,22 @@ namespace Deveel.Events {
         }
 
         /// <summary>
+        /// Registers the given <paramref name="channel"/> instance as an
+        /// <see cref="IEventPublishChannel"/> that receives all events
+        /// dispatched by the <see cref="EventPublisher"/>.
+        /// </summary>
+        /// <param name="channel">The pre-built channel instance to register.</param>
+        /// <returns>
+        /// Returns this <see cref="EventPublisherBuilder"/> instance so that
+        /// further calls can be chained.
+        /// </returns>
+        public EventPublisherBuilder AddChannel(IEventPublishChannel channel)
+        {
+            Services.AddSingleton<IEventPublishChannel>(channel);
+            return this;
+        }
+
+        /// <summary>
         /// Registers a publish channel of type <typeparamref name="TChannel"/>
         /// as both an <see cref="IEventPublishChannel"/> and an
         /// <see cref="IEventPublishChannel{TEvent}"/>, so that the channel
@@ -191,6 +207,28 @@ namespace Deveel.Events {
             Services.Add(new ServiceDescriptor(typeof(IEventPublishChannel<TEvent>),
                 sp => sp.GetRequiredService<TChannel>(), lifetime));
 
+            return this;
+        }
+
+        /// <summary>
+        /// Registers the given <paramref name="channel"/> instance as both an
+        /// <see cref="IEventPublishChannel"/> and an
+        /// <see cref="IEventPublishChannel{TEvent}"/>, so that the channel
+        /// receives only events whose data class is <typeparamref name="TEvent"/>.
+        /// </summary>
+        /// <typeparam name="TEvent">
+        /// The event data class this channel is keyed against.
+        /// </typeparam>
+        /// <param name="channel">The pre-built typed channel instance to register.</param>
+        /// <returns>
+        /// Returns this <see cref="EventPublisherBuilder"/> instance so that
+        /// further calls can be chained.
+        /// </returns>
+        public EventPublisherBuilder AddChannel<TEvent>(IEventPublishChannel<TEvent> channel)
+            where TEvent : class
+        {
+            Services.AddSingleton<IEventPublishChannel>(channel);
+            Services.AddSingleton<IEventPublishChannel<TEvent>>(channel);
             return this;
         }
 	}
