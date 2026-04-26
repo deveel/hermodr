@@ -83,6 +83,91 @@ namespace Deveel.Events
             Assert.Single(receivedEvents);
         }
 
+        // ── TypedTestEventPublishChannel ──────────────────────────────────────
+
+        [Fact]
+        public async Task AddTestChannel_Typed_SyncCallback_IsInvoked()
+        {
+            var received = new List<CloudEvent>();
+            var services = new ServiceCollection();
+            services.AddEventPublisher(o => o.Source = new Uri("https://api.example.com"))
+                .AddTestChannel<OrderPlaced>(e => received.Add(e));
+
+            var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
+            await publisher.PublishAsync(new OrderPlaced { OrderId = "T-001" });
+
+            Assert.Single(received);
+        }
+
+        [Fact]
+        public async Task AddTestChannel_Typed_AsyncCallback_IsInvoked()
+        {
+            var received = new List<CloudEvent>();
+            var services = new ServiceCollection();
+            services.AddEventPublisher(o => o.Source = new Uri("https://api.example.com"))
+                .AddTestChannel<OrderPlaced>((CloudEvent e) =>
+                {
+                    received.Add(e);
+                    return Task.CompletedTask;
+                });
+
+            var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
+            await publisher.PublishAsync(new OrderPlaced { OrderId = "T-002" });
+
+            Assert.Single(received);
+        }
+
+        [Fact]
+        public async Task AddTestChannel_Typed_OnlyReceivesMatchingEventType()
+        {
+            var orderReceived = new List<CloudEvent>();
+            var userReceived  = new List<CloudEvent>();
+
+            var services = new ServiceCollection();
+            services.AddEventPublisher(o => o.Source = new Uri("https://api.example.com"))
+                .AddTestChannel<OrderPlaced>(e => orderReceived.Add(e))
+                .AddTestChannel<UserCreated>(e => userReceived.Add(e));
+
+            var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
+
+            await publisher.PublishAsync(new OrderPlaced { OrderId = "X-1" });
+
+            // Only the typed OrderPlaced channel should receive the event
+            Assert.Single(orderReceived);
+            Assert.Empty(userReceived);
+        }
+
+        [Fact]
+        public async Task AddTestChannel_Typed_ReceivedEventIsEnriched()
+        {
+            CloudEvent? received = null;
+
+            var services = new ServiceCollection();
+            services.AddEventPublisher(o => o.Source = new Uri("https://api.example.com"))
+                .AddTestChannel<OrderPlaced>(e => received = e);
+
+            var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
+            await publisher.PublishAsync(new OrderPlaced { OrderId = "enrich-1" });
+
+            Assert.NotNull(received);
+            Assert.Equal("order.placed", received!.Type);
+            Assert.NotNull(received.Id);
+            Assert.NotEmpty(received.Id!);
+            Assert.NotNull(received.Source);
+        }
+
+        [Event("order.placed", "https://example.com/events/order.placed/1.0")]
+        private class OrderPlaced
+        {
+            public string OrderId { get; set; } = string.Empty;
+        }
+
+        [Event("user.created", "https://example.com/events/user.created/1.0")]
+        private class UserCreated
+        {
+            public string UserId { get; set; } = string.Empty;
+        }
+
         private sealed class CountingCallback : IEventPublishCallback
         {
             public int Count { get; private set; }
