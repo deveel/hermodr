@@ -97,7 +97,7 @@ builder.Services
         opts.SignatureAlgorithm = WebhookSignatureAlgorithm.HmacSha256;
     })
     // OrderPlaced delivers to a dedicated endpoint with its own secret
-    .AddWebhooks<OrderPlacedData>(opts =>
+    .AddWebhooks<OrderPlaced>(opts =>
     {
         opts.EndpointUrl  = "https://orders.example.com/hooks";
         opts.SigningSecret = "order-secret";
@@ -196,34 +196,64 @@ await batchChannel.PublishBatchAsync(events, new WebhookPublishOptions
 
 ## Custom serialiser
 
-Register a custom `IEventSerializer` to support additional content types:
-
-```csharp
-builder.Services
-    .AddEventPublisher()
-    .AddWebhooks(options => options.MessageFormat = "application/x-protobuf")
-    .UseWebhookMessageSerializer<ProtobufEventSerializer>();
-```
+Register a custom `IEventSerializer` by adding it to the service collection as a singleton enumerable entry for `IEventSerializer`.  The channel picks it up by matching its `Format` key.
 
 ```csharp
 public class ProtobufEventSerializer : IEventSerializer
 {
-    public string Format => "application/x-protobuf";
+    public string Format => "protobuf";
+    public string ContentType => "application/x-protobuf";
+    public string BatchContentType => "application/x-protobuf";
 
-    public async Task<byte[]> SerializeAsync(CloudEvent @event, CancellationToken cancellationToken = default)
+    public byte[] Serialize(CloudEvent @event)
     {
         // ... protobuf serialisation
+        throw new NotImplementedException();
+    }
+
+    public byte[] SerializeBatch(IReadOnlyList<CloudEvent> events)
+    {
+        // ... batch serialisation
+        throw new NotImplementedException();
     }
 }
 ```
 
+```csharp
+builder.Services
+    .AddEventPublisher()
+    .AddWebhooks(options => options.MessageFormat = "protobuf");
+
+// Register the custom serializer so the channel discovers it via DI
+builder.Services.AddSingleton<IEventSerializer, ProtobufEventSerializer>();
+```
+
 ## Custom signature provider
+
+Implement `IWebhookSignatureProvider` and register it as a singleton:
+
+```csharp
+public class Ed25519SignatureProvider : IWebhookSignatureProvider
+{
+    public static readonly Ed25519SignatureProvider Default = new();
+    public WebhookSignatureAlgorithm Algorithm => (WebhookSignatureAlgorithm)100; // custom value
+    public string AlgorithmName => "ed25519";
+
+    public string ComputeSignature(byte[] payload, long timestamp, string secret)
+    {
+        // ... Ed25519 signing
+        throw new NotImplementedException();
+    }
+}
+```
 
 ```csharp
 builder.Services
     .AddEventPublisher()
-    .AddWebhooks(options => { /* ... */ })
-    .UseWebhookSignatureProvider<Ed25519SignatureProvider>();
+    .AddWebhooks(options => { /* ... */ });
+
+// Register the custom provider so the channel discovers it via DI
+builder.Services.AddSingleton<IWebhookSignatureProvider, Ed25519SignatureProvider>();
 ```
 
 ## Related pages

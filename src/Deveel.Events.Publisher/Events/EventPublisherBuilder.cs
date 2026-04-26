@@ -35,16 +35,15 @@ namespace Deveel.Events {
 		}
 
         /// <summary>
-        /// Configures the options for the publisher using 
-		/// the given action.
+        /// Configures the options for the publisher using the given action.
         /// </summary>
         /// <param name="configure">
-		/// The action that configures the options for the publisher.
-		/// </param>
+        /// The action that configures the options for the publisher.
+        /// </param>
         /// <returns>
-		/// Returns the instance of the <see cref="EventPublisherBuilder"/> to
-		/// further configure the publisher.
-		/// </returns>
+        /// Returns the instance of the <see cref="EventPublisherBuilder"/> to
+        /// further configure the publisher.
+        /// </returns>
         public EventPublisherBuilder Configure(Action<EventPublisherOptions> configure) {
 			Services.Configure(configure);
 
@@ -52,18 +51,17 @@ namespace Deveel.Events {
 		}
 
         /// <summary>
-        /// Configures the options for the publisher using the
-		/// configuration section at the given path within
-		/// the application configuration.
+        /// Configures the options for the publisher using the configuration section
+        /// at the given path within the application configuration.
         /// </summary>
         /// <param name="sectionPath">
-		/// The path to the configuration section that contains the options
-		/// to configure the publisher.
-		/// </param>
+        /// The path to the configuration section that contains the options
+        /// to configure the publisher.
+        /// </param>
         /// <returns>
-		/// Returns the instance of the <see cref="EventPublisherBuilder"/> to
-		/// further configure the publisher.
-		/// </returns>
+        /// Returns the instance of the <see cref="EventPublisherBuilder"/> to
+        /// further configure the publisher.
+        /// </returns>
         public EventPublisherBuilder Configure(string sectionPath) {
 			Services.AddOptions<EventPublisherOptions>()
 				.BindConfiguration(sectionPath);
@@ -75,15 +73,15 @@ namespace Deveel.Events {
         /// Replace the default <see cref="EventPublisher"/> with the given type.
         /// </summary>
         /// <typeparam name="TPublisher">
-		/// The type of the publisher to use instead of the default.
-		/// </typeparam>
+        /// The type of the publisher to use instead of the default.
+        /// </typeparam>
         /// <param name="lifetime">
-		/// The lifetime of the service to register.
-		/// </param>
+        /// The lifetime of the service to register.
+        /// </param>
         /// <returns>
-		/// Returns the instance of the <see cref="EventPublisherBuilder"/> to
-		/// further configure the publisher.
-		/// </returns>
+        /// Returns the instance of the <see cref="EventPublisherBuilder"/> to
+        /// further configure the publisher.
+        /// </returns>
         public EventPublisherBuilder UsePublisher<TPublisher>(ServiceLifetime lifetime = ServiceLifetime.Singleton)
 			where TPublisher : IEventPublisher
         {
@@ -103,15 +101,15 @@ namespace Deveel.Events {
 
         /// <summary>
         /// Replace the default <see cref="IEventIdGenerator"/> with a generator
-		/// that uses a GUID as the identifier of the events.
+        /// that uses a GUID as the identifier of the events.
         /// </summary>
         /// <param name="format">
-		/// The format to use for the GUIDs generated.
-		/// </param>
+        /// The format to use for the GUIDs generated.
+        /// </param>
         /// <returns>
-		/// Returns the instance of the <see cref="EventPublisherBuilder"/> to
-		/// further configure the publisher.
-		/// </returns>
+        /// Returns the instance of the <see cref="EventPublisherBuilder"/> to
+        /// further configure the publisher.
+        /// </returns>
         public EventPublisherBuilder UseGuid(string? format = null) {
 			Services.RemoveAll<IEventIdGenerator>();
 			Services.AddSingleton<IEventIdGenerator, EventGuidGenerator>();
@@ -126,15 +124,15 @@ namespace Deveel.Events {
         /// Replace the default <see cref="IEventSystemTime"/> with the given type.
         /// </summary>
         /// <typeparam name="TSystemTime">
-		/// The type of the system time to use for the events.
-		/// </typeparam>
+        /// The type of the system time to use for the events.
+        /// </typeparam>
         /// <param name="lifetime">
-		/// The lifetime of the service to register.
-		/// </param>
+        /// The lifetime of the service to register.
+        /// </param>
         /// <returns>
-		/// Returns the instance of the <see cref="EventPublisherBuilder"/> to
-		/// further configure the publisher.
-		/// </returns>
+        /// Returns the instance of the <see cref="EventPublisherBuilder"/> to
+        /// further configure the publisher.
+        /// </returns>
         public EventPublisherBuilder UseSystemTime<TSystemTime>(ServiceLifetime lifetime = ServiceLifetime.Singleton)
 			where TSystemTime : class, IEventSystemTime {
 			Services.RemoveAll<IEventSystemTime>();

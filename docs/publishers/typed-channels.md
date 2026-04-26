@@ -45,7 +45,7 @@ merged options passed to the parent channel
 | Channel-structural (header names, retry codes, …) | **Always** from base |
 | `AdditionalHeaders` (Webhook) | Merged; typed entries win on key collision |
 
-This means you can register a general channel with shared defaults and then specialise individual event types by overriding only the properties that differ.
+This means you can register a general channel with shared defaults and then specialize individual event types by overriding only the properties that differ.
 
 ## Registration
 
@@ -63,7 +63,7 @@ builder.Services
         opts.PublisherConfirms   = true;
     })
     // OrderPlaced events go to a dedicated exchange and queue
-    .AddRabbitMq<OrderPlacedData>(opts =>
+    .AddRabbitMq<OrderPlaced>(opts =>
     {
         opts.ExchangeName = "orders";
         opts.QueueName    = "order-placed";
@@ -71,7 +71,7 @@ builder.Services
     });
 ```
 
-The typed channel binds `IOptions<RabbitMqEventPublishOptions<OrderPlacedData>>` and merges it with the base `IOptions<RabbitMqEventPublishOptions>` at construction time.  `ConnectionString`, `PersistentMessages`, and `PublisherConfirms` are inherited from the base; `ExchangeName`, `QueueName`, and `RoutingKey` are overridden by the typed options.
+The typed channel binds `IOptions<RabbitMqEventPublishOptions<OrderPlaced>>` and merges it with the base `IOptions<RabbitMqEventPublishOptions>` at construction time.  `ConnectionString`, `PersistentMessages`, and `PublisherConfirms` are inherited from the base; `ExchangeName`, `QueueName`, and `RoutingKey` are overridden by the typed options.
 
 From configuration:
 
@@ -79,7 +79,7 @@ From configuration:
 builder.Services
     .AddEventPublisher()
     .AddRabbitMq("Events:RabbitMq")
-    .AddRabbitMq<OrderPlacedData>("Events:RabbitMq:Orders");
+    .AddRabbitMq<OrderPlaced>("Events:RabbitMq:Orders");
 ```
 
 ```json
@@ -110,7 +110,7 @@ builder.Services
         opts.QueueName        = "events";
     })
     // OrderPlaced events go to a dedicated queue
-    .AddServiceBusChannel<OrderPlacedData>(opts =>
+    .AddServiceBusChannel<OrderPlaced>(opts =>
     {
         opts.QueueName = "order-placed";
         // ConnectionString inherited from the base options
@@ -123,10 +123,10 @@ From configuration:
 builder.Services
     .AddEventPublisher()
     .AddServiceBusChannel("Events:ServiceBus")
-    .AddServiceBusChannel<OrderPlacedData>("Events:ServiceBus:Orders");
+    .AddServiceBusChannel<OrderPlaced>("Events:ServiceBus:Orders");
 ```
 
-> **Note:** `ServiceBusEventPublishChannelOptions<TEvent>` re-declares `ConnectionString` and `QueueName` as _nullable_ (`string?`) so that leaving them unset is the unambiguous signal to "inherit from the base channel".  The non-nullable constraint is enforced on the _merged_ result only.
+> **Note:** `ServiceBusEventPublishOptions<TEvent>` re-declares `ConnectionString` and `QueueName` as _nullable_ (`string?`) so that leaving them unset is the unambiguous signal to "inherit from the base channel".  The non-nullable constraint is enforced on the _merged_ result only.
 
 ### MassTransit
 
@@ -139,7 +139,7 @@ builder.Services
         opts.MapAttributesToHeaders = true;
     })
     // OrderPlaced events are sent to a specific endpoint
-    .AddMassTransit<OrderPlacedData>(opts =>
+    .AddMassTransit<OrderPlaced>(opts =>
     {
         opts.DestinationAddress = new Uri("queue:order-placed");
     });
@@ -151,7 +151,7 @@ From configuration:
 builder.Services
     .AddEventPublisher()
     .AddMassTransit("Events:MassTransit")
-    .AddMassTransit<OrderPlacedData>("Events:MassTransit:Orders");
+    .AddMassTransit<OrderPlaced>("Events:MassTransit:Orders");
 ```
 
 ### Webhook
@@ -168,7 +168,7 @@ builder.Services
         opts.SignatureAlgorithm = WebhookSignatureAlgorithm.HmacSha256;
     })
     // OrderPlaced delivers to a different endpoint with a dedicated secret
-    .AddWebhooks<OrderPlacedData>(opts =>
+    .AddWebhooks<OrderPlaced>(opts =>
     {
         opts.EndpointUrl  = "https://orders.example.com/hooks";
         opts.SigningSecret = "order-secret";
@@ -184,7 +184,7 @@ From configuration:
 builder.Services
     .AddEventPublisher()
     .AddWebhooks("Events:Webhook")
-    .AddWebhooks<OrderPlacedData>("Events:Webhook:Orders");
+    .AddWebhooks<OrderPlaced>("Events:Webhook:Orders");
 ```
 
 ## Multiple typed channels for the same event
@@ -194,8 +194,8 @@ You can register several typed channels for the same `TEvent` — the publisher 
 ```csharp
 builder.Services
     .AddEventPublisher()
-    .AddRabbitMq<OrderPlacedData>(opts => { opts.ExchangeName = "orders"; })
-    .AddWebhooks<OrderPlacedData>(opts => { opts.EndpointUrl = "https://partner.example.com/hooks"; });
+    .AddRabbitMq<OrderPlaced>(opts => { opts.ExchangeName = "orders"; })
+    .AddWebhooks<OrderPlaced>(opts => { opts.EndpointUrl = "https://partner.example.com/hooks"; });
 ```
 
 When `OrderPlacedData` is published, both the RabbitMQ typed channel and the Webhook typed channel receive it.
@@ -205,7 +205,7 @@ When `OrderPlacedData` is published, both the RabbitMQ typed channel and the Web
 To build a typed channel from scratch, implement `IEventPublishChannel<TEvent>` and register it with `AddChannel<TChannel, TEvent>()`:
 
 ```csharp
-public class KafkaOrderChannel : IEventPublishChannel<OrderPlacedData>
+public class KafkaOrderChannel : IEventPublishChannel<OrderPlaced>
 {
     // ... constructor, PublishAsync implementation
 }
@@ -214,26 +214,26 @@ public class KafkaOrderChannel : IEventPublishChannel<OrderPlacedData>
 ```csharp
 builder.Services
     .AddEventPublisher()
-    .AddChannel<KafkaOrderChannel, OrderPlacedData>();
+    .AddChannel<KafkaOrderChannel, OrderPlaced>();
 ```
 
-`AddChannel<TChannel, TEvent>()` registers `KafkaOrderChannel` both as `IEventPublishChannel` (general broadcast fallback) and as `IEventPublishChannel<OrderPlacedData>` (typed routing).
+`AddChannel<TChannel, TEvent>()` registers `KafkaOrderChannel` both as `IEventPublishChannel` (general broadcast fallback) and as `IEventPublishChannel<OrderPlaced>` (typed routing).
 
 ## Typed options classes
 
-Each built-in channel exposes a typed options class `TOptions<TEvent>` (e.g. `RabbitMqEventPublishOptions<OrderPlacedData>`) that inherits from the base options class.  It carries no additional properties; its sole purpose is to give DI a distinct key so base and typed options are bound independently.
+Each built-in channel exposes a typed options class `TOptions<TEvent>` (e.g. `RabbitMqEventPublishOptions<OrderPlaced>`) that inherits from the base options class.  It carries no additional properties; its sole purpose is to give DI a distinct key so base and typed options are bound independently.
 
 | Channel | Typed options class |
 |---------|---------------------|
 | RabbitMQ | `RabbitMqEventPublishOptions<TEvent>` |
-| Azure Service Bus | `ServiceBusEventPublishChannelOptions<TEvent>` |
+| Azure Service Bus | `ServiceBusEventPublishOptions<TEvent>` |
 | MassTransit | `MassTransitEventPublishOptions<TEvent>` |
 | Webhook | `WebhookPublishOptions<TEvent>` |
 
-You can use these directly to pre-populate DI options outside of the builder convenience methods if needed:
+You can use these directly to pre-populate DI options outside the builder convenience methods if needed:
 
 ```csharp
-services.AddOptions<RabbitMqEventPublishOptions<OrderPlacedData>>()
+services.AddOptions<RabbitMqEventPublishOptions<OrderPlaced>>()
     .Configure(opts =>
     {
         opts.ExchangeName = "orders";

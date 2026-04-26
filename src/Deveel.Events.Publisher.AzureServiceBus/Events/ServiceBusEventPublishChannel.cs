@@ -28,27 +28,26 @@ namespace Deveel.Events {
 		private bool disposed;
 
         /// <summary>
-        /// Creates a new instance of the channel,
-		/// using the specified options, client factory 
-		/// and message creator.
+        /// Creates a new instance of the channel, using the specified options,
+        /// client factory and message creator.
         /// </summary>
         /// <param name="options">
-		/// The options to configure the channel.
-		/// </param>
+        /// The options to configure the channel.
+        /// </param>
         /// <param name="clientFactory">
-		/// A factory to create the client to the Azure Service Bus.
-		/// </param>
+        /// A factory to create the client to the Azure Service Bus.
+        /// </param>
         /// <param name="messageCreator">
-		/// The factory to create the message to send to the queue.
-		/// </param>
+        /// The factory to create the message to send to the queue.
+        /// </param>
         /// <param name="validators">
         /// Optional collection of <see cref="IValidateOptions{ServiceBusEventPublishOptions}"/>
         /// services registered in the DI container. When the collection is empty or <c>null</c>
         /// validation falls back to DataAnnotations.
         /// </param>
         /// <param name="logger">
-		/// A logger to record the operations of the channel.
-		/// </param>
+        /// A logger to record the operations of the channel.
+        /// </param>
         public ServiceBusEventPublishChannel(
 			IOptions<ServiceBusEventPublishOptions> options,
 			IServiceBusClientFactory clientFactory,

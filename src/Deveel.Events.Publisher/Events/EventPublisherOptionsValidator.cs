@@ -9,6 +9,12 @@ using Microsoft.Extensions.Options;
 using System.Reflection;
 
 namespace Deveel.Events {
+    /// <summary>
+    /// Validates <see cref="EventPublisherOptions"/> at startup.
+    /// Specifically, it checks that <see cref="EventPublisherOptions.DataSchemaBaseUri"/>
+    /// is configured whenever any registered event type uses a <c>DataVersion</c>
+    /// (rather than a full <c>DataSchema</c> URI) in its <see cref="EventAttribute"/>.
+    /// </summary>
     class EventPublisherOptionsValidator : IValidateOptions<EventPublisherOptions> {
         private readonly IServiceCollection _services;
 

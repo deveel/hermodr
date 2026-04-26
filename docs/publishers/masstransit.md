@@ -87,7 +87,7 @@ builder.Services
         opts.MapAttributesToHeaders = true;
     })
     // OrderPlaced events are sent to a specific endpoint
-    .AddMassTransit<OrderPlacedData>(opts =>
+    .AddMassTransit<OrderPlaced>(opts =>
     {
         opts.DestinationAddress = new Uri("queue:order-placed");
         // MapAttributesToHeaders inherited from base
@@ -100,7 +100,7 @@ From configuration:
 builder.Services
     .AddEventPublisher()
     .AddMassTransit("Events:MassTransit")
-    .AddMassTransit<OrderPlacedData>("Events:MassTransit:Orders");
+    .AddMassTransit<OrderPlaced>("Events:MassTransit:Orders");
 ```
 
 ```json

@@ -10,7 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Deveel.Events {
     /// <summary>
     /// Extensions for the <see cref="EventPublisherBuilder"/> to add a test channel
-	/// for publishing events.
+    /// for publishing events.
     /// </summary>
     public static class EventPublisherBuilderExtensions {
         /// <summary>

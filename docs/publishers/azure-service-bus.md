@@ -46,7 +46,7 @@ builder.Services
 
 ## Options reference
 
-`ServiceBusEventPublishChannelOptions`
+`ServiceBusEventPublishOptions`
 
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
@@ -56,9 +56,9 @@ builder.Services
 
 ## Typed channel
 
-Use `AddServiceBusChannel<TEvent>()` to register a channel that receives **only** events whose data class is `TEvent`.  At construction time the typed channel (`ServiceBusEventPublishChannel<TEvent>`) merges the general `ServiceBusEventPublishChannelOptions` with the type-specific `ServiceBusEventPublishChannelOptions<TEvent>`: non-empty typed values win; empty or `null` values fall back to the base defaults.
+Use `AddServiceBusChannel<TEvent>()` to register a channel that receives **only** events whose data class is `TEvent`.  At construction time the typed channel (`ServiceBusEventPublishChannel<TEvent>`) merges the general `ServiceBusEventPublishOptions` with the type-specific `ServiceBusEventPublishOptions<TEvent>`: non-empty typed values win; empty or `null` values fall back to the base defaults.
 
-> **Note:** `ServiceBusEventPublishChannelOptions<TEvent>` re-declares `ConnectionString` and `QueueName` as nullable (`string?`) so that leaving them `null` is the unambiguous signal to inherit from the base options.  The required, non-nullable constraint from the base class is enforced only after merging.
+> **Note:** `ServiceBusEventPublishOptions<TEvent>` re-declares `ConnectionString` and `QueueName` as nullable (`string?`) so that leaving them `null` is the unambiguous signal to inherit from the base options.  The required, non-nullable constraint from the base class is enforced only after merging.
 
 ```csharp
 builder.Services
@@ -70,7 +70,7 @@ builder.Services
         opts.QueueName        = "events";
     })
     // OrderPlaced events go to a dedicated queue
-    .AddServiceBusChannel<OrderPlacedData>(opts =>
+    .AddServiceBusChannel<OrderPlaced>(opts =>
     {
         opts.QueueName = "order-placed";
         // ConnectionString inherited from base options
@@ -83,7 +83,7 @@ From configuration:
 builder.Services
     .AddEventPublisher()
     .AddServiceBusChannel("Events:ServiceBus")
-    .AddServiceBusChannel<OrderPlacedData>("Events:ServiceBus:Orders");
+    .AddServiceBusChannel<OrderPlaced>("Events:ServiceBus:Orders");
 ```
 
 ```json
@@ -105,13 +105,13 @@ See [Typed Channels](typed-channels.md) for the full merge semantics and further
 ## How it works
 
 1. The channel resolves a `ServiceBusClient` via `IServiceBusClientFactory`.
-2. Each `CloudEvent` is serialised to JSON and wrapped in a `ServiceBusMessage`.
+2. Each `CloudEvent` is serialized to JSON and wrapped in a `ServiceBusMessage`.
 3. CloudEvent attributes (`id`, `type`, `source`, `time`, `datacontenttype`) are mapped to message application properties so consumers can filter without parsing the body.
 4. The message is sent using a `ServiceBusSender` for the configured queue name.
 
 ## Per-delivery options
 
-Pass a `ServiceBusEventPublishChannelOptions` instance as the second argument to `PublishAsync` to override individual properties for a single publish call.  Any property you leave empty or `null` in the per-call override falls back to the channel default.
+Pass a `ServiceBusEventPublishOptions` instance as the second argument to `PublishAsync` to override individual properties for a single publish call.  Any property you leave empty or `null` in the per-call override falls back to the channel default.
 
 ```csharp
 // Resolve the concrete channel directly from DI.
@@ -119,7 +119,7 @@ var channel = serviceProvider.GetRequiredService<ServiceBusEventPublishChannel>(
 
 // Send this particular event to a different queue,
 // while inheriting ConnectionString and ClientOptions from the channel defaults.
-await channel.PublishAsync(@event, new ServiceBusEventPublishChannelOptions
+await channel.PublishAsync(@event, new ServiceBusEventPublishOptions
 {
     QueueName = "priority-events",
 });

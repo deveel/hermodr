@@ -41,6 +41,11 @@ namespace Deveel.Events
         }
 
 
+        /// <summary>
+        /// The name of the exchange to publish events to in the RabbitMQ broker.
+        /// When <c>null</c> in a per-call override the channel default is used;
+        /// falls back to the per-event <c>[AmqpExchange]</c> annotation if set.
+        /// </summary>
         public string? ExchangeName { get; set; }
 
         /// <summary>

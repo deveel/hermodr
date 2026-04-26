@@ -102,7 +102,7 @@ builder.Services
         opts.PublisherConfirms   = true;
     })
     // OrderPlaced events route to a dedicated exchange/queue
-    .AddRabbitMq<OrderPlacedData>(opts =>
+    .AddRabbitMq<OrderPlaced>(opts =>
     {
         opts.ExchangeName = "orders";
         opts.QueueName    = "order-placed";
@@ -117,7 +117,7 @@ From configuration, bind the typed options from a nested section:
 builder.Services
     .AddEventPublisher()
     .AddRabbitMq("Events:RabbitMq")
-    .AddRabbitMq<OrderPlacedData>("Events:RabbitMq:Orders");
+    .AddRabbitMq<OrderPlaced>("Events:RabbitMq:Orders");
 ```
 
 ```json
@@ -155,14 +155,14 @@ using Deveel.Events;
 
 [Event("order.placed", "1.0")]
 [AmqpExchange("orders")]
-public class OrderPlacedData
+public class OrderPlaced
 {
     public Guid OrderId { get; set; }
     public decimal Amount { get; set; }
 }
 ```
 
-When the RabbitMQ channel publishes an `OrderPlacedData` event, it targets the `"orders"` exchange, overriding any global `ExchangeName` set in `RabbitMqEventPublishChannelOptions`.
+When the RabbitMQ channel publishes an `OrderPlaced` event, it targets the `"orders"` exchange, overriding any global `ExchangeName` set in `RabbitMqEventPublishChannelOptions`.
 
 ### `[AmqpRoutingKey]`
 
@@ -172,7 +172,7 @@ Declares the routing key to use when publishing an event to the exchange.
 [Event("order.placed", "1.0")]
 [AmqpExchange("orders")]
 [AmqpRoutingKey("order.placed")]
-public class OrderPlacedData
+public class OrderPlaced
 {
     public Guid OrderId { get; set; }
     public decimal Amount { get; set; }
@@ -195,7 +195,7 @@ using Deveel.Events;
 [Event("inventory.low-stock", "1.0", Description = "Raised when a product is running low on stock")]
 [AmqpExchange("inventory")]
 [AmqpRoutingKey("inventory.low-stock")]
-public class LowStockData
+public class LowStock
 {
     [Required]
     public string ProductId { get; set; } = default!;
@@ -219,7 +219,7 @@ builder.Services
 
 ```csharp
 // Publishing
-await publisher.PublishAsync(new LowStockData
+await publisher.PublishAsync(new LowStock
 {
     ProductId         = "PROD-42",
     RemainingQuantity = 3
@@ -274,9 +274,9 @@ Register it after the channel:
 ```csharp
 builder.Services
     .AddEventPublisher()
-    .AddRabbitMq(options => { /* ... */ })
-    .Services
-        .AddSingleton<IRabbitMqConnectionFactory, MyConnectionFactory>();
+    .AddRabbitMq(options => { /* ... */ });
+builder.Services
+    .AddSingleton<IRabbitMqConnectionFactory, MyConnectionFactory>();
 ```
 
 ## Related pages

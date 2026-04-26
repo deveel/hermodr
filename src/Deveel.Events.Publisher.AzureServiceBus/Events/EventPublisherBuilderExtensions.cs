@@ -10,7 +10,7 @@ using Microsoft.Extensions.Options;
 namespace Deveel.Events {
     /// <summary>
     /// Extensions for the <see cref="EventPublisherBuilder"/> to add a channel
-	/// publishing events to an Azure Service Bus.
+    /// publishing events to an Azure Service Bus.
     /// </summary>
     public static class EventPublisherBuilderExtensions {
         private static EventPublisherBuilder AddServiceBusInfrastructure(this EventPublisherBuilder builder) {
@@ -31,20 +31,20 @@ namespace Deveel.Events {
 
         /// <summary>
         /// Adds a channel to the event publisher that publishes events
-		/// to an Azure Service Bus.
+        /// to an Azure Service Bus, binding options from the given configuration section.
         /// </summary>
         /// <param name="builder">
-		/// The instance of the <see cref="EventPublisherBuilder"/> that is
-		/// used to configure the publisher.
-		/// </param>
+        /// The instance of the <see cref="EventPublisherBuilder"/> that is
+        /// used to configure the publisher.
+        /// </param>
         /// <param name="sectionPath">
-		/// The path to the configuration section that contains the options
-		/// to configure the channel.
-		/// </param>
+        /// The path to the configuration section that contains the options
+        /// to configure the channel.
+        /// </param>
         /// <returns>
-		/// Returns the instance of the <see cref="EventPublisherBuilder"/> to
-		/// continue the configuration of the publisher.
-		/// </returns>
+        /// Returns the instance of the <see cref="EventPublisherBuilder"/> to
+        /// continue the configuration of the publisher.
+        /// </returns>
         public static EventPublisherBuilder AddServiceBusChannel(this EventPublisherBuilder builder, string sectionPath) {
 			builder.AddServiceBusChannel();
 			builder.Services.AddOptions<ServiceBusEventPublishOptions>()
@@ -56,15 +56,15 @@ namespace Deveel.Events {
 
         /// <summary>
         /// Adds a channel to the event publisher that publishes events
-        /// to an Azure Service Bus.
+        /// to an Azure Service Bus, configured with the given action.
         /// </summary>
         /// <param name="builder">
         /// The instance of the <see cref="EventPublisherBuilder"/> that is
         /// used to configure the publisher.
         /// </param>
-		/// <param name="configure">
-		/// The action that configures the options for the channel.
-		/// </param>
+        /// <param name="configure">
+        /// The action that configures the options for the channel.
+        /// </param>
         /// <returns>
         /// Returns the instance of the <see cref="EventPublisherBuilder"/> to
         /// continue the configuration of the publisher.

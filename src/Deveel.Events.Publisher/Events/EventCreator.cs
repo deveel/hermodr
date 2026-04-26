@@ -12,6 +12,19 @@ using System.Text.Json;
 
 namespace Deveel.Events
 {
+    /// <summary>
+    /// Default <see cref="IEventCreator"/> implementation.
+    /// Uses reflection to read <see cref="EventAttribute"/> and
+    /// <see cref="EventAttributesAttribute"/> annotations from the data class and
+    /// builds a <see cref="CloudNative.CloudEvents.CloudEvent"/> whose
+    /// <c>data</c> field is the JSON-serialised instance.
+    /// </summary>
+    /// <remarks>
+    /// Registered as a singleton by <see cref="EventPublisherBuilder"/> via
+    /// <c>IEventCreator</c>. Replace it with a custom implementation using
+    /// <see cref="EventPublisherBuilder.UsePublisher{TPublisher}"/> or by
+    /// directly overriding <see cref="EventPublisher.CreateEventFromData"/>.
+    /// </remarks>
     class EventCreator : IEventCreator
     {
         public EventCreator(IOptions<EventPublisherOptions>? publisherOptions = null)

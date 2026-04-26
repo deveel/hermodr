@@ -6,22 +6,25 @@
 namespace Deveel.Events {
     /// <summary>
     /// An attribute that is used to mark a property of a
-	/// type as a property of the payload of the event.
+    /// type as a property of the payload of the event.
     /// </summary>
     [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, Inherited = false)]
-	public sealed class EventPropertyAttribute : Attribute {
+    public sealed class EventPropertyAttribute : Attribute {
         /// <summary>
         /// Constructs an event property attribute with the given name
-		/// and the optional schema or version of the event this property
-		/// belongs to.
+        /// and the optional schema or version of the event this property
+        /// belongs to.
         /// </summary>
         /// <param name="name">
-		/// The name of the property that is used to identify it
-		/// within the event.
-		/// </param>
+        /// The name of the property that is used to identify it
+        /// within the event.
+        /// </param>
         /// <param name="schemaOrVersion">
         /// An optional string that is either an absolute URI pointing to the schema
         /// of the event this property belongs to, or a version string (e.g. <c>"1.0"</c>).
+        /// When the string is a valid absolute URI, <see cref="Schema"/> is set.
+        /// When the string is a valid version (e.g. parseable by <c>System.Version.TryParse</c>),
+        /// <see cref="Version"/> is set.
         /// Pass <c>null</c> when neither is applicable.
         /// </param>
         /// <exception cref="ArgumentException">
@@ -29,26 +32,25 @@ namespace Deveel.Events {
         /// a valid absolute URI nor a valid version string.
         /// </exception>
         public EventPropertyAttribute(string? name, string? schemaOrVersion = null) {
-			if (!String.IsNullOrWhiteSpace(schemaOrVersion)) {
-				if (System.Version.TryParse(schemaOrVersion, out _))
-				{
-					Version = schemaOrVersion;
-				} else if (Uri.TryCreate(schemaOrVersion, UriKind.Absolute, out var uri))
-				{
+            if (!String.IsNullOrWhiteSpace(schemaOrVersion)) {
+                if (System.Version.TryParse(schemaOrVersion, out _))
+                {
+                    Version = schemaOrVersion;
+                } else if (Uri.TryCreate(schemaOrVersion, UriKind.Absolute, out var uri))
+                {
                     Schema = uri;
                 } else
-				{
+                {
                     throw new ArgumentException("The schema or version string is not valid", nameof(schemaOrVersion));
                 }
-			}
+            }
 
-			Name = name;
-			Version = schemaOrVersion;
-		}
+            Name = name;
+        }
 
         /// <summary>
         /// The name of the property that is used to identify it
-		/// within the event.
+        /// within the event.
         /// </summary>
         public string? Name { get; }
 
@@ -58,13 +60,17 @@ namespace Deveel.Events {
         public string? Description { get; set; }
 
         /// <summary>
-        /// The version of the event this property belongs to.
+        /// The version of the event schema this property belongs to.
+        /// Only set when the <c>schemaOrVersion</c> constructor argument is a valid version string.
+        /// <c>null</c> when a <see cref="Schema"/> URI was provided instead.
         /// </summary>
-		public string? Version { get; set; }
+        public string? Version { get; set; }
 
         /// <summary>
-        /// The schema of the data that is part of the property.
+        /// The URI to the schema of the data that this property carries.
+        /// Only set when the <c>schemaOrVersion</c> constructor argument is a valid absolute URI.
+        /// <c>null</c> when a <see cref="Version"/> string was provided instead.
         /// </summary>
-		public Uri? Schema { get; set; }
-	}
+        public Uri? Schema { get; set; }
+    }
 }
