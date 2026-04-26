@@ -69,9 +69,19 @@ namespace Deveel.Events {
     /// Gets the options that are used to configure the publisher.
     /// </summary>
     protected EventPublisherOptions PublisherOptions { get; }
-    
+
+    /// <summary>
+    /// Gets the service used to obtain the current UTC time for event timestamps.
+    /// When <c>null</c>, the <see cref="SetTimeStamp"/> method does not fill in
+    /// the event <c>time</c> attribute automatically.
+    /// </summary>
     protected IEventSystemTime? SystemTime { get; }
-    
+
+    /// <summary>
+    /// Gets the service used to generate unique identifiers for events.
+    /// When <c>null</c>, the <see cref="SetEventId"/> method does not fill in
+    /// the event <c>id</c> attribute automatically.
+    /// </summary>
     protected IEventIdGenerator? IdGenerator { get; }
 
     /// <summary>
@@ -305,6 +315,11 @@ namespace Deveel.Events {
 		/// and the <see cref="EventPublisherOptions.ThrowOnErrors"/>
 		/// is set to <c>true</c>.
 		/// </exception>
+		/// <exception cref="InvalidCloudEventException">
+		/// Thrown when any of the required CloudEvents attributes (<c>id</c>,
+		/// <c>source</c>, <c>type</c>, <c>specversion</c>) is still absent after
+		/// enrichment.
+		/// </exception>
 		/// <seealso cref="PublishEventAsync(CloudEvent, EventPublishChannelOptions, CancellationToken)"/>
 		public Task PublishAsync(Type dataType, object? data, EventPublishChannelOptions? options = null, CancellationToken cancellationToken = default)
 		{
@@ -392,6 +407,11 @@ namespace Deveel.Events {
 		/// <returns>
 		/// Returns a task that represents the asynchronous operation.
 		/// </returns>
+		/// <exception cref="InvalidCloudEventException">
+		/// Thrown when any of the required CloudEvents attributes (<c>id</c>,
+		/// <c>source</c>, <c>type</c>, <c>specversion</c>) is still absent after
+		/// enrichment and before dispatch to any channel.
+		/// </exception>
 		public Task PublishAsync<TData>(TData data, EventPublishChannelOptions? options = null, CancellationToken cancellationToken = default)
 		{
 			ArgumentNullException.ThrowIfNull(data);

@@ -17,7 +17,7 @@ using Deveel.Events;
 
 builder.Services
     .AddEventPublisher()
-    .UseRabbitMq(options =>
+    .AddRabbitMq(options =>
     {
         options.ConnectionString = "amqp://guest:guest@localhost:5672";
         options.ExchangeName     = "events";
@@ -30,7 +30,7 @@ builder.Services
 ```csharp
 builder.Services
     .AddEventPublisher()
-    .UseRabbitMq("Events:RabbitMq");
+    .AddRabbitMq("Events:RabbitMq");
 ```
 
 ```json
@@ -70,12 +70,11 @@ builder.Services
 
 ## Per-delivery options
 
-Every channel registered with `UseRabbitMq` also implements `IEventPublishChannel<RabbitMqEventPublishOptions>`, letting you override individual properties for a single publish call.  Only the properties you set (non-`null`) replace the channel default — all others fall back to the values configured at registration time.
+Pass a `RabbitMqEventPublishOptions` instance as the second argument to `PublishAsync` to override individual properties for a single publish call.  Only the properties you set (non-`null`) replace the channel default — all others fall back to the values configured at registration time.
 
 ```csharp
-// Resolve the typed channel from DI
-var channel = serviceProvider
-    .GetRequiredService<IEventPublishChannel<RabbitMqEventPublishOptions>>();
+// Resolve the concrete channel directly from DI.
+var channel = serviceProvider.GetRequiredService<RabbitMqEventPublishChannel>();
 
 // Override only the routing key and make this one message non-persistent.
 // Everything else (ConnectionString, ExchangeName, PublisherConfirms, …)
@@ -159,7 +158,7 @@ public class LowStockData
 // Program.cs
 builder.Services
     .AddEventPublisher()
-    .UseRabbitMq(options =>
+    .AddRabbitMq(options =>
     {
         options.ConnectionString = "amqp://guest:guest@localhost:5672";
         // ExchangeName and RoutingKey are overridden per event by annotations
@@ -223,7 +222,7 @@ Register it after the channel:
 ```csharp
 builder.Services
     .AddEventPublisher()
-    .UseRabbitMq(options => { /* ... */ })
+    .AddRabbitMq(options => { /* ... */ })
     .Services
         .AddSingleton<IRabbitMqConnectionFactory, MyConnectionFactory>();
 ```

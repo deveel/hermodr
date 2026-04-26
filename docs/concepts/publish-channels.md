@@ -9,24 +9,13 @@ A **publish channel** is responsible for taking a `CloudEvent` and delivering it
 ```csharp
 public interface IEventPublishChannel
 {
-    Task PublishAsync(CloudEvent @event, CancellationToken cancellationToken = default);
+    Task PublishAsync(CloudEvent @event, EventPublishChannelOptions? options = null, CancellationToken cancellationToken = default);
 }
 ```
 
 The `EventPublisher` resolves **all** registered `IEventPublishChannel` services and calls `PublishAsync` on each one in sequence for every outgoing event.
 
-### `IEventPublishChannel<TOptions>`
-
-An optional generic interface for channels that accept per-call delivery options (e.g. supplying a dynamic webhook URL or routing key):
-
-```csharp
-public interface IEventPublishChannel<TOptions> : IEventPublishChannel
-{
-    Task PublishAsync(CloudEvent @event, TOptions options, CancellationToken cancellationToken = default);
-}
-```
-
-All built-in channels implement this interface.  When `options` is `null`, the channel-level defaults are used as-is.  When non-`null`, each channel performs a **property-level merge** rather than a wholesale replacement:
+The optional `options` parameter accepts any `EventPublishChannelOptions` subclass and allows per-call delivery overrides.  All built-in channels extend `EventPublishChannelBase<TOptions>`, which performs a **property-level merge** of the per-call overrides with the channel-level defaults before delivery:
 
 - **Nullable reference-type properties** (`string?`, `Uri?`, `JsonSerializerOptions?`, …): a `null` value in the per-call options means *"leave this field at the channel default"*; a non-`null` value overrides it.
 - **Nullable value-type properties** (`bool?`, `TimeSpan?`, enum `?`, …): same rule — `null` inherits the channel default, any explicit value overrides it.
@@ -35,30 +24,44 @@ All built-in channels implement this interface.  When `options` is `null`, the c
 
 This design lets callers override only what they need — for example, changing the routing key or destination address for one delivery — without having to repeat every setting from the channel configuration.
 
-### `IBatchEventPublishChannel<TOptions>`
+### `IEventPublishChannel<TEvent>`
 
-Extends the above to support publishing multiple events in a single call:
+A generic marker interface for channels keyed against a specific **annotated event data class**.
+`EventPublisher` resolves `IEventPublishChannel<TEvent>` to find channels registered for a particular data class and routes the event exclusively to those channels instead of (or in addition to) the general-purpose ones.
 
 ```csharp
-public interface IBatchEventPublishChannel<TOptions>
+public interface IEventPublishChannel<TEvent> : IEventPublishChannel
+    where TEvent : class
+{
+}
+```
+
+> ⚠️ The type argument `TEvent` must be the **event data class** (e.g. `OrderPlacedData`), not a channel options type.  Per-call delivery overrides are supplied as a typed `EventPublishChannelOptions` subclass instance passed directly to `PublishAsync` — they do not require a separate typed channel registration.
+
+### `IBatchEventPublishChannel`
+
+Extends `IEventPublishChannel` to support publishing multiple events in a single call:
+
+```csharp
+public interface IBatchEventPublishChannel : IEventPublishChannel
 {
     Task PublishBatchAsync(
-        IEnumerable<CloudEvent> events,
-        TOptions options,
+        IReadOnlyList<CloudEvent> events,
+        EventPublishChannelOptions? options = null,
         CancellationToken cancellationToken = default);
 }
 ```
 
-The Webhook channel implements both `IEventPublishChannel<WebhookPublishOptions>` and `IBatchEventPublishChannel<WebhookPublishOptions>`.
+The Webhook channel implements both `IEventPublishChannel` and `IBatchEventPublishChannel`.
 
 ## Built-in channels
 
 | Channel | Package | Registration method |
 |---------|---------|---------------------|
 | Azure Service Bus | `Deveel.Events.Publisher.AzureServiceBus` | `.AddServiceBusChannel(...)` |
-| RabbitMQ | `Deveel.Events.Publisher.RabbitMq` | `.UseRabbitMq(...)` |
-| MassTransit | `Deveel.Events.Publisher.MassTransit` | `.UseMassTransit(...)` |
-| Webhook (HTTP) | `Deveel.Events.Publisher.Webhook` | `.UseWebhook(...)` |
+| RabbitMQ | `Deveel.Events.Publisher.RabbitMq` | `.AddRabbitMq(...)` |
+| MassTransit | `Deveel.Events.Publisher.MassTransit` | `.AddMassTransit(...)` |
+| Webhook (HTTP) | `Deveel.Events.Publisher.Webhook` | `.AddWebhooks(...)` |
 | Test (in-memory) | `Deveel.Events.TestPublisher` | `.AddTestChannel(...)` |
 
 Multiple channels can be registered simultaneously — the publisher will deliver to all of them.

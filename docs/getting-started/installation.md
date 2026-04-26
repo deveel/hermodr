@@ -13,7 +13,7 @@ All packages in the Deveel Events solution multi-target the following .NET runti
 | .NET | 8, 9, 10 |
 
 > **.NET 8** is the current Long-Term Support (LTS) release and the recommended minimum for new projects.  
-> **.NET 10** is the next LTS release (expected November 2025) and is fully supported from day one.
+> **.NET 10** is the latest LTS release and is fully supported.
 
 ### Required Infrastructure
 
@@ -44,8 +44,6 @@ The table below lists the key NuGet packages that each library brings in as tran
 | `Deveel.Events.Schema` | `CloudNative.CloudEvents` |
 | `Deveel.Events.Schema.Yaml` | `YamlDotNet` ≥ 16.3 |
 | `Deveel.Events.Schema.AsyncApi` | `Saunter` ≥ 0.13 · `YamlDotNet` ≥ 16.3 · ASP.NET Core shared framework |
-- .NET 8, 9, or 10
-- A project that uses Microsoft Dependency Injection (`Microsoft.Extensions.DependencyInjection`)
 
 ## Core package
 

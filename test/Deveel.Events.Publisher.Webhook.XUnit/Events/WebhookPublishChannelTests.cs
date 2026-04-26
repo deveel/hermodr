@@ -449,7 +449,7 @@ namespace Deveel.Events
         public void UseWebhook_RegistersAllProviders()
         {
             var services = new ServiceCollection();
-            services.AddEventPublisher().UseWebhook(o =>
+            services.AddEventPublisher().AddWebhooks(o =>
             {
                 o.EndpointUrl   = "https://webhook.example.com/";
                 o.SigningSecret = "secret";
@@ -575,7 +575,7 @@ namespace Deveel.Events
                 captured!.Content!.Headers.ContentType!.MediaType);
         }
 
-        // ── UseWebhook(sectionPath) ───────────────────────────────────────────
+        // ── AddWebhooks(sectionPath) ───────────────────────────────────────────
 
         [Fact]
         public void UseWebhook_WithSectionPath_RegistersChannel()
@@ -590,7 +590,7 @@ namespace Deveel.Events
 
             var services = new ServiceCollection();
             services.AddSingleton<Microsoft.Extensions.Configuration.IConfiguration>(configuration);
-            services.AddEventPublisher().UseWebhook("Webhook");
+            services.AddEventPublisher().AddWebhooks("Webhook");
 
             var sp = services.BuildServiceProvider();
 
@@ -605,7 +605,7 @@ namespace Deveel.Events
         {
             var services = new ServiceCollection();
             services.AddEventPublisher()
-                .UseWebhook(o => o.EndpointUrl = "https://webhook.example.com/")
+                .AddWebhooks(o => o.EndpointUrl = "https://webhook.example.com/")
                 .UseWebhookSignatureProvider<HmacSha256SignatureProvider>();
 
             var sp = services.BuildServiceProvider();
@@ -614,28 +614,12 @@ namespace Deveel.Events
         }
         
         // ── Typed channel resolution (DI lambdas) ────────────────────────────
-
-        [Fact]
-        public void UseWebhook_TypedChannelPublishOptions_Resolved()
-        {
-            var services = new ServiceCollection();
-            services.AddEventPublisher().UseWebhook(o =>
-            {
-                o.EndpointUrl   = "https://webhook.example.com/";
-                o.SigningSecret = "secret";
-            });
-
-            var sp = services.BuildServiceProvider();
-            var typed = sp.GetService<IEventPublishChannel<WebhookPublishOptions>>();
-            Assert.NotNull(typed);
-            Assert.IsType<WebhookEventPublishChannel>(typed);
-        }
-
+        
         [Fact]
         public void UseWebhook_TypedBatchChannelPublishOptions_Resolved()
         {
             var services = new ServiceCollection();
-            services.AddEventPublisher().UseWebhook(o =>
+            services.AddEventPublisher().AddWebhooks(o =>
             {
                 o.EndpointUrl   = "https://webhook.example.com/";
                 o.SigningSecret = "secret";

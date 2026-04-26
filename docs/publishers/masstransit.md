@@ -19,7 +19,7 @@ using Deveel.Events;
 
 builder.Services
     .AddEventPublisher()
-    .UseMassTransit(options =>
+    .AddMassTransit(options =>
     {
         // Leave DestinationAddress null to publish (fan-out).
         // Set it to send to a specific endpoint.
@@ -33,7 +33,7 @@ builder.Services
 ```csharp
 builder.Services
     .AddEventPublisher()
-    .UseMassTransit();
+    .AddMassTransit();
 ```
 
 ### From `appsettings.json`
@@ -41,7 +41,7 @@ builder.Services
 ```csharp
 builder.Services
     .AddEventPublisher()
-    .UseMassTransit("Events:MassTransit");
+    .AddMassTransit("Events:MassTransit");
 ```
 
 ```json
@@ -76,12 +76,11 @@ builder.Services
 
 ## Per-delivery options
 
-Every channel registered with `UseMassTransit` also implements `IEventPublishChannel<MassTransitEventPublishOptions>`, letting you override individual properties for a single publish call.  Only the properties you set (non-`null`) replace the channel default — all others fall back to the values configured at registration time.
+Pass a `MassTransitEventPublishOptions` instance as the second argument to `PublishAsync` to override individual properties for a single publish call.  Only the properties you set (non-`null`) replace the channel default — all others fall back to the values configured at registration time.
 
 ```csharp
-// Resolve the typed channel from DI
-var channel = serviceProvider
-    .GetRequiredService<IEventPublishChannel<MassTransitEventPublishOptions>>();
+// Resolve the concrete channel directly from DI.
+var channel = serviceProvider.GetRequiredService<MassTransitEventPublishChannel>();
 
 // Send this event directly to a specific queue,
 // while still inheriting MapAttributesToHeaders from the channel default.
@@ -90,27 +89,6 @@ await channel.PublishAsync(@event, new MassTransitEventPublishOptions
     DestinationAddress = new Uri("queue:priority-orders"),
 });
 ```
-
-## Consuming CloudEvents with MassTransit
-
-On the consumer side, implement a MassTransit consumer for `ICloudEventMessage`:
-
-```csharp
-using MassTransit;
-using Deveel.Events;
-
-public class OrderPlacedConsumer : IConsumer<ICloudEventMessage>
-{
-    public Task Consume(ConsumeContext<ICloudEventMessage> context)
-    {
-        var cloudEvent = context.Message.CloudEvent;
-        Console.WriteLine($"Received: {cloudEvent.Type} ({cloudEvent.Id})");
-        return Task.CompletedTask;
-    }
-}
-```
-
-Register the consumer with MassTransit as you normally would.
 
 ## Related pages
 

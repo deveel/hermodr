@@ -14,8 +14,12 @@ namespace Deveel.Events {
     /// </summary>
     public static class EventPublisherBuilderExtensions {
         private static EventPublisherBuilder AddServiceBusChannel(this EventPublisherBuilder builder) {
-			builder.Services.AddSingleton<IEventPublishChannel, ServiceBusEventPublishChannel>();
-			builder.Services.AddSingleton<IEventPublishChannel<ServiceBusEventPublishChannelOptions>, ServiceBusEventPublishChannel>();
+            // Register the concrete channel once; expose it under its own type so that
+            // callers can resolve it directly and supply per-call option overrides, as
+            // well as under IEventPublishChannel so EventPublisher can discover it.
+            builder.Services.AddSingleton<ServiceBusEventPublishChannel>();
+			builder.Services.AddSingleton<IEventPublishChannel>(sp =>
+                sp.GetRequiredService<ServiceBusEventPublishChannel>());
 			builder.Services.TryAddSingleton<IServiceBusClientFactory, ServiceBusClientFactory>();
 			builder.Services.TryAddSingleton<ServiceBusMessageFactory>();
 			return builder;

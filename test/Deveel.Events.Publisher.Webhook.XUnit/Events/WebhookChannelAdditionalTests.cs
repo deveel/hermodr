@@ -377,7 +377,7 @@ namespace Deveel.Events
         {
             var services = new ServiceCollection();
             services.AddEventPublisher()
-                .UseWebhook(o => o.EndpointUrl = "https://webhook.example.com/")
+                .AddWebhooks(o => o.EndpointUrl = "https://webhook.example.com/")
                 .UseWebhookSignatureProvider<HmacSha256SignatureProvider>();
 
             var sp = services.BuildServiceProvider();

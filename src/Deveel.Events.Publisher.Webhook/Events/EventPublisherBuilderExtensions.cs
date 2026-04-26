@@ -47,7 +47,6 @@ namespace Deveel.Events
             // IEventPublishChannel<WebhookPublishOptions>, or IBatchEventPublishChannel<WebhookPublishOptions>.
             builder.Services.AddSingleton<WebhookEventPublishChannel>();
             builder.Services.AddSingleton<IEventPublishChannel, WebhookEventPublishChannel>();
-            builder.Services.AddSingleton<IEventPublishChannel<WebhookPublishOptions>, WebhookEventPublishChannel>();
             builder.Services.AddSingleton<IBatchEventPublishChannel, WebhookEventPublishChannel>();
 
             return builder;
@@ -66,7 +65,7 @@ namespace Deveel.Events
         /// <returns>
         /// The same <see cref="EventPublisherBuilder"/> so that additional calls can be chained.
         /// </returns>
-        public static EventPublisherBuilder UseWebhook(
+        public static EventPublisherBuilder AddWebhooks(
             this EventPublisherBuilder builder,
             Action<WebhookPublishOptions> configure)
         {
@@ -89,7 +88,7 @@ namespace Deveel.Events
         /// <returns>
         /// The same <see cref="EventPublisherBuilder"/> so that additional calls can be chained.
         /// </returns>
-        public static EventPublisherBuilder UseWebhook(
+        public static EventPublisherBuilder AddWebhooks(
             this EventPublisherBuilder builder,
             string sectionPath)
         {

@@ -63,12 +63,11 @@ builder.Services
 
 ## Per-delivery options
 
-Every channel registered with `AddServiceBusChannel` also implements `IEventPublishChannel<ServiceBusEventPublishChannelOptions>`, letting you override the destination queue (and, optionally, `ClientOptions`) for a single publish call.  Any property you leave empty or `null` in the per-call override falls back to the channel default.
+Pass a `ServiceBusEventPublishChannelOptions` instance as the second argument to `PublishAsync` to override individual properties for a single publish call.  Any property you leave empty or `null` in the per-call override falls back to the channel default.
 
 ```csharp
-// Resolve the typed channel from DI
-var channel = serviceProvider
-    .GetRequiredService<IEventPublishChannel<ServiceBusEventPublishChannelOptions>>();
+// Resolve the concrete channel directly from DI.
+var channel = serviceProvider.GetRequiredService<ServiceBusEventPublishChannel>();
 
 // Send this particular event to a different queue,
 // while inheriting ConnectionString and ClientOptions from the channel defaults.
@@ -89,15 +88,11 @@ using Deveel.Events;
 
 public class ManagedIdentityServiceBusClientFactory : IServiceBusClientFactory
 {
-    private readonly ServiceBusEventPublishChannelOptions _options;
-
-    public ManagedIdentityServiceBusClientFactory(IOptions<ServiceBusEventPublishChannelOptions> options)
-    {
-        _options = options.Value;
-    }
-
-    public ServiceBusClient CreateClient()
-        => new ServiceBusClient(_options.ConnectionString, new DefaultAzureCredential());
+    public ServiceBusClient CreateClient(string connectionString, ServiceBusClientOptions options)
+        => new ServiceBusClient(
+            fullyQualifiedNamespace: new Uri(connectionString).Host,
+            credential: new DefaultAzureCredential(),
+            options: options);
 }
 ```
 

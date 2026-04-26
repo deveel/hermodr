@@ -93,6 +93,14 @@ namespace Deveel.Events {
         /// Gets the identifier to be used to correlate the event
 		/// in the stream of messages.
         /// </summary>
+        /// <param name="event">
+        /// The event to extract the correlation identifier from.
+        /// </param>
+        /// <returns>
+        /// Returns the correlation identifier for the event.
+        /// Currently returns an empty string; override in a derived class
+        /// to extract a correlation identifier from a CloudEvent extension attribute.
+        /// </returns>
         protected virtual string GetCorrelationId(CloudEvent @event) => "";
 
         /// <summary>
