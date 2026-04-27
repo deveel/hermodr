@@ -3,56 +3,58 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 //
 
+using System.Text.Json;
+
 using CloudNative.CloudEvents;
 
-namespace Deveel.Events;
-
-/// <summary>
-/// Contract for deserializing the data payload of a <see cref="CloudEvent"/> into
-/// a typed CLR object.
-/// </summary>
-/// <remarks>
-/// <para>
-/// Implement this interface to support your wire format (Protobuf, MessagePack, Avro,
-/// custom binary, etc.) and register the implementation with an
-/// <see cref="EventDataDeserializerProvider"/> so that <see cref="TypedDataFilter{T}"/>
-/// can dispatch to it based on the event's <c>datacontenttype</c> attribute.
-/// </para>
-/// <para>
-/// Two built-in implementations are provided:
-/// <list type="bullet">
-///   <item><description>
-///     <see cref="JsonEventDataDeserializer"/> — handles any content type containing
-///     <c>"json"</c> (e.g. <c>application/json</c>).
-///   </description></item>
-/// </list>
-/// </para>
-/// </remarks>
-public interface IEventDataDeserializer
+namespace Deveel.Events
 {
     /// <summary>
-    /// Returns <c>true</c> when this deserializer is capable of handling the given
-    /// <paramref name="contentType"/>.
+    /// Defines a service that can deserialize the data payload of a <see cref="CloudEvent"/>
+    /// into a <see cref="JsonElement"/>, enabling JSON-path–based filtering.
     /// </summary>
-    /// <param name="contentType">
-    /// The value of the CloudEvents <c>datacontenttype</c> attribute, or <c>null</c>
-    /// when the attribute is absent.
-    /// </param>
-    bool CanDeserialize(string? contentType);
+    /// <remarks>
+    /// <para>
+    /// Implementations are resolved from the DI container by
+    /// <see cref="EventSubscriptionContext.GetJsonData"/> when a <see cref="CloudEvent"/> is
+    /// being evaluated by an <see cref="EventDataFilter"/>.  The first registered implementation
+    /// whose <see cref="CanDeserialize"/> method returns <c>true</c> for the event's
+    /// <c>datacontenttype</c> is used.
+    /// </para>
+    /// <para>
+    /// When no DI-registered deserializer matches, the context falls back to its built-in
+    /// JSON deserializer which handles plain JSON strings, already-parsed
+    /// <see cref="JsonElement"/> objects, and CLR objects serializable with
+    /// <see cref="System.Text.Json.JsonSerializer"/>.
+    /// </para>
+    /// </remarks>
+    public interface IEventDataDeserializer
+    {
+        /// <summary>
+        /// Returns <c>true</c> when this deserializer is capable of handling the given
+        /// <paramref name="contentType"/> (e.g. <c>"application/json"</c>).
+        /// </summary>
+        /// <param name="contentType">
+        /// The value of the CloudEvent <c>datacontenttype</c> attribute, or <c>null</c> when the
+        /// attribute is absent.
+        /// </param>
+        bool CanDeserialize(string? contentType);
 
-    /// <summary>
-    /// Attempts to deserialize the data payload of <paramref name="event"/> to an
-    /// instance of <typeparamref name="T"/>.
-    /// </summary>
-    /// <typeparam name="T">Target CLR type (must be a reference type).</typeparam>
-    /// <param name="event">The cloud event whose payload is to be deserialized.</param>
-    /// <param name="result">
-    /// When the method returns <c>true</c>, the deserialized object; otherwise <c>null</c>.
-    /// </param>
-    /// <returns>
-    /// <c>true</c> when deserialization succeeded and <paramref name="result"/> is not
-    /// <c>null</c>; <c>false</c> otherwise.
-    /// </returns>
-    bool TryDeserialize<T>(CloudEvent @event, out T? result) where T : class;
+        /// <summary>
+        /// Attempts to deserialize the data payload of <paramref name="event"/> into a
+        /// <see cref="JsonElement"/>.
+        /// </summary>
+        /// <param name="event">The <see cref="CloudEvent"/> whose data should be deserialized.</param>
+        /// <param name="element">
+        /// When this method returns <c>true</c>, contains the deserialized root element;
+        /// otherwise the value is undefined.
+        /// </param>
+        /// <returns>
+        /// <c>true</c> when deserialization succeeded; <c>false</c> when the payload cannot be
+        /// represented as a <see cref="JsonElement"/> (e.g. binary data, missing content, parse
+        /// errors).
+        /// </returns>
+        bool TryDeserialize(CloudEvent @event, out JsonElement element);
+    }
 }
 

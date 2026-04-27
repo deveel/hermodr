@@ -52,11 +52,9 @@ namespace Deveel.Events
         /// Matching subscriptions are aggregated from every resolver in order.
         /// </param>
         /// <param name="services">
-        /// The application <see cref="IServiceProvider"/>, forwarded to data filters so that
-        /// runtime-registered <see cref="IEventDataDeserializer"/> implementations can be
-        /// resolved when evaluating subscriptions whose filters were restored from a database.
-        /// When <c>null</c>, data filters fall back to their construction-time provider or
-        /// <see cref="EventDataDeserializerProvider.Default"/>.
+        /// The application <see cref="IServiceProvider"/>, forwarded to DI-aware filters so that
+        /// runtime-registered services can be resolved when evaluating subscriptions.
+        /// May be <c>null</c> when no DI container is available.
         /// </param>
         /// <param name="options">
         /// Optional dispatcher-level options.  When <c>null</c> defaults are used.

@@ -65,6 +65,7 @@ Every package requires the **Microsoft Dependency Injection** infrastructure (`M
 | `Deveel.Events.Publisher.RabbitMq` | `RabbitMQ.Client` ≥ 7.2 · `Deveel.Events.Amqp.Annotations` |
 | `Deveel.Events.Publisher.MassTransit` | `MassTransit` ≥ 9.1 |
 | `Deveel.Events.Publisher.Webhook` | `Microsoft.Extensions.Http` · `Polly` ≥ 7.2 |
+| `Deveel.Events.Subscriptions` | `Deveel.Events.Publisher` · `Microsoft.Extensions.Logging.Abstractions` |
 | `Deveel.Events.Schema` | `CloudNative.CloudEvents` |
 | `Deveel.Events.Schema.Yaml` | `YamlDotNet` ≥ 16.3 |
 | `Deveel.Events.Schema.AsyncApi` | `Saunter` ≥ 0.13 · `YamlDotNet` ≥ 16.3 · ASP.NET Core shared framework |
@@ -80,9 +81,55 @@ Every package requires the **Microsoft Dependency Injection** infrastructure (`M
 | `Deveel.Events.Publisher.RabbitMq` | Publish events to a RabbitMQ exchange | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.RabbitMq.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.RabbitMq) |
 | `Deveel.Events.Publisher.MassTransit` | Publish events through a MassTransit bus | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.MassTransit.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.MassTransit) |
 | `Deveel.Events.Publisher.Webhook` | Deliver events to HTTP webhook endpoints | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.Webhook.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.Webhook) |
+| `Deveel.Events.Subscriptions` | Event dispatcher and subscription management with pluggable resolvers | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Subscriptions.svg)](https://www.nuget.org/packages/Deveel.Events.Subscriptions) |
 | `Deveel.Events.Schema` | Schema model, fluent builder, JSON writer, and validation | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Schema.svg)](https://www.nuget.org/packages/Deveel.Events.Schema) |
 | `Deveel.Events.Schema.Yaml` | Export an event schema as YAML | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Schema.Yaml.svg)](https://www.nuget.org/packages/Deveel.Events.Schema.Yaml) |
 | `Deveel.Events.Schema.AsyncApi` | Export schemas as an AsyncAPI 2.x document | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Schema.AsyncApi.svg)](https://www.nuget.org/packages/Deveel.Events.Schema.AsyncApi) |
+
+## Event Subscriptions
+
+The `Deveel.Events.Subscriptions` package adds an **event dispatcher** to the publisher pipeline. It routes published `CloudEvent`s to matching subscriber handlers resolved from pluggable `IEventSubscriptionResolver` implementations — from a simple local registry to a database-backed store or a remote subscription service.
+
+### Quick Setup
+
+```csharp
+services.AddEventPublisher(pub => pub
+    // Enable the dispatcher
+    .AddDispatcher()
+
+    // Subscribe to all order events by type pattern
+    .Subscribe("com.example.order.*", async (cloudEvent, ct) =>
+    {
+        Console.WriteLine($"[handler] order event: {cloudEvent.Type}");
+    })
+
+    // Subscribe with a richer filter (type + JSON body field)
+    .Subscribe(
+        fb => fb.WithTypePattern("com.example.order.*")
+                .WithJsonPath("customer.tier", "gold"),
+        async (cloudEvent, ct) => Console.WriteLine("[handler] VIP order received"),
+        name: "vip-order-handler")
+);
+```
+
+When `IEventPublisher.PublishAsync(…)` is called, the dispatcher automatically routes the `CloudEvent` to every registered handler whose filter matches.
+
+### Runtime Registration
+
+New subscriptions can be added at any point after startup:
+
+```csharp
+var registry = serviceProvider.GetRequiredService<IEventSubscriptionRegistry>();
+
+var filter = EventSubscriptionFilter.Builder
+    .WithTypePattern("com.example.payment.*")
+    .WithExtension("tenantid", "acme")
+    .Build();
+
+await registry.RegisterAsync(new EventSubscription(filter, HandlePaymentAsync));
+```
+
+See the [Event Subscriptions documentation](docs/subscriptions/README.md) for detailed guides on filtering, routing, serializable filter expressions, and building custom resolvers backed by a database or remote service.
 
 ## Documentation
 
@@ -93,6 +140,7 @@ Full documentation — installation, quick-start, concept guides, channel refere
 | [Getting Started](docs/getting-started/installation.md) | Installation and quick-start guide |
 | [Core Concepts](docs/concepts/README.md) | Publisher, channels, and event annotations |
 | [Publisher Channels](docs/publishers/README.md) | Azure Service Bus, RabbitMQ, MassTransit, Webhook |
+| [Event Subscriptions](docs/subscriptions/README.md) | Event dispatcher, filters, routing, and custom resolvers |
 | [Event Schema](docs/schema/README.md) | Schema definition, export (JSON / YAML / AsyncAPI), and validation |
 | [Testing](docs/testing/README.md) | Unit-testing event publishing |
 
@@ -102,7 +150,7 @@ The framework is still evolving. See the [ROADMAP](ROADMAP.md) for the full list
 
 ### v1.x — Publisher & Schema maturity
 
-- [ ] **Event Subscription & Routing** *(v1.1)* — subscribe to event types with attribute-based filtering
+- [x] **Event Subscription & Routing** *(v1.1)* — subscribe to event types with attribute-based filtering
 - [ ] **Event Middleware Pipeline** *(v1.1)* — composable cross-cutting hooks (logging, validation, tracing)
 - [ ] **Dead-Letter Handling & Replay** *(v1.2)* — capture and resubmit failed events
 - [ ] **Outbox Pattern** *(v1.2)* — guaranteed exactly-once publishing via a transactional outbox

@@ -52,7 +52,7 @@ namespace Deveel.Events
                 snapshot = new List<IEventSubscription>(_subscriptions);
 
             return snapshot
-                .Where(s => s.Filter.Matches(@event, services: null))
+                .Where(s => s.Filter.Matches(@event, EventSubscriptionContext.Empty))
                 .ToList();
         }
 
@@ -76,7 +76,7 @@ namespace Deveel.Events
                 snapshot = new List<IEventSubscription>(_subscriptions);
 
             IReadOnlyList<IEventSubscription> result = snapshot
-                .Where(s => s.Filter.Matches(@event, context?.Services))
+                .Where(s => s.Filter.Matches(@event, context ?? EventSubscriptionContext.Empty))
                 .ToList();
 
             return Task.FromResult(result);

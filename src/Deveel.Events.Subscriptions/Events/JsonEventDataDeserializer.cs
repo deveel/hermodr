@@ -10,82 +10,43 @@ using CloudNative.CloudEvents;
 namespace Deveel.Events;
 
 /// <summary>
-/// An <see cref="IEventDataDeserializer"/> that handles JSON-encoded cloud event payloads.
+/// Built-in fallback implementation of <see cref="IEventDataDeserializer"/> that handles
+/// JSON content types by inspecting the event data without requiring a DI registration.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Handles events whose <c>datacontenttype</c> contains <c>"json"</c>
-/// (case-insensitive), such as <c>application/json</c> or
-/// <c>application/cloudevents+json</c>.
-/// </para>
-/// <para>
-/// Payload resolution order inside <see cref="TryDeserialize{T}"/>:
+/// Resolution order:
 /// <list type="number">
 ///   <item><description>
 ///     <c>event.Data</c> is already a <see cref="JsonElement"/> — used as-is.
 ///   </description></item>
 ///   <item><description>
-///     <c>event.Data</c> is a <c>string</c> — parsed as a JSON document.
+///     <c>event.Data</c> is a <c>string</c> and content-type is JSON — parsed.
 ///   </description></item>
 ///   <item><description>
-///     <c>event.Data</c> is any other non-binary object — serialized via
-///     <see cref="JsonSerializer"/>, then parsed.
+///     <c>event.Data</c> is any other non-binary object and content-type is JSON —
+///     serialized with <see cref="JsonSerializer"/> then parsed.
 ///   </description></item>
 /// </list>
-/// <c>byte[]</c>, <see cref="Stream"/>, and <c>null</c> payloads are not handled
-/// by this deserializer; register a separate <see cref="IEventDataDeserializer"/>
-/// for those formats.
-/// </para>
+/// Returns <c>false</c> when none of the above succeeds (including <c>byte[]</c>,
+/// <see cref="Stream"/>, and <c>null</c> payloads).
 /// </remarks>
-public sealed class JsonEventDataDeserializer : IEventDataDeserializer
+internal sealed class JsonEventDataDeserializer : IEventDataDeserializer
 {
-    private readonly JsonSerializerOptions? _options;
-
     /// <summary>
-    /// Initialises the deserializer, optionally with custom
-    /// <see cref="JsonSerializerOptions"/>.
+    /// Shared singleton instance used as the context fallback.
     /// </summary>
-    public JsonEventDataDeserializer(JsonSerializerOptions? options = null)
-    {
-        _options = options;
-    }
-
-    /// <summary>Gets the serializer options used by this instance (may be <c>null</c>).</summary>
-    public JsonSerializerOptions? Options => _options;
-
-    // ── IEventDataDeserializer ──────────────────────────────────────────────────
+    internal static readonly JsonEventDataDeserializer Instance = new();
 
     /// <inheritdoc/>
-    /// <remarks>
-    /// Returns <c>true</c> when <paramref name="contentType"/> is non-null and contains
-    /// the substring <c>"json"</c> (case-insensitive).
-    /// </remarks>
     public bool CanDeserialize(string? contentType)
         => contentType is not null &&
            contentType.Contains("json", StringComparison.OrdinalIgnoreCase);
 
     /// <inheritdoc/>
-    public bool TryDeserialize<T>(CloudEvent @event, out T? result) where T : class
-    {
-        if (!TryGetJsonElement(@event, out var element))
-        {
-            result = null;
-            return false;
-        }
+    public bool TryDeserialize(CloudEvent @event, out JsonElement element)
+        => TryGetJsonElement(@event, out element);
 
-        try
-        {
-            result = element.Deserialize<T>(_options);
-            return result is not null;
-        }
-        catch
-        {
-            result = null;
-            return false;
-        }
-    }
-
-    // ── Shared JSON helpers (called by Json*DataFilter) ─────────────────────────
+    // ── Static helpers (kept for any existing internal callers) ──────────────
 
     /// <summary>
     /// Returns <c>true</c> when the event's <c>datacontenttype</c> is JSON-compatible
@@ -100,23 +61,6 @@ public sealed class JsonEventDataDeserializer : IEventDataDeserializer
     /// <summary>
     /// Attempts to expose the event data as a <see cref="JsonElement"/>.
     /// </summary>
-    /// <remarks>
-    /// Resolution order:
-    /// <list type="number">
-    ///   <item><description>
-    ///     <c>event.Data</c> is already a <see cref="JsonElement"/> — used as-is.
-    ///   </description></item>
-    ///   <item><description>
-    ///     <c>event.Data</c> is a <c>string</c> and content-type is JSON — parsed.
-    ///   </description></item>
-    ///   <item><description>
-    ///     <c>event.Data</c> is any other non-binary object and content-type is JSON —
-    ///     serialized with <see cref="JsonSerializer"/> then parsed.
-    ///   </description></item>
-    /// </list>
-    /// Returns <c>false</c> when none of the above succeeds (including <c>byte[]</c>,
-    /// <see cref="Stream"/>, and <c>null</c> payloads).
-    /// </remarks>
     public static bool TryGetJsonElement(CloudEvent @event, out JsonElement element)
     {
         switch (@event.Data)
@@ -156,4 +100,3 @@ public sealed class JsonEventDataDeserializer : IEventDataDeserializer
         return false;
     }
 }
-

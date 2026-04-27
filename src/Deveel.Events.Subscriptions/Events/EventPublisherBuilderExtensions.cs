@@ -36,13 +36,6 @@ namespace Deveel.Events
         ///   <item><see cref="IEventDispatcher"/> / <see cref="EventDispatcher"/> (singleton).</item>
         ///   <item><see cref="IEventPublishChannel"/> backed by the dispatcher — so every published
         ///   event is routed to matching subscribers automatically.</item>
-        ///   <item>
-        ///     <see cref="EventDataDeserializerProvider"/> (singleton) — built from all
-        ///     <see cref="IEventDataDeserializer"/> registrations (added via
-        ///     <see cref="AddEventDataDeserializer{TDeserializer}"/>).  When no custom
-        ///     deserializers are registered the provider falls back to
-        ///     <see cref="EventDataDeserializerProvider.Default"/> (JSON-only).
-        ///   </item>
         /// </list>
         /// </para>
         /// <para>
@@ -78,21 +71,6 @@ namespace Deveel.Events
             // picks it up alongside any custom resolvers added via AddSubscriptionResolver<T>.
             builder.Services.AddSingleton<IEventSubscriptionResolver>(
                 sp => sp.GetRequiredService<EventSubscriptionRegistry>());
-
-            // Build the EventDataDeserializerProvider from all registered IEventDataDeserializer
-            // instances.  Falls back to EventDataDeserializerProvider.Default (JSON) when none
-            // are registered, so that TypedDataFilter<T> always has a working provider.
-            builder.Services.TryAddSingleton<EventDataDeserializerProvider>(sp =>
-            {
-                var deserializers = sp.GetServices<IEventDataDeserializer>().ToList();
-                if (deserializers.Count == 0)
-                    return EventDataDeserializerProvider.Default;
-
-                var provider = new EventDataDeserializerProvider();
-                foreach (var d in deserializers)
-                    provider.Register(d);
-                return provider;
-            });
 
             builder.Services.AddSingleton<EventDispatcher>(sp =>
                 new EventDispatcher(
@@ -170,7 +148,7 @@ namespace Deveel.Events
         /// </summary>
         public static EventPublisherBuilder Subscribe(
             this EventPublisherBuilder builder,
-            EventSubscriptionFilter filter,
+            IEventFilter filter,
             Func<CloudEvent, CancellationToken, Task> handler,
             string? name = null)
         {
@@ -195,7 +173,7 @@ namespace Deveel.Events
             Func<CloudEvent, CancellationToken, Task> handler,
             string? name = null)
         {
-            var filter = EventSubscriptionFilter.ForTypePattern(typePattern);
+            var filter = EventAttributeFilter.Type(typePattern, parseWildcard: true);
             return builder.Subscribe(filter, handler, name);
         }
 
@@ -205,11 +183,11 @@ namespace Deveel.Events
         /// </summary>
         public static EventPublisherBuilder Subscribe(
             this EventPublisherBuilder builder,
-            Action<EventSubscriptionFilterBuilder> configureFilter,
+            Action<EventFilterBuilder> configureFilter,
             Func<CloudEvent, CancellationToken, Task> handler,
             string? name = null)
         {
-            var fb = new EventSubscriptionFilterBuilder();
+            var fb = new EventFilterBuilder();
             configureFilter(fb);
             return builder.Subscribe(fb.Build(), handler, name);
         }
@@ -242,8 +220,8 @@ namespace Deveel.Events
         ///     public AuditOrderSubscription(IAuditService audit) => _audit = audit;
         ///
         ///     public string? Name => "audit-orders";
-        ///     public EventSubscriptionFilter Filter =>
-        ///         EventSubscriptionFilter.ForTypePattern("com.example.order.*");
+        ///     public IEventFilter Filter =>
+        ///         EventFilterBuilder.ForTypePattern("com.example.order.*");
         ///
         ///     public Task HandleAsync(CloudEvent e, CancellationToken ct = default)
         ///         => _audit.RecordAsync(e, ct);
@@ -297,7 +275,7 @@ namespace Deveel.Events
         /// <returns>The same <paramref name="builder"/> for chaining.</returns>
         public static EventPublisherBuilder RouteToChannel(
             this EventPublisherBuilder builder,
-            EventSubscriptionFilter filter,
+            IEventFilter filter,
             EventPublishOptions? routingOptions = null,
             string? name = null)
         {
@@ -330,7 +308,7 @@ namespace Deveel.Events
             EventPublishOptions? routingOptions = null,
             string? name = null)
         {
-            var filter = EventSubscriptionFilter.ForTypePattern(typePattern);
+            var filter = EventAttributeFilter.Type(typePattern, parseWildcard: true);
             return builder.RouteToChannel(filter, routingOptions, name);
         }
 
@@ -342,7 +320,7 @@ namespace Deveel.Events
         /// </summary>
         /// <param name="builder">The builder to configure.</param>
         /// <param name="configureFilter">
-        /// An action that configures an <see cref="EventSubscriptionFilterBuilder"/> to build
+        /// An action that configures an <see cref="EventFilterBuilder"/> to build
         /// the subscription filter.
         /// </param>
         /// <param name="routingOptions">
@@ -354,58 +332,15 @@ namespace Deveel.Events
         /// <returns>The same <paramref name="builder"/> for chaining.</returns>
         public static EventPublisherBuilder RouteToChannel(
             this EventPublisherBuilder builder,
-            Action<EventSubscriptionFilterBuilder> configureFilter,
+            Action<EventFilterBuilder> configureFilter,
             EventPublishOptions? routingOptions = null,
             string? name = null)
         {
-            var fb = new EventSubscriptionFilterBuilder();
+            var fb = new EventFilterBuilder();
             configureFilter(fb);
             return builder.RouteToChannel(fb.Build(), routingOptions, name);
         }
 
-        // ──────────────────────────────────────────────────────────────────────────────
-        // Deserializer registration
-        // ──────────────────────────────────────────────────────────────────────────────
-
-        /// <summary>
-        /// Registers a custom <see cref="IEventDataDeserializer"/> with the DI container so
-        /// that it is picked up by the <see cref="EventDataDeserializerProvider"/> built at
-        /// dispatch time.
-        /// </summary>
-        /// <typeparam name="TDeserializer">
-        /// A concrete type implementing <see cref="IEventDataDeserializer"/>.
-        /// </typeparam>
-        /// <param name="builder">The builder to configure.</param>
-        /// <returns>The same <paramref name="builder"/> for chaining.</returns>
-        /// <remarks>
-        /// <para>
-        /// The deserializer is registered as a singleton.  Multiple calls register multiple
-        /// deserializers; they are tried in registration order when a
-        /// <see cref="TypedDataFilter{T}"/> evaluates an event whose
-        /// <c>datacontenttype</c> needs to be matched against
-        /// <see cref="IEventDataDeserializer.CanDeserialize"/>.
-        /// </para>
-        /// <para>
-        /// <see cref="JsonEventDataDeserializer"/> does not need to be explicitly registered;
-        /// if no custom deserializers are registered, <see cref="EventDataDeserializerProvider.Default"/>
-        /// (JSON-only) is used automatically as a fallback.
-        /// </para>
-        /// </remarks>
-        /// <example>
-        /// Supporting both JSON and Protobuf:
-        /// <code>
-        /// builder.AddDispatcher()
-        ///        .AddEventDataDeserializer&lt;JsonEventDataDeserializer&gt;()
-        ///        .AddEventDataDeserializer&lt;ProtobufEventDataDeserializer&gt;();
-        /// </code>
-        /// </example>
-        public static EventPublisherBuilder AddEventDataDeserializer<TDeserializer>(
-            this EventPublisherBuilder builder)
-            where TDeserializer : class, IEventDataDeserializer
-        {
-            builder.Services.AddSingleton<IEventDataDeserializer, TDeserializer>();
-            return builder;
-        }
     }
 }
 

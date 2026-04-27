@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging;
 namespace Deveel.Events
 {
     [Trait("Feature", "Subscriptions")]
-    public static class EventSubscriptionFilterTests
+    public static class EventFilterTests
     {
         private static CloudEvent MakeEvent(
             string type = "com.example.order.placed",
@@ -36,35 +36,35 @@ namespace Deveel.Events
         [Fact]
         public static void ExactFilter_MatchesExactValue()
         {
-            var f = EventAttributeFilter.Exact("com.example.order.placed");
+            var f = EventAttributeFilter.Type("com.example.order.placed");
             Assert.True(f.Matches("com.example.order.placed"));
         }
 
         [Fact]
         public static void ExactFilter_DoesNotMatchDifferentValue()
         {
-            var f = EventAttributeFilter.Exact("com.example.order.placed");
+            var f = EventAttributeFilter.Type("com.example.order.placed");
             Assert.False(f.Matches("com.example.order.updated"));
         }
 
         [Fact]
         public static void ExactFilter_DoesNotMatchNull()
         {
-            var f = EventAttributeFilter.Exact("com.example.order.placed");
+            var f = EventAttributeFilter.Type("com.example.order.placed");
             Assert.False(f.Matches(null));
         }
 
         [Fact]
         public static void PrefixFilter_MatchesStartingValue()
         {
-            var f = EventAttributeFilter.Prefix("com.example.");
+            var f = EventAttributeFilter.Type("com.example.", FilterMatchMode.Prefix);
             Assert.True(f.Matches("com.example.order.placed"));
         }
 
         [Fact]
         public static void PrefixFilter_StripTrailingAsterisk()
         {
-            var f = EventAttributeFilter.Prefix("com.example.*");
+            var f = EventAttributeFilter.For("type", "com.example.*", parseWildcard: true);
             // The trailing * is stripped; value stored is "com.example."
             Assert.Equal("com.example.", f.Value);
             Assert.True(f.Matches("com.example.user.created"));
@@ -73,21 +73,21 @@ namespace Deveel.Events
         [Fact]
         public static void PrefixFilter_DoesNotMatchNonStartingValue()
         {
-            var f = EventAttributeFilter.Prefix("com.example.");
+            var f = EventAttributeFilter.Type("com.example.", FilterMatchMode.Prefix);
             Assert.False(f.Matches("org.other.something"));
         }
 
         [Fact]
         public static void SuffixFilter_MatchesEndingValue()
         {
-            var f = EventAttributeFilter.Suffix(".placed");
+            var f = EventAttributeFilter.Type(".placed", FilterMatchMode.Suffix);
             Assert.True(f.Matches("com.example.order.placed"));
         }
 
         [Fact]
         public static void SuffixFilter_StripLeadingAsterisk()
         {
-            var f = EventAttributeFilter.Suffix("*.placed");
+            var f = EventAttributeFilter.For("type", "*.placed", parseWildcard: true);
             Assert.Equal(".placed", f.Value);
             Assert.True(f.Matches("com.foobar.placed"));
         }
@@ -95,126 +95,104 @@ namespace Deveel.Events
         [Fact]
         public static void ParsePattern_Exact()
         {
-            var f = EventAttributeFilter.Parse("com.example.order.placed");
+            var f = EventAttributeFilter.For("type", "com.example.order.placed", parseWildcard: true);
             Assert.Equal(FilterMatchMode.Exact, f.MatchMode);
         }
 
         [Fact]
         public static void ParsePattern_Prefix()
         {
-            var f = EventAttributeFilter.Parse("com.example.*");
+            var f = EventAttributeFilter.For("type", "com.example.*", parseWildcard: true);
             Assert.Equal(FilterMatchMode.Prefix, f.MatchMode);
         }
 
         [Fact]
         public static void ParsePattern_Suffix()
         {
-            var f = EventAttributeFilter.Parse("*.placed");
+            var f = EventAttributeFilter.For("type", "*.placed", parseWildcard: true);
             Assert.Equal(FilterMatchMode.Suffix, f.MatchMode);
         }
 
-        // ── EventSubscriptionFilter.Matches ─────────────────────────────────────────
+        // ── EventFilterBuilder / IEventFilter.Matches ────────────────────────────────
 
         [Fact]
         public static void EmptyFilter_MatchesAnyEvent()
         {
-            var filter = new EventSubscriptionFilter();
-            Assert.True(filter.Matches(MakeEvent()));
+            var filter = LogicalEventFilter.And();
+            Assert.True(filter.Matches(MakeEvent(), EventSubscriptionContext.Empty));
         }
 
         [Fact]
         public static void TypeFilter_Exact_Matches()
         {
-            var filter = EventSubscriptionFilter.ForType("com.example.order.placed");
-            Assert.True(filter.Matches(MakeEvent(type: "com.example.order.placed")));
+            var filter = EventAttributeFilter.Type("com.example.order.placed");
+            Assert.True(filter.Matches(MakeEvent(type: "com.example.order.placed"), EventSubscriptionContext.Empty));
         }
 
         [Fact]
         public static void TypeFilter_Exact_DoesNotMatchOtherType()
         {
-            var filter = EventSubscriptionFilter.ForType("com.example.order.placed");
-            Assert.False(filter.Matches(MakeEvent(type: "com.example.order.updated")));
+            var filter = EventAttributeFilter.Type("com.example.order.placed");
+            Assert.False(filter.Matches(MakeEvent(type: "com.example.order.updated"), EventSubscriptionContext.Empty));
         }
 
         [Fact]
         public static void TypeFilter_Prefix_Wildcard_Matches()
         {
-            var filter = EventSubscriptionFilter.ForTypePattern("com.example.*");
-            Assert.True(filter.Matches(MakeEvent(type: "com.example.order.placed")));
-            Assert.True(filter.Matches(MakeEvent(type: "com.example.user.created")));
+            var filter = EventAttributeFilter.Type("com.example.*", parseWildcard: true);
+            Assert.True(filter.Matches(MakeEvent(type: "com.example.order.placed"), EventSubscriptionContext.Empty));
+            Assert.True(filter.Matches(MakeEvent(type: "com.example.user.created"), EventSubscriptionContext.Empty));
         }
 
         [Fact]
         public static void TypeFilter_Prefix_Wildcard_DoesNotMatchOtherNamespace()
         {
-            var filter = EventSubscriptionFilter.ForTypePattern("com.example.*");
-            Assert.False(filter.Matches(MakeEvent(type: "org.other.event")));
+            var filter = EventAttributeFilter.Type("com.example.*", parseWildcard: true);
+            Assert.False(filter.Matches(MakeEvent(type: "org.other.event"), EventSubscriptionContext.Empty));
         }
 
         [Fact]
         public static void SourceFilter_Matches()
         {
-            var filter = EventSubscriptionFilter.Builder
+            var filter = new EventFilterBuilder()
                 .WithSource("https://example.com/api")
                 .Build();
-            Assert.True(filter.Matches(MakeEvent(source: "https://example.com/api")));
+            Assert.True(filter.Matches(MakeEvent(source: "https://example.com/api"), EventSubscriptionContext.Empty));
         }
 
         [Fact]
         public static void SourceFilter_DoesNotMatchOtherSource()
         {
-            var filter = EventSubscriptionFilter.Builder
+            var filter = new EventFilterBuilder()
                 .WithSource("https://example.com/api")
                 .Build();
-            Assert.False(filter.Matches(MakeEvent(source: "https://other.com/api")));
+            Assert.False(filter.Matches(MakeEvent(source: "https://other.com/api"), EventSubscriptionContext.Empty));
         }
 
         [Fact]
         public static void SubjectFilter_Matches()
         {
-            var filter = EventSubscriptionFilter.Builder
+            var filter = new EventFilterBuilder()
                 .WithSubject("orders/42")
                 .Build();
-            Assert.True(filter.Matches(MakeEvent(subject: "orders/42")));
+            Assert.True(filter.Matches(MakeEvent(subject: "orders/42"), EventSubscriptionContext.Empty));
         }
 
         [Fact]
         public static void SubjectFilter_DoesNotMatchMissingSubject()
         {
-            var filter = EventSubscriptionFilter.Builder
+            var filter = new EventFilterBuilder()
                 .WithSubject("orders/42")
                 .Build();
             // Event has no subject → subject is null → filter rejects
-            Assert.False(filter.Matches(MakeEvent()));
+            Assert.False(filter.Matches(MakeEvent(), EventSubscriptionContext.Empty));
         }
 
-        [Fact]
-        public static void PredicateFilter_IsAppliedLast()
-        {
-            var called = false;
-            var filter = EventSubscriptionFilter.Builder
-                .WithType("com.example.order.placed")
-                .WithPredicate(e => { called = true; return true; })
-                .Build();
-
-            Assert.True(filter.Matches(MakeEvent()));
-            Assert.True(called);
-        }
-
-        [Fact]
-        public static void PredicateFilter_FalseRejectsEvent()
-        {
-            var filter = EventSubscriptionFilter.Builder
-                .WithPredicate(_ => false)
-                .Build();
-
-            Assert.False(filter.Matches(MakeEvent()));
-        }
-
+        
         [Fact]
         public static void CombinedFilter_AllCriteriaMustPass()
         {
-            var filter = EventSubscriptionFilter.Builder
+            var filter = new EventFilterBuilder()
                 .WithTypePattern("com.example.*")
                 .WithSource("https://example.com/api")
                 .WithSubjectPattern("orders/*")
@@ -230,15 +208,15 @@ namespace Deveel.Events
                 source: "https://other.com",
                 subject: "orders/99");
 
-            Assert.True(filter.Matches(matching));
-            Assert.False(filter.Matches(wrongSource));
+            Assert.True(filter.Matches(matching, EventSubscriptionContext.Empty));
+            Assert.False(filter.Matches(wrongSource, EventSubscriptionContext.Empty));
         }
 
         [Fact]
         public static void Filter_ReturnsFalseForNullEvent()
         {
-            var filter = new EventSubscriptionFilter();
-            Assert.False(filter.Matches(null!));
+            var filter = LogicalEventFilter.And();
+            Assert.False(filter.Matches(null!, EventSubscriptionContext.Empty));
         }
     }
 
@@ -260,7 +238,7 @@ namespace Deveel.Events
         {
             var registry = new EventSubscriptionRegistry();
             var sub = new EventSubscription(
-                EventSubscriptionFilter.ForType("com.example.test"),
+                EventAttributeFilter.Type("com.example.test"),
                 (_, _) => Task.CompletedTask,
                 "test-sub");
 
@@ -276,7 +254,7 @@ namespace Deveel.Events
         {
             var registry = new EventSubscriptionRegistry();
             var sub = new EventSubscription(
-                EventSubscriptionFilter.ForType("com.example.other"),
+                EventAttributeFilter.Type("com.example.other"),
                 (_, _) => Task.CompletedTask);
 
             registry.Register(sub);
@@ -289,7 +267,7 @@ namespace Deveel.Events
         public static void Constructor_AcceptsPreSeededSubscriptions()
         {
             var sub = new EventSubscription(
-                new EventSubscriptionFilter(),
+                LogicalEventFilter.And(),
                 (_, _) => Task.CompletedTask);
 
             var registry = new EventSubscriptionRegistry([sub]);
@@ -302,11 +280,11 @@ namespace Deveel.Events
         {
             var registry = new EventSubscriptionRegistry();
 
-            var sub1 = new EventSubscription(EventSubscriptionFilter.ForTypePattern("com.example.*"),
+            var sub1 = new EventSubscription(EventAttributeFilter.Type("com.example.*", parseWildcard: true),
                 (_, _) => Task.CompletedTask, "sub1");
-            var sub2 = new EventSubscription(EventSubscriptionFilter.ForType("com.example.test"),
+            var sub2 = new EventSubscription(EventAttributeFilter.Type("com.example.test"),
                 (_, _) => Task.CompletedTask, "sub2");
-            var sub3 = new EventSubscription(EventSubscriptionFilter.ForType("com.example.other"),
+            var sub3 = new EventSubscription(EventAttributeFilter.Type("com.example.other"),
                 (_, _) => Task.CompletedTask, "sub3");
 
             registry.Register(sub1);
@@ -341,7 +319,7 @@ namespace Deveel.Events
 
             var registry = new EventSubscriptionRegistry([
                 new EventSubscription(
-                    EventSubscriptionFilter.ForType("com.example.test"),
+                    EventAttributeFilter.Type("com.example.test"),
                     (e, _) => { handled.Add(e); return Task.CompletedTask; },
                     "sub")
             ]);
@@ -361,7 +339,7 @@ namespace Deveel.Events
 
             var registry = new EventSubscriptionRegistry([
                 new EventSubscription(
-                    EventSubscriptionFilter.ForType("com.example.other"),
+                    EventAttributeFilter.Type("com.example.other"),
                     (_, _) => { handled = true; return Task.CompletedTask; })
             ]);
 
@@ -376,7 +354,7 @@ namespace Deveel.Events
         {
             var registry = new EventSubscriptionRegistry([
                 new EventSubscription(
-                    new EventSubscriptionFilter(),
+                    LogicalEventFilter.And(),
                     (_, _) => throw new InvalidOperationException("boom"))
             ]);
 
@@ -391,7 +369,7 @@ namespace Deveel.Events
         {
             var registry = new EventSubscriptionRegistry([
                 new EventSubscription(
-                    new EventSubscriptionFilter(),
+                    LogicalEventFilter.And(),
                     (_, _) => throw new InvalidOperationException("boom"))
             ]);
 
@@ -408,11 +386,11 @@ namespace Deveel.Events
 
             var registry = new EventSubscriptionRegistry([
                 new EventSubscription(
-                    new EventSubscriptionFilter(),
+                    LogicalEventFilter.And(),
                     (_, _) => { invoked.Add("sub1"); return Task.CompletedTask; },
                     "sub1"),
                 new EventSubscription(
-                    new EventSubscriptionFilter(),
+                    LogicalEventFilter.And(),
                     (_, _) => { invoked.Add("sub2"); return Task.CompletedTask; },
                     "sub2")
             ]);
@@ -430,7 +408,7 @@ namespace Deveel.Events
 
             var registry = new EventSubscriptionRegistry([
                 new EventSubscription(
-                    new EventSubscriptionFilter(),
+                    LogicalEventFilter.And(),
                     (_, _) => { handled = true; return Task.CompletedTask; })
             ]);
 
@@ -444,7 +422,7 @@ namespace Deveel.Events
         public async Task DispatchAsync_RespectsCancellation()
         {
             var registry = new EventSubscriptionRegistry([
-                new EventSubscription(new EventSubscriptionFilter(),
+                new EventSubscription(LogicalEventFilter.And(),
                     async (_, ct) => await Task.Delay(Timeout.Infinite, ct))
             ]);
 
@@ -610,8 +588,8 @@ namespace Deveel.Events
 
             public string? Name => nameof(OrderPlacedSubscription);
 
-            public EventSubscriptionFilter Filter =>
-                EventSubscriptionFilter.ForType("com.example.order.placed");
+            public IEventFilter Filter =>
+                EventAttributeFilter.Type("com.example.order.placed");
 
             public Task HandleAsync(CloudEvent @event, CancellationToken cancellationToken = default)
             {
@@ -654,211 +632,104 @@ namespace Deveel.Events
             return e;
         }
 
-        // ── JsonPathDataFilter ─────────────────────────────────────────────────────
+        private static readonly EventSubscriptionContext Empty = EventSubscriptionContext.Empty;
+
+        // ── EventDataFilter ───────────────────────────────────────────────────────
 
         [Fact]
         public static void JsonPath_ExactMatch_TopLevel_ReturnsTrue()
         {
-            var filter = EventDataFilter.JsonPath("status", "active");
+            var filter = EventDataFilter.Create("status", FilterOperator.Equals, "active");
             var @event = JsonEvent(new { status = "active" });
-            Assert.True(filter.Matches(@event));
+            Assert.True(filter.Matches(@event, Empty));
         }
 
         [Fact]
         public static void JsonPath_ExactMatch_TopLevel_ReturnsFalse()
         {
-            var filter = EventDataFilter.JsonPath("status", "inactive");
+            var filter = EventDataFilter.Create("status", FilterOperator.Equals, "inactive");
             var @event = JsonEvent(new { status = "active" });
-            Assert.False(filter.Matches(@event));
+            Assert.False(filter.Matches(@event, Empty));
         }
 
         [Fact]
         public static void JsonPath_Nested_ReturnsTrue()
         {
-            var filter = EventDataFilter.JsonPath("order.customer.tier", "gold");
+            var filter = EventDataFilter.Create("order.customer.tier", FilterOperator.Equals, "gold");
             var @event = JsonEvent(new { order = new { customer = new { tier = "gold" } } });
-            Assert.True(filter.Matches(@event));
+            Assert.True(filter.Matches(@event, Empty));
         }
 
         [Fact]
         public static void JsonPath_Nested_MissingSegment_ReturnsFalse()
         {
-            var filter = EventDataFilter.JsonPath("order.customer.tier", "gold");
+            var filter = EventDataFilter.Create("order.customer.tier", FilterOperator.Equals, "gold");
             var @event = JsonEvent(new { order = new { customer = new { } } });
-            Assert.False(filter.Matches(@event));
+            Assert.False(filter.Matches(@event, Empty));
         }
 
         [Fact]
         public static void JsonPath_PrefixPattern_Matches()
         {
-            var filter = EventDataFilter.JsonPathPattern("type", "order.*");
+            var filter = EventDataFilter.Create("type", FilterOperator.StartsWith, "order.");
             var @event = JsonEvent(new { type = "order.placed" });
-            Assert.True(filter.Matches(@event));
+            Assert.True(filter.Matches(@event, Empty));
         }
 
         [Fact]
         public static void JsonPath_PrefixPattern_NoMatch()
         {
-            var filter = EventDataFilter.JsonPathPattern("type", "order.*");
+            var filter = EventDataFilter.Create("type", FilterOperator.StartsWith, "order.");
             var @event = JsonEvent(new { type = "shipment.dispatched" });
-            Assert.False(filter.Matches(@event));
+            Assert.False(filter.Matches(@event, Empty));
         }
 
         [Fact]
         public static void JsonPath_FromJsonElement_Matches()
         {
-            // Simulates data already parsed by the CloudNative formatter.
             using var doc = JsonDocument.Parse("""{"status":"active"}""");
             var @event = JsonEvent(doc.RootElement.Clone());
-            Assert.True(EventDataFilter.JsonPath("status", "active").Matches(@event));
+            Assert.True(EventDataFilter.Create("status", FilterOperator.Equals, "active").Matches(@event, Empty));
         }
 
         [Fact]
         public static void JsonPath_FromJsonString_Matches()
         {
-            // Data is a raw JSON string (DataContentType is application/json).
             var @event = JsonEvent("""{"status":"active"}""");
-            Assert.True(EventDataFilter.JsonPath("status", "active").Matches(@event));
+            Assert.True(EventDataFilter.Create("status", FilterOperator.Equals, "active").Matches(@event, Empty));
         }
 
         [Fact]
         public static void JsonPath_BinaryData_ReturnsFalse()
         {
-            var filter = EventDataFilter.JsonPath("status", "active");
-            Assert.False(filter.Matches(BinaryEvent([1, 2, 3])));
+            var filter = EventDataFilter.Create("status", FilterOperator.Equals, "active");
+            Assert.False(filter.Matches(BinaryEvent([1, 2, 3]), Empty));
         }
 
         [Fact]
         public static void JsonPath_NullData_ReturnsFalse()
         {
-            var filter = EventDataFilter.JsonPath("status", "active");
-            Assert.False(filter.Matches(JsonEvent(null)));
+            var filter = EventDataFilter.Create("status", FilterOperator.Equals, "active");
+            Assert.False(filter.Matches(JsonEvent(null), Empty));
         }
 
         [Fact]
         public static void JsonPath_NonJsonContentType_ReturnsFalse()
         {
-            var filter = EventDataFilter.JsonPath("status", "active");
+            var filter = EventDataFilter.Create("status", FilterOperator.Equals, "active");
             var @event = JsonEvent(new { status = "active" }, contentType: "text/plain");
-            Assert.False(filter.Matches(@event));
+            Assert.False(filter.Matches(@event, Empty));
         }
+        
 
-        // ── JsonPredicateDataFilter ────────────────────────────────────────────────
-
-        [Fact]
-        public static void JsonPredicate_Matches()
-        {
-            var filter = EventDataFilter.JsonPredicate(root =>
-                root.TryGetProperty("amount", out var p) && p.GetInt32() > 100);
-
-            Assert.True(filter.Matches(JsonEvent(new { amount = 150 })));
-            Assert.False(filter.Matches(JsonEvent(new { amount = 50 })));
-        }
-
-        [Fact]
-        public static void JsonPredicate_BinaryData_ReturnsFalse()
-        {
-            var filter = EventDataFilter.JsonPredicate(_ => true);
-            Assert.False(filter.Matches(BinaryEvent([0xFF])));
-        }
-
-        [Fact]
-        public static void JsonPredicate_ThrowingPredicate_ReturnsFalse()
-        {
-            var filter = EventDataFilter.JsonPredicate(_ => throw new InvalidOperationException("oops"));
-            // Must not propagate.
-            Assert.False(filter.Matches(JsonEvent(new { })));
-        }
-
-        // ── TypedDataFilter<T> ─────────────────────────────────────────────────────
-
-        [Fact]
-        public static void Typed_DirectInstanceMatch_NoCast()
-        {
-            var payload = new OrderPayload { CustomerId = "cust-1", Amount = 250m };
-            var @event = new CloudEvent
-            {
-                Type = "com.example.order",
-                Source = new Uri("https://example.com"),
-                Id = Guid.NewGuid().ToString("N"),
-                DataContentType = "application/json",
-                Data = payload          // already the CLR type
-            };
-
-            var filter = EventDataFilter.Typed<OrderPayload>(o => o.Amount > 100);
-            Assert.True(filter.Matches(@event));
-        }
-
-        [Fact]
-        public static void Typed_DeserializedFromJson_Matches()
-        {
-            // Data is a serialised JsonElement (as if it came off the wire).
-            // Use PascalCase keys to match System.Text.Json default (case-sensitive).
-            using var doc = JsonDocument.Parse("""{"CustomerId":"cust-1","Amount":250}""");
-
-            var @event = new CloudEvent
-            {
-                Type = "com.example.order",
-                Source = new Uri("https://example.com"),
-                Id = Guid.NewGuid().ToString("N"),
-                DataContentType = "application/json",
-                Data = doc.RootElement.Clone()
-            };
-
-            var filter = EventDataFilter.Typed<OrderPayload>(o => o.Amount > 100);
-            Assert.True(filter.Matches(@event));
-        }
-
-        [Fact]
-        public static void Typed_DeserializedFromJson_PredicateFalse()
-        {
-            using var doc = JsonDocument.Parse("""{"CustomerId":"cust-2","Amount":50}""");
-
-            var @event = new CloudEvent
-            {
-                Type = "com.example.order",
-                Source = new Uri("https://example.com"),
-                Id = Guid.NewGuid().ToString("N"),
-                DataContentType = "application/json",
-                Data = doc.RootElement.Clone()
-            };
-
-            var filter = EventDataFilter.Typed<OrderPayload>(o => o.Amount > 100);
-            Assert.False(filter.Matches(@event));
-        }
-
-        [Fact]
-        public static void Typed_BinaryData_ReturnsFalse()
-        {
-            var filter = EventDataFilter.Typed<OrderPayload>(_ => true);
-            Assert.False(filter.Matches(BinaryEvent([0xDE, 0xAD])));
-        }
-
-        [Fact]
-        public static void Typed_ThrowingPredicate_ReturnsFalse()
-        {
-            var payload = new OrderPayload { CustomerId = "x", Amount = 1m };
-            var @event = new CloudEvent
-            {
-                Type = "com.example.order",
-                Source = new Uri("https://example.com"),
-                Id = Guid.NewGuid().ToString("N"),
-                DataContentType = "application/json",
-                Data = payload
-            };
-
-            var filter = EventDataFilter.Typed<OrderPayload>(_ => throw new InvalidOperationException());
-            Assert.False(filter.Matches(@event));
-        }
-
-        // ── Integration with EventSubscriptionFilter ───────────────────────────────
+        // ── Integration with EventFilterBuilder ────────────────────────────────────────
 
         [Fact]
         public static void DataFilter_CombinedWithTypeFilter_BothMustPass()
         {
-            var filter = EventSubscriptionFilter.Builder
+            var filter = new EventFilterBuilder()
                 .WithType("com.example.order.placed")
-                .WithJsonPath("order.status", "confirmed")
+                .WithField("order.status", "confirmed")
                 .Build();
 
             var matching = JsonEvent(new { order = new { status = "confirmed" } });
@@ -869,8 +740,8 @@ namespace Deveel.Events
             wrongBody.Type = "com.example.order.placed";
             wrongBody.Source = new Uri("https://example.com");
 
-            Assert.True(filter.Matches(matching));
-            Assert.False(filter.Matches(wrongBody));
+            Assert.True(filter.Matches(matching, EventSubscriptionContext.Empty));
+            Assert.False(filter.Matches(wrongBody, EventSubscriptionContext.Empty));
         }
 
         [Fact]
@@ -884,7 +755,7 @@ namespace Deveel.Events
                 .AddDispatcher()
                 .Subscribe(
                     fb => fb.WithType("com.example.order.placed")
-                             .WithJsonPath("tier", "gold"),
+                             .WithField("tier", "gold"),
                     (_, _) => { invoked = true; return Task.CompletedTask; });
 
             var provider = services.BuildServiceProvider();
@@ -914,7 +785,7 @@ namespace Deveel.Events
                 .AddDispatcher()
                 .Subscribe(
                     fb => fb.WithType("com.example.order.placed")
-                             .WithJsonPath("tier", "gold"),
+                             .WithField("tier", "gold"),
                     (_, _) => { invoked = true; return Task.CompletedTask; });
 
             var provider = services.BuildServiceProvider();
@@ -934,12 +805,6 @@ namespace Deveel.Events
         }
 
         // ── helper types ───────────────────────────────────────────────────────────
-
-        private sealed class OrderPayload
-        {
-            public string CustomerId { get; set; } = string.Empty;
-            public decimal Amount { get; set; }
-        }
     }
 }
 

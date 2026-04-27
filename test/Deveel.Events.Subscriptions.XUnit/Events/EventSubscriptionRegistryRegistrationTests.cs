@@ -29,9 +29,9 @@ namespace Deveel.Events
             };
 
         private static EventSubscription MakeSub(
-            EventSubscriptionFilter? filter = null,
+            IEventFilter? filter = null,
             string? name = null)
-            => new(filter ?? new EventSubscriptionFilter(),
+            => new(filter ?? LogicalEventFilter.And(),
                    (_, _) => Task.CompletedTask,
                    name);
 
@@ -48,7 +48,7 @@ namespace Deveel.Events
         public static void Register_SingleSubscription_IsRetrievable()
         {
             var registry = new EventSubscriptionRegistry();
-            var sub = MakeSub(EventSubscriptionFilter.ForType("com.example.order.placed"), "order-sub");
+            var sub = MakeSub(EventAttributeFilter.Type("com.example.order.placed"), "order-sub");
 
             registry.Register(sub);
 
@@ -100,7 +100,7 @@ namespace Deveel.Events
         public static void Register_ThenGetMatchingSubscriptionsAsync_ReturnsSameResult()
         {
             var registry = new EventSubscriptionRegistry();
-            var sub = MakeSub(EventSubscriptionFilter.ForType("com.example.order.placed"));
+            var sub = MakeSub(EventAttributeFilter.Type("com.example.order.placed"));
 
             registry.Register(sub);
 
@@ -115,10 +115,10 @@ namespace Deveel.Events
         [Fact]
         public static void Register_AfterPreSeeding_AddsToExistingSubscriptions()
         {
-            var seeded = MakeSub(EventSubscriptionFilter.ForType("com.example.seeded"), "seeded");
+            var seeded = MakeSub(EventAttributeFilter.Type("com.example.seeded"), "seeded");
             var registry = new EventSubscriptionRegistry([seeded]);
 
-            var newSub = MakeSub(EventSubscriptionFilter.ForType("com.example.new"), "new");
+            var newSub = MakeSub(EventAttributeFilter.Type("com.example.new"), "new");
             registry.Register(newSub);
 
             Assert.Single(registry.GetMatchingSubscriptions(MakeEvent("com.example.seeded")));
@@ -152,7 +152,7 @@ namespace Deveel.Events
         public static async Task RegisterAsync_SingleSubscription_IsRetrievable()
         {
             var registry = new EventSubscriptionRegistry();
-            var sub = MakeSub(EventSubscriptionFilter.ForType("com.example.order.placed"), "async-sub");
+            var sub = MakeSub(EventAttributeFilter.Type("com.example.order.placed"), "async-sub");
 
             await registry.RegisterAsync(sub);
 
@@ -178,7 +178,7 @@ namespace Deveel.Events
         public static async Task RegisterAsync_EmptyFilter_MatchesAnyEvent()
         {
             var registry = new EventSubscriptionRegistry();
-            var sub = MakeSub(new EventSubscriptionFilter());  // empty = match all
+            var sub = MakeSub(LogicalEventFilter.And());  // empty = match all
 
             await registry.RegisterAsync(sub);
 
@@ -206,7 +206,7 @@ namespace Deveel.Events
         public static async Task RegisterAsync_ThenGetMatchingSubscriptionsSync_ReturnsSameResult()
         {
             var registry = new EventSubscriptionRegistry();
-            var sub = MakeSub(EventSubscriptionFilter.ForType("com.example.order.placed"));
+            var sub = MakeSub(EventAttributeFilter.Type("com.example.order.placed"));
 
             await registry.RegisterAsync(sub);
 
@@ -220,7 +220,7 @@ namespace Deveel.Events
         public static async Task RegisterAsync_DoesNotMatchFilteredOutEvent()
         {
             var registry = new EventSubscriptionRegistry();
-            var sub = MakeSub(EventSubscriptionFilter.ForType("com.example.specific"));
+            var sub = MakeSub(EventAttributeFilter.Type("com.example.specific"));
 
             await registry.RegisterAsync(sub);
 
@@ -231,10 +231,10 @@ namespace Deveel.Events
         [Fact]
         public static async Task RegisterAsync_AfterPreSeeding_AddsToExistingSubscriptions()
         {
-            var seeded = MakeSub(EventSubscriptionFilter.ForType("com.example.seeded"), "seeded");
+            var seeded = MakeSub(EventAttributeFilter.Type("com.example.seeded"), "seeded");
             var registry = new EventSubscriptionRegistry([seeded]);
 
-            var newSub = MakeSub(EventSubscriptionFilter.ForType("com.example.new"), "new");
+            var newSub = MakeSub(EventAttributeFilter.Type("com.example.new"), "new");
             await registry.RegisterAsync(newSub);
 
             Assert.Single(await registry.ResolveSubscriptionsAsync(MakeEvent("com.example.seeded")));
@@ -245,7 +245,7 @@ namespace Deveel.Events
         public static async Task RegisterAsync_WithContext_IsRetrievableViaContextOverload()
         {
             var registry = new EventSubscriptionRegistry();
-            var sub = MakeSub(EventSubscriptionFilter.ForType("com.example.order.placed"));
+            var sub = MakeSub(EventAttributeFilter.Type("com.example.order.placed"));
 
             await registry.RegisterAsync(sub);
 
@@ -265,8 +265,8 @@ namespace Deveel.Events
         {
             var registry = new EventSubscriptionRegistry();
 
-            var syncSub = MakeSub(EventSubscriptionFilter.ForType("com.example.sync"), "sync");
-            var asyncSub = MakeSub(EventSubscriptionFilter.ForType("com.example.async"), "async");
+            var syncSub = MakeSub(EventAttributeFilter.Type("com.example.sync"), "sync");
+            var asyncSub = MakeSub(EventAttributeFilter.Type("com.example.async"), "async");
 
             registry.Register(syncSub);
             await registry.RegisterAsync(asyncSub);
@@ -314,4 +314,3 @@ namespace Deveel.Events
         }
     }
 }
-

@@ -25,7 +25,7 @@ namespace Deveel.Events
         /// </param>
         /// <param name="name">An optional human-readable name for this subscription.</param>
         public EventSubscription(
-            EventSubscriptionFilter filter,
+            IEventFilter filter,
             Func<CloudEvent, CancellationToken, Task> handler,
             string? name = null)
         {
@@ -38,11 +38,10 @@ namespace Deveel.Events
         public string? Name { get; }
 
         /// <inheritdoc/>
-        public EventSubscriptionFilter Filter { get; }
+        public IEventFilter Filter { get; }
 
         /// <inheritdoc/>
         public Task HandleAsync(CloudEvent @event, CancellationToken cancellationToken = default)
             => _handler(@event, cancellationToken);
     }
 }
-

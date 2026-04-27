@@ -3,6 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 //
 
+using System.Globalization;
 using System.Text.Json;
 
 using CloudNative.CloudEvents;
@@ -10,162 +11,230 @@ using CloudNative.CloudEvents;
 namespace Deveel.Events
 {
     /// <summary>
-    /// Base class for filters that inspect the <em>body</em> (data payload) of a
-    /// <see cref="CloudEvent"/> rather than its envelope attributes.
+    /// An <see cref="IEventFilter"/> that navigates a dot-separated JSON path inside the event
+    /// data payload and compares the resolved field value using a <see cref="FilterOperator"/>
+    /// and a typed reference value.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Three concrete sub-types are provided:
-    /// <list type="bullet">
-    ///   <item>
-    ///     <description>
-    ///       <see cref="JsonPathDataFilter"/> — navigates a dotted property path inside a
-    ///       JSON body and compares the leaf value with an <see cref="EventAttributeFilter"/>.
-    ///     </description>
-    ///   </item>
-    ///   <item>
-    ///     <description>
-    ///       <see cref="JsonPredicateDataFilter"/> — applies a caller-supplied
-    ///       <c>Func&lt;JsonElement, bool&gt;</c> to the root of the JSON body.
-    ///     </description>
-    ///   </item>
-    ///   <item>
-    ///     <description>
-    ///       <see cref="TypedDataFilter{T}"/> — deserialises the body to the target type
-    ///       via an <see cref="EventDataDeserializerProvider"/> (content-type-driven)
-    ///       and applies a typed predicate.  Register <see cref="IEventDataDeserializer"/>
-    ///       implementations for any wire format (JSON, Protobuf, MessagePack, Avro, …).
-    ///     </description>
-    ///   </item>
-    /// </list>
+    /// The event data is accessed via an internal JSON helper that supports JSON strings,
+    /// already-parsed <see cref="JsonElement"/> objects, and any CLR object that can be
+    /// serialized to JSON (e.g. anonymous types, generated records).
+    /// Returns <c>false</c> silently when the data cannot be represented as JSON or the path
+    /// cannot be traversed.
     /// </para>
     /// <para>
-    /// JSON-specific filters (<see cref="JsonPathDataFilter"/>,
-    /// <see cref="JsonPredicateDataFilter"/>) return <c>false</c> silently when:
-    /// <list type="bullet">
-    ///   <item><description>the event's <c>datacontenttype</c> is absent or does not contain <c>"json"</c>;</description></item>
-    ///   <item><description>the event data is <c>null</c>, a raw <c>byte[]</c>, or a <c>Stream</c>;</description></item>
-    ///   <item><description>deserialisation/parsing fails.</description></item>
-    /// </list>
+    /// Supported value types for comparison: <see cref="bool"/>, <see cref="int"/>,
+    /// <see cref="long"/>, <see cref="double"/>, <see cref="string"/>,
+    /// <see cref="DateTime"/>, and <see cref="DateTimeOffset"/>.
     /// </para>
     /// <para>
-    /// <see cref="TypedDataFilter{T}"/> delegates to an
-    /// <see cref="EventDataDeserializerProvider"/> which dispatches to the registered
-    /// <see cref="IEventDataDeserializer"/> matching the event's <c>datacontenttype</c>.
-    /// Register custom deserializers for non-JSON formats (Protobuf, MessagePack, Avro, …).
+    /// For <see cref="FilterOperator.Exists"/> and <see cref="FilterOperator.NotExists"/>
+    /// no reference value is needed; use <see cref="Exists"/> / <see cref="NotExists"/>.
     /// </para>
     /// </remarks>
-    public abstract class EventDataFilter
+    public sealed class EventDataFilter : IEventFilter
     {
-        // ── Backward-compatible JSON helpers ────────────────────────────────────
-        // These delegate to JsonEventDataDeserializer so that any user-defined
-        // subclasses that call TryGetJsonElement() continue to compile and work.
+        private readonly string[] _segments;
 
-        /// <summary>
-        /// Returns <c>true</c> when the event's <c>datacontenttype</c> is JSON-compatible.
-        /// </summary>
-        protected static bool IsJsonContent(CloudEvent @event)
-            => JsonEventDataDeserializer.IsJsonContent(@event);
-
-        /// <summary>
-        /// Attempts to expose the event data as a <see cref="JsonElement"/>.
-        /// See <see cref="JsonEventDataDeserializer.TryGetJsonElement"/> for the full
-        /// resolution order.
-        /// </summary>
-        protected static bool TryGetJsonElement(CloudEvent @event, out JsonElement element)
-            => JsonEventDataDeserializer.TryGetJsonElement(@event, out element);
-
-        // ── Abstract contract ───────────────────────────────────────────────────
-
-        /// <summary>
-        /// Evaluates the filter against the data payload of <paramref name="event"/>.
-        /// </summary>
-        public abstract bool Matches(CloudEvent @event);
-
-        /// <summary>
-        /// Evaluates the filter against the data payload of <paramref name="event"/>,
-        /// optionally using <paramref name="services"/> to resolve runtime dependencies
-        /// such as a DI-registered <see cref="EventDataDeserializerProvider"/>.
-        /// </summary>
-        /// <remarks>
-        /// The default implementation ignores <paramref name="services"/> and delegates to
-        /// <see cref="Matches(CloudEvent)"/>.  Override this in filters that need to
-        /// resolve services at evaluation time (e.g. <see cref="TypedDataFilter{T}"/>).
-        /// </remarks>
-        public virtual bool Matches(CloudEvent @event, IServiceProvider? services)
-            => Matches(@event);
-
-        // ── Factory methods ─────────────────────────────────────────────────────
-
-        /// <summary>
-        /// Creates a filter that navigates to <paramref name="path"/> (dot-separated property
-        /// names) inside the JSON body and requires the leaf value to be exactly
-        /// <paramref name="value"/>.
-        /// </summary>
-        public static EventDataFilter JsonPath(string path, string value)
-            => new JsonPathDataFilter(path, EventAttributeFilter.Exact(value));
-
-        /// <summary>
-        /// Creates a filter that navigates to <paramref name="path"/> inside the JSON body and
-        /// matches the leaf value against <paramref name="valueFilter"/>.
-        /// </summary>
-        public static EventDataFilter JsonPath(string path, EventAttributeFilter valueFilter)
-            => new JsonPathDataFilter(path, valueFilter);
-
-        /// <summary>
-        /// Creates a filter that navigates to <paramref name="path"/> inside the JSON body and
-        /// matches using a wildcard <paramref name="pattern"/> (same rules as
-        /// <see cref="EventAttributeFilter.Parse"/>).
-        /// </summary>
-        public static EventDataFilter JsonPathPattern(string path, string pattern)
-            => new JsonPathDataFilter(path, EventAttributeFilter.Parse(pattern));
-
-        /// <summary>
-        /// Creates a filter that applies <paramref name="predicate"/> to the root
-        /// <see cref="JsonElement"/> of the event body.
-        /// </summary>
-        public static EventDataFilter JsonPredicate(Func<JsonElement, bool> predicate)
-            => new JsonPredicateDataFilter(predicate);
-
-        /// <summary>
-        /// Creates a <see cref="TypedDataFilter{T}"/> that deserialises the event body using
-        /// the supplied <paramref name="provider"/> (content-type-driven) and applies
-        /// <paramref name="predicate"/> to the result.
-        /// </summary>
-        /// <typeparam name="T">Target CLR type (must be a reference type).</typeparam>
-        /// <param name="predicate">The predicate applied to the deserialised value.</param>
-        /// <param name="provider">
-        /// The <see cref="EventDataDeserializerProvider"/> that selects the deserializer
-        /// based on the event's <c>datacontenttype</c>.
-        /// When <c>null</c>, <see cref="EventDataDeserializerProvider.Default"/> is used
-        /// (JSON-only).
-        /// </param>
-        public static EventDataFilter Typed<T>(
-            Func<T, bool> predicate,
-            EventDataDeserializerProvider? provider = null)
-            where T : class
-            => new TypedDataFilter<T>(predicate, provider);
-
-        /// <summary>
-        /// Creates a <see cref="TypedDataFilter{T}"/> backed by a JSON-only provider
-        /// configured with the given <paramref name="serializerOptions"/>.
-        /// </summary>
-        /// <remarks>
-        /// Convenience overload for callers that only need JSON deserialization with custom
-        /// <see cref="JsonSerializerOptions"/>.  For multi-format scenarios prefer
-        /// <see cref="Typed{T}(Func{T,bool}, EventDataDeserializerProvider)"/>.
-        /// </remarks>
-        public static EventDataFilter Typed<T>(
-            Func<T, bool> predicate,
-            JsonSerializerOptions serializerOptions)
-            where T : class
+        private EventDataFilter(string path, FilterOperator @operator, object? value)
         {
-            var provider = new EventDataDeserializerProvider()
-                .Register(new JsonEventDataDeserializer(serializerOptions));
-            return new TypedDataFilter<T>(predicate, provider);
+            if (string.IsNullOrWhiteSpace(path))
+                throw new ArgumentException("Path must not be empty.", nameof(path));
+
+            Path = path;
+            _segments = path.Split('.', StringSplitOptions.RemoveEmptyEntries);
+            Operator = @operator;
+            Value = value;
         }
+
+        // ── Properties ──────────────────────────────────────────────────────────────
+
+        /// <summary>Gets the dot-separated path used to locate the field in the JSON body.</summary>
+        public string Path { get; }
+
+        /// <summary>Gets the comparison operator applied to the resolved field value.</summary>
+        public FilterOperator Operator { get; }
+
+        /// <summary>
+        /// Gets the reference value used in the comparison.
+        /// Supported CLR types: <see cref="bool"/>, <see cref="int"/>, <see cref="long"/>,
+        /// <see cref="double"/>, <see cref="string"/>, <see cref="DateTime"/>,
+        /// <see cref="DateTimeOffset"/>, or <c>null</c> for existence checks.
+        /// </summary>
+        public object? Value { get; }
+
+        // ── Factory methods ─────────────────────────────────────────────────────────
+
+        /// <summary>Creates a filter that compares the field at <paramref name="path"/> with a <see cref="bool"/> value.</summary>
+        public static EventDataFilter Create(string path, FilterOperator @operator, bool value)
+            => new(path, @operator, value);
+
+        /// <summary>Creates a filter that compares the field at <paramref name="path"/> with an <see cref="int"/> value.</summary>
+        public static EventDataFilter Create(string path, FilterOperator @operator, int value)
+            => new(path, @operator, value);
+
+        /// <summary>Creates a filter that compares the field at <paramref name="path"/> with a <see cref="long"/> value.</summary>
+        public static EventDataFilter Create(string path, FilterOperator @operator, long value)
+            => new(path, @operator, value);
+
+        /// <summary>Creates a filter that compares the field at <paramref name="path"/> with a <see cref="double"/> value.</summary>
+        public static EventDataFilter Create(string path, FilterOperator @operator, double value)
+            => new(path, @operator, value);
+
+        /// <summary>Creates a filter that compares the field at <paramref name="path"/> with a <see cref="string"/> value.</summary>
+        public static EventDataFilter Create(string path, FilterOperator @operator, string value)
+            => new(path, @operator, value);
+
+        /// <summary>Creates a filter that compares the field at <paramref name="path"/> with a <see cref="DateTime"/> value.</summary>
+        public static EventDataFilter Create(string path, FilterOperator @operator, DateTime value)
+            => new(path, @operator, value);
+
+        /// <summary>Creates a filter that compares the field at <paramref name="path"/> with a <see cref="DateTimeOffset"/> value.</summary>
+        public static EventDataFilter Create(string path, FilterOperator @operator, DateTimeOffset value)
+            => new(path, @operator, value);
+
+        /// <summary>
+        /// Creates a filter that passes when the JSON property at <paramref name="path"/> exists
+        /// (regardless of its value).
+        /// </summary>
+        public static EventDataFilter Exists(string path)
+            => new(path, FilterOperator.Exists, null);
+
+        /// <summary>
+        /// Creates a filter that passes when the JSON property at <paramref name="path"/> is
+        /// absent from the payload.
+        /// </summary>
+        public static EventDataFilter NotExists(string path)
+            => new(path, FilterOperator.NotExists, null);
+
+        // ── IEventFilter ─────────────────────────────────────────────────────────────
+
+        /// <inheritdoc/>
+        public bool Matches(CloudEvent @event, EventSubscriptionContext context)
+        {
+            if (@event is null)
+                return false;
+
+            var jsonData = context.GetJsonData(@event);
+            if (jsonData is null)
+                return false;
+
+            var current = jsonData.Value;
+            foreach (var seg in _segments)
+            {
+                if (current.ValueKind != JsonValueKind.Object)
+                    return Operator == FilterOperator.NotExists;
+
+                if (!current.TryGetProperty(seg, out current))
+                    return Operator == FilterOperator.NotExists;
+            }
+
+            return Operator switch
+            {
+                FilterOperator.Exists    => true,
+                FilterOperator.NotExists => false,
+                _                        => CompareJsonElement(current)
+            };
+        }
+
+        // ── Comparison helpers ────────────────────────────────────────────────────────
+
+        private bool CompareJsonElement(JsonElement element) => Value switch
+        {
+            bool boolVal           => CompareBool(element, boolVal),
+            int intVal             => CompareNumeric(element, (double)intVal),
+            long longVal           => CompareNumeric(element, (double)longVal),
+            double dblVal          => CompareNumeric(element, dblVal),
+            string strVal          => CompareString(element, strVal),
+            DateTime dtVal         => CompareDateTime(element, new DateTimeOffset(dtVal)),
+            DateTimeOffset dtoVal  => CompareDateTime(element, dtoVal),
+            null                   => CompareNull(element),
+            _                      => false
+        };
+
+        private bool CompareBool(JsonElement el, bool refValue)
+        {
+            bool? elBool = el.ValueKind switch
+            {
+                JsonValueKind.True  => true,
+                JsonValueKind.False => false,
+                _                   => null
+            };
+
+            if (!elBool.HasValue) return false;
+
+            return Operator switch
+            {
+                FilterOperator.Equals    => elBool.Value == refValue,
+                FilterOperator.NotEquals => elBool.Value != refValue,
+                _                        => false
+            };
+        }
+
+        private bool CompareNumeric(JsonElement el, double refNum)
+        {
+            double elNum;
+            if (el.ValueKind == JsonValueKind.Number)
+                elNum = el.GetDouble();
+            else if (!double.TryParse(el.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out elNum))
+                return false;
+
+            int cmp = elNum.CompareTo(refNum);
+            return Operator switch
+            {
+                FilterOperator.Equals             => cmp == 0,
+                FilterOperator.NotEquals          => cmp != 0,
+                FilterOperator.GreaterThan         => cmp > 0,
+                FilterOperator.LessThan            => cmp < 0,
+                FilterOperator.GreaterThanOrEqual  => cmp >= 0,
+                FilterOperator.LessThanOrEqual     => cmp <= 0,
+                _                                  => false
+            };
+        }
+
+        private bool CompareString(JsonElement el, string refValue)
+        {
+            var elStr = el.ValueKind == JsonValueKind.String ? el.GetString() : el.ToString();
+            if (elStr is null) return false;
+
+            return Operator switch
+            {
+                FilterOperator.Equals    => string.Equals(elStr, refValue, StringComparison.Ordinal),
+                FilterOperator.NotEquals => !string.Equals(elStr, refValue, StringComparison.Ordinal),
+                FilterOperator.StartsWith => elStr.StartsWith(refValue, StringComparison.Ordinal),
+                FilterOperator.EndsWith   => elStr.EndsWith(refValue, StringComparison.Ordinal),
+                FilterOperator.Contains   => elStr.Contains(refValue, StringComparison.Ordinal),
+                _                         => false
+            };
+        }
+
+        private bool CompareDateTime(JsonElement el, DateTimeOffset refDto)
+        {
+            var str = el.ValueKind == JsonValueKind.String ? el.GetString() : el.ToString();
+            if (str is null || !DateTimeOffset.TryParse(str, CultureInfo.InvariantCulture,
+                    DateTimeStyles.RoundtripKind, out var elDto))
+                return false;
+
+            int cmp = elDto.CompareTo(refDto);
+            return Operator switch
+            {
+                FilterOperator.Equals             => cmp == 0,
+                FilterOperator.NotEquals          => cmp != 0,
+                FilterOperator.GreaterThan         => cmp > 0,
+                FilterOperator.LessThan            => cmp < 0,
+                FilterOperator.GreaterThanOrEqual  => cmp >= 0,
+                FilterOperator.LessThanOrEqual     => cmp <= 0,
+                _                                  => false
+            };
+        }
+
+        private bool CompareNull(JsonElement el) => Operator switch
+        {
+            FilterOperator.Equals    => el.ValueKind == JsonValueKind.Null,
+            FilterOperator.NotEquals => el.ValueKind != JsonValueKind.Null,
+            _                        => false
+        };
     }
 }
-
-
 

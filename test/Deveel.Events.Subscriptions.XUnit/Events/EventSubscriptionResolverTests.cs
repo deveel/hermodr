@@ -32,9 +32,9 @@ namespace Deveel.Events
             };
 
         private static EventSubscription MakeSub(
-            EventSubscriptionFilter? filter = null,
+            IEventFilter? filter = null,
             string? name = null)
-            => new(filter ?? new EventSubscriptionFilter(),
+            => new(filter ?? LogicalEventFilter.And(),
                    (_, _) => Task.CompletedTask,
                    name);
 
@@ -50,7 +50,7 @@ namespace Deveel.Events
         [Fact]
         public static async Task Registry_AsResolver_ReturnsMatchingSubscriptions()
         {
-            var sub = MakeSub(EventSubscriptionFilter.ForType("com.example.order.placed"), "order");
+            var sub = MakeSub(EventAttributeFilter.Type("com.example.order.placed"), "order");
             var registry = new EventSubscriptionRegistry([sub]);
 
             IEventSubscriptionResolver resolver = registry;
@@ -63,7 +63,7 @@ namespace Deveel.Events
         [Fact]
         public static async Task Registry_AsResolver_EmptyWhenNoMatch()
         {
-            var sub = MakeSub(EventSubscriptionFilter.ForType("com.example.other"), "other");
+            var sub = MakeSub(EventAttributeFilter.Type("com.example.other"), "other");
             var registry = new EventSubscriptionRegistry([sub]);
 
             IEventSubscriptionResolver resolver = registry;
@@ -75,7 +75,7 @@ namespace Deveel.Events
         [Fact]
         public static async Task Registry_AsResolver_WithContextOverload_Works()
         {
-            var sub = MakeSub(EventSubscriptionFilter.ForType("com.example.order.placed"), "order");
+            var sub = MakeSub(EventAttributeFilter.Type("com.example.order.placed"), "order");
             var registry = new EventSubscriptionRegistry([sub]);
 
             IEventSubscriptionResolver resolver = registry;
@@ -96,7 +96,7 @@ namespace Deveel.Events
             var handled = new List<string>();
 
             var sub = new EventSubscription(
-                EventSubscriptionFilter.ForType("com.example.order.placed"),
+                EventAttributeFilter.Type("com.example.order.placed"),
                 (e, _) => { handled.Add(e.Type!); return Task.CompletedTask; },
                 "from-readonly");
 
@@ -126,12 +126,12 @@ namespace Deveel.Events
             var invoked = new List<string>();
 
             var sub1 = new EventSubscription(
-                EventSubscriptionFilter.ForType("com.example.order.placed"),
+                EventAttributeFilter.Type("com.example.order.placed"),
                 (_, _) => { invoked.Add("resolver-1"); return Task.CompletedTask; },
                 "from-resolver-1");
 
             var sub2 = new EventSubscription(
-                EventSubscriptionFilter.ForType("com.example.order.placed"),
+                EventAttributeFilter.Type("com.example.order.placed"),
                 (_, _) => { invoked.Add("resolver-2"); return Task.CompletedTask; },
                 "from-resolver-2");
 
@@ -153,12 +153,12 @@ namespace Deveel.Events
             var invoked = new List<string>();
 
             var orderSub = new EventSubscription(
-                EventSubscriptionFilter.ForType("com.example.order.placed"),
+                EventAttributeFilter.Type("com.example.order.placed"),
                 (_, _) => { invoked.Add("order"); return Task.CompletedTask; },
                 "order");
 
             var userSub = new EventSubscription(
-                EventSubscriptionFilter.ForType("com.example.user.created"),
+                EventAttributeFilter.Type("com.example.user.created"),
                 (_, _) => { invoked.Add("user"); return Task.CompletedTask; },
                 "user");
 
@@ -182,7 +182,7 @@ namespace Deveel.Events
             var invoked = false;
 
             var sub = new EventSubscription(
-                EventSubscriptionFilter.ForType("com.example.other"),
+                EventAttributeFilter.Type("com.example.other"),
                 (_, _) => { invoked = true; return Task.CompletedTask; });
 
             var dispatcher = new EventDispatcher(
@@ -206,13 +206,13 @@ namespace Deveel.Events
                 new IEventSubscriptionResolver[]
                 {
                     new StaticResolver([
-                        new EventSubscription(new EventSubscriptionFilter(),
+                        new EventSubscription(LogicalEventFilter.And(),
                             (_, _) => { order.Add("A"); return Task.CompletedTask; }, "A")
                     ]),
                     new StaticResolver([
-                        new EventSubscription(new EventSubscriptionFilter(),
+                        new EventSubscription(LogicalEventFilter.And(),
                             (_, _) => { order.Add("B"); return Task.CompletedTask; }, "B"),
-                        new EventSubscription(new EventSubscriptionFilter(),
+                        new EventSubscription(LogicalEventFilter.And(),
                             (_, _) => { order.Add("C"); return Task.CompletedTask; }, "C")
                     ])
                 });
@@ -342,7 +342,7 @@ namespace Deveel.Events
                 CloudEvent @event, CancellationToken cancellationToken = default)
             {
                 IReadOnlyList<IEventSubscription> result = subscriptions
-                    .Where(s => s.Filter.Matches(@event))
+                    .Where(s => s.Filter.Matches(@event, EventSubscriptionContext.Empty))
                     .ToList();
                 return Task.FromResult(result);
             }
@@ -396,7 +396,7 @@ namespace Deveel.Events
                 IReadOnlyList<IEventSubscription> result =
                 [
                     new EventSubscription(
-                        EventSubscriptionFilter.ForType("com.example.order.placed"),
+                        EventAttributeFilter.Type("com.example.order.placed"),
                         (_, _) => { list?.Add("readonly-resolver"); return Task.CompletedTask; },
                         "readonly-resolver-sub")
                 ];
