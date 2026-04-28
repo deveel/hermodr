@@ -1,6 +1,7 @@
-![GitHub License](https://img.shields.io/github/license/deveel/deveel.events)
-![GitHub Release](https://img.shields.io/github/v/release/deveel/deveel.events) ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/deveel/deveel.events/cicd.yml?logo=github)
-![Codecov](https://img.shields.io/codecov/c/github/deveel/deveel.events?logo=codecov)
+[![GitHub License](https://img.shields.io/github/license/deveel/deveel.events)](https://github.com/deveel/deveel.events/blob/main/LICENSE)
+[![GitHub Release](https://img.shields.io/github/v/release/deveel/deveel.events)](https://github.com/deveel/deveel.events/releases) [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/deveel/deveel.events/cicd.yml?logo=github)](https://github.com/deveel/deveel.events/actions/workflows/cicd.yml)
+[![Codecov](https://img.shields.io/codecov/c/github/deveel/deveel.events?logo=codecov)](https://codecov.io/gh/deveel/deveel.events)
+[![.NET](https://img.shields.io/badge/-8%20%7C%209%20%7C%2010-512BD4?logo=dotnet)](https://dotnet.microsoft.com/download)
 
 # Deveel Events
 
@@ -65,24 +66,38 @@ Every package requires the **Microsoft Dependency Injection** infrastructure (`M
 | `Deveel.Events.Publisher.RabbitMq` | `RabbitMQ.Client` ≥ 7.2 · `Deveel.Events.Amqp.Annotations` |
 | `Deveel.Events.Publisher.MassTransit` | `MassTransit` ≥ 9.1 |
 | `Deveel.Events.Publisher.Webhook` | `Microsoft.Extensions.Http` · `Polly` ≥ 7.2 |
+| `Deveel.Events.Subscriptions` | `Deveel.Events.Publisher` · `Microsoft.Extensions.Logging.Abstractions` |
 | `Deveel.Events.Schema` | `CloudNative.CloudEvents` |
 | `Deveel.Events.Schema.Yaml` | `YamlDotNet` ≥ 16.3 |
 | `Deveel.Events.Schema.AsyncApi` | `Saunter` ≥ 0.13 · `YamlDotNet` ≥ 16.3 · ASP.NET Core shared framework |
 
 ## Packages
 
-| Package | Description | NuGet |
-|---------|-------------|-------|
-| `Deveel.Events.Annotations` | Attributes for describing event metadata on data classes | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Annotations.svg)](https://www.nuget.org/packages/Deveel.Events.Annotations) |
-| `Deveel.Events.Publisher` | Core publisher infrastructure (`IEventPublisher`, DI helpers) | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher) |
-| `Deveel.Events.Publisher.AzureServiceBus` | Publish events to Azure Service Bus | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.AzureServiceBus.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.AzureServiceBus) |
-| `Deveel.Events.Amqp.Annotations` | AMQP-specific routing attributes (exchange, routing key) | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Amqp.Annotations.svg)](https://www.nuget.org/packages/Deveel.Events.Amqp.Annotations) |
-| `Deveel.Events.Publisher.RabbitMq` | Publish events to a RabbitMQ exchange | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.RabbitMq.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.RabbitMq) |
-| `Deveel.Events.Publisher.MassTransit` | Publish events through a MassTransit bus | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.MassTransit.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.MassTransit) |
-| `Deveel.Events.Publisher.Webhook` | Deliver events to HTTP webhook endpoints | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.Webhook.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.Webhook) |
-| `Deveel.Events.Schema` | Schema model, fluent builder, JSON writer, and validation | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Schema.svg)](https://www.nuget.org/packages/Deveel.Events.Schema) |
-| `Deveel.Events.Schema.Yaml` | Export an event schema as YAML | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Schema.Yaml.svg)](https://www.nuget.org/packages/Deveel.Events.Schema.Yaml) |
-| `Deveel.Events.Schema.AsyncApi` | Export schemas as an AsyncAPI 2.x document | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Schema.AsyncApi.svg)](https://www.nuget.org/packages/Deveel.Events.Schema.AsyncApi) |
+### Publishing
+
+| Package | Description | NuGet (Stable) | Pre-release | Downloads |
+|---------|-------------|---------------|-------------|-----------|
+| `Deveel.Events.Annotations` | Attributes for describing event metadata on data classes | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Annotations.svg)](https://www.nuget.org/packages/Deveel.Events.Annotations) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Annotations.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Annotations) | [![NuGet Downloads](https://img.shields.io/nuget/dt/Deveel.Events.Annotations.svg)](https://www.nuget.org/packages/Deveel.Events.Annotations) |
+| `Deveel.Events.Publisher` | Core publisher infrastructure (`IEventPublisher`, DI helpers) | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Publisher.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Publisher) | [![NuGet Downloads](https://img.shields.io/nuget/dt/Deveel.Events.Publisher.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher) |
+| `Deveel.Events.Publisher.AzureServiceBus` | Publish events to Azure Service Bus | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.AzureServiceBus.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.AzureServiceBus) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Publisher.AzureServiceBus.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Publisher.AzureServiceBus) | [![NuGet Downloads](https://img.shields.io/nuget/dt/Deveel.Events.Publisher.AzureServiceBus.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.AzureServiceBus) |
+| `Deveel.Events.Amqp.Annotations` | AMQP-specific routing attributes (exchange, routing key) | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Amqp.Annotations.svg)](https://www.nuget.org/packages/Deveel.Events.Amqp.Annotations) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Amqp.Annotations.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Amqp.Annotations) | [![NuGet Downloads](https://img.shields.io/nuget/dt/Deveel.Events.Amqp.Annotations.svg)](https://www.nuget.org/packages/Deveel.Events.Amqp.Annotations) |
+| `Deveel.Events.Publisher.RabbitMq` | Publish events to a RabbitMQ exchange | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.RabbitMq.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.RabbitMq) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Publisher.RabbitMq.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Publisher.RabbitMq) | [![NuGet Downloads](https://img.shields.io/nuget/dt/Deveel.Events.Publisher.RabbitMq.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.RabbitMq) |
+| `Deveel.Events.Publisher.MassTransit` | Publish events through a MassTransit bus | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.MassTransit.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.MassTransit) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Publisher.MassTransit.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Publisher.MassTransit) | [![NuGet Downloads](https://img.shields.io/nuget/dt/Deveel.Events.Publisher.MassTransit.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.MassTransit) |
+| `Deveel.Events.Publisher.Webhook` | Deliver events to HTTP webhook endpoints | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.Webhook.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.Webhook) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Publisher.Webhook.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Publisher.Webhook) | [![NuGet Downloads](https://img.shields.io/nuget/dt/Deveel.Events.Publisher.Webhook.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.Webhook) |
+
+### Subscriptions
+
+| Package | Description | NuGet (Stable) | Pre-release | Downloads |
+|---------|-------------|---------------|-------------|-----------|
+| `Deveel.Events.Subscriptions` | Event dispatcher and subscription management with pluggable resolvers | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Subscriptions.svg)](https://www.nuget.org/packages/Deveel.Events.Subscriptions) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Subscriptions.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Subscriptions) | [![NuGet Downloads](https://img.shields.io/nuget/dt/Deveel.Events.Subscriptions.svg)](https://www.nuget.org/packages/Deveel.Events.Subscriptions) |
+
+### Schema
+
+| Package | Description | NuGet (Stable) | Pre-release | Downloads |
+|---------|-------------|---------------|-------------|-----------|
+| `Deveel.Events.Schema` | Schema model, fluent builder, JSON writer, and validation | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Schema.svg)](https://www.nuget.org/packages/Deveel.Events.Schema) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Schema.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Schema) | [![NuGet Downloads](https://img.shields.io/nuget/dt/Deveel.Events.Schema.svg)](https://www.nuget.org/packages/Deveel.Events.Schema) |
+| `Deveel.Events.Schema.Yaml` | Export an event schema as YAML | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Schema.Yaml.svg)](https://www.nuget.org/packages/Deveel.Events.Schema.Yaml) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Schema.Yaml.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Schema.Yaml) | [![NuGet Downloads](https://img.shields.io/nuget/dt/Deveel.Events.Schema.Yaml.svg)](https://www.nuget.org/packages/Deveel.Events.Schema.Yaml) |
+| `Deveel.Events.Schema.AsyncApi` | Export schemas as an AsyncAPI 2.x document | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Schema.AsyncApi.svg)](https://www.nuget.org/packages/Deveel.Events.Schema.AsyncApi) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Schema.AsyncApi.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Schema.AsyncApi) | [![NuGet Downloads](https://img.shields.io/nuget/dt/Deveel.Events.Schema.AsyncApi.svg)](https://www.nuget.org/packages/Deveel.Events.Schema.AsyncApi) |
 
 ## Documentation
 
@@ -93,6 +108,7 @@ Full documentation — installation, quick-start, concept guides, channel refere
 | [Getting Started](docs/getting-started/installation.md) | Installation and quick-start guide |
 | [Core Concepts](docs/concepts/README.md) | Publisher, channels, and event annotations |
 | [Publisher Channels](docs/publishers/README.md) | Azure Service Bus, RabbitMQ, MassTransit, Webhook |
+| [Event Subscriptions](docs/subscriptions/README.md) | Event dispatcher, filters, routing, and custom resolvers |
 | [Event Schema](docs/schema/README.md) | Schema definition, export (JSON / YAML / AsyncAPI), and validation |
 | [Testing](docs/testing/README.md) | Unit-testing event publishing |
 
@@ -102,7 +118,7 @@ The framework is still evolving. See the [ROADMAP](ROADMAP.md) for the full list
 
 ### v1.x — Publisher & Schema maturity
 
-- [ ] **Event Subscription & Routing** *(v1.1)* — subscribe to event types with attribute-based filtering
+- [x] **Event Subscription & Routing** *(v1.1)* — subscribe to event types with attribute-based filtering
 - [ ] **Event Middleware Pipeline** *(v1.1)* — composable cross-cutting hooks (logging, validation, tracing)
 - [ ] **Dead-Letter Handling & Replay** *(v1.2)* — capture and resubmit failed events
 - [ ] **Outbox Pattern** *(v1.2)* — guaranteed exactly-once publishing via a transactional outbox
@@ -125,6 +141,12 @@ The framework is still evolving. See the [ROADMAP](ROADMAP.md) for the full list
 
 Monitor the [open issues](https://github.com/deveel/deveel.events/issues) to see what is being actively worked on.
 
+## Contributors
+
+Thanks go to all the people who have contributed to this project!
+
+[![Contributors](https://contrib.rocks/image?repo=deveel/deveel.events)](https://github.com/deveel/deveel.events/graphs/contributors)
+
 ## Contributing
 
 We welcome bug reports, feature requests, and pull requests. Please read the [Contributing Guidelines](docs/contributing.md) before submitting.
@@ -133,6 +155,11 @@ We welcome bug reports, feature requests, and pull requests. Please read the [Co
 
 Released under the [MIT License](LICENSE).
 
-## Authors
+## Built With
 
-Developed and maintained by the [Deveel](https://deveel.com) team and released as an open-source project.
+<p>
+  <a href="https://dotnet.microsoft.com"><img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/dotnetcore/dotnetcore-original.svg" alt=".NET" width="48" height="48"/></a>&nbsp;&nbsp;
+  <a href="https://github.com"><img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/github/github-original.svg" alt="GitHub" width="48" height="48"/></a>&nbsp;&nbsp;
+  <a href="https://www.jetbrains.com/rider/"><img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/rider/rider-original.svg" alt="Rider" width="48" height="48"/></a>&nbsp;&nbsp;
+  <a href="https://testcontainers.com"><img src="https://avatars.githubusercontent.com/u/13393021" alt="Testcontainers" width="48" height="48"/></a>
+</p>

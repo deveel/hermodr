@@ -39,6 +39,15 @@
 * [Export as AsyncAPI](schema/export-asyncapi.md)
 * [Validation](schema/validation.md)
 
+## Event Subscriptions
+
+* [Overview](subscriptions/README.md)
+* [Subscription Filters](subscriptions/filtering.md)
+* [Filter Expressions](subscriptions/filter-expressions.md)
+* [Event Dispatcher](subscriptions/dispatcher.md)
+* [Routing Subscriptions](subscriptions/routing.md)
+* [Custom Resolvers](subscriptions/custom-resolver.md)
+
 ## Testing
 
 * [Test Publisher](testing/README.md)
