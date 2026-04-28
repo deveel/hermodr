@@ -78,7 +78,7 @@ namespace Deveel.Events
                 new EventDispatcher(
                     sp.GetServices<IEventSubscriptionResolver>(),
                     sp,
-                    options: null,
+                    options: sp.GetService<Microsoft.Extensions.Options.IOptions<EventDispatcherOptions>>()?.Value,
                     sp.GetService<ILogger<EventDispatcher>>()));
             builder.Services.TryAddSingleton<IEventDispatcher>(sp =>
                 sp.GetRequiredService<EventDispatcher>());

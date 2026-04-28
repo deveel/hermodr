@@ -402,6 +402,37 @@ namespace Deveel.Events
             };
 
         [Fact]
+        public static async Task AddDispatcher_WithConfigureAction_ThrowOnHandlerError_Propagates()
+        {
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddEventPublisher(opt => opt.Source = new Uri("https://example.com"))
+                    .AddDispatcher(o => o.ThrowOnHandlerError = true)
+                    .Subscribe(FilterExpression.Constant(true),
+                        (_, _) => throw new InvalidOperationException("intentional"));
+
+            var provider   = services.BuildServiceProvider();
+            var dispatcher = provider.GetRequiredService<EventDispatcher>();
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                dispatcher.DispatchAsync(new CloudEvent
+                {
+                    Type   = "com.example.test",
+                    Source = new Uri("https://example.com"),
+                    Id     = Guid.NewGuid().ToString("N"),
+                }));
+        }
+
+        [Fact]
+        public static async Task DispatchAsync_NullEvent_Throws()
+        {
+            var dispatcher = new EventDispatcher(new EventSubscriptionRegistry());
+
+            await Assert.ThrowsAsync<ArgumentNullException>(() =>
+                dispatcher.DispatchAsync(null!));
+        }
+
+        [Fact]
         public static void AddDispatcher_RegistersRequiredServices()
         {
             var services = new ServiceCollection();

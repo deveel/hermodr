@@ -30,12 +30,12 @@ namespace Deveel.Events;
 /// Returns <c>false</c> when none of the above succeeds (including <c>byte[]</c>,
 /// <see cref="Stream"/>, and <c>null</c> payloads).
 /// </remarks>
-internal sealed class JsonEventDataDeserializer : IEventDataDeserializer
+public sealed class JsonEventDataDeserializer : IEventDataDeserializer
 {
     /// <summary>
     /// Shared singleton instance used as the context fallback.
     /// </summary>
-    internal static readonly JsonEventDataDeserializer Instance = new();
+    public static readonly JsonEventDataDeserializer Instance = new();
 
     /// <inheritdoc/>
     public bool CanDeserialize(string? contentType)

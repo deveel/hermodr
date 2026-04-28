@@ -109,6 +109,28 @@ namespace Deveel.Events
                 EventCreator.CreateEventFromData(null!, new object()));
         }
 
+        [Fact]
+        public void CreateFromData_NullContentType_WithNullDefaultContentType_Throws()
+        {
+            // When the [Event] attribute has no ContentType AND DefaultContentType is null,
+            // the creator must throw InvalidOperationException.
+            var services = new ServiceCollection();
+            services.AddEventPublisher(options =>
+            {
+                options.DefaultContentType = null;
+            });
+            var creator = services.BuildServiceProvider().GetRequiredService<IEventCreator>();
+
+            var ex = Assert.Throws<InvalidOperationException>(() =>
+                creator.CreateEventFromData(typeof(EventWithNoContentType), new EventWithNoContentType()));
+
+            Assert.Contains("content type", ex.Message, StringComparison.OrdinalIgnoreCase);
+        }
+
+        // Event type with no ContentType set in the attribute (uses DataVersion form)
+        [Event("no.content.type", "1.0")]
+        class EventWithNoContentType { }
+
         [Event("person.created", "https://deveel.com/events/person/schema/1.0")]
         [EventAttributes("streamtype", "person")]
         class PersonCreated
