@@ -5,6 +5,8 @@
 
 using CloudNative.CloudEvents;
 
+using Deveel.Filters;
+
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Deveel.Events
@@ -50,7 +52,7 @@ namespace Deveel.Events
         /// </param>
         /// <param name="name">An optional human-readable name for this subscription.</param>
         public RoutingEventSubscription(
-            EventFilter filter,
+            FilterExpression filter,
             IServiceProvider services,
             EventPublishOptions? routingOptions = null,
             string? name = null)
@@ -65,7 +67,7 @@ namespace Deveel.Events
         public string? Name { get; }
 
         /// <inheritdoc/>
-        public EventFilter Filter { get; }
+        public FilterExpression Filter { get; }
 
         /// <inheritdoc/>
         public EventPublishOptions? RoutingOptions { get; }
@@ -83,4 +85,3 @@ namespace Deveel.Events
         }
     }
 }
-

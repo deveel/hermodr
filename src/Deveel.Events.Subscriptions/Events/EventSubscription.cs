@@ -4,6 +4,7 @@
 //
 
 using CloudNative.CloudEvents;
+using Deveel.Filters;
 
 namespace Deveel.Events
 {
@@ -25,7 +26,7 @@ namespace Deveel.Events
         /// </param>
         /// <param name="name">An optional human-readable name for this subscription.</param>
         public EventSubscription(
-            EventFilter filter,
+            FilterExpression filter,
             Func<CloudEvent, CancellationToken, Task> handler,
             string? name = null)
         {
@@ -38,7 +39,7 @@ namespace Deveel.Events
         public string? Name { get; }
 
         /// <inheritdoc/>
-        public EventFilter Filter { get; }
+        public FilterExpression Filter { get; }
 
         /// <inheritdoc/>
         public Task HandleAsync(CloudEvent @event, CancellationToken cancellationToken = default)

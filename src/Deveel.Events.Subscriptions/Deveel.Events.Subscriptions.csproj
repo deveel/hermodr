@@ -20,5 +20,8 @@
   <ItemGroup>
     <ProjectReference Include="..\Deveel.Events.Publisher\Deveel.Events.Publisher.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Deveel.Filters" Version="2.0.1" />
+  </ItemGroup>
 </Project>
 

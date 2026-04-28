@@ -5,6 +5,8 @@
 
 using CloudNative.CloudEvents;
 
+using Deveel.Filters;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -148,7 +150,7 @@ namespace Deveel.Events
         /// </summary>
         public static EventPublisherBuilder Subscribe(
             this EventPublisherBuilder builder,
-            EventFilter filter,
+            FilterExpression filter,
             Func<CloudEvent, CancellationToken, Task> handler,
             string? name = null)
         {
@@ -173,23 +175,8 @@ namespace Deveel.Events
             Func<CloudEvent, CancellationToken, Task> handler,
             string? name = null)
         {
-            var filter = EventFilter.Type(typePattern, parseWildcard: true);
+            var filter = CloudEventFilter.ByTypePattern(typePattern);
             return builder.Subscribe(filter, handler, name);
-        }
-
-        /// <summary>
-        /// Registers a subscription using the fluent <paramref name="configureFilter"/> builder
-        /// and a handler delegate.
-        /// </summary>
-        public static EventPublisherBuilder Subscribe(
-            this EventPublisherBuilder builder,
-            Action<EventFilterBuilder> configureFilter,
-            Func<CloudEvent, CancellationToken, Task> handler,
-            string? name = null)
-        {
-            var fb = new EventFilterBuilder();
-            configureFilter(fb);
-            return builder.Subscribe(fb.Build(), handler, name);
         }
 
         // ──────────────────────────────────────────────────────────────────────────────
@@ -220,8 +207,8 @@ namespace Deveel.Events
         ///     public AuditOrderSubscription(IAuditService audit) => _audit = audit;
         ///
         ///     public string? Name => "audit-orders";
-        ///     public IEventFilter Filter =>
-        ///         EventFilterBuilder.ForTypePattern("com.example.order.*");
+        ///     public FilterExpression Filter =>
+        ///         CloudEventFilter.ByTypePattern("com.example.order.*");
         ///
         ///     public Task HandleAsync(CloudEvent e, CancellationToken ct = default)
         ///         => _audit.RecordAsync(e, ct);
@@ -275,7 +262,7 @@ namespace Deveel.Events
         /// <returns>The same <paramref name="builder"/> for chaining.</returns>
         public static EventPublisherBuilder RouteToChannel(
             this EventPublisherBuilder builder,
-            EventFilter filter,
+            FilterExpression filter,
             EventPublishOptions? routingOptions = null,
             string? name = null)
         {
@@ -308,38 +295,10 @@ namespace Deveel.Events
             EventPublishOptions? routingOptions = null,
             string? name = null)
         {
-            var filter = EventFilter.Type(typePattern, parseWildcard: true);
+            var filter = CloudEventFilter.ByTypePattern(typePattern);
             return builder.RouteToChannel(filter, routingOptions, name);
         }
 
-        /// <summary>
-        /// Registers a <see cref="RoutingEventSubscription"/> using the fluent
-        /// <paramref name="configureFilter"/> builder, re-publishing matched events through the
-        /// <see cref="IEventPublisher"/> pipeline using the specified
-        /// <paramref name="routingOptions"/> to select the target channel.
-        /// </summary>
-        /// <param name="builder">The builder to configure.</param>
-        /// <param name="configureFilter">
-        /// An action that configures an <see cref="EventFilterBuilder"/> to build
-        /// the subscription filter.
-        /// </param>
-        /// <param name="routingOptions">
-        /// The <see cref="EventPublishOptions"/> forwarded to
-        /// <see cref="IEventPublisher.PublishEventAsync"/> to select the target channel.
-        /// When <c>null</c> the publisher uses its default channel-selection rules.
-        /// </param>
-        /// <param name="name">An optional human-readable name for this subscription.</param>
-        /// <returns>The same <paramref name="builder"/> for chaining.</returns>
-        public static EventPublisherBuilder RouteToChannel(
-            this EventPublisherBuilder builder,
-            Action<EventFilterBuilder> configureFilter,
-            EventPublishOptions? routingOptions = null,
-            string? name = null)
-        {
-            var fb = new EventFilterBuilder();
-            configureFilter(fb);
-            return builder.RouteToChannel(fb.Build(), routingOptions, name);
-        }
 
     }
 }

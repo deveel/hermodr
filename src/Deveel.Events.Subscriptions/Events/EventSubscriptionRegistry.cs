@@ -23,8 +23,7 @@ namespace Deveel.Events
             if (subscriptions is not null)
                 _subscriptions.AddRange(subscriptions);
         }
-
-        /// <inheritdoc/>
+        
         public void Register(IEventSubscription subscription)
         {
             ArgumentNullException.ThrowIfNull(subscription);
@@ -41,8 +40,7 @@ namespace Deveel.Events
                 _subscriptions.Add(subscription);
             return Task.CompletedTask;
         }
-
-        /// <inheritdoc/>
+        
         public IReadOnlyList<IEventSubscription> GetMatchingSubscriptions(CloudEvent @event)
         {
             ArgumentNullException.ThrowIfNull(@event);

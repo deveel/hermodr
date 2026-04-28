@@ -7,6 +7,8 @@ using System.Text.Json;
 
 using CloudNative.CloudEvents;
 
+using Deveel.Filters;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -31,115 +33,77 @@ namespace Deveel.Events
             return e;
         }
 
-        // ── FilterMatchMode / EventAttributeFilter ──────────────────────────────────
+        // ── FilterExpression type filters ───────────────────────────────────────────
 
         [Fact]
-        public static void ExactFilter_MatchesExactValue()
+        public static void ExactTypeFilter_MatchesExactValue()
         {
-            var f = EventAttributeFilter.Type("com.example.order.placed");
-            Assert.True(f.Matches("com.example.order.placed"));
+            var filter = CloudEventFilter.ByType("com.example.order.placed");
+            Assert.True(filter.Matches(MakeEvent("com.example.order.placed"), EventSubscriptionContext.Empty));
         }
 
         [Fact]
-        public static void ExactFilter_DoesNotMatchDifferentValue()
+        public static void ExactTypeFilter_DoesNotMatchDifferentValue()
         {
-            var f = EventAttributeFilter.Type("com.example.order.placed");
-            Assert.False(f.Matches("com.example.order.updated"));
+            var filter = CloudEventFilter.ByType("com.example.order.placed");
+            Assert.False(filter.Matches(MakeEvent("com.example.order.updated"), EventSubscriptionContext.Empty));
         }
 
         [Fact]
-        public static void ExactFilter_DoesNotMatchNull()
+        public static void PrefixTypeFilter_MatchesStartingValue()
         {
-            var f = EventAttributeFilter.Type("com.example.order.placed");
-            Assert.False(f.Matches(null));
+            var filter = CloudEventFilter.ByTypePattern("com.example.*");
+            Assert.True(filter.Matches(MakeEvent("com.example.order.placed"), EventSubscriptionContext.Empty));
         }
 
         [Fact]
-        public static void PrefixFilter_MatchesStartingValue()
+        public static void PrefixTypeFilter_DoesNotMatchNonStartingValue()
         {
-            var f = EventAttributeFilter.Type("com.example.", FilterMatchMode.Prefix);
-            Assert.True(f.Matches("com.example.order.placed"));
+            var filter = CloudEventFilter.ByTypePattern("com.example.*");
+            Assert.False(filter.Matches(MakeEvent("org.other.something"), EventSubscriptionContext.Empty));
         }
 
         [Fact]
-        public static void PrefixFilter_StripTrailingAsterisk()
+        public static void SuffixTypeFilter_MatchesEndingValue()
         {
-            var f = EventAttributeFilter.For("type", "com.example.*", parseWildcard: true);
-            // The trailing * is stripped; value stored is "com.example."
-            Assert.Equal("com.example.", f.Value);
-            Assert.True(f.Matches("com.example.user.created"));
+            var filter = CloudEventFilter.ByTypePattern("*.placed");
+            Assert.True(filter.Matches(MakeEvent("com.example.order.placed"), EventSubscriptionContext.Empty));
         }
 
         [Fact]
-        public static void PrefixFilter_DoesNotMatchNonStartingValue()
+        public static void SuffixTypeFilter_DoesNotMatchNonEndingValue()
         {
-            var f = EventAttributeFilter.Type("com.example.", FilterMatchMode.Prefix);
-            Assert.False(f.Matches("org.other.something"));
+            var filter = CloudEventFilter.ByTypePattern("*.placed");
+            Assert.False(filter.Matches(MakeEvent("com.example.order.updated"), EventSubscriptionContext.Empty));
         }
 
-        [Fact]
-        public static void SuffixFilter_MatchesEndingValue()
-        {
-            var f = EventAttributeFilter.Type(".placed", FilterMatchMode.Suffix);
-            Assert.True(f.Matches("com.example.order.placed"));
-        }
-
-        [Fact]
-        public static void SuffixFilter_StripLeadingAsterisk()
-        {
-            var f = EventAttributeFilter.For("type", "*.placed", parseWildcard: true);
-            Assert.Equal(".placed", f.Value);
-            Assert.True(f.Matches("com.foobar.placed"));
-        }
-
-        [Fact]
-        public static void ParsePattern_Exact()
-        {
-            var f = EventAttributeFilter.For("type", "com.example.order.placed", parseWildcard: true);
-            Assert.Equal(FilterMatchMode.Exact, f.MatchMode);
-        }
-
-        [Fact]
-        public static void ParsePattern_Prefix()
-        {
-            var f = EventAttributeFilter.For("type", "com.example.*", parseWildcard: true);
-            Assert.Equal(FilterMatchMode.Prefix, f.MatchMode);
-        }
-
-        [Fact]
-        public static void ParsePattern_Suffix()
-        {
-            var f = EventAttributeFilter.For("type", "*.placed", parseWildcard: true);
-            Assert.Equal(FilterMatchMode.Suffix, f.MatchMode);
-        }
-
-        // ── EventFilterBuilder / IEventFilter.Matches ────────────────────────────────
+        // ── CloudEventFilter / FilterExpression.Matches ────────────────────────────────────────────────────────
 
         [Fact]
         public static void EmptyFilter_MatchesAnyEvent()
         {
-            var filter = LogicalEventFilter.And();
+            var filter = FilterExpression.Constant(true);
             Assert.True(filter.Matches(MakeEvent(), EventSubscriptionContext.Empty));
         }
 
         [Fact]
         public static void TypeFilter_Exact_Matches()
         {
-            var filter = EventAttributeFilter.Type("com.example.order.placed");
+            var filter = CloudEventFilter.ByType("com.example.order.placed");
             Assert.True(filter.Matches(MakeEvent(type: "com.example.order.placed"), EventSubscriptionContext.Empty));
         }
 
         [Fact]
         public static void TypeFilter_Exact_DoesNotMatchOtherType()
         {
-            var filter = EventAttributeFilter.Type("com.example.order.placed");
+            var filter = CloudEventFilter.ByType("com.example.order.placed");
             Assert.False(filter.Matches(MakeEvent(type: "com.example.order.updated"), EventSubscriptionContext.Empty));
         }
 
         [Fact]
         public static void TypeFilter_Prefix_Wildcard_Matches()
         {
-            var filter = EventAttributeFilter.Type("com.example.*", parseWildcard: true);
+            var filter = CloudEventFilter.ByTypePattern("com.example.*");
             Assert.True(filter.Matches(MakeEvent(type: "com.example.order.placed"), EventSubscriptionContext.Empty));
             Assert.True(filter.Matches(MakeEvent(type: "com.example.user.created"), EventSubscriptionContext.Empty));
         }
@@ -147,56 +111,45 @@ namespace Deveel.Events
         [Fact]
         public static void TypeFilter_Prefix_Wildcard_DoesNotMatchOtherNamespace()
         {
-            var filter = EventAttributeFilter.Type("com.example.*", parseWildcard: true);
+            var filter = CloudEventFilter.ByTypePattern("com.example.*");
             Assert.False(filter.Matches(MakeEvent(type: "org.other.event"), EventSubscriptionContext.Empty));
         }
 
         [Fact]
         public static void SourceFilter_Matches()
         {
-            var filter = new EventFilterBuilder()
-                .WithSource("https://example.com/api")
-                .Build();
+            var filter = CloudEventFilter.BySource("https://example.com/api");
             Assert.True(filter.Matches(MakeEvent(source: "https://example.com/api"), EventSubscriptionContext.Empty));
         }
 
         [Fact]
         public static void SourceFilter_DoesNotMatchOtherSource()
         {
-            var filter = new EventFilterBuilder()
-                .WithSource("https://example.com/api")
-                .Build();
+            var filter = CloudEventFilter.BySource("https://example.com/api");
             Assert.False(filter.Matches(MakeEvent(source: "https://other.com/api"), EventSubscriptionContext.Empty));
         }
 
         [Fact]
         public static void SubjectFilter_Matches()
         {
-            var filter = new EventFilterBuilder()
-                .WithSubject("orders/42")
-                .Build();
+            var filter = CloudEventFilter.BySubject("orders/42");
             Assert.True(filter.Matches(MakeEvent(subject: "orders/42"), EventSubscriptionContext.Empty));
         }
 
         [Fact]
         public static void SubjectFilter_DoesNotMatchMissingSubject()
         {
-            var filter = new EventFilterBuilder()
-                .WithSubject("orders/42")
-                .Build();
-            // Event has no subject → subject is null → filter rejects
+            var filter = CloudEventFilter.BySubject("orders/42");
             Assert.False(filter.Matches(MakeEvent(), EventSubscriptionContext.Empty));
         }
 
-        
         [Fact]
         public static void CombinedFilter_AllCriteriaMustPass()
         {
-            var filter = new EventFilterBuilder()
-                .WithTypePattern("com.example.*")
-                .WithSource("https://example.com/api")
-                .WithSubjectPattern("orders/*")
-                .Build();
+            var filter = CloudEventFilter.All(
+                CloudEventFilter.ByTypePattern("com.example.*"),
+                CloudEventFilter.BySource("https://example.com/api"),
+                CloudEventFilter.BySubjectPattern("orders/*"));
 
             var matching = MakeEvent(
                 type: "com.example.order.placed",
@@ -215,7 +168,7 @@ namespace Deveel.Events
         [Fact]
         public static void Filter_ReturnsFalseForNullEvent()
         {
-            var filter = LogicalEventFilter.And();
+            var filter = FilterExpression.Constant(true);
             Assert.False(filter.Matches(null!, EventSubscriptionContext.Empty));
         }
     }
@@ -238,7 +191,7 @@ namespace Deveel.Events
         {
             var registry = new EventSubscriptionRegistry();
             var sub = new EventSubscription(
-                EventAttributeFilter.Type("com.example.test"),
+                CloudEventFilter.ByType("com.example.test"),
                 (_, _) => Task.CompletedTask,
                 "test-sub");
 
@@ -254,7 +207,7 @@ namespace Deveel.Events
         {
             var registry = new EventSubscriptionRegistry();
             var sub = new EventSubscription(
-                EventAttributeFilter.Type("com.example.other"),
+                CloudEventFilter.ByType("com.example.other"),
                 (_, _) => Task.CompletedTask);
 
             registry.Register(sub);
@@ -267,7 +220,7 @@ namespace Deveel.Events
         public static void Constructor_AcceptsPreSeededSubscriptions()
         {
             var sub = new EventSubscription(
-                LogicalEventFilter.And(),
+                FilterExpression.Constant(true),
                 (_, _) => Task.CompletedTask);
 
             var registry = new EventSubscriptionRegistry([sub]);
@@ -280,11 +233,11 @@ namespace Deveel.Events
         {
             var registry = new EventSubscriptionRegistry();
 
-            var sub1 = new EventSubscription(EventAttributeFilter.Type("com.example.*", parseWildcard: true),
+            var sub1 = new EventSubscription(CloudEventFilter.ByTypePattern("com.example.*"),
                 (_, _) => Task.CompletedTask, "sub1");
-            var sub2 = new EventSubscription(EventAttributeFilter.Type("com.example.test"),
+            var sub2 = new EventSubscription(CloudEventFilter.ByType("com.example.test"),
                 (_, _) => Task.CompletedTask, "sub2");
-            var sub3 = new EventSubscription(EventAttributeFilter.Type("com.example.other"),
+            var sub3 = new EventSubscription(CloudEventFilter.ByType("com.example.other"),
                 (_, _) => Task.CompletedTask, "sub3");
 
             registry.Register(sub1);
@@ -319,7 +272,7 @@ namespace Deveel.Events
 
             var registry = new EventSubscriptionRegistry([
                 new EventSubscription(
-                    EventAttributeFilter.Type("com.example.test"),
+                    CloudEventFilter.ByType("com.example.test"),
                     (e, _) => { handled.Add(e); return Task.CompletedTask; },
                     "sub")
             ]);
@@ -339,7 +292,7 @@ namespace Deveel.Events
 
             var registry = new EventSubscriptionRegistry([
                 new EventSubscription(
-                    EventAttributeFilter.Type("com.example.other"),
+                    CloudEventFilter.ByType("com.example.other"),
                     (_, _) => { handled = true; return Task.CompletedTask; })
             ]);
 
@@ -354,13 +307,11 @@ namespace Deveel.Events
         {
             var registry = new EventSubscriptionRegistry([
                 new EventSubscription(
-                    LogicalEventFilter.And(),
+                    FilterExpression.Constant(true),
                     (_, _) => throw new InvalidOperationException("boom"))
             ]);
 
             var dispatcher = new EventDispatcher(registry);
-
-            // Should NOT throw by default.
             await dispatcher.DispatchAsync(MakeEvent());
         }
 
@@ -369,7 +320,7 @@ namespace Deveel.Events
         {
             var registry = new EventSubscriptionRegistry([
                 new EventSubscription(
-                    LogicalEventFilter.And(),
+                    FilterExpression.Constant(true),
                     (_, _) => throw new InvalidOperationException("boom"))
             ]);
 
@@ -386,11 +337,11 @@ namespace Deveel.Events
 
             var registry = new EventSubscriptionRegistry([
                 new EventSubscription(
-                    LogicalEventFilter.And(),
+                    FilterExpression.Constant(true),
                     (_, _) => { invoked.Add("sub1"); return Task.CompletedTask; },
                     "sub1"),
                 new EventSubscription(
-                    LogicalEventFilter.And(),
+                    FilterExpression.Constant(true),
                     (_, _) => { invoked.Add("sub2"); return Task.CompletedTask; },
                     "sub2")
             ]);
@@ -408,7 +359,7 @@ namespace Deveel.Events
 
             var registry = new EventSubscriptionRegistry([
                 new EventSubscription(
-                    LogicalEventFilter.And(),
+                    FilterExpression.Constant(true),
                     (_, _) => { handled = true; return Task.CompletedTask; })
             ]);
 
@@ -422,7 +373,7 @@ namespace Deveel.Events
         public async Task DispatchAsync_RespectsCancellation()
         {
             var registry = new EventSubscriptionRegistry([
-                new EventSubscription(LogicalEventFilter.And(),
+                new EventSubscription(FilterExpression.Constant(true),
                     async (_, ct) => await Task.Delay(Timeout.Infinite, ct))
             ]);
 
@@ -537,9 +488,10 @@ namespace Deveel.Events
             services.AddEventPublisher(opt => opt.Source = new Uri("https://example.com"))
                 .AddDispatcher()
                 .Subscribe(
-                    fb => fb.WithTypePattern("com.example.*")
-                             // Uri.ToString() normalises "https://example.com" → "https://example.com/"
-                             .WithSource("https://example.com/"),
+                    CloudEventFilter.All(
+                        CloudEventFilter.ByTypePattern("com.example.*"),
+                        // Uri.ToString() normalises "https://example.com" → "https://example.com/"
+                        CloudEventFilter.BySource("https://example.com/")),
                     (_, _) => { handled = true; return Task.CompletedTask; });
 
             var provider = services.BuildServiceProvider();
@@ -588,8 +540,8 @@ namespace Deveel.Events
 
             public string? Name => nameof(OrderPlacedSubscription);
 
-            public EventFilter Filter =>
-                EventFilter.Type("com.example.order.placed");
+            public FilterExpression Filter =>
+                CloudEventFilter.ByType("com.example.order.placed");
 
             public Task HandleAsync(CloudEvent @event, CancellationToken cancellationToken = default)
             {
@@ -604,8 +556,6 @@ namespace Deveel.Events
     [Trait("Feature", "Subscriptions")]
     public static class EventDataFilterTests
     {
-        // ── helpers ────────────────────────────────────────────────────────────────
-
         private static CloudEvent JsonEvent(object? data, string contentType = "application/json")
         {
             var e = new CloudEvent
@@ -634,54 +584,46 @@ namespace Deveel.Events
 
         private static readonly EventSubscriptionContext Empty = EventSubscriptionContext.Empty;
 
-        // ── EventDataFilter ───────────────────────────────────────────────────────
-
         [Fact]
         public static void JsonPath_ExactMatch_TopLevel_ReturnsTrue()
         {
-            var filter = EventDataFilter.Create("status", FilterOperator.Equals, "active");
-            var @event = JsonEvent(new { status = "active" });
-            Assert.True(filter.Matches(@event, Empty));
+            var filter = CloudEventFilter.ByField("status", FilterExpressionType.Equal, "active");
+            Assert.True(filter.Matches(JsonEvent(new { status = "active" }), Empty));
         }
 
         [Fact]
         public static void JsonPath_ExactMatch_TopLevel_ReturnsFalse()
         {
-            var filter = EventDataFilter.Create("status", FilterOperator.Equals, "inactive");
-            var @event = JsonEvent(new { status = "active" });
-            Assert.False(filter.Matches(@event, Empty));
+            var filter = CloudEventFilter.ByField("status", FilterExpressionType.Equal, "inactive");
+            Assert.False(filter.Matches(JsonEvent(new { status = "active" }), Empty));
         }
 
         [Fact]
         public static void JsonPath_Nested_ReturnsTrue()
         {
-            var filter = EventDataFilter.Create("order.customer.tier", FilterOperator.Equals, "gold");
-            var @event = JsonEvent(new { order = new { customer = new { tier = "gold" } } });
-            Assert.True(filter.Matches(@event, Empty));
+            var filter = CloudEventFilter.ByField("order.customer.tier", FilterExpressionType.Equal, "gold");
+            Assert.True(filter.Matches(JsonEvent(new { order = new { customer = new { tier = "gold" } } }), Empty));
         }
 
         [Fact]
         public static void JsonPath_Nested_MissingSegment_ReturnsFalse()
         {
-            var filter = EventDataFilter.Create("order.customer.tier", FilterOperator.Equals, "gold");
-            var @event = JsonEvent(new { order = new { customer = new { } } });
-            Assert.False(filter.Matches(@event, Empty));
+            var filter = CloudEventFilter.ByField("order.customer.tier", FilterExpressionType.Equal, "gold");
+            Assert.False(filter.Matches(JsonEvent(new { order = new { customer = new { } } }), Empty));
         }
 
         [Fact]
         public static void JsonPath_PrefixPattern_Matches()
         {
-            var filter = EventDataFilter.Create("type", FilterOperator.StartsWith, "order.");
-            var @event = JsonEvent(new { type = "order.placed" });
-            Assert.True(filter.Matches(@event, Empty));
+            var filter = CloudEventFilter.FieldStartsWith("type", "order.");
+            Assert.True(filter.Matches(JsonEvent(new { type = "order.placed" }), Empty));
         }
 
         [Fact]
         public static void JsonPath_PrefixPattern_NoMatch()
         {
-            var filter = EventDataFilter.Create("type", FilterOperator.StartsWith, "order.");
-            var @event = JsonEvent(new { type = "shipment.dispatched" });
-            Assert.False(filter.Matches(@event, Empty));
+            var filter = CloudEventFilter.FieldStartsWith("type", "order.");
+            Assert.False(filter.Matches(JsonEvent(new { type = "shipment.dispatched" }), Empty));
         }
 
         [Fact]
@@ -689,48 +631,45 @@ namespace Deveel.Events
         {
             using var doc = JsonDocument.Parse("""{"status":"active"}""");
             var @event = JsonEvent(doc.RootElement.Clone());
-            Assert.True(EventDataFilter.Create("status", FilterOperator.Equals, "active").Matches(@event, Empty));
+            var filter = CloudEventFilter.ByField("status", FilterExpressionType.Equal, "active");
+            Assert.True(filter.Matches(@event, Empty));
         }
 
         [Fact]
         public static void JsonPath_FromJsonString_Matches()
         {
             var @event = JsonEvent("""{"status":"active"}""");
-            Assert.True(EventDataFilter.Create("status", FilterOperator.Equals, "active").Matches(@event, Empty));
+            var filter = CloudEventFilter.ByField("status", FilterExpressionType.Equal, "active");
+            Assert.True(filter.Matches(@event, Empty));
         }
 
         [Fact]
         public static void JsonPath_BinaryData_ReturnsFalse()
         {
-            var filter = EventDataFilter.Create("status", FilterOperator.Equals, "active");
+            var filter = CloudEventFilter.ByField("status", FilterExpressionType.Equal, "active");
             Assert.False(filter.Matches(BinaryEvent([1, 2, 3]), Empty));
         }
 
         [Fact]
         public static void JsonPath_NullData_ReturnsFalse()
         {
-            var filter = EventDataFilter.Create("status", FilterOperator.Equals, "active");
+            var filter = CloudEventFilter.ByField("status", FilterExpressionType.Equal, "active");
             Assert.False(filter.Matches(JsonEvent(null), Empty));
         }
 
         [Fact]
         public static void JsonPath_NonJsonContentType_ReturnsFalse()
         {
-            var filter = EventDataFilter.Create("status", FilterOperator.Equals, "active");
-            var @event = JsonEvent(new { status = "active" }, contentType: "text/plain");
-            Assert.False(filter.Matches(@event, Empty));
+            var filter = CloudEventFilter.ByField("status", FilterExpressionType.Equal, "active");
+            Assert.False(filter.Matches(JsonEvent(new { status = "active" }, contentType: "text/plain"), Empty));
         }
-        
-
-        // ── Integration with EventFilterBuilder ────────────────────────────────────────
 
         [Fact]
         public static void DataFilter_CombinedWithTypeFilter_BothMustPass()
         {
-            var filter = new EventFilterBuilder()
-                .WithType("com.example.order.placed")
-                .WithField("order.status", "confirmed")
-                .Build();
+            var filter = CloudEventFilter.All(
+                CloudEventFilter.ByType("com.example.order.placed"),
+                CloudEventFilter.ByField("order.status", "confirmed"));
 
             var matching = JsonEvent(new { order = new { status = "confirmed" } });
             matching.Type = "com.example.order.placed";
@@ -754,8 +693,9 @@ namespace Deveel.Events
             services.AddEventPublisher(opt => opt.Source = new Uri("https://example.com"))
                 .AddDispatcher()
                 .Subscribe(
-                    fb => fb.WithType("com.example.order.placed")
-                             .WithField("tier", "gold"),
+                    CloudEventFilter.All(
+                        CloudEventFilter.ByType("com.example.order.placed"),
+                        CloudEventFilter.ByField("tier", "gold")),
                     (_, _) => { invoked = true; return Task.CompletedTask; });
 
             var provider = services.BuildServiceProvider();
@@ -784,8 +724,9 @@ namespace Deveel.Events
             services.AddEventPublisher(opt => opt.Source = new Uri("https://example.com"))
                 .AddDispatcher()
                 .Subscribe(
-                    fb => fb.WithType("com.example.order.placed")
-                             .WithField("tier", "gold"),
+                    CloudEventFilter.All(
+                        CloudEventFilter.ByType("com.example.order.placed"),
+                        CloudEventFilter.ByField("tier", "gold")),
                     (_, _) => { invoked = true; return Task.CompletedTask; });
 
             var provider = services.BuildServiceProvider();
@@ -803,11 +744,8 @@ namespace Deveel.Events
 
             Assert.False(invoked);
         }
-
-        // ── helper types ───────────────────────────────────────────────────────────
     }
 }
-
 
 
 

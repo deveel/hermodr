@@ -5,6 +5,8 @@
 
 using CloudNative.CloudEvents;
 
+using Deveel.Filters;
+
 namespace Deveel.Events
 {
     /// <summary>
@@ -29,9 +31,9 @@ namespace Deveel.Events
             };
 
         private static EventSubscription MakeSub(
-            EventFilter? filter = null,
+            FilterExpression? filter = null,
             string? name = null)
-            => new(filter ?? LogicalEventFilter.And(),
+            => new(filter ?? FilterExpression.Constant(true),
                    (_, _) => Task.CompletedTask,
                    name);
 
@@ -48,7 +50,7 @@ namespace Deveel.Events
         public static void Register_SingleSubscription_IsRetrievable()
         {
             var registry = new EventSubscriptionRegistry();
-            var sub = MakeSub(EventAttributeFilter.Type("com.example.order.placed"), "order-sub");
+            var sub = MakeSub(CloudEventFilter.ByType("com.example.order.placed"), "order-sub");
 
             registry.Register(sub);
 
@@ -97,16 +99,15 @@ namespace Deveel.Events
         }
 
         [Fact]
-        public static void Register_ThenGetMatchingSubscriptionsAsync_ReturnsSameResult()
+        public static async Task Register_ThenGetMatchingSubscriptionsAsync_ReturnsSameResult()
         {
             var registry = new EventSubscriptionRegistry();
-            var sub = MakeSub(EventAttributeFilter.Type("com.example.order.placed"));
+            var sub = MakeSub(CloudEventFilter.ByType("com.example.order.placed"));
 
             registry.Register(sub);
 
             // Retrieve via async path after sync registration.
-            var matches = registry.ResolveSubscriptionsAsync(MakeEvent("com.example.order.placed"))
-                                  .GetAwaiter().GetResult();
+            var matches = await registry.ResolveSubscriptionsAsync(MakeEvent("com.example.order.placed"));
 
             Assert.Single(matches);
             Assert.Same(sub, matches[0]);
@@ -115,10 +116,10 @@ namespace Deveel.Events
         [Fact]
         public static void Register_AfterPreSeeding_AddsToExistingSubscriptions()
         {
-            var seeded = MakeSub(EventAttributeFilter.Type("com.example.seeded"), "seeded");
+            var seeded = MakeSub(CloudEventFilter.ByType("com.example.seeded"), "seeded");
             var registry = new EventSubscriptionRegistry([seeded]);
 
-            var newSub = MakeSub(EventAttributeFilter.Type("com.example.new"), "new");
+            var newSub = MakeSub(CloudEventFilter.ByType("com.example.new"), "new");
             registry.Register(newSub);
 
             Assert.Single(registry.GetMatchingSubscriptions(MakeEvent("com.example.seeded")));
@@ -152,7 +153,7 @@ namespace Deveel.Events
         public static async Task RegisterAsync_SingleSubscription_IsRetrievable()
         {
             var registry = new EventSubscriptionRegistry();
-            var sub = MakeSub(EventAttributeFilter.Type("com.example.order.placed"), "async-sub");
+            var sub = MakeSub(CloudEventFilter.ByType("com.example.order.placed"), "async-sub");
 
             await registry.RegisterAsync(sub);
 
@@ -178,7 +179,7 @@ namespace Deveel.Events
         public static async Task RegisterAsync_EmptyFilter_MatchesAnyEvent()
         {
             var registry = new EventSubscriptionRegistry();
-            var sub = MakeSub(LogicalEventFilter.And());  // empty = match all
+            var sub = MakeSub(FilterExpression.Constant(true));  // empty = match all
 
             await registry.RegisterAsync(sub);
 
@@ -206,7 +207,7 @@ namespace Deveel.Events
         public static async Task RegisterAsync_ThenGetMatchingSubscriptionsSync_ReturnsSameResult()
         {
             var registry = new EventSubscriptionRegistry();
-            var sub = MakeSub(EventAttributeFilter.Type("com.example.order.placed"));
+            var sub = MakeSub(CloudEventFilter.ByType("com.example.order.placed"));
 
             await registry.RegisterAsync(sub);
 
@@ -220,7 +221,7 @@ namespace Deveel.Events
         public static async Task RegisterAsync_DoesNotMatchFilteredOutEvent()
         {
             var registry = new EventSubscriptionRegistry();
-            var sub = MakeSub(EventAttributeFilter.Type("com.example.specific"));
+            var sub = MakeSub(CloudEventFilter.ByType("com.example.specific"));
 
             await registry.RegisterAsync(sub);
 
@@ -231,10 +232,10 @@ namespace Deveel.Events
         [Fact]
         public static async Task RegisterAsync_AfterPreSeeding_AddsToExistingSubscriptions()
         {
-            var seeded = MakeSub(EventAttributeFilter.Type("com.example.seeded"), "seeded");
+            var seeded = MakeSub(CloudEventFilter.ByType("com.example.seeded"), "seeded");
             var registry = new EventSubscriptionRegistry([seeded]);
 
-            var newSub = MakeSub(EventAttributeFilter.Type("com.example.new"), "new");
+            var newSub = MakeSub(CloudEventFilter.ByType("com.example.new"), "new");
             await registry.RegisterAsync(newSub);
 
             Assert.Single(await registry.ResolveSubscriptionsAsync(MakeEvent("com.example.seeded")));
@@ -245,7 +246,7 @@ namespace Deveel.Events
         public static async Task RegisterAsync_WithContext_IsRetrievableViaContextOverload()
         {
             var registry = new EventSubscriptionRegistry();
-            var sub = MakeSub(EventAttributeFilter.Type("com.example.order.placed"));
+            var sub = MakeSub(CloudEventFilter.ByType("com.example.order.placed"));
 
             await registry.RegisterAsync(sub);
 
@@ -265,8 +266,8 @@ namespace Deveel.Events
         {
             var registry = new EventSubscriptionRegistry();
 
-            var syncSub = MakeSub(EventAttributeFilter.Type("com.example.sync"), "sync");
-            var asyncSub = MakeSub(EventAttributeFilter.Type("com.example.async"), "async");
+            var syncSub = MakeSub(CloudEventFilter.ByType("com.example.sync"), "sync");
+            var asyncSub = MakeSub(CloudEventFilter.ByType("com.example.async"), "async");
 
             registry.Register(syncSub);
             await registry.RegisterAsync(asyncSub);

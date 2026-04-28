@@ -7,6 +7,8 @@ using System.Text.Json;
 
 using CloudNative.CloudEvents;
 
+using Deveel.Filters;
+
 namespace Deveel.Events
 {
     /// <summary>
@@ -17,7 +19,7 @@ namespace Deveel.Events
     /// <para>
     /// Implementations are resolved from the DI container by
     /// <see cref="EventSubscriptionContext.GetJsonData"/> when a <see cref="CloudEvent"/> is
-    /// being evaluated by an <see cref="EventDataFilter"/>.  The first registered implementation
+    /// being evaluated by a <see cref="FilterExpression"/>.  The first registered implementation
     /// whose <see cref="CanDeserialize"/> method returns <c>true</c> for the event's
     /// <c>datacontenttype</c> is used.
     /// </para>

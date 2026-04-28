@@ -4,6 +4,7 @@
 //
 
 using CloudNative.CloudEvents;
+using Deveel.Filters;
 
 namespace Deveel.Events
 {
@@ -22,7 +23,7 @@ namespace Deveel.Events
         /// Gets the filter that determines which <see cref="CloudEvent"/>s this subscription
         /// is interested in.
         /// </summary>
-        EventFilter Filter { get; }
+        FilterExpression Filter { get; }
 
         /// <summary>
         /// Invokes the subscription handler with the supplied <paramref name="event"/>.
