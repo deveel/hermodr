@@ -184,7 +184,7 @@ namespace Deveel.Events
             var publisher = BuildPublisher(channel);
 
             // Act – explicitly pass null
-            await publisher.PublishEventAsync(MakeEvent(), null, TestContext.Current.CancellationToken);
+            await publisher.PublishEventAsync(MakeEvent(), cancellationToken: TestContext.Current.CancellationToken);
 
             // Assert – null forwarded; channel used its registered defaults
             Assert.NotNull(channel.LastEffectiveOptions);

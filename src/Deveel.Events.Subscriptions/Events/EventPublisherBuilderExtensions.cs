@@ -245,7 +245,7 @@ namespace Deveel.Events
 
         /// <summary>
         /// Registers a <see cref="RoutingEventSubscription"/> that, when an event matches
-        /// <paramref name="filter"/>, re-publishes it through the <see cref="IEventPublisher"/>
+        /// <paramref name="filter"/>, re-publishes it through the <see cref="EventPublisher"/>
         /// pipeline using the specified <paramref name="routingOptions"/> to select the target
         /// channel.
         /// </summary>
@@ -255,7 +255,7 @@ namespace Deveel.Events
         /// </param>
         /// <param name="routingOptions">
         /// The <see cref="EventPublishOptions"/> forwarded to
-        /// <see cref="IEventPublisher.PublishEventAsync"/> to select the target channel.
+        /// <see cref="EventPublisher.PublishEventAsync(CloudNative.CloudEvents.CloudEvent, EventPublishOptions, System.Threading.CancellationToken)"/> to select the target channel.
         /// When <c>null</c> the publisher uses its default channel-selection rules.
         /// </param>
         /// <param name="name">An optional human-readable name for this subscription.</param>
@@ -274,7 +274,7 @@ namespace Deveel.Events
         /// <summary>
         /// Registers a <see cref="RoutingEventSubscription"/> that, when an event whose
         /// <c>type</c> matches <paramref name="typePattern"/> is received, re-publishes it
-        /// through the <see cref="IEventPublisher"/> pipeline using the specified
+        /// through the <see cref="EventPublisher"/> pipeline using the specified
         /// <paramref name="routingOptions"/> to select the target channel.
         /// </summary>
         /// <param name="builder">The builder to configure.</param>
@@ -284,7 +284,7 @@ namespace Deveel.Events
         /// </param>
         /// <param name="routingOptions">
         /// The <see cref="EventPublishOptions"/> forwarded to
-        /// <see cref="IEventPublisher.PublishEventAsync"/> to select the target channel.
+        /// <see cref="EventPublisher.PublishEventAsync(CloudNative.CloudEvents.CloudEvent, EventPublishOptions, System.Threading.CancellationToken)"/> to select the target channel.
         /// When <c>null</c> the publisher uses its default channel-selection rules.
         /// </param>
         /// <param name="name">An optional human-readable name for this subscription.</param>

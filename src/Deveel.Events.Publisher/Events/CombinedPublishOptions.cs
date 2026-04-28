@@ -8,7 +8,7 @@ namespace Deveel.Events
     /// <summary>
     /// An <see cref="EventPublishOptions"/> implementation that bundles multiple
     /// per-channel options together so that a single instance can be passed to any
-    /// <see cref="IEventPublisher"/> publish call spanning several heterogeneous
+    /// <see cref="EventPublisher"/> publish call spanning several heterogeneous
     /// channels.
     /// </summary>
     /// <remarks>

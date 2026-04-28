@@ -15,7 +15,7 @@ namespace Deveel.Events
     /// Integration-level tests that cover scenarios not
     /// addressed by the focused unit-test files:
     ///   - Multiple channels all receive the event
-    ///   - <see cref="IEventPublisher"/> interface resolution and usage
+    ///   - <see cref="EventPublisher"/> interface resolution and usage
     ///   - <see cref="EventPublisher.PublishAsync{TData}"/> when TData is a <see cref="CloudEvent"/>
     ///   - <see cref="EventPublisher.PublishAsync{TData}"/> when TData is <see cref="IEventConvertible"/>
     ///     returning null (ThrowOnErrors = false swallows)
@@ -44,31 +44,31 @@ namespace Deveel.Events
             Assert.Null(opts.DataSchemaBaseUri);
         }
 
-        // ── IEventPublisher interface ────────────────────────────────────────
+        // ── EventPublisher interface ────────────────────────────────────────
 
         [Fact]
-        public static void IEventPublisher_ResolvedFromDI()
+        public static void EventPublisher_ResolvedFromDI()
         {
             var services = new ServiceCollection();
             services.AddEventPublisher();
 
             var sp = services.BuildServiceProvider();
-            var publisher = sp.GetService<IEventPublisher>();
+            var publisher = sp.GetService<EventPublisher>();
 
             Assert.NotNull(publisher);
         }
 
         [Fact]
-        public async Task IEventPublisher_PublishEventAsync_DeliversEvent()
+        public async Task EventPublisher_PublishEventAsync_DeliversEvent()
         {
             var received = new List<CloudEvent>();
             var services = new ServiceCollection();
             services.AddEventPublisher().AddTestChannel(e => received.Add(e));
 
             var sp        = services.BuildServiceProvider();
-            var publisher = sp.GetRequiredService<IEventPublisher>();
+            var publisher = sp.GetRequiredService<EventPublisher>();
 
-            await publisher.PublishEventAsync(ValidEvent(), null, TestContext.Current.CancellationToken);
+            await publisher.PublishEventAsync(ValidEvent(), cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Single(received);
         }
@@ -91,7 +91,7 @@ namespace Deveel.Events
 
             var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
             var evt = ValidEvent();
-            await publisher.PublishEventAsync(evt, null, TestContext.Current.CancellationToken);
+            await publisher.PublishEventAsync(evt, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Single(channel1Events);
             Assert.Single(channel2Events);
@@ -110,7 +110,7 @@ namespace Deveel.Events
             var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
 
             var cloudEvent = ValidEvent("direct.cloud.event");
-            await publisher.PublishAsync(cloudEvent, null, TestContext.Current.CancellationToken);
+            await publisher.PublishAsync(cloudEvent, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Single(received);
             Assert.Equal("direct.cloud.event", received[0].Type);
@@ -128,7 +128,7 @@ namespace Deveel.Events
             var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
 
             await publisher.PublishAsync(new OrderShipped { OrderId = "42" },
-                null, TestContext.Current.CancellationToken);
+                cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Single(received);
             Assert.Equal("order.shipped", received[0].Type);
@@ -145,7 +145,7 @@ namespace Deveel.Events
             var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
 
             // NullConvertible intentionally throws inside ToCloudEvent()
-            await publisher.PublishAsync(new ThrowingConvertible(), null,
+            await publisher.PublishAsync(new ThrowingConvertible(), cancellationToken:
                 TestContext.Current.CancellationToken);
 
             Assert.Empty(received); // nothing was delivered
@@ -161,7 +161,7 @@ namespace Deveel.Events
             var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
 
             await Assert.ThrowsAsync<EventPublishException>(
-                () => publisher.PublishAsync(new ThrowingConvertible(), null,
+                () => publisher.PublishAsync(new ThrowingConvertible(), cancellationToken:
                     TestContext.Current.CancellationToken));
         }
 
@@ -183,7 +183,7 @@ namespace Deveel.Events
             {
                 Type   = "test.event",
                 Source = new Uri("https://example.com"),
-            }, null, TestContext.Current.CancellationToken);
+            }, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Single(received);
         }
@@ -199,7 +199,7 @@ namespace Deveel.Events
             var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
 
             // No exception expected — just nothing to deliver to
-            await publisher.PublishEventAsync(ValidEvent(), null, TestContext.Current.CancellationToken);
+            await publisher.PublishEventAsync(ValidEvent(), cancellationToken: TestContext.Current.CancellationToken);
         }
 
         // ── Typed channel routing ─────────────────────────────────────────────
@@ -217,7 +217,7 @@ namespace Deveel.Events
 
             var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
             await publisher.PublishEventAsync(ValidEvent("generic.event"),
-                null, TestContext.Current.CancellationToken);
+                cancellationToken: TestContext.Current.CancellationToken);
 
             // Both channels registered as IEventPublishChannel receive the event
             Assert.Single(generalEvents);

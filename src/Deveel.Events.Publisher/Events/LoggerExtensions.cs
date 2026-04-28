@@ -21,5 +21,8 @@ namespace Deveel.Events {
 
 		[LoggerMessage(400013, LogLevel.Debug, "The event of type '{EventType}' was successfully published through the channel of type '{ChannelType}'")]
 		public static partial void TraceEventPublished(this ILogger logger, string eventType, Type channelType);
+
+		[LoggerMessage(400014, LogLevel.Debug, "Event-publish middleware pipeline built with {MiddlewareCount} middleware component(s)")]
+		public static partial void TraceMiddlewarePipelineBuilt(this ILogger logger, int middlewareCount);
 	}
 }

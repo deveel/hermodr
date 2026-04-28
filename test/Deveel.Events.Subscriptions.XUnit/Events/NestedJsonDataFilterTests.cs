@@ -242,7 +242,7 @@ namespace Deveel.Events
                     name: "us-handler");
 
             var provider = services.BuildServiceProvider();
-            var publisher = provider.GetRequiredService<IEventPublisher>();
+            var publisher = provider.GetRequiredService<EventPublisher>();
 
             var goldUs   = EventWithData(MakeOrder(tier: "gold",   country: "US"));
             var silverUs = EventWithData(MakeOrder(tier: "silver", country: "US"));
@@ -286,7 +286,7 @@ namespace Deveel.Events
                     });
 
             var provider = services.BuildServiceProvider();
-            var publisher = provider.GetRequiredService<IEventPublisher>();
+            var publisher = provider.GetRequiredService<EventPublisher>();
 
             await publisher.PublishEventAsync(EventWithData(MakeOrder(amount: 600,  isPaid: true)));   // match
             await publisher.PublishEventAsync(EventWithData(MakeOrder(amount: 499,  isPaid: true)));   // amount too low

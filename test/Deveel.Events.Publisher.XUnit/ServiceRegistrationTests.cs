@@ -174,10 +174,8 @@ namespace Deveel.Events
             public CustomEventPublisher(
                 IOptions<EventPublisherOptions> options,
                 IEnumerable<IEventPublishChannel> channels,
-                IEventCreator? eventCreator = null,
-                IEventIdGenerator? idGenerator = null,
-                IEventSystemTime? systemTime = null)
-                : base(options, channels, eventCreator, idGenerator, systemTime)
+                IServiceProvider serviceProvider)
+                : base(options, channels, serviceProvider)
             {
             }
         }

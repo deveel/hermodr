@@ -27,7 +27,6 @@ namespace Deveel.Events {
 			Services.AddOptions<EventPublisherOptions>()
 				.ValidateOnStart();
 			Services.TryAddSingleton<IValidateOptions<EventPublisherOptions>>(_ => new EventPublisherOptionsValidator(Services));
-			Services.TryAddSingleton<IEventPublisher, EventPublisher>();
 			Services.TryAddSingleton<EventPublisher>();
 			Services.TryAddSingleton<IEventIdGenerator>(EventGuidGenerator.Default);
 			Services.TryAddSingleton<IEventSystemTime>(EventSystemTime.Instance);
@@ -83,19 +82,16 @@ namespace Deveel.Events {
         /// further configure the publisher.
         /// </returns>
         public EventPublisherBuilder UsePublisher<TPublisher>(ServiceLifetime lifetime = ServiceLifetime.Singleton)
-			where TPublisher : IEventPublisher
+			where TPublisher : EventPublisher
         {
-	        Services.RemoveAll<IEventPublisher>();
-			Services.Add(new ServiceDescriptor(typeof(IEventPublisher), typeof(TPublisher), lifetime));
 			Services.Add(new ServiceDescriptor(typeof(TPublisher), typeof(TPublisher), lifetime));
 
-			if (typeof(TPublisher) != typeof(EventPublisher) &&
-			    typeof(EventPublisher).IsAssignableFrom(typeof(TPublisher)))
+			if (typeof(TPublisher) != typeof(EventPublisher))
 			{
 				Services.RemoveAll<EventPublisher>();
 				Services.Add(new ServiceDescriptor(typeof(EventPublisher), typeof(TPublisher), lifetime));
 			}
-			
+
 			return this;
 		}
 

@@ -6,6 +6,7 @@ using CloudNative.CloudEvents;
 using Deveel.Filters;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Deveel.Events
 {
@@ -27,24 +28,34 @@ namespace Deveel.Events
             Time   = DateTimeOffset.UtcNow
         };
 
-        /// <summary>Minimal IEventPublisher that records published events.</summary>
-        private sealed class RecordingPublisher : IEventPublisher
+        /// <summary>EventPublisher subclass that captures the raw call to PublishEventAsync.</summary>
+        private sealed class RecordingPublisher : EventPublisher
         {
             public List<CloudEvent> Published { get; } = new();
             public EventPublishOptions? LastOptions { get; private set; }
 
-            public Task PublishAsync(Type eventType, object? @event, EventPublishOptions? options = null, CancellationToken cancellationToken = default)
-                => Task.CompletedTask;
+            public RecordingPublisher(
+                IOptions<EventPublisherOptions> options,
+                IEnumerable<IEventPublishChannel> channels,
+                IServiceProvider serviceProvider)
+                : base(options, channels, serviceProvider) { }
 
-            public Task PublishAsync<TData>(TData data, EventPublishOptions? options = null, CancellationToken cancellationToken = default)
-                => Task.CompletedTask;
-
-            public Task PublishEventAsync(CloudEvent @event, EventPublishOptions? options = null, CancellationToken cancellationToken = default)
+            public override Task PublishEventAsync(CloudEvent @event, EventPublishOptions? options = null, CancellationToken cancellationToken = default)
             {
                 Published.Add(@event);
                 LastOptions = options;
                 return Task.CompletedTask;
             }
+        }
+
+        /// <summary>Builds a service provider with a <see cref="RecordingPublisher"/> registered.</summary>
+        private static (IServiceProvider Provider, RecordingPublisher Recording) BuildRecordingProvider()
+        {
+            var services = new ServiceCollection();
+            services.AddEventPublisher().UsePublisher<RecordingPublisher>();
+            var provider = services.BuildServiceProvider();
+            var recording = (RecordingPublisher)provider.GetRequiredService<EventPublisher>();
+            return (provider, recording);
         }
 
         // ── RoutingEventSubscription constructor null-guards ───────────────────
@@ -86,11 +97,7 @@ namespace Deveel.Events
         [Fact]
         public async Task HandleAsync_RepublishesEventThroughPublisher()
         {
-            var recording = new RecordingPublisher();
-
-            var services = new ServiceCollection();
-            services.AddSingleton<IEventPublisher>(recording);
-            var sp = services.BuildServiceProvider();
+            var (sp, recording) = BuildRecordingProvider();
 
             var filter = FilterExpression.Constant(true);
             var sub    = new RoutingEventSubscription(filter, sp);
@@ -106,12 +113,9 @@ namespace Deveel.Events
         [Fact]
         public async Task HandleAsync_ForwardsRoutingOptions()
         {
-            var recording = new RecordingPublisher();
             var opts = new NamedChannelPublishOptions("target-channel");
 
-            var services = new ServiceCollection();
-            services.AddSingleton<IEventPublisher>(recording);
-            var sp = services.BuildServiceProvider();
+            var (sp, recording) = BuildRecordingProvider();
 
             var sub = new RoutingEventSubscription(FilterExpression.Constant(true), sp, opts);
 
@@ -152,11 +156,7 @@ namespace Deveel.Events
             // Test the routing end-to-end using a RecordingPublisher so there's no
             // infinite loop: the routing subscription re-publishes via the recording
             // publisher, which simply records and does not loop back.
-            var recording = new RecordingPublisher();
-
-            var services = new ServiceCollection();
-            services.AddSingleton<IEventPublisher>(recording);
-            var sp = services.BuildServiceProvider();
+            var (sp, recording) = BuildRecordingProvider();
 
             var filter = EventFilter.ByType("com.example.route");
             var sub = new RoutingEventSubscription(filter, sp, null, "route-sub");
@@ -173,11 +173,7 @@ namespace Deveel.Events
         {
             // Build a registy with a routing subscription and dispatch a non-matching event.
             // The RoutingEventSubscription's HandleAsync should NOT be called.
-            var recording = new RecordingPublisher();
-
-            var services = new ServiceCollection();
-            services.AddSingleton<IEventPublisher>(recording);
-            var sp = services.BuildServiceProvider();
+            var (sp, recording) = BuildRecordingProvider();
 
             var filter = EventFilter.ByType("com.example.specific");
             var sub = new RoutingEventSubscription(filter, sp);
@@ -215,12 +211,9 @@ namespace Deveel.Events
         [Fact]
         public async Task RouteToChannel_TypePattern_WithRoutingOptions_ForwardsOptions()
         {
-            var recording = new RecordingPublisher();
             var opts = new NamedChannelPublishOptions("output-channel");
 
-            var services = new ServiceCollection();
-            services.AddSingleton<IEventPublisher>(recording);
-            var sp = services.BuildServiceProvider();
+            var (sp, recording) = BuildRecordingProvider();
 
             var sub = new RoutingEventSubscription(
                 EventFilter.ByTypePattern("com.example.*"),

@@ -10,10 +10,10 @@ namespace Deveel.Events
     /// </summary>
     /// <remarks>
     /// Use this when you want to target a specific named channel without providing
-    /// channel-type-specific options. The convenience extension methods on
-    /// <see cref="IEventPublisher"/> (e.g.
-    /// <c>PublishAsync(event, channelName, cancellationToken)</c>) wrap their
-    /// <paramref name="channelName"/> argument in this type internally.
+    /// channel-type-specific options. The convenience overloads on
+    /// <see cref="EventPublisher"/> (e.g.
+    /// <c>PublishAsync(event, channelName, cancellationToken)</c>) wrap the
+    /// channel name argument in this type internally.
     /// </remarks>
     public class NamedChannelPublishOptions : EventPublishOptions, INamedChannelFilter
     {

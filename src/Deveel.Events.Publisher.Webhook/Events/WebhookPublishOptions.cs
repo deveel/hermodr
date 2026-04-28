@@ -11,7 +11,7 @@ namespace Deveel.Events
     /// Options for the <see cref="WebhookPublishChannel"/>, used both as the
     /// channel-level configuration (injected via <see cref="Microsoft.Extensions.Options.IOptions{TOptions}"/>)
     /// and as per-delivery overrides passed directly to
-    /// <see cref="IEventPublishChannel{TOptions}.PublishAsync"/>.
+    /// <see cref="EventPublishChannel{TOptions}.PublishAsync"/>.
     /// </summary>
     /// <remarks>
     /// When used as a per-delivery override, only non-<c>null</c> properties replace

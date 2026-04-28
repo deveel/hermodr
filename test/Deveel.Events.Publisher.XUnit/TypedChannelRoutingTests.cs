@@ -195,7 +195,7 @@ namespace Deveel.Events
             // Act – use the generic overload
             await publisher.PublishAsync(
                 new OrderPlaced { OrderId = "generic-1" },
-                null,
+                cancellationToken:
                 TestContext.Current.CancellationToken);
 
             // Assert
@@ -272,7 +272,7 @@ namespace Deveel.Events
                 Type   = "order.placed",
                 Source = new Uri("https://api.example.com"),
                 Id     = Guid.NewGuid().ToString("N"),
-            }, null, TestContext.Current.CancellationToken);
+            }, cancellationToken: TestContext.Current.CancellationToken);
 
             // Assert – ALL channels receive the event because no data type was resolved
             Assert.Single(typedEvents);

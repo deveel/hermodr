@@ -144,47 +144,6 @@ namespace Deveel.Events
             Assert.Same(channel, asTyped);
         }
 
-        // ── UsePublisher<T> when T does not extend EventPublisher ─────────────
-
-        /// <summary>
-        /// A publisher that implements <see cref="IEventPublisher"/> directly
-        /// without inheriting from <see cref="EventPublisher"/>.
-        /// </summary>
-        private sealed class MinimalPublisher : IEventPublisher
-        {
-            public Task PublishAsync(Type eventType, object? @event, EventPublishOptions? options = null, CancellationToken cancellationToken = default)
-                => Task.CompletedTask;
-
-            public Task PublishAsync<TData>(TData data, EventPublishOptions? options = null, CancellationToken cancellationToken = default)
-                => Task.CompletedTask;
-
-            public Task PublishEventAsync(CloudEvent @event, EventPublishOptions? options = null, CancellationToken cancellationToken = default)
-                => Task.CompletedTask;
-        }
-
-        [Fact]
-        public static void UsePublisher_NonEventPublisherSubclass_DoesNotRegisterEventPublisherAlias()
-        {
-            var services = new ServiceCollection();
-            services.AddEventPublisher()
-                    .UsePublisher<MinimalPublisher>();
-
-            var provider = services.BuildServiceProvider();
-
-            // IEventPublisher should resolve to our custom type
-            var publisher = provider.GetService<IEventPublisher>();
-            Assert.IsType<MinimalPublisher>(publisher);
-
-            // EventPublisher (the base class alias) should NOT resolve to our type —
-            // the UsePublisher<T> branch only registers the EventPublisher alias when
-            // T actually derives from EventPublisher.
-            var basePublisher = provider.GetService<EventPublisher>();
-            // It may still be registered as the default singleton from AddDefaultServices;
-            // what matters is it is NOT MinimalPublisher.
-            if (basePublisher != null)
-                Assert.IsNotType<MinimalPublisher>(basePublisher);
-        }
-
         // ── UsePublisher<T> with Transient lifetime ───────────────────────────
 
         private sealed class TransientPublisher : EventPublisher
@@ -192,10 +151,8 @@ namespace Deveel.Events
             public TransientPublisher(
                 Microsoft.Extensions.Options.IOptions<EventPublisherOptions> options,
                 System.Collections.Generic.IEnumerable<IEventPublishChannel> channels,
-                IEventCreator? eventCreator = null,
-                IEventIdGenerator? idGenerator = null,
-                IEventSystemTime? systemTime = null)
-                : base(options, channels, eventCreator, idGenerator, systemTime) { }
+                IServiceProvider serviceProvider)
+                : base(options, channels, serviceProvider) { }
         }
 
         [Fact]
@@ -208,8 +165,8 @@ namespace Deveel.Events
             var provider = services.BuildServiceProvider();
 
             // Resolving twice should yield different instances for Transient
-            var p1 = provider.GetService<IEventPublisher>();
-            var p2 = provider.GetService<IEventPublisher>();
+            var p1 = provider.GetService<EventPublisher>();
+            var p2 = provider.GetService<EventPublisher>();
 
             Assert.NotNull(p1);
             Assert.NotNull(p2);

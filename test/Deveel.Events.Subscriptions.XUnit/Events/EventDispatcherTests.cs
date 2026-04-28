@@ -466,7 +466,7 @@ namespace Deveel.Events
                     name: "test-handler");
 
             var provider = services.BuildServiceProvider();
-            var publisher = provider.GetRequiredService<IEventPublisher>();
+            var publisher = provider.GetRequiredService<EventPublisher>();
 
             var @event = MakeEvent();
             @event.Time = DateTimeOffset.UtcNow;
@@ -490,7 +490,7 @@ namespace Deveel.Events
                     (e, _) => { handled.Add(e.Type!); return Task.CompletedTask; });
 
             var provider = services.BuildServiceProvider();
-            var publisher = provider.GetRequiredService<IEventPublisher>();
+            var publisher = provider.GetRequiredService<EventPublisher>();
 
             CloudEvent Evt(string type) => new()
             {
@@ -526,7 +526,7 @@ namespace Deveel.Events
                     (_, _) => { handled = true; return Task.CompletedTask; });
 
             var provider = services.BuildServiceProvider();
-            var publisher = provider.GetRequiredService<IEventPublisher>();
+            var publisher = provider.GetRequiredService<EventPublisher>();
 
             await publisher.PublishEventAsync(new CloudEvent
             {
@@ -549,7 +549,7 @@ namespace Deveel.Events
                 .Subscribe<OrderPlacedSubscription>();
 
             var provider = services.BuildServiceProvider();
-            var publisher = provider.GetRequiredService<IEventPublisher>();
+            var publisher = provider.GetRequiredService<EventPublisher>();
             var subscription = provider.GetRequiredService<OrderPlacedSubscription>();
 
             await publisher.PublishEventAsync(new CloudEvent
@@ -730,7 +730,7 @@ namespace Deveel.Events
                     (_, _) => { invoked = true; return Task.CompletedTask; });
 
             var provider = services.BuildServiceProvider();
-            var publisher = provider.GetRequiredService<IEventPublisher>();
+            var publisher = provider.GetRequiredService<EventPublisher>();
 
             await publisher.PublishEventAsync(new CloudEvent
             {
@@ -761,7 +761,7 @@ namespace Deveel.Events
                     (_, _) => { invoked = true; return Task.CompletedTask; });
 
             var provider = services.BuildServiceProvider();
-            var publisher = provider.GetRequiredService<IEventPublisher>();
+            var publisher = provider.GetRequiredService<EventPublisher>();
 
             await publisher.PublishEventAsync(new CloudEvent
             {

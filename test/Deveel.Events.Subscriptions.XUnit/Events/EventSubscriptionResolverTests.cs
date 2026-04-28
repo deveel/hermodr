@@ -277,7 +277,7 @@ namespace Deveel.Events
                 .AddSubscriptionResolver<ReadOnlyOrderResolver>();
 
             var provider = services.BuildServiceProvider();
-            var publisher = provider.GetRequiredService<IEventPublisher>();
+            var publisher = provider.GetRequiredService<EventPublisher>();
 
             // Wire the invoked list into the resolver instance.
             var resolver = provider.GetRequiredService<ReadOnlyOrderResolver>();

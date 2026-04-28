@@ -11,13 +11,13 @@ namespace Deveel.Events
     /// <para>
     /// When set on channel-level options, <see cref="ChannelName"/> declares the
     /// channel's own logical name, which is exposed through
-    /// <see cref="IEventPublishChannel.Name"/>.
+    /// <see cref="INamedEventPublishChannel.Name"/>.
     /// </para>
     /// <para>
     /// When set on per-call options passed to
-    /// <see cref="IEventPublisher.PublishEventAsync"/> or
-    /// <see cref="IEventPublisher.PublishAsync"/>, it acts as a filter: only
-    /// channels whose <see cref="IEventPublishChannel.Name"/> equals
+    /// <see cref="EventPublisher.PublishEventAsync(CloudNative.CloudEvents.CloudEvent, EventPublishOptions, System.Threading.CancellationToken)"/> or
+    /// <see cref="EventPublisher.PublishAsync(System.Type, object, EventPublishOptions, System.Threading.CancellationToken)"/>, it acts as a filter: only
+    /// channels whose <see cref="INamedEventPublishChannel.Name"/> equals
     /// <see cref="ChannelName"/> (case-insensitive) will receive the event.
     /// </para>
     /// <para>
