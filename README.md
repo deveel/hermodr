@@ -158,8 +158,8 @@ Released under the [MIT License](LICENSE).
 ## Built With
 
 <p>
-  <a href="https://dotnet.microsoft.com"><img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/dotnetcore/dotnetcore-original.svg" alt=".NET" width="48" height="48"/></a>&nbsp;&nbsp;
-  <a href="https://github.com"><img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/github/github-original.svg" alt="GitHub" width="48" height="48"/></a>&nbsp;&nbsp;
-  <a href="https://www.jetbrains.com/rider/"><img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/rider/rider-original.svg" alt="Rider" width="48" height="48"/></a>&nbsp;&nbsp;
-  <a href="https://testcontainers.com"><img src="https://avatars.githubusercontent.com/u/13393021" alt="Testcontainers" width="48" height="48"/></a>
+  <a href="https://dotnet.microsoft.com"><img align="left" src="https://raw.githubusercontent.com/devicons/devicon/master/icons/dotnetcore/dotnetcore-original.svg" alt=".NET" width="48" height="48"/></a>&nbsp;&nbsp;
+  <a href="https://github.com"><img align="left" src="https://raw.githubusercontent.com/devicons/devicon/master/icons/github/github-original.svg" alt="GitHub" width="48" height="48"/></a>&nbsp;&nbsp;
+  <a href="https://www.jetbrains.com/rider/"><img align="left" src="https://raw.githubusercontent.com/devicons/devicon/master/icons/rider/rider-original.svg" alt="Rider" width="48" height="48"/></a>&nbsp;&nbsp;
+  <a href="https://testcontainers.com"><img align="left" src="https://avatars.githubusercontent.com/u/13393021" alt="Testcontainers" width="48" height="48"/></a>
 </p>
