@@ -131,8 +131,8 @@ public sealed class AuditOrderSubscription : IEventSubscription
 
     public string? Name => "audit-orders";
 
-    public IEventFilter Filter =>
-        EventAttributeFilter.Type("com.example.order.*", parseWildcard: true);
+    public FilterExpression Filter =>
+        CloudEventFilter.ByTypePattern("com.example.order.*");
 
     public Task HandleAsync(CloudEvent e, CancellationToken ct = default)
         => _audit.RecordAsync(e, ct);
@@ -164,9 +164,9 @@ public class WebhookManager
         string webhookUrl,
         CancellationToken ct = default)
     {
-        var filter = LogicalEventFilter.And(
-            EventAttributeFilter.Type("com.example.*", parseWildcard: true),
-            EventAttributeFilter.ForExtension("tenantid", tenantId));
+        var filter = CloudEventFilter.All(
+            CloudEventFilter.ByTypePattern("com.example.*"),
+            CloudEventFilter.ByExtension("tenantid", tenantId));
 
         var subscription = new EventSubscription(
             filter,
@@ -188,7 +188,7 @@ public class WebhookManager
 
 ## Custom Data Deserialization
 
-When an `EventDataFilter` evaluates the event payload, it calls `EventSubscriptionContext.GetJsonData(event)` internally. The context first checks whether any `IEventDataDeserializer` registered with the DI container can handle the event's `datacontenttype`; if none matches, it falls back to the built-in JSON deserializer which handles JSON strings, `JsonElement` objects, and CLR objects serializable with `System.Text.Json`.
+When a data field filter evaluates the event payload, it calls `EventSubscriptionContext.GetJsonData(event)` internally. The context first checks whether any `IEventDataDeserializer` registered with the DI container can handle the event's `datacontenttype`; if none matches, it falls back to the built-in JSON deserializer which handles JSON strings, `JsonElement` objects, and CLR objects serializable with `System.Text.Json`.
 
 Register a custom deserializer:
 

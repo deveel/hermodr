@@ -43,8 +43,8 @@ public sealed class DatabaseSubscriptionResolver : IEventSubscriptionResolver
 
         foreach (var record in records)
         {
-            // Reconstruct an IEventFilter from the stored representation.
-            IEventFilter filter = BuildFilterFromRecord(record);
+            // Reconstruct a FilterExpression from the stored representation.
+            FilterExpression filter = BuildFilterFromRecord(record);
 
             if (filter.Matches(@event, ctx))
             {
@@ -58,19 +58,26 @@ public sealed class DatabaseSubscriptionResolver : IEventSubscriptionResolver
         return matched;
     }
 
-    private static IEventFilter BuildFilterFromRecord(SubscriptionRecord record)
+    private static FilterExpression BuildFilterFromRecord(SubscriptionRecord record)
     {
-        // Example: reconstruct the filter from stored type/field criteria.
-        // Adapt this to however your records store filter information.
-        var builder = new EventFilterBuilder();
+        // Example: reconstruct the FilterExpression from stored type/field criteria.
+        // The filter expression tree can be serialized to/from JSON using Deveel.Filters,
+        // so you can store the raw JSON in a column and deserialize it here.
+        // Alternatively, reconstruct it from individual fields:
+        var filters = new List<FilterExpression>();
 
         if (!string.IsNullOrEmpty(record.TypePattern))
-            builder.WithTypePattern(record.TypePattern);
+            filters.Add(CloudEventFilter.ByTypePattern(record.TypePattern));
 
         foreach (var field in record.FieldFilters)
-            builder.WithField(field.Path, field.Operator, field.Value);
+            filters.Add(CloudEventFilter.ByField(field.Path, field.Value));
 
-        return builder.Build();
+        return filters.Count switch
+        {
+            0 => FilterExpression.Empty,
+            1 => filters[0],
+            _ => CloudEventFilter.All(filters.ToArray())
+        };
     }
 
     private static Task InvokeHandlerAsync(
@@ -120,32 +127,24 @@ public sealed class DatabaseSubscriptionRegistry :
         IEventSubscription subscription,
         CancellationToken cancellationToken = default)
     {
-        // Persist the filter criteria to the database. The exact serialization
-        // format is application-specific — for example, store the type pattern
-        // and field filters as JSON columns in a subscriptions table.
+        // Persist the filter to the database. Because FilterExpression is serializable
+        // (via Deveel.Filters) you can store the entire expression tree as JSON:
+        //   var json = JsonSerializer.Serialize(subscription.Filter, filterJsonOptions);
+        //
+        // Or extract individual fields from the expression — adapt as needed:
         var record = new SubscriptionRecord
         {
             Name        = subscription.Name,
-            TypePattern = ExtractTypePattern(subscription.Filter),
-            // ... other serialized fields ...
+            FilterJson  = SerializeFilter(subscription.Filter),
+            // ... other fields ...
         };
         await _db.InsertAsync(record, cancellationToken);
     }
 
-    private static string? ExtractTypePattern(IEventFilter filter)
+    private static string SerializeFilter(FilterExpression filter)
     {
-        // Inspect the filter tree to extract the type pattern — adapt as needed.
-        if (filter is EventAttributeFilter attrFilter &&
-            string.Equals(attrFilter.AttributeName, "type", StringComparison.OrdinalIgnoreCase))
-        {
-            return attrFilter.MatchMode switch
-            {
-                FilterMatchMode.Prefix => attrFilter.Value + "*",
-                FilterMatchMode.Suffix => "*" + attrFilter.Value,
-                _                      => attrFilter.Value
-            };
-        }
-        return null;
+        // Use the Deveel.Filters JSON serializer — shown here as a placeholder.
+        return System.Text.Json.JsonSerializer.Serialize(filter);
     }
 }
 ```
@@ -180,7 +179,7 @@ Task<IReadOnlyList<IEventSubscription>> ResolveSubscriptionsAsync(
     CancellationToken cancellationToken = default);
 ```
 
-The context overload passes the application `IServiceProvider` through to DI-aware filters (e.g. `EventDataFilter` uses `context.GetJsonData(event)` which can resolve custom `IEventDataDeserializer` services). Always prefer the context overload; the no-context overload is provided for backward compatibility.
+The context overload passes the application `IServiceProvider` through to the built-in `CloudEventFilterEvaluator`, which calls `context.GetJsonData(event)` when resolving `data.*` variable paths. This allows DI-registered `IEventDataDeserializer` services to handle custom content types. Always prefer the context overload; the no-context overload is provided for backward compatibility.
 
 ### `EventSubscriptionContext`
 

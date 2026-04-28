@@ -36,9 +36,9 @@ pub.AddDispatcher()
 ### By Pre-Built Filter
 
 ```csharp
-var filter = LogicalEventFilter.And(
-    EventAttributeFilter.Type("com.example.order.*", parseWildcard: true),
-    EventAttributeFilter.ForExtension("priority", "high"));
+FilterExpression filter = CloudEventFilter.All(
+    CloudEventFilter.ByTypePattern("com.example.order.*"),
+    CloudEventFilter.ByExtension("priority", "high"));
 
 pub.AddDispatcher()
    .RouteToChannel(
@@ -47,14 +47,14 @@ pub.AddDispatcher()
        name: "route-high-priority");
 ```
 
-### With Fluent Filter Builder
+### With Combined Expressions
 
 ```csharp
 pub.AddDispatcher()
    .RouteToChannel(
-       configureFilter: fb => fb
-           .WithTypePattern("com.example.payment.*")
-           .WithField("currency", FilterOperator.Equals, "USD"),
+       filter: CloudEventFilter.All(
+           CloudEventFilter.ByTypePattern("com.example.payment.*"),
+           CloudEventFilter.ByField("currency", "USD")),
        routingOptions: new EventPublishOptions { ChannelName = "usd-payments" },
        name: "route-usd-payments");
 ```
@@ -82,9 +82,9 @@ Re-publish the same event to a high-priority queue when the amount exceeds a thr
 pub.AddDispatcher()
    // High-value orders → priority queue
    .RouteToChannel(
-       fb => fb
-           .WithTypePattern("com.example.order.*")
-           .WithField("amount", FilterOperator.GreaterThanOrEqual, 1000.0),
+       filter: CloudEventFilter.All(
+           CloudEventFilter.ByTypePattern("com.example.order.*"),
+           CloudEventFilter.ByField("amount", FilterExpressionType.GreaterThanOrEqual, 1000.0)),
        new EventPublishOptions { ChannelName = "priority-orders" })
    // All orders → standard queue (separate channel registration)
    .RouteToChannel(
@@ -139,8 +139,8 @@ public sealed class TenantRoutingSubscription : IRoutingEventSubscription
 
     public string? Name => "tenant-router";
 
-    public IEventFilter Filter =>
-        EventAttributeFilter.Type("com.example.*", parseWildcard: true);
+    public FilterExpression Filter =>
+        CloudEventFilter.ByTypePattern("com.example.*");
 
     // RoutingOptions is null here because the target channel is resolved dynamically in HandleAsync.
     public EventPublishOptions? RoutingOptions => null;

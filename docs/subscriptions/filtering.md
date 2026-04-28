@@ -1,205 +1,152 @@
 # Subscription Filters
 
-The `Deveel.Events.Subscriptions` package provides a rich, composable filter system built on the `IEventFilter` interface. Every filter implements a single method:
+The `Deveel.Events.Subscriptions` package provides a composable filter system built on `FilterExpression` from the [`Deveel.Filters`](https://www.nuget.org/packages/Deveel.Filters) package. A `FilterExpression` can be evaluated against a `CloudEvent` using the `Matches` extension method:
 
 ```csharp
-bool Matches(CloudEvent @event, EventSubscriptionContext context);
+bool matches = filter.Matches(cloudEvent, EventSubscriptionContext.Empty);
 ```
 
-Three concrete implementations ship out of the box:
-
-| Type | Inspects | Description |
-|------|----------|-------------|
-| `EventAttributeFilter` | CloudEvents envelope | Matches a named envelope attribute (type, source, subject, id, time, datacontenttype, dataschema, or any extension attribute) |
-| `EventDataFilter` | JSON data payload | Navigates a dot-separated path inside the JSON body and compares the value using a `FilterOperator` |
-| `LogicalEventFilter` | Multiple child filters | Combines other filters with AND or OR logic |
+The `CloudEventFilter` static class contains factory methods that build `FilterExpression` instances targeting standard CloudEvents envelope attributes and JSON data-payload fields.
 
 ---
 
-## `EventAttributeFilter`
+## `CloudEventFilter` — Envelope Attribute Filters
 
-Matches a named CloudEvents envelope attribute against a value using a `FilterMatchMode` strategy.
-
-### Match modes
-
-| `FilterMatchMode` | Description | Example pattern | Matches |
-|-------------------|-------------|-----------------|---------|
-| `Exact` (default) | Ordinal, case-sensitive equality | `"com.example.order.placed"` | Exact string only |
-| `Prefix` | Attribute starts with the value | `"com.example."` | Anything starting with the literal |
-| `Suffix` | Attribute ends with the value | `".placed"` | Anything ending with the literal |
-
-Trailing `*` in a pattern string → `Prefix`; leading `*` → `Suffix`; no wildcard → `Exact` (via `parseWildcard: true`).
-
-### Standard attributes
-
-The supported standard attribute names are: `type`, `source`, `subject`, `id`, `time`, `datacontenttype`, `dataschema`.
-
-Extension attributes must be prefixed with `extension.` (e.g. `"extension.tenantid"`).
-
-### Factory methods
+### Type
 
 ```csharp
-// Type attribute — exact match
-EventAttributeFilter.Type("com.example.order.placed");
+// Exact match
+FilterExpression filter = CloudEventFilter.ByType("com.example.order.placed");
 
-// Type attribute — pattern match (trailing * = prefix, leading * = suffix)
-EventAttributeFilter.Type("com.example.*", parseWildcard: true);
-
-// General attribute — exact match
-EventAttributeFilter.For("source", "https://api.example.com/orders");
-
-// General attribute — pattern match
-EventAttributeFilter.For("source", "https://api.example.*", parseWildcard: true);
-
-// Extension attribute (the "extension." prefix is added automatically)
-EventAttributeFilter.ForExtension("tenantid", "acme");
-EventAttributeFilter.ForExtension("tenantid", "acme", FilterMatchMode.Exact);
+// Wildcard match — trailing * = prefix, leading * = suffix
+FilterExpression filter = CloudEventFilter.ByTypePattern("com.example.*");
+FilterExpression filter = CloudEventFilter.ByTypePattern("*.placed");
 ```
 
-### Value-only matching
-
-`EventAttributeFilter` also exposes a `Matches(string? input)` overload to test a plain string without a `CloudEvent`:
+### Source
 
 ```csharp
-var filter = new EventAttributeFilter("type", "com.example.", FilterMatchMode.Prefix);
-bool ok = filter.Matches("com.example.order.placed"); // true
+FilterExpression filter = CloudEventFilter.BySource("https://api.example.com/orders");
+FilterExpression filter = CloudEventFilter.BySourcePattern("https://api.example.*");
+```
+
+### Subject
+
+```csharp
+FilterExpression filter = CloudEventFilter.BySubject("order/42");
+FilterExpression filter = CloudEventFilter.BySubjectPattern("order/*");
+```
+
+### Extension Attributes
+
+```csharp
+// Matches events where the "tenantid" extension attribute equals "acme"
+FilterExpression filter = CloudEventFilter.ByExtension("tenantid", "acme");
 ```
 
 ---
 
-## `EventFilterBuilder`
+## `CloudEventFilter` — Data Payload Field Filters
 
-A fluent builder that composes multiple filters into a single `LogicalEventFilter.And(…)`. All criteria must pass for the overall filter to match.
+Data field paths are dot-separated JSON paths (e.g. `"customer.tier"`). The prefix `data.` is added automatically.
+
+### Equality
 
 ```csharp
-var filter = new EventFilterBuilder()
-    .WithType("com.example.order.placed")          // exact type match
-    .WithSourcePattern("https://orders.*")          // source prefix match
-    .WithSubjectPattern("*.vip")                    // subject suffix match
-    .Build();
+// Exact string match
+FilterExpression filter = CloudEventFilter.ByField("customer.tier", "gold");
+
+// Using explicit operator
+FilterExpression filter = CloudEventFilter.ByField("customer.tier", FilterExpressionType.Equal, "gold");
+FilterExpression filter = CloudEventFilter.ByField("payment.amount", FilterExpressionType.GreaterThan, 100.0);
+FilterExpression filter = CloudEventFilter.ByField("payment.isPaid", FilterExpressionType.Equal, true);
+FilterExpression filter = CloudEventFilter.ByField("order.createdAt", FilterExpressionType.GreaterThan,
+    new DateTimeOffset(2024, 1, 1, 0, 0, 0, TimeSpan.Zero));
 ```
 
-### Available methods
-
-| Method | Filter added |
-|--------|-------------|
-| `WithType(type)` | `EventAttributeFilter.Type(type)` — exact `type` attribute match |
-| `WithTypePattern(pattern)` | `EventAttributeFilter.Type(pattern, parseWildcard: true)` — wildcard `type` match |
-| `WithSource(source)` | `EventAttributeFilter("source", source)` — exact `source` match |
-| `WithSourcePattern(pattern)` | Wildcard `source` match |
-| `WithSubject(subject)` | Exact `subject` match |
-| `WithSubjectPattern(pattern)` | Wildcard `subject` match |
-| `WithField(path, value)` | `EventDataFilter.Create(path, Equals, value)` — exact string match on a JSON body field |
-| `WithField(path, operator, value)` | `EventDataFilter.Create(path, operator, value)` — typed comparison on a JSON body field |
-| `With(filter)` | Adds any `IEventFilter` directly (including `LogicalEventFilter`) |
-| `Build()` | Returns `LogicalEventFilter.And(…all added filters…)` |
-
-`Build()` on an empty builder returns a filter that matches every event.
-
----
-
-## `EventDataFilter`
-
-Navigates a dot-separated path inside the JSON body and applies a `FilterOperator` comparison against a **typed** reference value.
-
-### Supported value types
+### Supported value types for `ByField`
 
 `bool`, `int`, `long`, `double`, `string`, `DateTime`, `DateTimeOffset`
 
-### Factory methods
+### `FilterExpressionType` values (numeric / datetime comparisons)
+
+| Value | Description |
+|-------|-------------|
+| `Equal` | Exact equality |
+| `NotEqual` | Not equal |
+| `GreaterThan` | `>` |
+| `GreaterThanOrEqual` | `>=` |
+| `LessThan` | `<` |
+| `LessThanOrEqual` | `<=` |
+
+### String operations
 
 ```csharp
-// String comparison
-EventDataFilter.Create("customer.tier", FilterOperator.Equals, "gold");
-EventDataFilter.Create("customer.name", FilterOperator.StartsWith, "Acme");
-EventDataFilter.Create("order.status", FilterOperator.Contains, "pending");
-
-// Numeric comparison
-EventDataFilter.Create("payment.amount", FilterOperator.GreaterThan, 100.0);
-EventDataFilter.Create("payment.amount", FilterOperator.LessThanOrEqual, 500.0);
-
-// Boolean comparison
-EventDataFilter.Create("payment.isPaid", FilterOperator.Equals, true);
-
-// Date/time comparison
-EventDataFilter.Create("order.createdAt", FilterOperator.GreaterThan,
-    new DateTimeOffset(2024, 1, 1, 0, 0, 0, TimeSpan.Zero));
-
-// Existence checks (no reference value required)
-EventDataFilter.Exists("customer.loyaltyCard");
-EventDataFilter.NotExists("order.deletedAt");
+FilterExpression filter = CloudEventFilter.FieldStartsWith("customer.name", "Acme");
+FilterExpression filter = CloudEventFilter.FieldEndsWith("order.reference", "-EU");
+FilterExpression filter = CloudEventFilter.FieldContains("order.status", "pending");
 ```
 
-### `FilterOperator` values
+### Existence checks
 
-| Operator | Applies to | Description |
-|----------|-----------|-------------|
-| `Equals` | string, numeric, bool, datetime | Exact equality |
-| `NotEquals` | string, numeric, bool, datetime | Not equal |
-| `StartsWith` | string | Starts with the value |
-| `EndsWith` | string | Ends with the value |
-| `Contains` | string | Contains the value |
-| `GreaterThan` | numeric, datetime | `>` |
-| `LessThan` | numeric, datetime | `<` |
-| `GreaterThanOrEqual` | numeric, datetime | `>=` |
-| `LessThanOrEqual` | numeric, datetime | `<=` |
-| `Exists` | any | The property exists regardless of its value |
-| `NotExists` | any | The property is absent from the payload |
+```csharp
+FilterExpression filter = CloudEventFilter.FieldExists("customer.loyaltyCard");
+FilterExpression filter = CloudEventFilter.FieldNotExists("order.deletedAt");
+```
 
 ---
 
-## `LogicalEventFilter`
+## Combining Filters
 
-Combines multiple `IEventFilter` instances with AND or OR logic.
+Use `CloudEventFilter.All` (AND) and `CloudEventFilter.Any` (OR), or the lower-level `FilterExpression.And` / `FilterExpression.Or`:
 
 ```csharp
 // AND — all must pass
-var filter = LogicalEventFilter.And(
-    EventDataFilter.Create("customer.tier", FilterOperator.Equals, "gold"),
-    EventDataFilter.Create("payment.amount", FilterOperator.GreaterThan, 100.0));
+FilterExpression filter = CloudEventFilter.All(
+    CloudEventFilter.ByTypePattern("com.example.order.*"),
+    CloudEventFilter.ByField("customer.tier", "gold"));
 
 // OR — at least one must pass
-var filter = LogicalEventFilter.Or(
-    EventDataFilter.Create("status", FilterOperator.Equals, "placed"),
-    EventDataFilter.Create("status", FilterOperator.Equals, "confirmed"));
+FilterExpression filter = CloudEventFilter.Any(
+    CloudEventFilter.ByField("status", "placed"),
+    CloudEventFilter.ByField("status", "confirmed"));
 
 // Nested: (tier == "gold" AND amount > 100) OR priority == "urgent"
-var filter = LogicalEventFilter.Or(
-    LogicalEventFilter.And(
-        EventDataFilter.Create("customer.tier", FilterOperator.Equals, "gold"),
-        EventDataFilter.Create("payment.amount", FilterOperator.GreaterThan, 100.0)),
-    EventDataFilter.Create("priority", FilterOperator.Equals, "urgent"));
+FilterExpression filter = CloudEventFilter.Any(
+    CloudEventFilter.All(
+        CloudEventFilter.ByField("customer.tier", "gold"),
+        CloudEventFilter.ByField("payment.amount", FilterExpressionType.GreaterThan, 100.0)),
+    CloudEventFilter.ByField("priority", "urgent"));
 ```
 
-An AND filter with zero children evaluates to `true`; an OR filter with zero children evaluates to `false`.
+You may also use `FilterExpression.And` / `FilterExpression.Or` directly when combining exactly two expressions:
+
+```csharp
+FilterExpression filter =
+    FilterExpression.And(
+        CloudEventFilter.ByType("com.example.order.placed"),
+        CloudEventFilter.ByField("customer.tier", "gold"));
+```
 
 ---
 
 ## Registering Subscriptions at Configuration Time
 
-All `Subscribe` overloads on `EventPublisherBuilder` accept a filter:
+All `Subscribe` overloads on `EventPublisherBuilder` accept a `FilterExpression`:
 
 ```csharp
 // 1. Type pattern shortcut (trailing * = prefix match)
 builder.Subscribe("com.example.order.*", HandleOrder);
 
-// 2. Pre-built filter
-var filter = EventAttributeFilter.Type("com.example.invoice.issued");
+// 2. Pre-built FilterExpression
+FilterExpression filter = CloudEventFilter.ByType("com.example.invoice.issued");
 builder.Subscribe(filter, HandleInvoice);
 
-// 3. Fluent builder inline
+// 3. Combined attribute and data filters
 builder.Subscribe(
-    fb => fb
-        .WithTypePattern("com.example.*")
-        .WithField("customer.tier", FilterOperator.Equals, "gold"),
-    HandleGoldTierEvent,
-    name: "gold-tier-handler");
-
-// 4. Combining attribute and data filters
-builder.Subscribe(
-    LogicalEventFilter.And(
-        EventAttributeFilter.Type("com.example.order.placed"),
-        EventDataFilter.Create("payment.amount", FilterOperator.GreaterThan, 500.0)),
+    CloudEventFilter.All(
+        CloudEventFilter.ByType("com.example.order.placed"),
+        CloudEventFilter.ByField("payment.amount", FilterExpressionType.GreaterThan, 500.0)),
     HandleHighValueOrder,
     name: "high-value-orders");
 ```
@@ -220,9 +167,9 @@ public class TenantSubscriptionService
 
     public async Task AddOrderHandlerAsync(string tenantId, CancellationToken ct = default)
     {
-        var filter = LogicalEventFilter.And(
-            EventAttributeFilter.Type("com.example.order.*", parseWildcard: true),
-            EventAttributeFilter.ForExtension("tenantid", tenantId));
+        FilterExpression filter = CloudEventFilter.All(
+            CloudEventFilter.ByTypePattern("com.example.order.*"),
+            CloudEventFilter.ByExtension("tenantid", tenantId));
 
         var subscription = new EventSubscription(
             filter,
@@ -238,12 +185,12 @@ public class TenantSubscriptionService
 
 ## Evaluating Filters Directly
 
-Every `IEventFilter` can be tested outside of the dispatcher pipeline:
+Use the `Matches` extension method from `FilterExpressionExtensions` to test a filter outside the dispatcher pipeline:
 
 ```csharp
-var filter = LogicalEventFilter.And(
-    EventAttributeFilter.Type("com.example.order.placed"),
-    EventDataFilter.Create("payment.isPaid", FilterOperator.Equals, true));
+FilterExpression filter = CloudEventFilter.All(
+    CloudEventFilter.ByType("com.example.order.placed"),
+    CloudEventFilter.ByField("payment.isPaid", FilterExpressionType.Equal, true));
 
 bool matches = filter.Matches(cloudEvent, EventSubscriptionContext.Empty);
 ```
