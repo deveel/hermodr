@@ -33,6 +33,14 @@ namespace Deveel.Events
     /// </remarks>
     public static partial class CloudEventFilter
     {
+        // ── Fluent builder entry point ─────────────────────────────────────────────────
+
+        /// <summary>
+        /// Creates a new, empty <see cref="CloudEventFilterBuilder"/> that can be used
+        /// to compose a <see cref="FilterExpression"/> with a fluent API.
+        /// </summary>
+        public static CloudEventFilterBuilder New() => new();
+
         // ── JSON path validation ────────────────────────────────────────────────────
 
         /// <summary>
