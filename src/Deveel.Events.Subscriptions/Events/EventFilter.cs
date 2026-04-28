@@ -3,6 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 //
 
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 using Deveel.Filters;
@@ -33,6 +34,11 @@ namespace Deveel.Events
     /// </remarks>
     public static class EventFilter
     {
+        // ── Shared JSON options ────────────────────────────────────────────────────────
+
+        // Default shared options — used when no options are supplied by the caller.
+        // Kept here so EventFilter does not depend on FilterExpressionExtensions at runtime.
+
         // ── Fluent builder entry point ─────────────────────────────────────────────────
 
         /// <summary>
@@ -40,6 +46,63 @@ namespace Deveel.Events
         /// to compose a <see cref="FilterExpression"/> with a fluent API.
         /// </summary>
         public static EventFilterBuilder New() => new();
+
+        // ── JSON round-trip ────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Parses <paramref name="json"/> and returns the <see cref="FilterExpression"/>
+        /// it represents, using <see cref="JsonFilterConverter"/>.
+        /// </summary>
+        /// <param name="json">
+        /// A JSON string that was previously produced by
+        /// <see cref="FilterExpressionExtensions.ToJson(FilterExpression, JsonSerializerOptions?)"/>
+        /// or by any other serializer that registered <see cref="JsonFilterConverter"/>.
+        /// </param>
+        /// <param name="options">
+        /// Optional <see cref="JsonSerializerOptions"/> to control deserialization behaviour.
+        /// When <c>null</c>, a default set of options with <see cref="JsonFilterConverter"/>
+        /// already registered is used.
+        /// <para>
+        /// When a non-<c>null</c> value is provided and it does not already contain a
+        /// <see cref="JsonFilterConverter"/>, the converter is added automatically to a
+        /// <em>copy</em> of the supplied options so that the original object is never
+        /// mutated.
+        /// </para>
+        /// </param>
+        /// <returns>
+        /// The deserialized <see cref="FilterExpression"/>, or <c>null</c> when
+        /// <paramref name="json"/> represents the JSON literal <c>null</c>.
+        /// </returns>
+        /// <exception cref="ArgumentException">
+        /// Thrown when <paramref name="json"/> is <c>null</c>, empty, or whitespace-only.
+        /// </exception>
+        /// <exception cref="JsonException">
+        /// Thrown when <paramref name="json"/> is not valid JSON, or when the JSON object
+        /// does not conform to the <see cref="FilterExpression"/> schema understood by
+        /// <see cref="JsonFilterConverter"/>.
+        /// </exception>
+        /// <example>
+        /// <code language="csharp">
+        /// // Simplest form — uses default options
+        /// FilterExpression? filter = EventFilter.FromJson(json);
+        ///
+        /// // Custom options — converter is injected automatically into a copy
+        /// var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+        /// FilterExpression? filter2 = EventFilter.FromJson(json, opts);
+        ///
+        /// // Pre-configured options that already include the converter
+        /// var opts2 = new JsonSerializerOptions();
+        /// opts2.Converters.Add(new JsonFilterConverter());
+        /// FilterExpression? filter3 = EventFilter.FromJson(json, opts2);
+        /// </code>
+        /// </example>
+        public static FilterExpression? FromJson(string json, JsonSerializerOptions? options = null)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(json, nameof(json));
+            return JsonSerializer.Deserialize<FilterExpression>(
+                json,
+                FilterExpressionExtensions.EnsureFilterConverter(options));
+        }
 
         // ── JSON path validation ────────────────────────────────────────────────────
         

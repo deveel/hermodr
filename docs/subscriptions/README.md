@@ -79,8 +79,8 @@ await publisher.PublishAsync(new OrderPlaced { OrderId = "42" });
 
 | Page | Description |
 |------|-------------|
-| [Subscription Filters](filtering.md) | `CloudEventFilter` factory methods, envelope attribute filters, data-field filters, and combining expressions |
-| [Filter Expressions](filter-expressions.md) | The `FilterExpression` model, `FilterExpressionType`, serialization, and direct evaluation |
+| [Subscription Filters](filtering.md) | `EventFilter` factory methods, `EventFilterBuilder` fluent API, envelope attribute filters, data-field filters, and combining expressions |
+| [Filter Expressions](filter-expressions.md) | The `FilterExpression` model, `EventFilter` / `EventFilterBuilder`, `FilterExpressionType`, evaluator behaviour, serialization, and direct evaluation |
 | [Event Dispatcher](dispatcher.md) | How the dispatcher works, DI setup, and error handling |
 | [Routing Subscriptions](routing.md) | Re-publishing matched events to a different channel |
 | [Custom Resolvers](custom-resolver.md) | Reading subscriptions from a database or remote service |
