@@ -14,7 +14,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Deveel.Events
 {
     /// <summary>
-    /// Verifies that <see cref="CloudEventFilter"/> and <see cref="CloudEventFilterEvaluator"/>
+    /// Verifies that <see cref="EventFilter"/> and <see cref="CloudEventFilterEvaluator"/>
     /// correctly evaluate nested properties in serialized JSON event bodies — covering
     /// anonymous types, named CLR classes, 3-level paths, numeric/boolean leaves,
     /// arrays, and end-to-end dispatch.
@@ -89,35 +89,35 @@ namespace Deveel.Events
         [Fact]
         public static void JsonPath_SerializedClrObject_TwoLevels_Matches()
         {
-            var filter = CloudEventFilter.ByField("Customer.Tier", FilterExpressionType.Equal, "gold");
+            var filter = EventFilter.ByField("Customer.Tier", FilterExpressionType.Equal, "gold");
             Assert.True(filter.Matches(EventWithData(MakeOrder(tier: "gold")), EventSubscriptionContext.Empty));
         }
 
         [Fact]
         public static void JsonPath_SerializedClrObject_TwoLevels_NoMatch()
         {
-            var filter = CloudEventFilter.ByField("Customer.Tier", FilterExpressionType.Equal, "gold");
+            var filter = EventFilter.ByField("Customer.Tier", FilterExpressionType.Equal, "gold");
             Assert.False(filter.Matches(EventWithData(MakeOrder(tier: "silver")), EventSubscriptionContext.Empty));
         }
 
         [Fact]
         public static void JsonPath_SerializedClrObject_ThreeLevels_Matches()
         {
-            var filter = CloudEventFilter.ByField("Customer.Address.Country", FilterExpressionType.Equal, "US");
+            var filter = EventFilter.ByField("Customer.Address.Country", FilterExpressionType.Equal, "US");
             Assert.True(filter.Matches(EventWithData(MakeOrder(country: "US")), EventSubscriptionContext.Empty));
         }
 
         [Fact]
         public static void JsonPath_SerializedClrObject_ThreeLevels_NoMatch()
         {
-            var filter = CloudEventFilter.ByField("Customer.Address.Country", FilterExpressionType.Equal, "US");
+            var filter = EventFilter.ByField("Customer.Address.Country", FilterExpressionType.Equal, "US");
             Assert.False(filter.Matches(EventWithData(MakeOrder(country: "DE")), EventSubscriptionContext.Empty));
         }
 
         [Fact]
         public static void JsonPath_SerializedClrObject_NumericLeaf_GreaterThan()
         {
-            var filter = CloudEventFilter.ByField("Payment.Amount", FilterExpressionType.GreaterThan, 100.0);
+            var filter = EventFilter.ByField("Payment.Amount", FilterExpressionType.GreaterThan, 100.0);
             Assert.True(filter.Matches(EventWithData(MakeOrder(amount: 250)), EventSubscriptionContext.Empty));
             Assert.False(filter.Matches(EventWithData(MakeOrder(amount: 50)), EventSubscriptionContext.Empty));
         }
@@ -125,14 +125,14 @@ namespace Deveel.Events
         [Fact]
         public static void JsonPath_SerializedClrObject_BooleanLeaf_Matches()
         {
-            var filter = CloudEventFilter.ByField("Customer.IsVerified", FilterExpressionType.Equal, true);
+            var filter = EventFilter.ByField("Customer.IsVerified", FilterExpressionType.Equal, true);
             Assert.True(filter.Matches(EventWithData(MakeOrder(isVerified: true)), EventSubscriptionContext.Empty));
         }
 
         [Fact]
         public static void JsonPath_SerializedClrObject_BooleanLeaf_NoMatch()
         {
-            var filter = CloudEventFilter.ByField("Customer.IsVerified", FilterExpressionType.Equal, true);
+            var filter = EventFilter.ByField("Customer.IsVerified", FilterExpressionType.Equal, true);
             Assert.False(filter.Matches(EventWithData(MakeOrder(isVerified: false)), EventSubscriptionContext.Empty));
         }
 
@@ -140,21 +140,21 @@ namespace Deveel.Events
         public static void JsonPath_SerializedClrObject_ArraySegment_ReturnsFalse()
         {
             // Tags is a List<string>; further navigation into it is not supported.
-            var filter = CloudEventFilter.ByField("Tags.0", FilterExpressionType.Equal, "vip");
+            var filter = EventFilter.ByField("Tags.0", FilterExpressionType.Equal, "vip");
             Assert.False(filter.Matches(EventWithData(MakeOrder()), EventSubscriptionContext.Empty));
         }
 
         [Fact]
         public static void JsonPath_SerializedClrObject_MissingTopLevel_ReturnsFalse()
         {
-            var filter = CloudEventFilter.ByField("DoesNotExist.Tier", FilterExpressionType.Equal, "gold");
+            var filter = EventFilter.ByField("DoesNotExist.Tier", FilterExpressionType.Equal, "gold");
             Assert.False(filter.Matches(EventWithData(MakeOrder()), EventSubscriptionContext.Empty));
         }
 
         [Fact]
         public static void JsonPath_SerializedClrObject_PrefixPattern_Matches()
         {
-            var filter = CloudEventFilter.FieldStartsWith("Customer.Address.PostalCode", "100");
+            var filter = EventFilter.FieldStartsWith("Customer.Address.PostalCode", "100");
             Assert.True(filter.Matches(EventWithData(MakeOrder()), EventSubscriptionContext.Empty));
         }
 
@@ -163,14 +163,14 @@ namespace Deveel.Events
         [Fact]
         public static void EventDataFilter_Exists_NestedProperty_Matches()
         {
-            var filter = CloudEventFilter.FieldExists("Customer.Address");
+            var filter = EventFilter.FieldExists("Customer.Address");
             Assert.True(filter.Matches(EventWithData(MakeOrder()), EventSubscriptionContext.Empty));
         }
 
         [Fact]
         public static void EventDataFilter_NotExists_MissingNestedProperty_Matches()
         {
-            var filter = CloudEventFilter.FieldNotExists("Customer.LoyaltyPoints");
+            var filter = EventFilter.FieldNotExists("Customer.LoyaltyPoints");
             Assert.True(filter.Matches(EventWithData(MakeOrder()), EventSubscriptionContext.Empty));
         }
 
@@ -179,24 +179,24 @@ namespace Deveel.Events
         [Fact]
         public static void EventDataFilter_AndNested_AgainstSerializedClrObject_Matches()
         {
-            var filter = CloudEventFilter.All(
-                CloudEventFilter.ByField("Customer.Tier", FilterExpressionType.Equal, "gold"),
-                CloudEventFilter.ByField("Payment.Amount", FilterExpressionType.GreaterThan, 100.0),
-                CloudEventFilter.ByField("Customer.Address.Country", FilterExpressionType.Equal, "US"));
+            var filter = EventFilter.All(
+                EventFilter.ByField("Customer.Tier", FilterExpressionType.Equal, "gold"),
+                EventFilter.ByField("Payment.Amount", FilterExpressionType.GreaterThan, 100.0),
+                EventFilter.ByField("Customer.Address.Country", FilterExpressionType.Equal, "US"));
 
             Assert.True(filter.Matches(EventWithData(MakeOrder(tier: "gold", amount: 300, country: "US")), EventSubscriptionContext.Empty));
             Assert.False(filter.Matches(EventWithData(MakeOrder(tier: "gold", amount: 50,  country: "US")), EventSubscriptionContext.Empty));
             Assert.False(filter.Matches(EventWithData(MakeOrder(tier: "gold", amount: 300, country: "DE")), EventSubscriptionContext.Empty));
         }
 
-        // ── CloudEventFilter — ByField / ByField on nested path ─────────────────────
+        // ── EventFilter — ByField / ByField on nested path ─────────────────────
 
         [Fact]
         public static void Builder_WithJsonPath_Nested_Matches()
         {
-            var filter = CloudEventFilter.All(
-                CloudEventFilter.ByType("com.example.order.placed"),
-                CloudEventFilter.ByField("Customer.Tier", "gold"));
+            var filter = EventFilter.All(
+                EventFilter.ByType("com.example.order.placed"),
+                EventFilter.ByField("Customer.Tier", "gold"));
 
             Assert.True(filter.Matches(EventWithData(MakeOrder(tier: "gold")), EventSubscriptionContext.Empty));
             Assert.False(filter.Matches(EventWithData(MakeOrder(tier: "silver")), EventSubscriptionContext.Empty));
@@ -205,10 +205,10 @@ namespace Deveel.Events
         [Fact]
         public static void Builder_WithField_NestedAnd_Matches()
         {
-            var filter = CloudEventFilter.All(
-                CloudEventFilter.ByType("com.example.order.placed"),
-                CloudEventFilter.ByField("Customer.Tier", FilterExpressionType.Equal, "gold"),
-                CloudEventFilter.ByField("Customer.Address.Country", FilterExpressionType.Equal, "US"));
+            var filter = EventFilter.All(
+                EventFilter.ByType("com.example.order.placed"),
+                EventFilter.ByField("Customer.Tier", FilterExpressionType.Equal, "gold"),
+                EventFilter.ByField("Customer.Address.Country", FilterExpressionType.Equal, "US"));
 
             Assert.True(filter.Matches(EventWithData(MakeOrder(tier: "gold", country: "US")), EventSubscriptionContext.Empty));
             Assert.False(filter.Matches(EventWithData(MakeOrder(tier: "gold", country: "DE")), EventSubscriptionContext.Empty));
@@ -228,16 +228,16 @@ namespace Deveel.Events
                 .AddDispatcher()
                 // subscription 1: gold tier
                 .Subscribe(
-                    CloudEventFilter.All(
-                        CloudEventFilter.ByType("com.example.order.placed"),
-                        CloudEventFilter.ByField("Customer.Tier", "gold")),
+                    EventFilter.All(
+                        EventFilter.ByType("com.example.order.placed"),
+                        EventFilter.ByField("Customer.Tier", "gold")),
                     (e, _) => { goldDeliveries.Add(e.Id!); return Task.CompletedTask; },
                     name: "gold-handler")
                 // subscription 2: US country
                 .Subscribe(
-                    CloudEventFilter.All(
-                        CloudEventFilter.ByType("com.example.order.placed"),
-                        CloudEventFilter.ByField("Customer.Address.Country", FilterExpressionType.Equal, "US")),
+                    EventFilter.All(
+                        EventFilter.ByType("com.example.order.placed"),
+                        EventFilter.ByField("Customer.Address.Country", FilterExpressionType.Equal, "US")),
                     (e, _) => { usDeliveries.Add(e.Id!); return Task.CompletedTask; },
                     name: "us-handler");
 
@@ -275,10 +275,10 @@ namespace Deveel.Events
             services.AddEventPublisher(opt => opt.Source = new Uri("https://example.com"))
                 .AddDispatcher()
                 .Subscribe(
-                    CloudEventFilter.All(
-                        CloudEventFilter.ByType("com.example.order.placed"),
-                        CloudEventFilter.ByField("Payment.Amount", FilterExpressionType.GreaterThanOrEqual, 500.0),
-                        CloudEventFilter.ByField("Payment.IsPaid", FilterExpressionType.Equal, true)),
+                    EventFilter.All(
+                        EventFilter.ByType("com.example.order.placed"),
+                        EventFilter.ByField("Payment.Amount", FilterExpressionType.GreaterThanOrEqual, 500.0),
+                        EventFilter.ByField("Payment.IsPaid", FilterExpressionType.Equal, true)),
                     (e, _) =>
                     {
                         if (e.Data is OrderEvent o) matched.Add(o.Payment.Amount);

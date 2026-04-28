@@ -30,7 +30,7 @@ namespace Deveel.Events
             this FilterExpression filter,
             CloudEvent @event,
             EventSubscriptionContext context)
-            => CloudEventFilterEvaluator.Matches(filter, @event, context);
+            => EventFilterEvaluator.Matches(filter, @event, context);
     }
 }
 

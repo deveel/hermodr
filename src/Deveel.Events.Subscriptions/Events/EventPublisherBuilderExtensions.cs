@@ -175,7 +175,7 @@ namespace Deveel.Events
             Func<CloudEvent, CancellationToken, Task> handler,
             string? name = null)
         {
-            var filter = CloudEventFilter.ByTypePattern(typePattern);
+            var filter = EventFilter.ByTypePattern(typePattern);
             return builder.Subscribe(filter, handler, name);
         }
 
@@ -208,7 +208,7 @@ namespace Deveel.Events
         ///
         ///     public string? Name => "audit-orders";
         ///     public FilterExpression Filter =>
-        ///         CloudEventFilter.ByTypePattern("com.example.order.*");
+        ///         EventFilter.ByTypePattern("com.example.order.*");
         ///
         ///     public Task HandleAsync(CloudEvent e, CancellationToken ct = default)
         ///         => _audit.RecordAsync(e, ct);
@@ -295,7 +295,7 @@ namespace Deveel.Events
             EventPublishOptions? routingOptions = null,
             string? name = null)
         {
-            var filter = CloudEventFilter.ByTypePattern(typePattern);
+            var filter = EventFilter.ByTypePattern(typePattern);
             return builder.RouteToChannel(filter, routingOptions, name);
         }
 

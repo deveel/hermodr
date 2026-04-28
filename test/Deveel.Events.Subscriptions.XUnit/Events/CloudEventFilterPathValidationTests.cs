@@ -8,7 +8,7 @@ using Deveel.Filters;
 namespace Deveel.Events
 {
     /// <summary>
-    /// Verifies that <see cref="CloudEventFilter"/> rejects invalid JSON data-field paths
+    /// Verifies that <see cref="EventFilter"/> rejects invalid JSON data-field paths
     /// (null, empty, whitespace, leading/trailing dots, consecutive dots, and paths that
     /// contain characters outside the allowed set) with an <see cref="ArgumentException"/>,
     /// and accepts all well-formed paths.
@@ -74,14 +74,14 @@ namespace Deveel.Events
         [Theory, MemberData(nameof(ValidPaths))]
         public static void ByField_String_ValidPath_DoesNotThrow(string path)
         {
-            var ex = Record.Exception(() => CloudEventFilter.ByField(path, "value"));
+            var ex = Record.Exception(() => EventFilter.ByField(path, "value"));
             Assert.Null(ex);
         }
 
         [Theory, MemberData(nameof(InvalidPaths))]
         public static void ByField_String_InvalidPath_ThrowsArgumentException(string? path)
         {
-            Assert.ThrowsAny<ArgumentException>(() => CloudEventFilter.ByField(path!, "value"));
+            Assert.ThrowsAny<ArgumentException>(() => EventFilter.ByField(path!, "value"));
         }
 
         // ── ByField with operator overloads ───────────────────────────────────────────
@@ -90,49 +90,49 @@ namespace Deveel.Events
         public static void ByField_OperatorString_InvalidPath_ThrowsArgumentException(string? path)
         {
             Assert.ThrowsAny<ArgumentException>(() =>
-                CloudEventFilter.ByField(path!, FilterExpressionType.Equal, "value"));
+                EventFilter.ByField(path!, FilterExpressionType.Equal, "value"));
         }
 
         [Theory, MemberData(nameof(InvalidPaths))]
         public static void ByField_OperatorBool_InvalidPath_ThrowsArgumentException(string? path)
         {
             Assert.ThrowsAny<ArgumentException>(() =>
-                CloudEventFilter.ByField(path!, FilterExpressionType.Equal, true));
+                EventFilter.ByField(path!, FilterExpressionType.Equal, true));
         }
 
         [Theory, MemberData(nameof(InvalidPaths))]
         public static void ByField_OperatorInt_InvalidPath_ThrowsArgumentException(string? path)
         {
             Assert.ThrowsAny<ArgumentException>(() =>
-                CloudEventFilter.ByField(path!, FilterExpressionType.Equal, 42));
+                EventFilter.ByField(path!, FilterExpressionType.Equal, 42));
         }
 
         [Theory, MemberData(nameof(InvalidPaths))]
         public static void ByField_OperatorLong_InvalidPath_ThrowsArgumentException(string? path)
         {
             Assert.ThrowsAny<ArgumentException>(() =>
-                CloudEventFilter.ByField(path!, FilterExpressionType.Equal, 42L));
+                EventFilter.ByField(path!, FilterExpressionType.Equal, 42L));
         }
 
         [Theory, MemberData(nameof(InvalidPaths))]
         public static void ByField_OperatorDouble_InvalidPath_ThrowsArgumentException(string? path)
         {
             Assert.ThrowsAny<ArgumentException>(() =>
-                CloudEventFilter.ByField(path!, FilterExpressionType.Equal, 3.14));
+                EventFilter.ByField(path!, FilterExpressionType.Equal, 3.14));
         }
 
         [Theory, MemberData(nameof(InvalidPaths))]
         public static void ByField_OperatorDateTime_InvalidPath_ThrowsArgumentException(string? path)
         {
             Assert.ThrowsAny<ArgumentException>(() =>
-                CloudEventFilter.ByField(path!, FilterExpressionType.Equal, DateTime.UtcNow));
+                EventFilter.ByField(path!, FilterExpressionType.Equal, DateTime.UtcNow));
         }
 
         [Theory, MemberData(nameof(InvalidPaths))]
         public static void ByField_OperatorDateTimeOffset_InvalidPath_ThrowsArgumentException(string? path)
         {
             Assert.ThrowsAny<ArgumentException>(() =>
-                CloudEventFilter.ByField(path!, FilterExpressionType.Equal, DateTimeOffset.UtcNow));
+                EventFilter.ByField(path!, FilterExpressionType.Equal, DateTimeOffset.UtcNow));
         }
 
         // ── FieldStartsWith ────────────────────────────────────────────────────────────
@@ -140,14 +140,14 @@ namespace Deveel.Events
         [Theory, MemberData(nameof(ValidPaths))]
         public static void FieldStartsWith_ValidPath_DoesNotThrow(string path)
         {
-            var ex = Record.Exception(() => CloudEventFilter.FieldStartsWith(path, "prefix"));
+            var ex = Record.Exception(() => EventFilter.FieldStartsWith(path, "prefix"));
             Assert.Null(ex);
         }
 
         [Theory, MemberData(nameof(InvalidPaths))]
         public static void FieldStartsWith_InvalidPath_ThrowsArgumentException(string? path)
         {
-            Assert.ThrowsAny<ArgumentException>(() => CloudEventFilter.FieldStartsWith(path!, "prefix"));
+            Assert.ThrowsAny<ArgumentException>(() => EventFilter.FieldStartsWith(path!, "prefix"));
         }
 
         // ── FieldEndsWith ──────────────────────────────────────────────────────────────
@@ -155,14 +155,14 @@ namespace Deveel.Events
         [Theory, MemberData(nameof(ValidPaths))]
         public static void FieldEndsWith_ValidPath_DoesNotThrow(string path)
         {
-            var ex = Record.Exception(() => CloudEventFilter.FieldEndsWith(path, "suffix"));
+            var ex = Record.Exception(() => EventFilter.FieldEndsWith(path, "suffix"));
             Assert.Null(ex);
         }
 
         [Theory, MemberData(nameof(InvalidPaths))]
         public static void FieldEndsWith_InvalidPath_ThrowsArgumentException(string? path)
         {
-            Assert.ThrowsAny<ArgumentException>(() => CloudEventFilter.FieldEndsWith(path!, "suffix"));
+            Assert.ThrowsAny<ArgumentException>(() => EventFilter.FieldEndsWith(path!, "suffix"));
         }
 
         // ── FieldContains ──────────────────────────────────────────────────────────────
@@ -170,14 +170,14 @@ namespace Deveel.Events
         [Theory, MemberData(nameof(ValidPaths))]
         public static void FieldContains_ValidPath_DoesNotThrow(string path)
         {
-            var ex = Record.Exception(() => CloudEventFilter.FieldContains(path, "substring"));
+            var ex = Record.Exception(() => EventFilter.FieldContains(path, "substring"));
             Assert.Null(ex);
         }
 
         [Theory, MemberData(nameof(InvalidPaths))]
         public static void FieldContains_InvalidPath_ThrowsArgumentException(string? path)
         {
-            Assert.ThrowsAny<ArgumentException>(() => CloudEventFilter.FieldContains(path!, "substring"));
+            Assert.ThrowsAny<ArgumentException>(() => EventFilter.FieldContains(path!, "substring"));
         }
 
         // ── FieldExists ────────────────────────────────────────────────────────────────
@@ -185,14 +185,14 @@ namespace Deveel.Events
         [Theory, MemberData(nameof(ValidPaths))]
         public static void FieldExists_ValidPath_DoesNotThrow(string path)
         {
-            var ex = Record.Exception(() => CloudEventFilter.FieldExists(path));
+            var ex = Record.Exception(() => EventFilter.FieldExists(path));
             Assert.Null(ex);
         }
 
         [Theory, MemberData(nameof(InvalidPaths))]
         public static void FieldExists_InvalidPath_ThrowsArgumentException(string? path)
         {
-            Assert.ThrowsAny<ArgumentException>(() => CloudEventFilter.FieldExists(path!));
+            Assert.ThrowsAny<ArgumentException>(() => EventFilter.FieldExists(path!));
         }
 
         // ── FieldNotExists ─────────────────────────────────────────────────────────────
@@ -200,14 +200,14 @@ namespace Deveel.Events
         [Theory, MemberData(nameof(ValidPaths))]
         public static void FieldNotExists_ValidPath_DoesNotThrow(string path)
         {
-            var ex = Record.Exception(() => CloudEventFilter.FieldNotExists(path));
+            var ex = Record.Exception(() => EventFilter.FieldNotExists(path));
             Assert.Null(ex);
         }
 
         [Theory, MemberData(nameof(InvalidPaths))]
         public static void FieldNotExists_InvalidPath_ThrowsArgumentException(string? path)
         {
-            Assert.ThrowsAny<ArgumentException>(() => CloudEventFilter.FieldNotExists(path!));
+            Assert.ThrowsAny<ArgumentException>(() => EventFilter.FieldNotExists(path!));
         }
 
         // ── Error message quality ──────────────────────────────────────────────────────
@@ -216,21 +216,21 @@ namespace Deveel.Events
         public static void InvalidPath_ExceptionMessage_ContainsInvalidPath()
         {
             const string badPath = "field[0]";
-            var ex = Assert.ThrowsAny<ArgumentException>(() => CloudEventFilter.ByField(badPath, "x"));
+            var ex = Assert.ThrowsAny<ArgumentException>(() => EventFilter.ByField(badPath, "x"));
             Assert.Contains(badPath, ex.Message);
         }
 
         [Fact]
         public static void InvalidPath_ExceptionMessage_MentionsParamName()
         {
-            var ex = Assert.ThrowsAny<ArgumentException>(() => CloudEventFilter.ByField("bad path", "x"));
+            var ex = Assert.ThrowsAny<ArgumentException>(() => EventFilter.ByField("bad path", "x"));
             Assert.Equal("path", ex.ParamName);
         }
 
         [Fact]
         public static void NullPath_ExceptionMessage_MentionsParamName()
         {
-            var ex = Assert.ThrowsAny<ArgumentException>(() => CloudEventFilter.FieldExists(null!));
+            var ex = Assert.ThrowsAny<ArgumentException>(() => EventFilter.FieldExists(null!));
             Assert.Equal("path", ex.ParamName);
         }
     }

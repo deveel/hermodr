@@ -31,27 +31,18 @@ namespace Deveel.Events
     /// </list>
     /// </para>
     /// </remarks>
-    public static partial class CloudEventFilter
+    public static class EventFilter
     {
         // ── Fluent builder entry point ─────────────────────────────────────────────────
 
         /// <summary>
-        /// Creates a new, empty <see cref="CloudEventFilterBuilder"/> that can be used
+        /// Creates a new, empty <see cref="EventFilterBuilder"/> that can be used
         /// to compose a <see cref="FilterExpression"/> with a fluent API.
         /// </summary>
-        public static CloudEventFilterBuilder New() => new();
+        public static EventFilterBuilder New() => new();
 
         // ── JSON path validation ────────────────────────────────────────────────────
-
-        /// <summary>
-        /// Pattern that matches a valid dot-notation JSON path.
-        /// Each segment may contain letters, digits, and underscores.
-        /// Segments are separated by dots; no empty segments are allowed.
-        /// </summary>
-        [GeneratedRegex(@"^[a-zA-Z0-9_]+(\.[a-zA-Z0-9_]+)*$",
-            RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 1000)]
-        private static partial Regex JsonPathPattern();
-
+        
         /// <summary>
         /// Validates <paramref name="path"/> and throws an <see cref="ArgumentException"/>
         /// when the path is null, empty, or contains characters outside the allowed set.
@@ -67,7 +58,7 @@ namespace Deveel.Events
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(path, paramName);
 
-            if (!JsonPathPattern().IsMatch(path))
+            if (!JsonPath.Pattern().IsMatch(path))
                 throw new ArgumentException(
                     $"The path '{path}' is invalid. A JSON path must consist of one or more " +
                     "dot-separated segments where each segment contains only letters, digits, " +
@@ -338,6 +329,18 @@ namespace Deveel.Events
                 _                                       => throw new ArgumentOutOfRangeException(nameof(@operator), @operator, null)
             };
         }
+    }
+    
+    static partial class JsonPath
+    {
+        /// <summary>
+        /// Pattern that matches a valid dot-notation JSON path.
+        /// Each segment may contain letters, digits, and underscores.
+        /// Segments are separated by dots; no empty segments are allowed.
+        /// </summary>
+        [GeneratedRegex(@"^[a-zA-Z0-9_]+(\.[a-zA-Z0-9_]+)*$",
+            RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 1000)]
+        public static partial Regex Pattern();
     }
 }
 

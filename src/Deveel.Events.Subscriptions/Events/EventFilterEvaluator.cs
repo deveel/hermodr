@@ -25,7 +25,7 @@ namespace Deveel.Events
     /// path with <c>data.</c> — e.g. <c>data.customer.tier</c>.
     /// </para>
     /// </remarks>
-    internal static class CloudEventFilterEvaluator
+    internal static class EventFilterEvaluator
     {
         /// <summary>
         /// Returns <c>true</c> when <paramref name="filter"/> matches <paramref name="event"/>.

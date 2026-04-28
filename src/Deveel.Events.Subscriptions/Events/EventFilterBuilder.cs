@@ -19,20 +19,20 @@ namespace Deveel.Events
     /// </para>
     /// <para>Example usage:</para>
     /// <code language="csharp">
-    /// var filter = CloudEventFilterBuilder.New()
+    /// var filter = EventFilterBuilder.New()
     ///     .ByType("com.example.order.placed")
     ///     .BySource("https://example.com")
     ///     .WithField("status", "active")
     ///     .Build();
     ///
-    /// var orFilter = CloudEventFilterBuilder.New()
+    /// var orFilter = EventFilterBuilder.New()
     ///     .AnyOf(b => b
     ///         .ByType("com.example.order.placed")
     ///         .ByType("com.example.order.updated"))
     ///     .Build();
     /// </code>
     /// </remarks>
-    public sealed class CloudEventFilterBuilder
+    public sealed class EventFilterBuilder
     {
         private readonly List<FilterExpression> _expressions = new();
 
@@ -42,9 +42,9 @@ namespace Deveel.Events
         /// Adds a condition that matches events whose <c>type</c> attribute exactly equals
         /// <paramref name="type"/>.
         /// </summary>
-        public CloudEventFilterBuilder ByType(string type)
+        public EventFilterBuilder ByType(string type)
         {
-            _expressions.Add(CloudEventFilter.ByType(type));
+            _expressions.Add(EventFilter.ByType(type));
             return this;
         }
 
@@ -55,9 +55,9 @@ namespace Deveel.Events
         /// a leading <c>*</c> (e.g. <c>"*.placed"</c>) performs a suffix match;
         /// otherwise an exact match is used.
         /// </summary>
-        public CloudEventFilterBuilder ByTypePattern(string pattern)
+        public EventFilterBuilder ByTypePattern(string pattern)
         {
-            _expressions.Add(CloudEventFilter.ByTypePattern(pattern));
+            _expressions.Add(EventFilter.ByTypePattern(pattern));
             return this;
         }
 
@@ -65,9 +65,9 @@ namespace Deveel.Events
         /// Adds a condition that matches events whose <c>source</c> attribute exactly equals
         /// <paramref name="source"/>.
         /// </summary>
-        public CloudEventFilterBuilder BySource(string source)
+        public EventFilterBuilder BySource(string source)
         {
-            _expressions.Add(CloudEventFilter.BySource(source));
+            _expressions.Add(EventFilter.BySource(source));
             return this;
         }
 
@@ -75,9 +75,9 @@ namespace Deveel.Events
         /// Adds a condition that matches events whose <c>source</c> attribute satisfies
         /// <paramref name="pattern"/> (same wildcard rules as <see cref="ByTypePattern"/>).
         /// </summary>
-        public CloudEventFilterBuilder BySourcePattern(string pattern)
+        public EventFilterBuilder BySourcePattern(string pattern)
         {
-            _expressions.Add(CloudEventFilter.BySourcePattern(pattern));
+            _expressions.Add(EventFilter.BySourcePattern(pattern));
             return this;
         }
 
@@ -85,9 +85,9 @@ namespace Deveel.Events
         /// Adds a condition that matches events whose <c>subject</c> attribute exactly equals
         /// <paramref name="subject"/>.
         /// </summary>
-        public CloudEventFilterBuilder BySubject(string subject)
+        public EventFilterBuilder BySubject(string subject)
         {
-            _expressions.Add(CloudEventFilter.BySubject(subject));
+            _expressions.Add(EventFilter.BySubject(subject));
             return this;
         }
 
@@ -95,9 +95,9 @@ namespace Deveel.Events
         /// Adds a condition that matches events whose <c>subject</c> attribute satisfies
         /// <paramref name="pattern"/> (same wildcard rules as <see cref="ByTypePattern"/>).
         /// </summary>
-        public CloudEventFilterBuilder BySubjectPattern(string pattern)
+        public EventFilterBuilder BySubjectPattern(string pattern)
         {
-            _expressions.Add(CloudEventFilter.BySubjectPattern(pattern));
+            _expressions.Add(EventFilter.BySubjectPattern(pattern));
             return this;
         }
 
@@ -105,9 +105,9 @@ namespace Deveel.Events
         /// Adds a condition that matches events whose extension attribute named
         /// <paramref name="extensionName"/> exactly equals <paramref name="value"/>.
         /// </summary>
-        public CloudEventFilterBuilder ByExtension(string extensionName, string value)
+        public EventFilterBuilder ByExtension(string extensionName, string value)
         {
-            _expressions.Add(CloudEventFilter.ByExtension(extensionName, value));
+            _expressions.Add(EventFilter.ByExtension(extensionName, value));
             return this;
         }
 
@@ -117,9 +117,9 @@ namespace Deveel.Events
         /// Adds a condition that matches events where the JSON data field at <paramref name="path"/>
         /// exactly equals <paramref name="value"/>.
         /// </summary>
-        public CloudEventFilterBuilder WithField(string path, string value)
+        public EventFilterBuilder WithField(string path, string value)
         {
-            _expressions.Add(CloudEventFilter.ByField(path, value));
+            _expressions.Add(EventFilter.ByField(path, value));
             return this;
         }
 
@@ -127,9 +127,9 @@ namespace Deveel.Events
         /// Adds a condition that matches events where the JSON data field at <paramref name="path"/>
         /// satisfies the given <paramref name="op"/> compared to <paramref name="value"/>.
         /// </summary>
-        public CloudEventFilterBuilder WithField(string path, FilterExpressionType op, string value)
+        public EventFilterBuilder WithField(string path, FilterExpressionType op, string value)
         {
-            _expressions.Add(CloudEventFilter.ByField(path, op, value));
+            _expressions.Add(EventFilter.ByField(path, op, value));
             return this;
         }
 
@@ -137,9 +137,9 @@ namespace Deveel.Events
         /// Adds a condition that matches events where the JSON data field at <paramref name="path"/>
         /// satisfies the given <paramref name="op"/> compared to <paramref name="value"/>.
         /// </summary>
-        public CloudEventFilterBuilder WithField(string path, FilterExpressionType op, bool value)
+        public EventFilterBuilder WithField(string path, FilterExpressionType op, bool value)
         {
-            _expressions.Add(CloudEventFilter.ByField(path, op, value));
+            _expressions.Add(EventFilter.ByField(path, op, value));
             return this;
         }
 
@@ -147,9 +147,9 @@ namespace Deveel.Events
         /// Adds a condition that matches events where the JSON data field at <paramref name="path"/>
         /// satisfies the given <paramref name="op"/> compared to <paramref name="value"/>.
         /// </summary>
-        public CloudEventFilterBuilder WithField(string path, FilterExpressionType op, int value)
+        public EventFilterBuilder WithField(string path, FilterExpressionType op, int value)
         {
-            _expressions.Add(CloudEventFilter.ByField(path, op, value));
+            _expressions.Add(EventFilter.ByField(path, op, value));
             return this;
         }
 
@@ -157,9 +157,9 @@ namespace Deveel.Events
         /// Adds a condition that matches events where the JSON data field at <paramref name="path"/>
         /// satisfies the given <paramref name="op"/> compared to <paramref name="value"/>.
         /// </summary>
-        public CloudEventFilterBuilder WithField(string path, FilterExpressionType op, long value)
+        public EventFilterBuilder WithField(string path, FilterExpressionType op, long value)
         {
-            _expressions.Add(CloudEventFilter.ByField(path, op, value));
+            _expressions.Add(EventFilter.ByField(path, op, value));
             return this;
         }
 
@@ -167,9 +167,9 @@ namespace Deveel.Events
         /// Adds a condition that matches events where the JSON data field at <paramref name="path"/>
         /// satisfies the given <paramref name="op"/> compared to <paramref name="value"/>.
         /// </summary>
-        public CloudEventFilterBuilder WithField(string path, FilterExpressionType op, double value)
+        public EventFilterBuilder WithField(string path, FilterExpressionType op, double value)
         {
-            _expressions.Add(CloudEventFilter.ByField(path, op, value));
+            _expressions.Add(EventFilter.ByField(path, op, value));
             return this;
         }
 
@@ -177,9 +177,9 @@ namespace Deveel.Events
         /// Adds a condition that matches events where the JSON data field at <paramref name="path"/>
         /// satisfies the given <paramref name="op"/> compared to <paramref name="value"/>.
         /// </summary>
-        public CloudEventFilterBuilder WithField(string path, FilterExpressionType op, DateTime value)
+        public EventFilterBuilder WithField(string path, FilterExpressionType op, DateTime value)
         {
-            _expressions.Add(CloudEventFilter.ByField(path, op, value));
+            _expressions.Add(EventFilter.ByField(path, op, value));
             return this;
         }
 
@@ -187,9 +187,9 @@ namespace Deveel.Events
         /// Adds a condition that matches events where the JSON data field at <paramref name="path"/>
         /// satisfies the given <paramref name="op"/> compared to <paramref name="value"/>.
         /// </summary>
-        public CloudEventFilterBuilder WithField(string path, FilterExpressionType op, DateTimeOffset value)
+        public EventFilterBuilder WithField(string path, FilterExpressionType op, DateTimeOffset value)
         {
-            _expressions.Add(CloudEventFilter.ByField(path, op, value));
+            _expressions.Add(EventFilter.ByField(path, op, value));
             return this;
         }
 
@@ -197,9 +197,9 @@ namespace Deveel.Events
         /// Adds a condition that matches events where the JSON data field at <paramref name="path"/>
         /// starts with <paramref name="value"/>.
         /// </summary>
-        public CloudEventFilterBuilder FieldStartsWith(string path, string value)
+        public EventFilterBuilder FieldStartsWith(string path, string value)
         {
-            _expressions.Add(CloudEventFilter.FieldStartsWith(path, value));
+            _expressions.Add(EventFilter.FieldStartsWith(path, value));
             return this;
         }
 
@@ -207,9 +207,9 @@ namespace Deveel.Events
         /// Adds a condition that matches events where the JSON data field at <paramref name="path"/>
         /// ends with <paramref name="value"/>.
         /// </summary>
-        public CloudEventFilterBuilder FieldEndsWith(string path, string value)
+        public EventFilterBuilder FieldEndsWith(string path, string value)
         {
-            _expressions.Add(CloudEventFilter.FieldEndsWith(path, value));
+            _expressions.Add(EventFilter.FieldEndsWith(path, value));
             return this;
         }
 
@@ -217,9 +217,9 @@ namespace Deveel.Events
         /// Adds a condition that matches events where the JSON data field at <paramref name="path"/>
         /// contains <paramref name="value"/>.
         /// </summary>
-        public CloudEventFilterBuilder FieldContains(string path, string value)
+        public EventFilterBuilder FieldContains(string path, string value)
         {
-            _expressions.Add(CloudEventFilter.FieldContains(path, value));
+            _expressions.Add(EventFilter.FieldContains(path, value));
             return this;
         }
 
@@ -227,9 +227,9 @@ namespace Deveel.Events
         /// Adds a condition that matches events where the JSON data field at <paramref name="path"/>
         /// is present in the payload.
         /// </summary>
-        public CloudEventFilterBuilder FieldExists(string path)
+        public EventFilterBuilder FieldExists(string path)
         {
-            _expressions.Add(CloudEventFilter.FieldExists(path));
+            _expressions.Add(EventFilter.FieldExists(path));
             return this;
         }
 
@@ -237,9 +237,9 @@ namespace Deveel.Events
         /// Adds a condition that matches events where the JSON data field at <paramref name="path"/>
         /// is absent from the payload.
         /// </summary>
-        public CloudEventFilterBuilder FieldNotExists(string path)
+        public EventFilterBuilder FieldNotExists(string path)
         {
-            _expressions.Add(CloudEventFilter.FieldNotExists(path));
+            _expressions.Add(EventFilter.FieldNotExists(path));
             return this;
         }
 
@@ -257,11 +257,11 @@ namespace Deveel.Events
         /// <exception cref="InvalidOperationException">
         /// Thrown when the inner builder has no conditions.
         /// </exception>
-        public CloudEventFilterBuilder AllOf(Action<CloudEventFilterBuilder> configure)
+        public EventFilterBuilder AllOf(Action<EventFilterBuilder> configure)
         {
             ArgumentNullException.ThrowIfNull(configure);
 
-            var inner = new CloudEventFilterBuilder();
+            var inner = new EventFilterBuilder();
             configure(inner);
             _expressions.Add(inner.BuildRequired(nameof(AllOf)));
             return this;
@@ -278,11 +278,11 @@ namespace Deveel.Events
         /// <exception cref="InvalidOperationException">
         /// Thrown when the inner builder has no conditions.
         /// </exception>
-        public CloudEventFilterBuilder AnyOf(Action<CloudEventFilterBuilder> configure)
+        public EventFilterBuilder AnyOf(Action<EventFilterBuilder> configure)
         {
             ArgumentNullException.ThrowIfNull(configure);
 
-            var inner = new CloudEventFilterBuilder();
+            var inner = new EventFilterBuilder();
             configure(inner);
 
             if (inner._expressions.Count == 0)
@@ -305,11 +305,11 @@ namespace Deveel.Events
         /// <exception cref="InvalidOperationException">
         /// Thrown when the inner builder has no conditions.
         /// </exception>
-        public CloudEventFilterBuilder Not(Action<CloudEventFilterBuilder> configure)
+        public EventFilterBuilder Not(Action<EventFilterBuilder> configure)
         {
             ArgumentNullException.ThrowIfNull(configure);
 
-            var inner = new CloudEventFilterBuilder();
+            var inner = new EventFilterBuilder();
             configure(inner);
             _expressions.Add(FilterExpression.Not(inner.BuildRequired(nameof(Not))));
             return this;

@@ -51,7 +51,7 @@ namespace Deveel.Events
         [Fact]
         public static void Build_NoConditions_ReturnsEmptyFilter()
         {
-            var filter = CloudEventFilter.New().Build();
+            var filter = EventFilter.New().Build();
             Assert.True(filter.IsEmpty);
         }
 
@@ -60,7 +60,7 @@ namespace Deveel.Events
         [Fact]
         public static void ByType_ExactMatch_Matches()
         {
-            var filter = CloudEventFilter.New()
+            var filter = EventFilter.New()
                 .ByType("com.example.order.placed")
                 .Build();
 
@@ -70,7 +70,7 @@ namespace Deveel.Events
         [Fact]
         public static void ByType_ExactMatch_DoesNotMatchOtherType()
         {
-            var filter = CloudEventFilter.New()
+            var filter = EventFilter.New()
                 .ByType("com.example.order.placed")
                 .Build();
 
@@ -80,7 +80,7 @@ namespace Deveel.Events
         [Fact]
         public static void ByTypePattern_Prefix_MatchesCorrectPrefix()
         {
-            var filter = CloudEventFilter.New()
+            var filter = EventFilter.New()
                 .ByTypePattern("com.example.*")
                 .Build();
 
@@ -91,7 +91,7 @@ namespace Deveel.Events
         [Fact]
         public static void ByTypePattern_Suffix_MatchesCorrectSuffix()
         {
-            var filter = CloudEventFilter.New()
+            var filter = EventFilter.New()
                 .ByTypePattern("*.placed")
                 .Build();
 
@@ -102,7 +102,7 @@ namespace Deveel.Events
         [Fact]
         public static void BySource_ExactMatch_Matches()
         {
-            var filter = CloudEventFilter.New()
+            var filter = EventFilter.New()
                 .BySource("https://example.com/api")
                 .Build();
 
@@ -113,7 +113,7 @@ namespace Deveel.Events
         [Fact]
         public static void BySourcePattern_Prefix_Matches()
         {
-            var filter = CloudEventFilter.New()
+            var filter = EventFilter.New()
                 .BySourcePattern("https://example.*")
                 .Build();
 
@@ -123,7 +123,7 @@ namespace Deveel.Events
         [Fact]
         public static void BySubject_ExactMatch_Matches()
         {
-            var filter = CloudEventFilter.New()
+            var filter = EventFilter.New()
                 .BySubject("order-123")
                 .Build();
 
@@ -134,7 +134,7 @@ namespace Deveel.Events
         [Fact]
         public static void BySubjectPattern_Prefix_Matches()
         {
-            var filter = CloudEventFilter.New()
+            var filter = EventFilter.New()
                 .BySubjectPattern("order-*")
                 .Build();
 
@@ -147,7 +147,7 @@ namespace Deveel.Events
         [Fact]
         public static void WithField_ExactString_Matches()
         {
-            var filter = CloudEventFilter.New()
+            var filter = EventFilter.New()
                 .WithField("status", "active")
                 .Build();
 
@@ -158,7 +158,7 @@ namespace Deveel.Events
         [Fact]
         public static void WithField_NumericGreaterThan_Matches()
         {
-            var filter = CloudEventFilter.New()
+            var filter = EventFilter.New()
                 .WithField("amount", FilterExpressionType.GreaterThan, 100)
                 .Build();
 
@@ -169,7 +169,7 @@ namespace Deveel.Events
         [Fact]
         public static void FieldStartsWith_Matches()
         {
-            var filter = CloudEventFilter.New()
+            var filter = EventFilter.New()
                 .FieldStartsWith("customerId", "cust-")
                 .Build();
 
@@ -180,7 +180,7 @@ namespace Deveel.Events
         [Fact]
         public static void FieldEndsWith_Matches()
         {
-            var filter = CloudEventFilter.New()
+            var filter = EventFilter.New()
                 .FieldEndsWith("email", "@example.com")
                 .Build();
 
@@ -191,7 +191,7 @@ namespace Deveel.Events
         [Fact]
         public static void FieldContains_Matches()
         {
-            var filter = CloudEventFilter.New()
+            var filter = EventFilter.New()
                 .FieldContains("notes", "urgent")
                 .Build();
 
@@ -202,7 +202,7 @@ namespace Deveel.Events
         [Fact]
         public static void FieldExists_Matches_WhenFieldPresent()
         {
-            var filter = CloudEventFilter.New()
+            var filter = EventFilter.New()
                 .FieldExists("customerId")
                 .Build();
 
@@ -213,7 +213,7 @@ namespace Deveel.Events
         [Fact]
         public static void FieldNotExists_Matches_WhenFieldAbsent()
         {
-            var filter = CloudEventFilter.New()
+            var filter = EventFilter.New()
                 .FieldNotExists("deletedAt")
                 .Build();
 
@@ -226,7 +226,7 @@ namespace Deveel.Events
         [Fact]
         public static void MultipleConditions_AllMustMatch()
         {
-            var filter = CloudEventFilter.New()
+            var filter = EventFilter.New()
                 .ByType("com.example.order.placed")
                 .BySource("https://example.com/api")
                 .WithField("status", "active")
@@ -258,7 +258,7 @@ namespace Deveel.Events
         [Fact]
         public static void AnyOf_EitherConditionMatches()
         {
-            var filter = CloudEventFilter.New()
+            var filter = EventFilter.New()
                 .AnyOf(b => b
                     .ByType("com.example.order.placed")
                     .ByType("com.example.order.updated"))
@@ -273,7 +273,7 @@ namespace Deveel.Events
         public static void AnyOf_EmptyInner_ThrowsInvalidOperationException()
         {
             Assert.Throws<InvalidOperationException>(() =>
-                CloudEventFilter.New()
+                EventFilter.New()
                     .AnyOf(_ => { })
                     .Build());
         }
@@ -283,7 +283,7 @@ namespace Deveel.Events
         [Fact]
         public static void AllOf_AllConditionsMustMatch()
         {
-            var filter = CloudEventFilter.New()
+            var filter = EventFilter.New()
                 .AllOf(b => b
                     .ByType("com.example.order.placed")
                     .BySource("https://example.com/api"))
@@ -299,7 +299,7 @@ namespace Deveel.Events
         public static void AllOf_EmptyInner_ThrowsInvalidOperationException()
         {
             Assert.Throws<InvalidOperationException>(() =>
-                CloudEventFilter.New()
+                EventFilter.New()
                     .AllOf(_ => { })
                     .Build());
         }
@@ -309,7 +309,7 @@ namespace Deveel.Events
         [Fact]
         public static void Not_NegatesSingleCondition()
         {
-            var filter = CloudEventFilter.New()
+            var filter = EventFilter.New()
                 .Not(b => b.ByType("com.example.order.deleted"))
                 .Build();
 
@@ -321,7 +321,7 @@ namespace Deveel.Events
         public static void Not_EmptyInner_ThrowsInvalidOperationException()
         {
             Assert.Throws<InvalidOperationException>(() =>
-                CloudEventFilter.New()
+                EventFilter.New()
                     .Not(_ => { })
                     .Build());
         }
@@ -331,7 +331,7 @@ namespace Deveel.Events
         [Fact]
         public static void AnyOf_CombinedWithTopLevelAnd_BothMustHold()
         {
-            var filter = CloudEventFilter.New()
+            var filter = EventFilter.New()
                 .BySource("https://example.com/api")
                 .AnyOf(b => b
                     .ByType("com.example.order.placed")
