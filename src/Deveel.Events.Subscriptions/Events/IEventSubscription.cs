@@ -22,7 +22,7 @@ namespace Deveel.Events
         /// Gets the filter that determines which <see cref="CloudEvent"/>s this subscription
         /// is interested in.
         /// </summary>
-        IEventFilter Filter { get; }
+        EventFilter Filter { get; }
 
         /// <summary>
         /// Invokes the subscription handler with the supplied <paramref name="event"/>.

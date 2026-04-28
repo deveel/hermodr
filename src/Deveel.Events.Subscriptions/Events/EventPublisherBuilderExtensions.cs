@@ -148,7 +148,7 @@ namespace Deveel.Events
         /// </summary>
         public static EventPublisherBuilder Subscribe(
             this EventPublisherBuilder builder,
-            IEventFilter filter,
+            EventFilter filter,
             Func<CloudEvent, CancellationToken, Task> handler,
             string? name = null)
         {
@@ -173,7 +173,7 @@ namespace Deveel.Events
             Func<CloudEvent, CancellationToken, Task> handler,
             string? name = null)
         {
-            var filter = EventAttributeFilter.Type(typePattern, parseWildcard: true);
+            var filter = EventFilter.Type(typePattern, parseWildcard: true);
             return builder.Subscribe(filter, handler, name);
         }
 
@@ -275,7 +275,7 @@ namespace Deveel.Events
         /// <returns>The same <paramref name="builder"/> for chaining.</returns>
         public static EventPublisherBuilder RouteToChannel(
             this EventPublisherBuilder builder,
-            IEventFilter filter,
+            EventFilter filter,
             EventPublishOptions? routingOptions = null,
             string? name = null)
         {
@@ -308,7 +308,7 @@ namespace Deveel.Events
             EventPublishOptions? routingOptions = null,
             string? name = null)
         {
-            var filter = EventAttributeFilter.Type(typePattern, parseWildcard: true);
+            var filter = EventFilter.Type(typePattern, parseWildcard: true);
             return builder.RouteToChannel(filter, routingOptions, name);
         }
 

@@ -3,14 +3,19 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 //
 
+using System.Linq.Expressions;
+using System.Text.Json;
+
+using CloudNative.CloudEvents;
+
 namespace Deveel.Events
 {
     /// <summary>
-    /// Provides a fluent API for constructing an <see cref="IEventFilter"/>.
+    /// Provides a fluent API for constructing an <see cref="EventFilter"/>.
     /// </summary>
     public sealed class EventFilterBuilder
     {
-        private readonly List<IEventFilter> _filters = new();
+        private readonly List<EventFilter> _filters = new();
 
         /// <summary>
         /// Initialises an empty builder. Call the fluent <c>With*</c> methods to add
@@ -20,7 +25,7 @@ namespace Deveel.Events
 
         // ── Internal helper ─────────────────────────────────────────────────────────
 
-        private void AddFilter(IEventFilter filter) => _filters.Add(filter);
+        private void AddFilter(EventFilter filter) => _filters.Add(filter);
 
         // ── Envelope-attribute filters ──────────────────────────────────────────────
 
@@ -30,7 +35,7 @@ namespace Deveel.Events
         /// </summary>
         public EventFilterBuilder WithType(string type)
         {
-            AddFilter(EventAttributeFilter.Type(type));
+            AddFilter(EventFilter.Type(type));
             return this;
         }
 
@@ -43,7 +48,7 @@ namespace Deveel.Events
         /// </summary>
         public EventFilterBuilder WithTypePattern(string pattern)
         {
-            AddFilter(EventAttributeFilter.Type(pattern, parseWildcard: true));
+            AddFilter(EventFilter.Type(pattern, parseWildcard: true));
             return this;
         }
 
@@ -64,7 +69,7 @@ namespace Deveel.Events
         /// </summary>
         public EventFilterBuilder WithSourcePattern(string pattern)
         {
-            AddFilter(EventAttributeFilter.For("source", pattern, parseWildcard: true));
+            AddFilter(EventFilter.For("source", pattern, parseWildcard: true));
             return this;
         }
 
@@ -85,15 +90,15 @@ namespace Deveel.Events
         /// </summary>
         public EventFilterBuilder WithSubjectPattern(string pattern)
         {
-            AddFilter(EventAttributeFilter.For("subject", pattern, parseWildcard: true));
+            AddFilter(EventFilter.For("subject", pattern, parseWildcard: true));
             return this;
         }
 
         /// <summary>
-        /// Adds an arbitrary <see cref="IEventFilter"/> to the subscription.
+        /// Adds an arbitrary <see cref="EventFilter"/> to the subscription.
         /// All added filters must pass for the subscription to match.
         /// </summary>
-        public EventFilterBuilder With(IEventFilter filter)
+        public EventFilterBuilder With(EventFilter filter)
         {
             ArgumentNullException.ThrowIfNull(filter);
             AddFilter(filter);
@@ -109,66 +114,112 @@ namespace Deveel.Events
         /// </summary>
         public EventFilterBuilder WithField(string path, string value)
         {
-            AddFilter(EventDataFilter.Create(path, FilterOperator.Equals, value));
+            AddFilter(EventFilter.Create(path, FilterOperator.Equals, value));
             return this;
         }
 
         /// <summary>Adds an <see cref="EventDataFilter"/> comparing <paramref name="path"/> with a <see cref="string"/> value.</summary>
         public EventFilterBuilder WithField(string path, FilterOperator @operator, string value)
         {
-            AddFilter(EventDataFilter.Create(path, @operator, value));
+            AddFilter(EventFilter.Create(path, @operator, value));
             return this;
         }
 
         /// <summary>Adds an <see cref="EventDataFilter"/> comparing <paramref name="path"/> with a <see cref="bool"/> value.</summary>
         public EventFilterBuilder WithField(string path, FilterOperator @operator, bool value)
         {
-            AddFilter(EventDataFilter.Create(path, @operator, value));
+            AddFilter(EventFilter.Create(path, @operator, value));
             return this;
         }
 
         /// <summary>Adds an <see cref="EventDataFilter"/> comparing <paramref name="path"/> with an <see cref="int"/> value.</summary>
         public EventFilterBuilder WithField(string path, FilterOperator @operator, int value)
         {
-            AddFilter(EventDataFilter.Create(path, @operator, value));
+            AddFilter(EventFilter.Create(path, @operator, value));
             return this;
         }
 
         /// <summary>Adds an <see cref="EventDataFilter"/> comparing <paramref name="path"/> with a <see cref="long"/> value.</summary>
         public EventFilterBuilder WithField(string path, FilterOperator @operator, long value)
         {
-            AddFilter(EventDataFilter.Create(path, @operator, value));
+            AddFilter(EventFilter.Create(path, @operator, value));
             return this;
         }
 
         /// <summary>Adds an <see cref="EventDataFilter"/> comparing <paramref name="path"/> with a <see cref="double"/> value.</summary>
         public EventFilterBuilder WithField(string path, FilterOperator @operator, double value)
         {
-            AddFilter(EventDataFilter.Create(path, @operator, value));
+            AddFilter(EventFilter.Create(path, @operator, value));
             return this;
         }
 
         /// <summary>Adds an <see cref="EventDataFilter"/> comparing <paramref name="path"/> with a <see cref="DateTime"/> value.</summary>
         public EventFilterBuilder WithField(string path, FilterOperator @operator, DateTime value)
         {
-            AddFilter(EventDataFilter.Create(path, @operator, value));
+            AddFilter(EventFilter.Create(path, @operator, value));
             return this;
         }
 
         /// <summary>Adds an <see cref="EventDataFilter"/> comparing <paramref name="path"/> with a <see cref="DateTimeOffset"/> value.</summary>
         public EventFilterBuilder WithField(string path, FilterOperator @operator, DateTimeOffset value)
         {
-            AddFilter(EventDataFilter.Create(path, @operator, value));
+            AddFilter(EventFilter.Create(path, @operator, value));
             return this;
         }
 
 
+        // ── Typed-predicate filter ──────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Adds a <see cref="TypedEventDataFilter{TEvent}"/> that deserializes the event data
+        /// payload into <typeparamref name="TEvent"/> and tests it against
+        /// <paramref name="predicate"/>.
+        /// </summary>
+        /// <typeparam name="TEvent">
+        /// The CLR type the JSON payload is deserialized into before the predicate is applied.
+        /// </typeparam>
+        /// <param name="predicate">
+        /// A strongly-typed predicate expression evaluated against the deserialized object.
+        /// </param>
+        /// <param name="serializerOptions">
+        /// Optional <see cref="JsonSerializerOptions"/> used during deserialization.
+        /// </param>
+        public EventFilterBuilder WithPredicate<TEvent>(
+            Expression<Func<TEvent, bool>> predicate,
+            JsonSerializerOptions? serializerOptions = null)
+        {
+            AddFilter(EventFilter.For(predicate, serializerOptions));
+            return this;
+        }
+
         // ── Build ───────────────────────────────────────────────────────────────────
 
         /// <summary>
-        /// Builds and returns the composed <see cref="IEventFilter"/> (AND of all added
+        /// Builds and returns the composed <see cref="EventFilter"/> (AND of all added
         /// child filters). An empty builder produces a filter that matches every event.
         /// </summary>
-        public IEventFilter Build() => LogicalEventFilter.And(_filters.ToArray());
+        public EventFilter Build() => EventFilter.And(_filters.ToArray());
+    }
+
+
+    /// <summary>
+    /// Internal adapter that wraps a <c>Func&lt;CloudEvent, bool&gt;</c> delegate as an
+    /// <see cref="EventFilter"/>.
+    /// </summary>
+    internal sealed class FuncEventFilter : EventFilter
+    {
+        private readonly Func<CloudEvent, bool> _predicate;
+
+        public FuncEventFilter(Func<CloudEvent, bool> predicate)
+        {
+            _predicate = predicate;
+        }
+
+        public override bool Matches(CloudEvent @event, EventSubscriptionContext context)
+            => @event is not null && _predicate(@event);
+
+        public override TResult Accept<TResult>(IEventFilterVisitor<TResult> visitor)
+            => throw new NotSupportedException(
+                $"{nameof(FuncEventFilter)} wraps a raw delegate and cannot be visited or serialized.");
     }
 }

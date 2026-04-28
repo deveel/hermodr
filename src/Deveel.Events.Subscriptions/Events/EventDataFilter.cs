@@ -33,11 +33,11 @@ namespace Deveel.Events
     /// no reference value is needed; use <see cref="Exists"/> / <see cref="NotExists"/>.
     /// </para>
     /// </remarks>
-    public sealed class EventDataFilter : IEventFilter
+    public sealed class EventDataFilter : EventFilter
     {
         private readonly string[] _segments;
 
-        private EventDataFilter(string path, FilterOperator @operator, object? value)
+        internal EventDataFilter(string path, FilterOperator @operator, object? value)
         {
             if (string.IsNullOrWhiteSpace(path))
                 throw new ArgumentException("Path must not be empty.", nameof(path));
@@ -65,53 +65,16 @@ namespace Deveel.Events
         public object? Value { get; }
 
         // ── Factory methods ─────────────────────────────────────────────────────────
-
-        /// <summary>Creates a filter that compares the field at <paramref name="path"/> with a <see cref="bool"/> value.</summary>
-        public static EventDataFilter Create(string path, FilterOperator @operator, bool value)
-            => new(path, @operator, value);
-
-        /// <summary>Creates a filter that compares the field at <paramref name="path"/> with an <see cref="int"/> value.</summary>
-        public static EventDataFilter Create(string path, FilterOperator @operator, int value)
-            => new(path, @operator, value);
-
-        /// <summary>Creates a filter that compares the field at <paramref name="path"/> with a <see cref="long"/> value.</summary>
-        public static EventDataFilter Create(string path, FilterOperator @operator, long value)
-            => new(path, @operator, value);
-
-        /// <summary>Creates a filter that compares the field at <paramref name="path"/> with a <see cref="double"/> value.</summary>
-        public static EventDataFilter Create(string path, FilterOperator @operator, double value)
-            => new(path, @operator, value);
-
-        /// <summary>Creates a filter that compares the field at <paramref name="path"/> with a <see cref="string"/> value.</summary>
-        public static EventDataFilter Create(string path, FilterOperator @operator, string value)
-            => new(path, @operator, value);
-
-        /// <summary>Creates a filter that compares the field at <paramref name="path"/> with a <see cref="DateTime"/> value.</summary>
-        public static EventDataFilter Create(string path, FilterOperator @operator, DateTime value)
-            => new(path, @operator, value);
-
-        /// <summary>Creates a filter that compares the field at <paramref name="path"/> with a <see cref="DateTimeOffset"/> value.</summary>
-        public static EventDataFilter Create(string path, FilterOperator @operator, DateTimeOffset value)
-            => new(path, @operator, value);
-
-        /// <summary>
-        /// Creates a filter that passes when the JSON property at <paramref name="path"/> exists
-        /// (regardless of its value).
-        /// </summary>
-        public static EventDataFilter Exists(string path)
-            => new(path, FilterOperator.Exists, null);
-
-        /// <summary>
-        /// Creates a filter that passes when the JSON property at <paramref name="path"/> is
-        /// absent from the payload.
-        /// </summary>
-        public static EventDataFilter NotExists(string path)
-            => new(path, FilterOperator.NotExists, null);
+        // (factory methods have been moved to EventFilter)
 
         // ── IEventFilter ─────────────────────────────────────────────────────────────
 
         /// <inheritdoc/>
-        public bool Matches(CloudEvent @event, EventSubscriptionContext context)
+        public override TResult Accept<TResult>(IEventFilterVisitor<TResult> visitor)
+            => visitor.VisitData(this);
+
+        /// <inheritdoc/>
+        public override bool Matches(CloudEvent @event, EventSubscriptionContext context)
         {
             if (@event is null)
                 return false;
@@ -237,4 +200,3 @@ namespace Deveel.Events
         };
     }
 }
-

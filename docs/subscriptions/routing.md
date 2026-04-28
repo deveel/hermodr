@@ -4,7 +4,7 @@ A **routing subscription** intercepts a matched `CloudEvent` and **re-publishes*
 
 ## How It Works
 
-`RoutingEventSubscription` implements `IEventSubscription`. When an event matches its filter, it resolves `IEventPublisher` from the DI container (lazily, to avoid circular dependencies) and re-publishes the event using optional `EventPublishOptions` to select the target channel.
+`RoutingEventSubscription` implements `IRoutingEventSubscription` (which extends `IEventSubscription`). When an event matches its filter, it resolves `IEventPublisher` from the DI container (lazily, to avoid circular dependencies) and re-publishes the event using optional `EventPublishOptions` to select the target channel.
 
 ```
 IEventPublisher.PublishAsync(event)
@@ -36,10 +36,9 @@ pub.AddDispatcher()
 ### By Pre-Built Filter
 
 ```csharp
-var filter = EventSubscriptionFilter.Builder
-    .WithTypePattern("com.example.order.*")
-    .WithExtension("priority", "high")
-    .Build();
+var filter = LogicalEventFilter.And(
+    EventAttributeFilter.Type("com.example.order.*", parseWildcard: true),
+    EventAttributeFilter.ForExtension("priority", "high"));
 
 pub.AddDispatcher()
    .RouteToChannel(
@@ -55,7 +54,7 @@ pub.AddDispatcher()
    .RouteToChannel(
        configureFilter: fb => fb
            .WithTypePattern("com.example.payment.*")
-           .WithJsonPath("currency", "USD"),
+           .WithField("currency", FilterOperator.Equals, "USD"),
        routingOptions: new EventPublishOptions { ChannelName = "usd-payments" },
        name: "route-usd-payments");
 ```
@@ -83,8 +82,9 @@ Re-publish the same event to a high-priority queue when the amount exceeds a thr
 pub.AddDispatcher()
    // High-value orders → priority queue
    .RouteToChannel(
-       fb => fb.WithTypePattern("com.example.order.*")
-               .WithJsonPath("amount", FilterOperator.GreaterThanOrEqual, "1000"),
+       fb => fb
+           .WithTypePattern("com.example.order.*")
+           .WithField("amount", FilterOperator.GreaterThanOrEqual, 1000.0),
        new EventPublishOptions { ChannelName = "priority-orders" })
    // All orders → standard queue (separate channel registration)
    .RouteToChannel(
@@ -139,10 +139,11 @@ public sealed class TenantRoutingSubscription : IRoutingEventSubscription
 
     public string? Name => "tenant-router";
 
-    public EventSubscriptionFilter Filter =>
-        EventSubscriptionFilter.ForTypePattern("com.example.*");
+    public IEventFilter Filter =>
+        EventAttributeFilter.Type("com.example.*", parseWildcard: true);
 
-    public EventPublishOptions? RoutingOptions => null; // resolved dynamically below
+    // RoutingOptions is null here because the target channel is resolved dynamically in HandleAsync.
+    public EventPublishOptions? RoutingOptions => null;
 
     public async Task HandleAsync(CloudEvent e, CancellationToken ct = default)
     {
@@ -161,4 +162,3 @@ public sealed class TenantRoutingSubscription : IRoutingEventSubscription
 pub.AddDispatcher()
    .Subscribe<TenantRoutingSubscription>();
 ```
-

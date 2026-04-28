@@ -32,7 +32,7 @@ namespace Deveel.Events
             };
 
         private static EventSubscription MakeSub(
-            IEventFilter? filter = null,
+            EventFilter? filter = null,
             string? name = null)
             => new(filter ?? LogicalEventFilter.And(),
                    (_, _) => Task.CompletedTask,

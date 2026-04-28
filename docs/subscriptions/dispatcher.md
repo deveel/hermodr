@@ -18,15 +18,14 @@ services.AddEventPublisher(pub =>
 
 | Service | Lifetime | Description |
 |---------|----------|-------------|
-| `EventSubscriptionRegistry` | Singleton | In-memory registry (write + read) |
-| `IEventSubscriptionRegistry` | Singleton | Write interface for runtime registration |
-| `IEventSubscriptionResolver` | Singleton | Read interface queried by the dispatcher |
+| `EventSubscriptionRegistry` | Singleton | In-memory registry (write + read), pre-populated from any `IEventSubscription` instances registered with DI |
+| `IEventSubscriptionRegistry` | Singleton | Write interface for runtime subscription registration |
+| `IEventSubscriptionResolver` | Singleton | Read interface forwarded to the in-memory registry; queried by the dispatcher alongside custom resolvers |
 | `EventDispatcher` | Singleton | The dispatcher itself |
 | `IEventDispatcher` | Singleton | Public dispatch interface |
 | `IEventPublishChannel` | Singleton | Wired into the publisher's fan-out pipeline |
-| `EventDataDeserializerProvider` | Singleton | Built from all registered `IEventDataDeserializer`s |
 
-> **Order matters:** call `AddDispatcher()` **before** any `Subscribe(…)` calls. The registry is populated with `IEventSubscription` instances resolved from the DI container when it is first built.
+> **Order matters:** call `AddDispatcher()` **before** any `Subscribe(…)` calls so that the `IEventSubscription` instances registered in DI are picked up when the registry singleton is first built.
 
 ---
 
@@ -106,8 +105,8 @@ public class MyBackgroundService : BackgroundService
     {
         var cloudEvent = new CloudEvent
         {
-            Id   = Guid.NewGuid().ToString(),
-            Type = "com.example.heartbeat",
+            Id     = Guid.NewGuid().ToString(),
+            Type   = "com.example.heartbeat",
             Source = new Uri("https://background/service")
         };
 
@@ -132,8 +131,8 @@ public sealed class AuditOrderSubscription : IEventSubscription
 
     public string? Name => "audit-orders";
 
-    public EventSubscriptionFilter Filter =>
-        EventSubscriptionFilter.ForTypePattern("com.example.order.*");
+    public IEventFilter Filter =>
+        EventAttributeFilter.Type("com.example.order.*", parseWildcard: true);
 
     public Task HandleAsync(CloudEvent e, CancellationToken ct = default)
         => _audit.RecordAsync(e, ct);
@@ -165,9 +164,9 @@ public class WebhookManager
         string webhookUrl,
         CancellationToken ct = default)
     {
-        var filter = EventSubscriptionFilter.Builder
-            .WithExtension("tenantid", tenantId)
-            .Build();
+        var filter = LogicalEventFilter.And(
+            EventAttributeFilter.Type("com.example.*", parseWildcard: true),
+            EventAttributeFilter.ForExtension("tenantid", tenantId));
 
         var subscription = new EventSubscription(
             filter,
@@ -185,5 +184,16 @@ public class WebhookManager
 
 > **Note:** The built-in `EventSubscriptionRegistry` is an in-memory, thread-safe store — subscriptions registered at runtime are **not** persisted across application restarts. For subscriptions that must survive restarts or be managed externally, implement a [custom resolver backed by a database or remote service](custom-resolver.md).
 
+---
 
+## Custom Data Deserialization
 
+When an `EventDataFilter` evaluates the event payload, it calls `EventSubscriptionContext.GetJsonData(event)` internally. The context first checks whether any `IEventDataDeserializer` registered with the DI container can handle the event's `datacontenttype`; if none matches, it falls back to the built-in JSON deserializer which handles JSON strings, `JsonElement` objects, and CLR objects serializable with `System.Text.Json`.
+
+Register a custom deserializer:
+
+```csharp
+services.AddSingleton<IEventDataDeserializer, MyCustomDeserializer>();
+```
+
+The `CanDeserialize(string? contentType)` method determines whether your deserializer is selected for a given content type.

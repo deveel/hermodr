@@ -15,6 +15,8 @@ Implement `IEventSubscriptionResolver` for read-only sources (remote service, re
 
 ## Implementing a Read-Only Resolver
 
+A resolver receives the incoming `CloudEvent` and an optional `EventSubscriptionContext` (which carries the application `IServiceProvider`) and must return all subscriptions whose filter matches the event.
+
 ```csharp
 public sealed class DatabaseSubscriptionResolver : IEventSubscriptionResolver
 {
@@ -23,29 +25,28 @@ public sealed class DatabaseSubscriptionResolver : IEventSubscriptionResolver
     public DatabaseSubscriptionResolver(ISubscriptionRepository db)
         => _db = db;
 
-    public async Task<IReadOnlyList<IEventSubscription>> ResolveSubscriptionsAsync(
+    public Task<IReadOnlyList<IEventSubscription>> ResolveSubscriptionsAsync(
         CloudEvent @event,
         CancellationToken cancellationToken = default)
-        => await ResolveSubscriptionsAsync(@event, context: null, cancellationToken);
+        => ResolveSubscriptionsAsync(@event, context: null, cancellationToken);
 
     public async Task<IReadOnlyList<IEventSubscription>> ResolveSubscriptionsAsync(
         CloudEvent @event,
         EventSubscriptionContext? context,
         CancellationToken cancellationToken = default)
     {
-        // Load all persisted filter models from the database
+        // Load all persisted filter records from the database.
         var records = await _db.GetAllAsync(cancellationToken);
 
+        var ctx = context ?? EventSubscriptionContext.Empty;
         var matched = new List<IEventSubscription>();
 
         foreach (var record in records)
         {
-            // Deserialize the stored filter model
-            var model  = EventSubscriptionFilterModel.FromJson(record.FilterJson)!;
-            var filter = model.ToRuntimeFilter();
+            // Reconstruct an IEventFilter from the stored representation.
+            IEventFilter filter = BuildFilterFromRecord(record);
 
-            // Check whether the filter matches the incoming event
-            if (filter.Matches(@event, context?.Services))
+            if (filter.Matches(@event, ctx))
             {
                 matched.Add(new EventSubscription(
                     filter,
@@ -57,12 +58,27 @@ public sealed class DatabaseSubscriptionResolver : IEventSubscriptionResolver
         return matched;
     }
 
+    private static IEventFilter BuildFilterFromRecord(SubscriptionRecord record)
+    {
+        // Example: reconstruct the filter from stored type/field criteria.
+        // Adapt this to however your records store filter information.
+        var builder = new EventFilterBuilder();
+
+        if (!string.IsNullOrEmpty(record.TypePattern))
+            builder.WithTypePattern(record.TypePattern);
+
+        foreach (var field in record.FieldFilters)
+            builder.WithField(field.Path, field.Operator, field.Value);
+
+        return builder.Build();
+    }
+
     private static Task InvokeHandlerAsync(
         SubscriptionRecord record,
         CloudEvent e,
         CancellationToken ct)
     {
-        // Application-specific dispatch logic — e.g. call a webhook URL stored in the record
+        // Application-specific dispatch logic — e.g. call a webhook URL stored in the record.
         throw new NotImplementedException("Replace with real handler logic");
     }
 }
@@ -88,7 +104,7 @@ pub.AddDispatcher()
 
 ## Implementing a Writable Registry
 
-If you also want `IEventSubscriptionRegistry.RegisterAsync` to persist to the backing store:
+If you also want `IEventSubscriptionRegistry.RegisterAsync` to persist to the backing store, implement both interfaces:
 
 ```csharp
 public sealed class DatabaseSubscriptionRegistry :
@@ -104,18 +120,37 @@ public sealed class DatabaseSubscriptionRegistry :
         IEventSubscription subscription,
         CancellationToken cancellationToken = default)
     {
-        var filterModel = EventSubscriptionFilterModel.From(subscription.Filter);
+        // Persist the filter criteria to the database. The exact serialization
+        // format is application-specific — for example, store the type pattern
+        // and field filters as JSON columns in a subscriptions table.
         var record = new SubscriptionRecord
         {
-            Name       = subscription.Name,
-            FilterJson = filterModel.ToJson()
+            Name        = subscription.Name,
+            TypePattern = ExtractTypePattern(subscription.Filter),
+            // ... other serialized fields ...
         };
         await _db.InsertAsync(record, cancellationToken);
+    }
+
+    private static string? ExtractTypePattern(IEventFilter filter)
+    {
+        // Inspect the filter tree to extract the type pattern — adapt as needed.
+        if (filter is EventAttributeFilter attrFilter &&
+            string.Equals(attrFilter.AttributeName, "type", StringComparison.OrdinalIgnoreCase))
+        {
+            return attrFilter.MatchMode switch
+            {
+                FilterMatchMode.Prefix => attrFilter.Value + "*",
+                FilterMatchMode.Suffix => "*" + attrFilter.Value,
+                _                      => attrFilter.Value
+            };
+        }
+        return null;
     }
 }
 ```
 
-Register it as both interfaces so that `IEventSubscriptionRegistry` and `IEventSubscriptionResolver` both resolve the same singleton:
+Register it as both interfaces so that `IEventSubscriptionRegistry` and `IEventSubscriptionResolver` resolve the same singleton:
 
 ```csharp
 services.AddSingleton<DatabaseSubscriptionRegistry>();
@@ -130,37 +165,35 @@ services.AddSingleton<IEventSubscriptionResolver>(sp =>
 
 ---
 
-## `EventSubscriptionFilterModel` Reference
+## Key Contracts
 
-`EventSubscriptionFilterModel` is the bridge between the runtime filter and a serializable representation:
+### `IEventSubscriptionResolver`
 
-| Method | Description |
+```csharp
+Task<IReadOnlyList<IEventSubscription>> ResolveSubscriptionsAsync(
+    CloudEvent @event,
+    CancellationToken cancellationToken = default);
+
+Task<IReadOnlyList<IEventSubscription>> ResolveSubscriptionsAsync(
+    CloudEvent @event,
+    EventSubscriptionContext? context,
+    CancellationToken cancellationToken = default);
+```
+
+The context overload passes the application `IServiceProvider` through to DI-aware filters (e.g. `EventDataFilter` uses `context.GetJsonData(event)` which can resolve custom `IEventDataDeserializer` services). Always prefer the context overload; the no-context overload is provided for backward compatibility.
+
+### `EventSubscriptionContext`
+
+| Member | Description |
 |--------|-------------|
-| `EventSubscriptionFilterModel.From(filter)` | Converts a runtime `EventSubscriptionFilter` to a serializable model |
-| `model.ToRuntimeFilter()` | Rebuilds a runtime `EventSubscriptionFilter` from the model |
-| `model.ToJson(options?)` | Serializes the model to a JSON string |
-| `EventSubscriptionFilterModel.FromJson(json, options?)` | Deserializes a model from a JSON string |
-| `model.HasUnserializablePredicates` | `true` when the original filter contained a delegate that could not be serialized |
-
-### What Is (and Is Not) Serializable
-
-| Filter element | Serializable? | Notes |
-|----------------|--------------|-------|
-| `TypeFilter` / `SourceFilter` / `SubjectFilter` | ✅ Yes | Stored as `{ value, mode }` |
-| `ExtensionFilters` | ✅ Yes | Dictionary of attribute name → `{ value, mode }` |
-| `DataFilter` when it is a `JsonPathDataFilter` | ✅ Yes | Converted to a `JsonPathComparisonExpression` |
-| `DataFilter` when it is a `JsonPredicateDataFilter` | ❌ No | Sets `HasUnserializablePredicates` |
-| `DataFilter` when it is a `TypedDataFilter<T>` | ❌ No | Sets `HasUnserializablePredicates` |
-| `Predicate` delegate | ❌ No | Sets `HasUnserializablePredicates` |
-
-For body-filter persistence, model your filter using `FilterExpression` trees and assign them through `DataExpression`. See [Filter Expressions](filter-expressions.md) for details.
+| `EventSubscriptionContext.Empty` | Shared sentinel with no service provider — safe to use when no DI context is available |
+| `Services` | The `IServiceProvider`, or `null` when the context is empty |
+| `GetJsonData(CloudEvent)` | Returns the event payload as a `JsonElement?`, using DI-registered `IEventDataDeserializer` instances (falls back to the built-in JSON deserializer) |
 
 ---
 
 ## Tips
 
-- **Caching** — query the database once per dispatch is expensive at high throughput. Consider a short-lived cache (e.g. `MemoryCache` with a 30-second TTL) that is invalidated when new subscriptions are registered.
+- **Caching** — querying the database once per dispatch is expensive at high throughput. Consider a short-lived cache (e.g. `IMemoryCache` with a 30-second TTL) that is invalidated when new subscriptions are registered.
 - **Lazy loading** — load subscriptions eagerly at startup and refresh periodically, rather than per-event, for large subscription sets.
-- **Testing** — the resolver interface is straightforward to stub. See the [Testing](../testing/README.md) guide for patterns.
-
-
+- **Testing** — the resolver interface is straightforward to stub or mock. See the [Testing](../testing/README.md) guide for patterns.

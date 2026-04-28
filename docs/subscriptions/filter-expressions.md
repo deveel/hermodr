@@ -4,7 +4,7 @@
 
 ## Motivation
 
-Delegate-based filters (`WithJsonPredicate`, `WithData<T>`, `WithPredicate`) are powerful but opaque — they cannot be introspected or easily combined. `EventDataFilter` and `LogicalEventFilter` provide a structured, data-driven alternative that integrates naturally with the `IEventFilter` contract shared by all filter types.
+Delegate-based filters are powerful but opaque — they cannot be introspected, serialized, or easily combined. `EventDataFilter` and `LogicalEventFilter` provide a structured, data-driven alternative that integrates naturally with the `IEventFilter` contract shared by all filter types, making them suitable for database-backed or dynamically generated subscription rules.
 
 ---
 
@@ -89,22 +89,39 @@ An AND filter with zero children evaluates to `true`; an OR filter with zero chi
 
 ## Using Filters in a Subscription
 
-Pass filters directly to the builder via `WithField` (single field) or `With` (any `IEventFilter`, including `LogicalEventFilter`):
+Pass data filters directly to the `EventFilterBuilder` via `WithField` (single field) or `With` (any `IEventFilter`, including `LogicalEventFilter`):
 
 ```csharp
-// Single field shorthand
-var filter = EventSubscriptionFilter.Builder
+// Single field shorthand — exact string match
+var filter = new EventFilterBuilder()
+    .WithTypePattern("com.example.order.*")
+    .WithField("customer.tier", "gold")
+    .Build();
+
+// Explicit operator
+var filter = new EventFilterBuilder()
     .WithTypePattern("com.example.order.*")
     .WithField("customer.tier", FilterOperator.Equals, "gold")
     .Build();
 
 // Logical combination
-var filter = EventSubscriptionFilter.Builder
+var filter = new EventFilterBuilder()
     .WithTypePattern("com.example.order.*")
     .With(LogicalEventFilter.And(
         EventDataFilter.Create("customer.tier", FilterOperator.Equals, "gold"),
         EventDataFilter.Create("payment.amount", FilterOperator.GreaterThan, 500.0)))
     .Build();
+```
+
+Or supply filters directly to `Subscribe`:
+
+```csharp
+builder.Subscribe(
+    LogicalEventFilter.And(
+        EventAttributeFilter.Type("com.example.order.placed"),
+        EventDataFilter.Create("customer.tier", FilterOperator.Equals, "gold")),
+    HandleGoldOrder,
+    name: "gold-order-handler");
 ```
 
 ---
@@ -128,11 +145,20 @@ bool matches = filter.Matches(cloudEvent, EventSubscriptionContext.Empty);
 `EventAttributeFilter`, `EventDataFilter`, and `LogicalEventFilter` all implement `IEventFilter` and can be freely mixed:
 
 ```csharp
-var filter = EventSubscriptionFilter.Builder
-    .WithType("com.example.order.placed")          // EventAttributeFilter on envelope
-    .WithField("customer.tier", FilterOperator.Equals, "gold")  // EventDataFilter on body
-    .With(LogicalEventFilter.Or(                   // LogicalEventFilter combining body checks
+// Using EventFilterBuilder
+var filter = new EventFilterBuilder()
+    .WithType("com.example.order.placed")
+    .WithField("customer.tier", FilterOperator.Equals, "gold")
+    .With(LogicalEventFilter.Or(
         EventDataFilter.Create("payment.amount", FilterOperator.GreaterThan, 1000.0),
         EventDataFilter.Create("customer.vip", FilterOperator.Equals, true)))
     .Build();
+
+// Or composing directly
+var filter = LogicalEventFilter.And(
+    EventAttributeFilter.Type("com.example.order.placed"),
+    EventDataFilter.Create("customer.tier", FilterOperator.Equals, "gold"),
+    LogicalEventFilter.Or(
+        EventDataFilter.Create("payment.amount", FilterOperator.GreaterThan, 1000.0),
+        EventDataFilter.Create("customer.vip", FilterOperator.Equals, true)));
 ```

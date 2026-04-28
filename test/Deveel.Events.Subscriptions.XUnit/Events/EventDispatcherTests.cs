@@ -588,8 +588,8 @@ namespace Deveel.Events
 
             public string? Name => nameof(OrderPlacedSubscription);
 
-            public IEventFilter Filter =>
-                EventAttributeFilter.Type("com.example.order.placed");
+            public EventFilter Filter =>
+                EventFilter.Type("com.example.order.placed");
 
             public Task HandleAsync(CloudEvent @event, CancellationToken cancellationToken = default)
             {

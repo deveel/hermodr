@@ -40,9 +40,9 @@ namespace Deveel.Events
     /// </code>
     /// </example>
     /// </remarks>
-    public sealed class LogicalEventFilter : IEventFilter
+    public sealed class LogicalEventFilter : EventFilter
     {
-        private LogicalEventFilter(LogicalFilterOperator kind, IReadOnlyList<IEventFilter> filters)
+        internal LogicalEventFilter(LogicalFilterOperator kind, IReadOnlyList<EventFilter> filters)
         {
             Kind = kind;
             Filters = filters ?? throw new ArgumentNullException(nameof(filters));
@@ -54,46 +54,19 @@ namespace Deveel.Events
         public LogicalFilterOperator Kind { get; }
 
         /// <summary>Gets the child filters that are combined by this logical filter.</summary>
-        public IReadOnlyList<IEventFilter> Filters { get; }
+        public IReadOnlyList<EventFilter> Filters { get; }
 
         // ── Factory methods ─────────────────────────────────────────────────────────
+        // (factory methods have been moved to EventFilter)
 
-        /// <summary>
-        /// Creates a logical AND filter that passes only when <em>all</em>
-        /// <paramref name="filters"/> match the event.
-        /// An empty list evaluates to <c>true</c>.
-        /// </summary>
-        public static LogicalEventFilter And(params IEventFilter[] filters)
-            => new(LogicalFilterOperator.And, filters ?? throw new ArgumentNullException(nameof(filters)));
-
-        /// <summary>
-        /// Creates a logical AND filter that passes only when <em>all</em>
-        /// <paramref name="filters"/> match the event.
-        /// An empty list evaluates to <c>true</c>.
-        /// </summary>
-        public static LogicalEventFilter And(IEnumerable<IEventFilter> filters)
-            => new(LogicalFilterOperator.And, [.. filters ?? throw new ArgumentNullException(nameof(filters))]);
-
-        /// <summary>
-        /// Creates a logical OR filter that passes when <em>at least one</em> of
-        /// <paramref name="filters"/> matches the event.
-        /// An empty list evaluates to <c>false</c>.
-        /// </summary>
-        public static LogicalEventFilter Or(params IEventFilter[] filters)
-            => new(LogicalFilterOperator.Or, filters ?? throw new ArgumentNullException(nameof(filters)));
-
-        /// <summary>
-        /// Creates a logical OR filter that passes when <em>at least one</em> of
-        /// <paramref name="filters"/> matches the event.
-        /// An empty list evaluates to <c>false</c>.
-        /// </summary>
-        public static LogicalEventFilter Or(IEnumerable<IEventFilter> filters)
-            => new(LogicalFilterOperator.Or, [.. filters ?? throw new ArgumentNullException(nameof(filters))]);
-
-        // ── IEventFilter ─────────────────────────────────────────────────────────────
+        // ── EventFilter ───────────────────────────────────────────────────────────────
 
         /// <inheritdoc/>
-        public bool Matches(CloudEvent @event, EventSubscriptionContext context)
+        public override TResult Accept<TResult>(IEventFilterVisitor<TResult> visitor)
+            => visitor.VisitLogical(this);
+
+        /// <inheritdoc/>
+        public override bool Matches(CloudEvent @event, EventSubscriptionContext context)
         {
             if (@event is null)
                 return false;

@@ -50,7 +50,7 @@ namespace Deveel.Events
         /// </param>
         /// <param name="name">An optional human-readable name for this subscription.</param>
         public RoutingEventSubscription(
-            IEventFilter filter,
+            EventFilter filter,
             IServiceProvider services,
             EventPublishOptions? routingOptions = null,
             string? name = null)
@@ -65,7 +65,7 @@ namespace Deveel.Events
         public string? Name { get; }
 
         /// <inheritdoc/>
-        public IEventFilter Filter { get; }
+        public EventFilter Filter { get; }
 
         /// <inheritdoc/>
         public EventPublishOptions? RoutingOptions { get; }

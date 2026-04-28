@@ -22,7 +22,7 @@ namespace Deveel.Events
     /// CloudEvents extension attribute name.
     /// </para>
     /// </remarks>
-    public sealed class EventAttributeFilter : IEventFilter
+    public sealed class EventAttributeFilter : EventFilter
     {
         private const string ExtensionPrefix = "extension.";
 
@@ -78,72 +78,7 @@ namespace Deveel.Events
 
 
         // ── Attribute-aware factory methods ──────────────────────────────────────────
-
-        /// <summary>
-        /// Creates a filter that matches the CloudEvents attribute <paramref name="attributeName"/>
-        /// using the supplied <paramref name="value"/> and <paramref name="matchMode"/>.
-        /// </summary>
-        public static EventAttributeFilter For(
-            string attributeName,
-            string value,
-            FilterMatchMode matchMode = FilterMatchMode.Exact)
-            => new(attributeName, value, matchMode);
-
-        // ── Type-attribute factory methods ────────────────────────────────────────────
-
-        /// <summary>
-        /// Creates a filter that matches the CloudEvents <c>type</c> attribute with an exact,
-        /// case-sensitive comparison against <paramref name="value"/>.
-        /// </summary>
-        public static EventAttributeFilter Type(string value)
-            => new("type", value, FilterMatchMode.Exact);
-
-        /// <summary>
-        /// Creates a filter that matches the CloudEvents <c>type</c> attribute using the
-        /// specified <paramref name="matchMode"/> (<see cref="FilterMatchMode.Exact"/>,
-        /// <see cref="FilterMatchMode.Prefix"/>, or <see cref="FilterMatchMode.Suffix"/>).
-        /// </summary>
-        public static EventAttributeFilter Type(string value, FilterMatchMode matchMode)
-            => new("type", value, matchMode);
-
-        /// <summary>
-        /// Parses a wildcard pattern and creates a filter targeting the CloudEvents <c>type</c>
-        /// attribute.  When <paramref name="parseWildcard"/> is <c>true</c>, a trailing <c>*</c>
-        /// produces <see cref="FilterMatchMode.Prefix"/>, a leading <c>*</c> produces
-        /// <see cref="FilterMatchMode.Suffix"/>, and no wildcard produces
-        /// <see cref="FilterMatchMode.Exact"/>.
-        /// </summary>
-        public static EventAttributeFilter Type(string pattern, bool parseWildcard)
-            => For("type", pattern, parseWildcard);
-
-        /// <summary>
-        /// Parses a wildcard <paramref name="pattern"/> and creates a filter that targets
-        /// <paramref name="attributeName"/>.
-        /// A trailing <c>*</c> produces <see cref="FilterMatchMode.Prefix"/>;
-        /// a leading <c>*</c> produces <see cref="FilterMatchMode.Suffix"/>;
-        /// anything else produces <see cref="FilterMatchMode.Exact"/>.
-        /// </summary>
-        public static EventAttributeFilter For(string attributeName, string pattern, bool parseWildcard)
-        {
-            if (!parseWildcard)
-                return new(attributeName, pattern);
-
-            if (pattern.EndsWith(Wildcard))
-                return new(attributeName, pattern.TrimEnd(Wildcard), FilterMatchMode.Prefix);
-            if (pattern.StartsWith(Wildcard))
-                return new(attributeName, pattern.TrimStart(Wildcard), FilterMatchMode.Suffix);
-            return new(attributeName, pattern);
-        }
-
-        /// <summary>
-        /// Creates a filter that tests the CloudEvents extension attribute
-        /// <paramref name="extensionName"/> (the <c>extension.</c> prefix is added automatically).
-        /// </summary>
-        public static EventAttributeFilter ForExtension(
-            string extensionName,
-            string value,
-            FilterMatchMode matchMode = FilterMatchMode.Exact)
-            => new(ExtensionPrefix + extensionName, value, matchMode);
+        // (factory methods have been moved to EventFilter)
 
         // ── Value-only matching ───────────────────────────────────────────────────
 
@@ -165,7 +100,11 @@ namespace Deveel.Events
             };
         }
 
-        // ── IEventFilter ─────────────────────────────────────────────────────────────
+        // ── EventFilter ───────────────────────────────────────────────────────────────
+
+        /// <inheritdoc/>
+        public override TResult Accept<TResult>(IEventFilterVisitor<TResult> visitor)
+            => visitor.VisitAttribute(this);
 
         /// <summary>
         /// Returns <c>true</c> when the named CloudEvents attribute of <paramref name="event"/>
@@ -175,7 +114,7 @@ namespace Deveel.Events
         /// Returns <c>false</c> when this instance was created in value-only mode (i.e.
         /// <see cref="AttributeName"/> is <c>null</c>).
         /// </remarks>
-        public bool Matches(CloudEvent @event, EventSubscriptionContext context)
+        public override bool Matches(CloudEvent @event, EventSubscriptionContext context)
         {
             if (@event is null || AttributeName is null)
                 return false;
