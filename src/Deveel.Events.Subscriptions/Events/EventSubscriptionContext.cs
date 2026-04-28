@@ -3,6 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 //
 
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 
@@ -106,14 +107,9 @@ namespace Deveel.Events
             if (Services is not null)
             {
                 var contentType = @event.DataContentType;
-                foreach (var candidate in Services.GetServices<IEventDataDeserializer>())
-                {
-                    if (candidate.CanDeserialize(contentType))
-                    {
-                        deserializer = candidate;
-                        break;
-                    }
-                }
+                deserializer = Services.GetServices<IEventDataDeserializer>()
+                    .Where(candidate => candidate.CanDeserialize(contentType))
+                    .FirstOrDefault();
             }
 
             deserializer ??= JsonEventDataDeserializer.Instance;
