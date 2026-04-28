@@ -106,10 +106,12 @@ namespace Deveel.Events
 
             // Aggregate matching subscriptions from every registered resolver.
             var subscriptions = new List<IEventSubscription>();
-            foreach (var resolver in _resolvers)
+            var resolveTasks = _resolvers.Select(resolver =>
+                resolver.ResolveSubscriptionsAsync(@event, context, cancellationToken));
+
+            foreach (var resolveTask in resolveTasks)
             {
-                var resolved = await resolver.ResolveSubscriptionsAsync(
-                    @event, context, cancellationToken);
+                var resolved = await resolveTask;
                 subscriptions.AddRange(resolved);
             }
 
