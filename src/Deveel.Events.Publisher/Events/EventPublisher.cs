@@ -549,6 +549,10 @@ namespace Deveel.Events
 
                     _logger.TraceEventPublished(context.Event.Type!, channel.GetType());
                 }
+                catch (OperationCanceledException) when (context.CancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
                 catch (Exception ex)
                 {
                     HandleChannelPublishError(ex, context.Event.Type!, channel.GetType());
