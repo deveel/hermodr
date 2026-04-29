@@ -13,7 +13,7 @@ using System.Text.Json;
 namespace Deveel.Events
 {
     /// <summary>
-    /// Default <see cref="IEventCreator"/> implementation.
+    /// Default <see cref="IEventFactory"/> implementation.
     /// Uses reflection to read <see cref="EventAttribute"/> and
     /// <see cref="EventAttributesAttribute"/> annotations from the data class and
     /// builds a <see cref="CloudNative.CloudEvents.CloudEvent"/> whose
@@ -21,13 +21,13 @@ namespace Deveel.Events
     /// </summary>
     /// <remarks>
     /// Registered as a singleton by <see cref="EventPublisherBuilder"/> via
-    /// <c>IEventCreator</c>. Replace it with a custom implementation using
+    /// <c>IEventFactory</c>. Replace it with a custom implementation using
     /// <see cref="EventPublisherBuilder.UsePublisher{TPublisher}"/> or by
     /// directly overriding <see cref="EventPublisher.CreateEventFromData"/>.
     /// </remarks>
-    class EventCreator : IEventCreator
+    class EventFactory : IEventFactory
     {
-        public EventCreator(IOptions<EventPublisherOptions>? publisherOptions = null)
+        public EventFactory(IOptions<EventPublisherOptions>? publisherOptions = null)
         {
             PublisherOptions = publisherOptions?.Value ?? new EventPublisherOptions();
         }

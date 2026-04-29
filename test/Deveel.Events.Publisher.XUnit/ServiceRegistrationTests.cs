@@ -22,7 +22,7 @@ namespace Deveel.Events
             var provider = services.BuildServiceProvider();
 
             Assert.NotNull(provider.GetService<EventPublisher>());
-            Assert.NotNull(provider.GetService<IEventCreator>());
+            Assert.NotNull(provider.GetService<IEventFactory>());
             Assert.NotNull(provider.GetService<IEventIdGenerator>());
             Assert.NotNull(provider.GetService<IEventSystemTime>());
         }

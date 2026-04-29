@@ -10,7 +10,7 @@ using System.Text.Json;
 namespace Deveel.Events
 {
     /// <summary>
-    /// Extensions for the <see cref="IEventCreator"/> interface.
+    /// Extensions for the <see cref="IEventFactory"/> interface.
     /// </summary>
     public static class EventCreatorExtensions
     {
@@ -20,8 +20,8 @@ namespace Deveel.Events
         /// <typeparam name="T">
         /// The type of the data object.
         /// </typeparam>
-        /// <param name="creator">
-        /// The instance of the <see cref="IEventCreator"/> that is used to 
+        /// <param name="factory">
+        /// The instance of the <see cref="IEventFactory"/> that is used to 
         /// create the event from the data.
         /// </param>
         /// <param name="data">
@@ -31,7 +31,7 @@ namespace Deveel.Events
         /// Returns a <see cref="CloudEvent"/> instance that is
         /// created from the given data object.
         /// </returns>
-        public static CloudEvent CreateEventFromData<T>(this IEventCreator creator, T data)
-            => creator.CreateEventFromData(typeof(T), data);
+        public static CloudEvent CreateEventFromData<T>(this IEventFactory factory, T data)
+            => factory.CreateEventFromData(typeof(T), data);
     }
 }

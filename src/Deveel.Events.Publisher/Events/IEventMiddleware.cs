@@ -10,7 +10,7 @@ namespace Deveel.Events
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Middleware implementations receive an <see cref="EventMiddlewareContext"/> and
+    /// Middleware implementations receive an <see cref="EventContext"/> and
     /// an <see cref="EventPublishDelegate"/> (<c>next</c>) that represents the remainder
     /// of the pipeline.  They may:
     /// <list type="bullet">
@@ -27,7 +27,7 @@ namespace Deveel.Events
     /// <see cref="EventPublisherBuilder.Use{TMiddleware}"/> and a fresh
     /// instance is created for every publish call using
     /// <see cref="Microsoft.Extensions.DependencyInjection.ActivatorUtilities"/>,
-    /// resolving constructor dependencies from <see cref="EventMiddlewareContext.Services"/>.
+    /// resolving constructor dependencies from <see cref="EventContext.Services"/>.
     /// Middleware runs in registration order; the last step in the chain is the
     /// built-in terminal step that validates the <see cref="CloudNative.CloudEvents.CloudEvent"/>
     /// and fans out to all resolved channels.
@@ -37,7 +37,7 @@ namespace Deveel.Events
     /// <code language="csharp">
     /// public class CorrelationIdMiddleware : IEventMiddleware
     /// {
-    ///     public Task InvokeAsync(EventMiddlewareContext context, EventPublishDelegate next)
+    ///     public Task InvokeAsync(EventContext context, EventPublishDelegate next)
     ///     {
     ///         // Resolve dependencies from the ambient service provider.
     ///         var accessor = context.Services.GetService&lt;ICorrelationContextAccessor&gt;();
@@ -57,16 +57,16 @@ namespace Deveel.Events
         /// Executes this middleware step.
         /// </summary>
         /// <param name="context">
-        /// The <see cref="EventMiddlewareContext"/> for the current publish operation.
+        /// The <see cref="EventContext"/> for the current publish operation.
         /// It carries the <see cref="CloudNative.CloudEvents.CloudEvent"/>, the ambient
         /// <see cref="IServiceProvider"/> for resolving dependencies, and the
-        /// <see cref="EventMiddlewareContext.CancellationToken"/> for the operation.
+        /// <see cref="EventContext.CancellationToken"/> for the operation.
         /// </param>
         /// <param name="next">
         /// The next step in the pipeline. Must be awaited to continue the chain;
         /// skip it to short-circuit publishing.
         /// </param>
         /// <returns>A <see cref="Task"/> that completes when this step has finished.</returns>
-        Task InvokeAsync(EventMiddlewareContext context, EventPublishDelegate next);
+        Task InvokeAsync(EventContext context, EventPublishDelegate next);
     }
 }

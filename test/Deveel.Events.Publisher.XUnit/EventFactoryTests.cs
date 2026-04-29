@@ -6,24 +6,24 @@ using System.Text.Json.Serialization;
 
 namespace Deveel.Events
 {
-    public class EventCreatorTests
+    public class EventFactoryTests
     {
-        public EventCreatorTests()
+        public EventFactoryTests()
         {
             var services = new ServiceCollection();
             services.AddEventPublisher();
 
             var provider = services.BuildServiceProvider();
 
-            EventCreator = provider.GetRequiredService<IEventCreator>();
+            EventFactory = provider.GetRequiredService<IEventFactory>();
         }
 
-        private IEventCreator EventCreator { get; }
+        private IEventFactory EventFactory { get; }
 
         [Fact]
         public void CreateFromData()
         {
-            var @event = EventCreator.CreateEventFromData(new PersonCreated
+            var @event = EventFactory.CreateEventFromData(new PersonCreated
             {
                 FirstName = "John",
                 LastName = "Doe",
@@ -60,7 +60,7 @@ namespace Deveel.Events
         [Fact]
         public void CreateFromDataWithoutEventAttribute()
         {
-            Assert.Throws<ArgumentException>(() => EventCreator.CreateEventFromData(new { Name = "John" }));
+            Assert.Throws<ArgumentException>(() => EventFactory.CreateEventFromData(new { Name = "John" }));
         }
 
         [Fact]
@@ -72,7 +72,7 @@ namespace Deveel.Events
             {
                 options.DataSchemaBaseUri = new Uri("https://example.com/events");
             });
-            var creator = services.BuildServiceProvider().GetRequiredService<IEventCreator>();
+            var creator = services.BuildServiceProvider().GetRequiredService<IEventFactory>();
 
             var @event = creator.CreateEventFromData(typeof(PersonCreatedByVersion), new PersonCreatedByVersion
             {
@@ -93,7 +93,7 @@ namespace Deveel.Events
             // No DataSchemaBaseUri set → should throw when event has DataVersion only
             var services = new ServiceCollection();
             services.AddEventPublisher();  // DataSchemaBaseUri not set
-            var creator = services.BuildServiceProvider().GetRequiredService<IEventCreator>();
+            var creator = services.BuildServiceProvider().GetRequiredService<IEventFactory>();
 
             var ex = Assert.Throws<InvalidOperationException>(() =>
                 creator.CreateEventFromData(typeof(PersonCreatedByVersion), new PersonCreatedByVersion()));
@@ -106,20 +106,20 @@ namespace Deveel.Events
         public void CreateFromData_NullDataType_Throws()
         {
             Assert.Throws<ArgumentNullException>(() =>
-                EventCreator.CreateEventFromData(null!, new object()));
+                EventFactory.CreateEventFromData(null!, new object()));
         }
 
         [Fact]
         public void CreateFromData_NullContentType_WithNullDefaultContentType_Throws()
         {
             // When the [Event] attribute has no ContentType AND DefaultContentType is null,
-            // the creator must throw InvalidOperationException.
+            // the factory must throw InvalidOperationException.
             var services = new ServiceCollection();
             services.AddEventPublisher(options =>
             {
                 options.DefaultContentType = null;
             });
-            var creator = services.BuildServiceProvider().GetRequiredService<IEventCreator>();
+            var creator = services.BuildServiceProvider().GetRequiredService<IEventFactory>();
 
             var ex = Assert.Throws<InvalidOperationException>(() =>
                 creator.CreateEventFromData(typeof(EventWithNoContentType), new EventWithNoContentType()));

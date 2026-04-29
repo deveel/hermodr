@@ -30,7 +30,7 @@ namespace Deveel.Events {
 			Services.TryAddSingleton<EventPublisher>();
 			Services.TryAddSingleton<IEventIdGenerator>(EventGuidGenerator.Default);
 			Services.TryAddSingleton<IEventSystemTime>(EventSystemTime.Instance);
-			Services.TryAddSingleton<IEventCreator, EventCreator>();
+			Services.TryAddSingleton<IEventFactory, EventFactory>();
 		}
 
         /// <summary>

@@ -14,7 +14,7 @@ namespace Deveel.Events
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Middleware components receive an <see cref="EventMiddlewareContext"/> and may
+    /// Middleware components receive an <see cref="EventContext"/> and may
     /// inspect or mutate it before invoking the <c>next</c> delegate.  Common patterns:
     /// <list type="bullet">
     ///   <item><description>Enrich the event with a correlation ID (<see cref="Event"/>).</description></item>
@@ -28,10 +28,10 @@ namespace Deveel.Events
     /// <strong>not</strong> shared across concurrent calls.
     /// </para>
     /// </remarks>
-    public sealed class EventMiddlewareContext
+    public sealed class EventContext
     {
         /// <summary>
-        /// Initialises a new <see cref="EventMiddlewareContext"/>.
+        /// Initializes a new <see cref="EventContext"/>.
         /// </summary>
         /// <param name="event">The enriched <see cref="CloudEvent"/> to publish.</param>
         /// <param name="services">
@@ -45,7 +45,7 @@ namespace Deveel.Events
         /// <param name="options">
         /// Optional per-call options that override the channel-level defaults.
         /// </param>
-        public EventMiddlewareContext(
+        internal EventContext(
             CloudEvent @event,
             IServiceProvider services,
             CancellationToken cancellationToken = default,

@@ -255,6 +255,33 @@ namespace Deveel.Events
         }
 
         [Fact]
+        public async Task PublishAsync_TypedChannelResultCache_IsStableUnderConcurrentAccess()
+        {
+            var typedEvents = new List<CloudEvent>();
+            var sync = new object();
+
+            var publisher = BuildPublisher(b => b
+                .AddTestChannel<OrderPlaced>(e =>
+                {
+                    lock (sync)
+                    {
+                        typedEvents.Add(e);
+                    }
+                }));
+
+            var tasks = Enumerable.Range(0, 24)
+                .Select(i => publisher.PublishAsync(
+                    typeof(OrderPlaced),
+                    new OrderPlaced { OrderId = $"parallel-{i}" },
+                    null,
+                    TestContext.Current.CancellationToken));
+
+            await Task.WhenAll(tasks);
+
+            Assert.Equal(24, typedEvents.Count);
+        }
+
+        [Fact]
         public async Task PublishEventAsync_UntypedCloudEvent_AlwaysUsesAllRegisteredChannels()
         {
             // PublishEventAsync(CloudEvent,...) directly — this path always broadcasts

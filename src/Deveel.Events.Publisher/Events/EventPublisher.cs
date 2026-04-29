@@ -10,6 +10,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
+using System.Collections.Concurrent;
+
 namespace Deveel.Events
 {
     /// <summary>
@@ -27,7 +29,7 @@ namespace Deveel.Events
         // Cached once on first publish; the factory composes the middleware stack
         // around any terminal delegate supplied per-call.
         private Func<EventPublishDelegate, EventPublishDelegate>? _pipelineFactory;
-        private IDictionary<Type, IReadOnlyList<IEventPublishChannel>>? _typedChannels;
+        private readonly ConcurrentDictionary<Type, IReadOnlyList<IEventPublishChannel>> _typedChannels = new();
 
         /// <summary>
         /// Constructs the publisher with the given options and channels.
@@ -36,7 +38,7 @@ namespace Deveel.Events
         /// <param name="channels">The channels used to publish events.</param>
         /// <param name="serviceProvider">
         /// The ambient <see cref="IServiceProvider"/> made available to middleware
-        /// components via <see cref="EventMiddlewareContext.Services"/>.
+        /// components via <see cref="EventContext.Services"/>.
         /// </param>
         /// <param name="logger">A logger used to trace publish operations.</param>
         public EventPublisher(
@@ -54,7 +56,7 @@ namespace Deveel.Events
         /// <summary>
         /// Gets the service that is used to create events.
         /// </summary>
-        protected IEventCreator? EventCreator => _serviceProvider.GetService<IEventCreator>();
+        protected IEventFactory? EventCreator => _serviceProvider.GetService<IEventFactory>();
 
         /// <summary>
         /// Gets the options that are used to configure the publisher.
@@ -294,62 +296,71 @@ namespace Deveel.Events
             if (options == null)
                 return null;
 
-            // Walk the inheritance chain looking for EventPublishChannel<TOptions>.
             var channelType = channel.GetType();
-            Type? expectedOptionsType = null;
-            for (var t = channelType; t != null && t != typeof(object); t = t.BaseType)
-            {
-                if (t.IsGenericType && t.GetGenericTypeDefinition() == typeof(EventPublishChannel<>))
-                {
-                    expectedOptionsType = t.GetGenericArguments()[0];
-                    break;
-                }
-            }
-
-            // Channel does not derive from EventPublishChannel<TOptions> – pass null.
-            if (expectedOptionsType == null)
+            var expectedOptionsType = FindExpectedOptionsType(channelType);
+            if (expectedOptionsType is null)
                 return null;
 
-            // Determine whether this is a typed channel (IEventPublishChannel<TEvent>).
-            Type? channelEventType = null;
-            foreach (var iface in channelType.GetInterfaces())
-            {
-                if (iface.IsGenericType && iface.GetGenericTypeDefinition() == typeof(IEventPublishChannel<>))
-                {
-                    channelEventType = iface.GetGenericArguments()[0];
-                    break;
-                }
-            }
+            var channelEventType = FindChannelEventType(channelType);
 
             if (options is CombinedPublishOptions combined)
-            {
-                // For combined options each bundled entry may carry its own ChannelName.
-                // Only entries whose name matches the target channel (or carry no name) are eligible.
-                var compatibleEntries = combined.Options.Where(o =>
-                    expectedOptionsType.IsInstanceOfType(o) &&
-                    NameMatchesChannel(o, channel));
+                return ResolveCombinedOptions(channel, combined, expectedOptionsType, channelEventType);
 
-                return channelEventType != null
-                    // Typed channel: find the first bundled entry typed for this TEvent.
-                    ? compatibleEntries.FirstOrDefault(o => IsTypedForEvent(o.GetType(), channelEventType))
-                    // General channel: find the first non-typed bundled entry.
-                    : compatibleEntries.FirstOrDefault(o => !IsAnyTypedOptions(o.GetType()));
-            }
+            return ResolveSingleOptions(channel, options, expectedOptionsType, channelEventType);
+        }
 
-            // Single options instance.
-            if (!expectedOptionsType.IsInstanceOfType(options))
-                return null;
+        private static EventPublishOptions? ResolveCombinedOptions(
+            IEventPublishChannel channel,
+            CombinedPublishOptions combined,
+            Type expectedOptionsType,
+            Type? channelEventType)
+        {
+            // For combined options each bundled entry may carry its own ChannelName.
+            // Only entries whose name matches the target channel (or carry no name) are eligible.
+            var compatibleEntries = combined.Options.Where(o =>
+                expectedOptionsType.IsInstanceOfType(o) &&
+                NameMatchesChannel(o, channel));
 
-            // If the options carry a name filter, the channel must match.
-            if (!NameMatchesChannel(options, channel))
+            return channelEventType != null
+                ? compatibleEntries.FirstOrDefault(o => IsTypedForEvent(o.GetType(), channelEventType))
+                : compatibleEntries.FirstOrDefault(o => !IsAnyTypedOptions(o.GetType()));
+        }
+
+        private static EventPublishOptions? ResolveSingleOptions(
+            IEventPublishChannel channel,
+            EventPublishOptions options,
+            Type expectedOptionsType,
+            Type? channelEventType)
+        {
+            if (!expectedOptionsType.IsInstanceOfType(options) || !NameMatchesChannel(options, channel))
                 return null;
 
             if (channelEventType != null)
-                // Typed channel: only accept options specifically typed for this TEvent.
                 return IsTypedForEvent(options.GetType(), channelEventType) ? options : null;
 
-            // General channel: only accept non-typed options instances.
             return IsAnyTypedOptions(options.GetType()) ? null : options;
+        }
+
+        private static Type? FindExpectedOptionsType(Type channelType)
+        {
+            for (var t = channelType; t != null && t != typeof(object); t = t.BaseType)
+            {
+                if (t.IsGenericType && t.GetGenericTypeDefinition() == typeof(EventPublishChannel<>))
+                    return t.GetGenericArguments()[0];
+            }
+
+            return null;
+        }
+
+        private static Type? FindChannelEventType(Type channelType)
+        {
+            foreach (var iface in channelType.GetInterfaces())
+            {
+                if (iface.IsGenericType && iface.GetGenericTypeDefinition() == typeof(IEventPublishChannel<>))
+                    return iface.GetGenericArguments()[0];
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -453,7 +464,7 @@ namespace Deveel.Events
 
         private CloudEvent EnsureEvent(CloudEvent @event)
         {
-            ArgumentNullException.ThrowIfNull(nameof(@event));
+            ArgumentNullException.ThrowIfNull(@event);
 
             var eventToPublish = @event;
             eventToPublish = SetEventId(eventToPublish);
@@ -516,7 +527,7 @@ namespace Deveel.Events
         /// </summary>
         private async Task DispatchToChannelsAsync(
             IReadOnlyList<IEventPublishChannel> channels,
-            EventMiddlewareContext context)
+            EventContext context)
         {
             ValidateCloudEvent(context.Event);
 
@@ -532,16 +543,21 @@ namespace Deveel.Events
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogEventPublishError(ex, context.Event.Type!, channel.GetType());
-
-                    if (PublisherOptions.ThrowOnErrors)
-                    {
-                        throw new EventPublishException(
-                            $"An error occurred while publishing an event of type {context.Event.Type} to the channel '{channel.GetType().Name}'",
-                            ex);
-                    }
+                    HandleChannelPublishError(ex, context.Event.Type!, channel.GetType());
                 }
             }
+        }
+
+        private void HandleChannelPublishError(Exception ex, string eventType, Type channelType)
+        {
+            _logger.LogEventPublishError(ex, eventType, channelType);
+
+            if (!PublisherOptions.ThrowOnErrors)
+                return;
+
+            throw new EventPublishException(
+                $"An error occurred while publishing an event of type {eventType} to the channel '{channelType.Name}'",
+                ex);
         }
 
         private async Task PublishEventToChannelsAsync(IEnumerable<IEventPublishChannel> channels, CloudEvent @event,
@@ -550,7 +566,7 @@ namespace Deveel.Events
             var targetChannels = FilterChannelsByName(channels, options).ToList();
             var eventToPublish = EnsureEvent(@event);
 
-            var context = new EventMiddlewareContext(eventToPublish, _serviceProvider, cancellationToken, options);
+            var context = new EventContext(eventToPublish, _serviceProvider, cancellationToken, options);
 
             // The terminal closes over the channel list resolved for this specific call.
             EventPublishDelegate terminal = ctx => DispatchToChannelsAsync(targetChannels, ctx);
@@ -610,23 +626,8 @@ namespace Deveel.Events
         public Task PublishAsync(Type eventType, object? @event, EventPublishOptions? options = null,
             CancellationToken cancellationToken = default)
         {
-            CloudEvent cloudEvent;
-
-            try
-            {
-                cloudEvent = CreateEventFromData(eventType, @event);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogEventCreateError(ex, eventType);
-
-                if (PublisherOptions.ThrowOnErrors)
-                    throw new EventPublishException(
-                        $"An error occurred while creating an event of type {eventType.FullName} from the provided event",
-                        ex);
-
+            if (!TryCreateCloudEvent(eventType, @event, out var cloudEvent))
                 return Task.CompletedTask;
-            }
 
             // First let's try to resolve event publishers specific for this
             // type of object...
@@ -640,19 +641,36 @@ namespace Deveel.Events
             return PublishEventAsync(cloudEvent, options, cancellationToken);
         }
 
+        private bool TryCreateCloudEvent(Type eventType, object? @event, out CloudEvent cloudEvent)
+        {
+            try
+            {
+                cloudEvent = CreateEventFromData(eventType, @event);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogEventCreateError(ex, eventType);
+
+                if (PublisherOptions.ThrowOnErrors)
+                {
+                    throw new EventPublishException(
+                        $"An error occurred while creating an event of type {eventType.FullName} from the provided event",
+                        ex);
+                }
+
+                cloudEvent = null!;
+                return false;
+            }
+        }
+
         private IReadOnlyList<IEventPublishChannel> GetTypedChannels(Type dataType)
         {
-            if (_typedChannels == null)
-                _typedChannels = new Dictionary<Type, IReadOnlyList<IEventPublishChannel>>();
-
-            if (!_typedChannels.TryGetValue(dataType, out var typedChannels))
+            return _typedChannels.GetOrAdd(dataType, static (type, channels) =>
             {
-                var channelType = typeof(IEventPublishChannel<>).MakeGenericType(dataType);
-                typedChannels = _channels.Where(channelType.IsInstanceOfType).ToList();
-                _typedChannels[dataType] = typedChannels;
-            }
-
-            return typedChannels;
+                var channelType = typeof(IEventPublishChannel<>).MakeGenericType(type);
+                return channels.Where(channelType.IsInstanceOfType).ToList();
+            }, _channels);
         }
 
         /// <summary>
@@ -669,7 +687,7 @@ namespace Deveel.Events
         /// Returns the created event from the data.
         /// </returns>
         /// <exception cref="NotSupportedException">
-        /// Thrown when the event creator is not set.
+        /// Thrown when the event factory is not set.
         /// </exception>
         protected virtual CloudEvent CreateEventFromData(Type dataType, object? data)
         {
@@ -700,30 +718,42 @@ namespace Deveel.Events
 
             if (data is IEventConvertible eventConvertible)
             {
-                CloudEvent? @event = null;
-                try
-                {
-                    @event = eventConvertible.ToCloudEvent();
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogEventCreateError(ex, typeof(TData));
+                if (!TryConvertToCloudEvent(eventConvertible, typeof(TData), out var convertedEvent))
+                    return Task.CompletedTask;
 
-                    if (PublisherOptions.ThrowOnErrors)
-                        throw new EventPublishException("An error occurred while converting data", ex);
-                }
-
-                if (@event != null)
-                    return PublishEventAsync(@event, options, cancellationToken);
-
-                return Task.CompletedTask;
+                return PublishEventAsync(convertedEvent, options, cancellationToken);
             }
-
 
             if (data is CloudEvent cloudEvent)
                 return PublishEventAsync(cloudEvent, options, cancellationToken);
 
             return PublishAsync(typeof(TData), data, options, cancellationToken);
+        }
+
+        private bool TryConvertToCloudEvent(IEventConvertible convertible, Type dataType, out CloudEvent cloudEvent)
+        {
+            try
+            {
+                var converted = convertible.ToCloudEvent();
+                if (converted == null)
+                {
+                    cloudEvent = null!;
+                    return false;
+                }
+
+                cloudEvent = converted;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogEventCreateError(ex, dataType);
+
+                if (PublisherOptions.ThrowOnErrors)
+                    throw new EventPublishException("An error occurred while converting data", ex);
+
+                cloudEvent = null!;
+                return false;
+            }
         }
 
         /// <summary>

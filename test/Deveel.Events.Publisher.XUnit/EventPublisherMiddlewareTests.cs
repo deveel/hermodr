@@ -54,10 +54,10 @@ namespace Deveel.Events
         /// </summary>
         private sealed class CallLog : List<string> { }
 
-        /// <summary>Captures the <see cref="EventMiddlewareContext"/> for assertions.</summary>
+        /// <summary>Captures the <see cref="EventContext"/> for assertions.</summary>
         private sealed class ContextSpy
         {
-            public EventMiddlewareContext? CapturedContext { get; set; }
+            public EventContext? CapturedContext { get; set; }
         }
 
         // ---------------------------------------------------------------
@@ -66,7 +66,7 @@ namespace Deveel.Events
 
         private class LoggingMiddleware : IEventMiddleware
         {
-            public async Task InvokeAsync(EventMiddlewareContext context, EventPublishDelegate next)
+            public async Task InvokeAsync(EventContext context, EventPublishDelegate next)
             {
                 var log = context.Services.GetRequiredService<CallLog>();
                 log.Add("mw:before");
@@ -77,7 +77,7 @@ namespace Deveel.Events
 
         private class OuterLoggingMiddleware : IEventMiddleware
         {
-            public async Task InvokeAsync(EventMiddlewareContext context, EventPublishDelegate next)
+            public async Task InvokeAsync(EventContext context, EventPublishDelegate next)
             {
                 var log = context.Services.GetRequiredService<CallLog>();
                 log.Add("outer:before");
@@ -90,7 +90,7 @@ namespace Deveel.Events
         {
             public const string AttributeName = "xenriched";
 
-            public Task InvokeAsync(EventMiddlewareContext context, EventPublishDelegate next)
+            public Task InvokeAsync(EventContext context, EventPublishDelegate next)
             {
                 var attr = CloudEventAttribute.CreateExtension(AttributeName, CloudEventAttributeType.String);
                 context.Event[attr] = "yes";
@@ -100,13 +100,13 @@ namespace Deveel.Events
 
         private class ShortCircuitMiddleware : IEventMiddleware
         {
-            public Task InvokeAsync(EventMiddlewareContext context, EventPublishDelegate next)
+            public Task InvokeAsync(EventContext context, EventPublishDelegate next)
                 => Task.CompletedTask;
         }
 
         private class CapturingMiddleware : IEventMiddleware
         {
-            public Task InvokeAsync(EventMiddlewareContext context, EventPublishDelegate next)
+            public Task InvokeAsync(EventContext context, EventPublishDelegate next)
             {
                 var spy = context.Services.GetRequiredService<ContextSpy>();
                 spy.CapturedContext = context;

@@ -15,7 +15,7 @@ namespace Deveel.Events
     /// reflection to extract the metadata of the event from the
     /// object and create a <see cref="CloudEvent"/> instance.
     /// </remarks>
-    public interface IEventCreator
+    public interface IEventFactory
     {
         /// <summary>
         /// Creates a <see cref="CloudEvent"/> from the given 

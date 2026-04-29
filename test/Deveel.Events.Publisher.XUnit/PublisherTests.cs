@@ -30,6 +30,13 @@ namespace Deveel.Events {
 		private EventPublisher Publisher { get; }
 
 		[Fact]
+    public async Task PublishEvent_NullCloudEvent_Throws()
+    {
+      await Assert.ThrowsAsync<ArgumentNullException>(() =>
+        Publisher.PublishEventAsync((CloudEvent)null!, cancellationToken: TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
 		public async Task PublishSimpleEvent() {
 			var @event = new CloudEvent {
 				Type = "person.created",
