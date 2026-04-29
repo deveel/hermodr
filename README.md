@@ -2,6 +2,7 @@
 [![GitHub Release](https://img.shields.io/github/v/release/deveel/deveel.events)](https://github.com/deveel/deveel.events/releases) [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/deveel/deveel.events/cicd.yml?logo=github)](https://github.com/deveel/deveel.events/actions/workflows/cicd.yml)
 [![Codecov](https://img.shields.io/codecov/c/github/deveel/deveel.events?logo=codecov)](https://codecov.io/gh/deveel/deveel.events)
 [![.NET](https://img.shields.io/badge/-8%20%7C%209%20%7C%2010-512BD4?logo=dotnet)](https://dotnet.microsoft.com/download)
+[![Documentation](https://img.shields.io/badge/docs-events.deveel.org-blue)](https://events.deveel.org)
 
 # Deveel Events
 
@@ -65,8 +66,8 @@ Every package requires the **Microsoft Dependency Injection** infrastructure (`M
 | `Deveel.Events.Publisher.AzureServiceBus` | `Azure.Messaging.ServiceBus` ≥ 7.20 |
 | `Deveel.Events.Publisher.RabbitMq` | `RabbitMQ.Client` ≥ 7.2 · `Deveel.Events.Amqp.Annotations` |
 | `Deveel.Events.Publisher.MassTransit` | `MassTransit` ≥ 9.1 |
-| `Deveel.Events.Publisher.Webhook` | `Microsoft.Extensions.Http` · `Polly` ≥ 7.2 |
-| `Deveel.Events.Subscriptions` | `Deveel.Events.Publisher` · `Microsoft.Extensions.Logging.Abstractions` |
+| `Deveel.Events.Publisher.Webhook` | `Microsoft.Extensions.Http.Resilience` ≥ 9.6 |
+| `Deveel.Events.Subscriptions` | `Deveel.Events.Publisher` · `Deveel.Filters` · `Microsoft.Extensions.Logging.Abstractions` |
 | `Deveel.Events.Schema` | `CloudNative.CloudEvents` |
 | `Deveel.Events.Schema.Yaml` | `YamlDotNet` ≥ 16.3 |
 | `Deveel.Events.Schema.AsyncApi` | `Saunter` ≥ 0.13 · `YamlDotNet` ≥ 16.3 · ASP.NET Core shared framework |
@@ -101,16 +102,18 @@ Every package requires the **Microsoft Dependency Injection** infrastructure (`M
 
 ## Documentation
 
-Full documentation — installation, quick-start, concept guides, channel references, schema export, and testing — is available in the [`docs/`](docs/README.md) folder of this repository.
+The full documentation is published at **[events.deveel.org](https://events.deveel.org)** — including installation guides, concept references, channel adapters, schema export, and testing utilities.
+
+The source of the documentation is also available in the [`docs/`](docs/README.md) folder of this repository (published via GitBook).
 
 | Section | Description |
 |---------|-------------|
-| [Getting Started](docs/getting-started/installation.md) | Installation and quick-start guide |
-| [Core Concepts](docs/concepts/README.md) | Publisher, channels, and event annotations |
-| [Publisher Channels](docs/publishers/README.md) | Azure Service Bus, RabbitMQ, MassTransit, Webhook |
-| [Event Subscriptions](docs/subscriptions/README.md) | Event dispatcher, filters, routing, and custom resolvers |
-| [Event Schema](docs/schema/README.md) | Schema definition, export (JSON / YAML / AsyncAPI), and validation |
-| [Testing](docs/testing/README.md) | Unit-testing event publishing |
+| [Getting Started](https://events.deveel.org/getting-started/installation) | Installation and quick-start guide |
+| [Core Concepts](https://events.deveel.org/concepts/) | Publisher, channels, and event annotations |
+| [Publisher Channels](https://events.deveel.org/publishers/) | Azure Service Bus, RabbitMQ, MassTransit, Webhook |
+| [Event Subscriptions](https://events.deveel.org/subscriptions/) | Event dispatcher, filters, routing, and custom resolvers |
+| [Event Schema](https://events.deveel.org/schema/) | Schema definition, export (JSON / YAML / AsyncAPI), and validation |
+| [Testing](https://events.deveel.org/testing/) | Unit-testing event publishing |
 
 ## Future Work
 
