@@ -5,6 +5,8 @@
 
 using CloudNative.CloudEvents;
 
+using System.Linq;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -198,10 +200,10 @@ namespace Deveel.Events
 
         private static Type? FindChannelEventType(Type channelType)
         {
-            foreach (var iface in channelType.GetInterfaces())
+            foreach (var iface in channelType.GetInterfaces()
+                .Where(iface => iface.IsGenericType && iface.GetGenericTypeDefinition() == typeof(IEventPublishChannel<>)))
             {
-                if (iface.IsGenericType && iface.GetGenericTypeDefinition() == typeof(IEventPublishChannel<>))
-                    return iface.GetGenericArguments()[0];
+                return iface.GetGenericArguments()[0];
             }
             return null;
         }
@@ -312,6 +314,10 @@ namespace Deveel.Events
                 {
                     await PublishEventAsync(channel, context.Event, context.Options, context.CancellationToken);
                     _logger.TraceEventPublished(context.Event.Type!, channel.GetType());
+                }
+                catch (OperationCanceledException) when (context.CancellationToken.IsCancellationRequested)
+                {
+                    throw;
                 }
                 catch (Exception ex)
                 {
