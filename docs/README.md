@@ -37,7 +37,7 @@ Deveel Events implements the **publishing side** of domain events.  The framewor
 Aggregate root raises event
         │
         ▼
-  IEventPublisher.PublishAsync(eventData)
+  EventPublisher.PublishAsync(eventData)
         │
         ├──► Azure Service Bus queue
         ├──► RabbitMQ exchange
@@ -97,7 +97,7 @@ Treat your event schemas the same way you treat public API contracts:
 
 ## What the Framework Provides
 
-- A **unified `IEventPublisher` interface** that fans out events to one or more registered channels.
+- A **unified `EventPublisher` service** that fans out events to one or more registered channels.
 - **Channel implementations** for Azure Service Bus, RabbitMQ, MassTransit, and HTTP Webhooks — each installable as a separate NuGet package.
 - **Annotation attributes** (`[Event]`, `[EventProperty]`) to describe event metadata directly on your data classes, in the ubiquitous language of the domain.
 - **Schema support** — derive, build, and export event schemas to JSON, YAML, and AsyncAPI documents.

@@ -60,7 +60,7 @@ This document outlines the planned evolution of the **Deveel Events** framework.
 
 > *A composable pipeline applied before and after every publish, analogous to ASP.NET Core middleware.*
 
-**The problem today:** Cross-cutting concerns — logging, enrichment, schema validation, correlation ID injection — have no standard hook point between `IEventPublisher` and `IEventPublishChannel`. Each application wires these up ad hoc.
+**The problem today:** Cross-cutting concerns — logging, enrichment, schema validation, correlation ID injection — have no standard hook point between `EventPublisher` and `IEventPublishChannel`. Each application wires these up ad hoc.
 
 **What we will build:** An `IEventMiddleware` interface with a `next` delegate pattern, and a `UseMiddleware<T>()` extension on `EventPublisherBuilder`. Middleware instances run in registration order on every publish call and have access to the full `CloudEvent` and the resolved channel list.
 
@@ -78,7 +78,7 @@ This document outlines the planned evolution of the **Deveel Events** framework.
 
 **The problem today:** Events cross process boundaries but carry no trace context, making it impossible to correlate a published event with the originating request in a distributed trace.
 
-**What we will build:** A `Deveel.Events.Publisher.OpenTelemetry` package that instruments `IEventPublisher` with Activity spans, injects W3C `traceparent`/`tracestate` as CloudEvents extension attributes on publish, and extracts them on the subscription/consumer side to continue the trace.
+**What we will build:** A `Deveel.Events.Publisher.OpenTelemetry` package that instruments `EventPublisher` with Activity spans, injects W3C `traceparent`/`tracestate` as CloudEvents extension attributes on publish, and extracts them on the subscription/consumer side to continue the trace.
 
 **Benefits:**
 - Publishers and consumers appear as linked spans in tools like Jaeger, Zipkin, or Azure Monitor.

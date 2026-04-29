@@ -7,7 +7,7 @@ The framework is split into focused NuGet packages so you only take what you nee
 | Package | Description |
 |---------|-------------|
 | [`Deveel.Events.Annotations`](#deveeleeventsannotations) | Attributes for describing event metadata on your data classes |
-| [`Deveel.Events.Publisher`](#deveeleventsublisher) | Core publisher infrastructure (`IEventPublisher`, `EventPublisherBuilder`, DI helpers) |
+| [`Deveel.Events.Publisher`](#deveeleventsublisher) | Core publisher infrastructure (`EventPublisher`, `EventPublisherBuilder`, DI helpers) |
 
 ## Channel packages
 
@@ -57,7 +57,7 @@ dotnet add package Deveel.Events.Annotations
 
 The heart of the framework.  Provides:
 
-- `IEventPublisher` / `EventPublisher`
+- `EventPublisher`
 - `IEventPublishChannel` and `IBatchEventPublishChannel<TOptions>`
 - `EventPublisherBuilder` for fluent DI registration
 - `IEventCreator` and `IEventIdGenerator` extensibility points

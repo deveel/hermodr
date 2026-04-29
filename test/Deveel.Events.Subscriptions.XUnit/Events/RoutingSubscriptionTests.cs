@@ -135,7 +135,7 @@ namespace Deveel.Events
             var services = new ServiceCollection();
             services.AddLogging();
             services.AddEventPublisher(o => o.Source = new Uri("https://example.com"))
-                    .AddDispatcher()
+                    .AddSubscriptions()
                     .RouteToChannel(
                         EventFilter.ByType("com.example.route"),
                         name: "test-route");
@@ -171,20 +171,16 @@ namespace Deveel.Events
         [Fact]
         public static async Task RouteToChannel_Filter_NonMatchingEvent_SubscriptionNotInvoked()
         {
-            // Build a registy with a routing subscription and dispatch a non-matching event.
-            // The RoutingEventSubscription's HandleAsync should NOT be called.
+            // Verify the routing subscription is not selected when the filter does not match.
             var (sp, recording) = BuildRecordingProvider();
 
             var filter = EventFilter.ByType("com.example.specific");
             var sub = new RoutingEventSubscription(filter, sp);
 
             var registry = new EventSubscriptionRegistry([sub]);
-            var dispatcher = new EventDispatcher(registry);
+            var matches = await registry.ResolveSubscriptionsAsync(MakeEvent("com.example.other"));
 
-            // Dispatch an event that does NOT match the filter
-            await dispatcher.DispatchAsync(MakeEvent("com.example.other"));
-
-            // The routing subscription should not have been triggered
+            Assert.Empty(matches);
             Assert.Empty(recording.Published);
         }
 
@@ -196,7 +192,7 @@ namespace Deveel.Events
             var services = new ServiceCollection();
             services.AddLogging();
             services.AddEventPublisher(o => o.Source = new Uri("https://example.com"))
-                    .AddDispatcher()
+                    .AddSubscriptions()
                     .RouteToChannel("com.example.*", name: "pattern-route");
 
             var provider = services.BuildServiceProvider();
@@ -233,7 +229,7 @@ namespace Deveel.Events
             var services = new ServiceCollection();
             services.AddLogging();
             services.AddEventPublisher(o => o.Source = new Uri("https://example.com"))
-                    .AddDispatcher()
+                    .AddSubscriptions()
                     .RouteToChannel("com.example.test", routingOptions: null);
 
             var provider = services.BuildServiceProvider();
@@ -244,20 +240,6 @@ namespace Deveel.Events
 
             Assert.NotNull(sub);
             Assert.Null(sub!.RoutingOptions);
-        }
-
-        // ── helper ─────────────────────────────────────────────────────────────
-
-        private sealed class CallbackChannel : IEventPublishChannel
-        {
-            private readonly Action<CloudEvent> _cb;
-            public CallbackChannel(Action<CloudEvent> cb) => _cb = cb;
-
-            public Task PublishAsync(CloudEvent @event, EventPublishOptions? options = null, CancellationToken cancellationToken = default)
-            {
-                _cb(@event);
-                return Task.CompletedTask;
-            }
         }
     }
 }

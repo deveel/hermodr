@@ -67,16 +67,16 @@ builder.Services
 
 ## 4. Inject and publish
 
-Inject `IEventPublisher` wherever you need it and call `PublishAsync`:
+Inject `EventPublisher` wherever you need it and call `PublishAsync`:
 
 ```csharp
 using Deveel.Events;
 
 public class OrderService
 {
-    private readonly IEventPublisher _publisher;
+    private readonly EventPublisher _publisher;
 
-    public OrderService(IEventPublisher publisher)
+    public OrderService(EventPublisher publisher)
     {
         _publisher = publisher;
     }

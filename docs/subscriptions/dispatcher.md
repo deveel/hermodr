@@ -1,87 +1,104 @@
 # Event Dispatcher
 
-`EventDispatcher` is the engine that routes every published `CloudEvent` to the matching registered subscriptions. It implements both `IEventDispatcher` (for direct dispatch) and `IEventPublishChannel` (so it plugs into the standard publisher fan-out pipeline).
+`EventDispatcher` routes published `CloudEvent` instances to matching `IEventSubscription` handlers. It implements `IEventMiddleware` and runs inside the `EventPublisher` middleware pipeline.
 
-## Registration
+## Registration and Pipeline Activation
 
-Call `AddDispatcher()` on the `EventPublisherBuilder` in your DI setup:
+Subscription support now has two distinct steps:
+
+1. **Register subscription services** at startup with `AddSubscriptions()`.
+2. **Enable dispatch middleware** on the runtime publisher with one of the `UseDispatcher(...)` extensions.
 
 ```csharp
-services.AddEventPublisher(pub =>
-{
-    pub.AddDispatcher();
-    // ... add channels, subscriptions, etc.
-});
+// Startup / DI registration
+services.AddEventPublisher()
+    .AddSubscriptions()
+    .Subscribe("com.example.order.*", async (e, ct) =>
+    {
+        Console.WriteLine($"Received: {e.Type}");
+        await Task.CompletedTask;
+    }, name: "log-orders");
+
+// Runtime activation (once per publisher instance)
+var publisher = serviceProvider.GetRequiredService<EventPublisher>()
+    .UseDispatcher();
 ```
 
-`AddDispatcher()` registers:
+`AddSubscriptions()` registers:
 
 | Service | Lifetime | Description |
 |---------|----------|-------------|
-| `EventSubscriptionRegistry` | Singleton | In-memory registry (write + read), pre-populated from any `IEventSubscription` instances registered with DI |
-| `IEventSubscriptionRegistry` | Singleton | Write interface for runtime subscription registration |
-| `IEventSubscriptionResolver` | Singleton | Read interface forwarded to the in-memory registry; queried by the dispatcher alongside custom resolvers |
-| `EventDispatcher` | Singleton | The dispatcher itself |
-| `IEventDispatcher` | Singleton | Public dispatch interface |
-| `IEventPublishChannel` | Singleton | Wired into the publisher's fan-out pipeline |
+| `EventSubscriptionRegistry` | Singleton | In-memory registry seeded from `IEventSubscription` instances registered in DI |
+| `IEventSubscriptionRegistry` | Singleton | Write interface for runtime registration |
+| `IEventSubscriptionResolver` | Singleton | Read interface resolved from the same registry instance |
 
-> **Order matters:** call `AddDispatcher()` **before** any `Subscribe(…)` calls so that the `IEventSubscription` instances registered in DI are picked up when the registry singleton is first built.
+> **Tip:** register `AddSubscriptions()` during startup before the first `UseDispatcher()`/publish call so the resolver services are available when middleware runs.
 
 ---
 
-## Dispatcher Options
+## Runtime Pipeline Functions
 
-Configure `EventDispatcherOptions` through the optional `configure` parameter:
+Use one of these extension methods on `EventPublisher`:
+
+> `EventDispatcher` is an internal implementation detail; enable it through `UseDispatcher(...)` rather than instantiating it directly.
+
+| Function | Description |
+|----------|-------------|
+| `UseDispatcher()` | Adds dispatcher middleware with default options |
+| `UseDispatcher(EventDispatcherOptions options)` | Adds dispatcher middleware with explicit runtime options |
+
+### `UseDispatcher()`
 
 ```csharp
-pub.AddDispatcher(options =>
-{
-    options.ThrowOnHandlerError = true;  // default: false
-});
+var publisher = serviceProvider.GetRequiredService<EventPublisher>()
+    .UseDispatcher();
+```
+
+### `UseDispatcher(EventDispatcherOptions)`
+
+```csharp
+var publisher = serviceProvider.GetRequiredService<EventPublisher>()
+    .UseDispatcher(new EventDispatcherOptions
+    {
+        ThrowOnHandlerError = true
+    });
 ```
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `ThrowOnHandlerError` | `false` | When `true`, an exception in any handler propagates to the caller and stops dispatching to subsequent subscribers. When `false`, the exception is logged and dispatching continues with the next matched subscription. |
-
-The `false` default ensures that a single misbehaving subscriber cannot prevent other subscribers from processing the event.
+| `ThrowOnHandlerError` | `false` | When `true`, a subscription handler exception is re-thrown and dispatching stops. When `false`, the exception is logged and dispatching continues with remaining matches. |
 
 ---
 
 ## How Dispatch Works
 
 ```
-DispatchAsync(event)
+EventPublisher.Publish*()
   │
-  ├── Build EventSubscriptionContext (wraps IServiceProvider)
+  ├── ...middleware before dispatcher...
   │
-  ├── For each IEventSubscriptionResolver:
-  │     └── ResolveSubscriptionsAsync(event, context)
-  │           └── Returns IReadOnlyList<IEventSubscription>
+  ├── EventDispatcher.InvokeAsync(context, next)
+  │     ├── Build EventSubscriptionContext from context.Services
+  │     ├── For each IEventSubscriptionResolver:
+  │     │     └── ResolveSubscriptionsAsync(event, context)
+  │     ├── Aggregate matches from all resolvers
+  │     ├── Invoke each subscription.HandleAsync(event, ct)
+  │     └── On error: log + rethrow only when ThrowOnHandlerError = true
   │
-  ├── Aggregate all matches across resolvers
-  │
-  └── For each matched subscription:
-        ├── Log "dispatching"
-        ├── await subscription.HandleAsync(event, ct)
-        ├── Log "dispatched"  (success)
-        └── On exception:
-              ├── Log error
-              └── If ThrowOnHandlerError → rethrow (stops loop)
-                  else → continue
+  └── Continue with next middleware/terminal delegate
 ```
 
 ---
 
 ## Multiple Resolvers
 
-The dispatcher aggregates results from **all** registered `IEventSubscriptionResolver` instances. This lets you combine:
+The dispatcher queries **all** registered `IEventSubscriptionResolver` instances. You can combine:
 
-- The built-in `EventSubscriptionRegistry` (always registered by `AddDispatcher`, default in-memory store)
-- One or more custom resolvers (e.g. reading subscriptions from a database)
+- The default in-memory `EventSubscriptionRegistry`
+- Custom resolvers (database, remote API, etc.)
 
 ```csharp
-pub.AddDispatcher()
+pub.AddSubscriptions()
    .AddSubscriptionResolver<DatabaseSubscriptionResolver>();
 ```
 
@@ -89,37 +106,9 @@ See [Custom Resolvers](custom-resolver.md) for implementation details.
 
 ---
 
-## Using `IEventDispatcher` Directly
-
-If you need to dispatch an event without going through `IEventPublisher`, inject `IEventDispatcher`:
-
-```csharp
-public class MyBackgroundService : BackgroundService
-{
-    private readonly IEventDispatcher _dispatcher;
-
-    public MyBackgroundService(IEventDispatcher dispatcher)
-        => _dispatcher = dispatcher;
-
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        var cloudEvent = new CloudEvent
-        {
-            Id     = Guid.NewGuid().ToString(),
-            Type   = "com.example.heartbeat",
-            Source = new Uri("https://background/service")
-        };
-
-        await _dispatcher.DispatchAsync(cloudEvent, stoppingToken);
-    }
-}
-```
-
----
-
 ## Class-Based Subscriptions
 
-For subscriptions that require DI-injected services, implement `IEventSubscription` directly:
+For subscriptions that need injected services, implement `IEventSubscription` directly:
 
 ```csharp
 public sealed class AuditOrderSubscription : IEventSubscription
@@ -132,24 +121,21 @@ public sealed class AuditOrderSubscription : IEventSubscription
     public string? Name => "audit-orders";
 
     public FilterExpression Filter =>
-        CloudEventFilter.ByTypePattern("com.example.order.*");
+        EventFilter.ByTypePattern("com.example.order.*");
 
     public Task HandleAsync(CloudEvent e, CancellationToken ct = default)
         => _audit.RecordAsync(e, ct);
 }
 
-// Registration:
-pub.AddDispatcher()
+pub.AddSubscriptions()
    .Subscribe<AuditOrderSubscription>();
 ```
-
-The type is registered with the DI container and resolved when the registry is first built, so constructor injection of any scoped or singleton service is fully supported.
 
 ---
 
 ## Runtime Subscription Registration
 
-Subscriptions can also be added after the application has started by injecting `IEventSubscriptionRegistry`:
+Subscriptions can be added after startup by using `IEventSubscriptionRegistry`:
 
 ```csharp
 public class WebhookManager
@@ -159,14 +145,11 @@ public class WebhookManager
     public WebhookManager(IEventSubscriptionRegistry registry)
         => _registry = registry;
 
-    public async Task AddWebhookAsync(
-        string tenantId,
-        string webhookUrl,
-        CancellationToken ct = default)
+    public async Task AddWebhookAsync(string tenantId, string webhookUrl, CancellationToken ct = default)
     {
-        var filter = CloudEventFilter.All(
-            CloudEventFilter.ByTypePattern("com.example.*"),
-            CloudEventFilter.ByExtension("tenantid", tenantId));
+        var filter = EventFilter.All(
+            EventFilter.ByTypePattern("com.example.*"),
+            EventFilter.ByExtension("tenantid", tenantId));
 
         var subscription = new EventSubscription(
             filter,
@@ -182,18 +165,15 @@ public class WebhookManager
 }
 ```
 
-> **Note:** The built-in `EventSubscriptionRegistry` is an in-memory, thread-safe store — subscriptions registered at runtime are **not** persisted across application restarts. For subscriptions that must survive restarts or be managed externally, implement a [custom resolver backed by a database or remote service](custom-resolver.md).
+> **Note:** `EventSubscriptionRegistry` is in-memory and thread-safe; runtime registrations are not persisted across process restarts.
 
 ---
 
 ## Custom Data Deserialization
 
-When a data field filter evaluates the event payload, it calls `EventSubscriptionContext.GetJsonData(event)` internally. The context first checks whether any `IEventDataDeserializer` registered with the DI container can handle the event's `datacontenttype`; if none matches, it falls back to the built-in JSON deserializer which handles JSON strings, `JsonElement` objects, and CLR objects serializable with `System.Text.Json`.
-
-Register a custom deserializer:
+When a `data.*` filter is evaluated, `EventFilterEvaluator` calls `EventSubscriptionContext.GetJsonData(event)`. The context first tries DI-registered `IEventDataDeserializer` implementations (matching by `datacontenttype`) and falls back to the built-in JSON deserializer.
 
 ```csharp
 services.AddSingleton<IEventDataDeserializer, MyCustomDeserializer>();
 ```
 
-The `CanDeserialize(string? contentType)` method determines whether your deserializer is selected for a given content type.

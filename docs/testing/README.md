@@ -71,7 +71,7 @@ using Xunit;
 
 public class OrderServiceTests
 {
-    private readonly IEventPublisher _publisher;
+    private readonly EventPublisher _publisher;
     private readonly List<CloudEvent> _published = new();
 
     public OrderServiceTests()
@@ -82,7 +82,7 @@ public class OrderServiceTests
         services.AddTransient<OrderService>();
 
         var provider = services.BuildServiceProvider();
-        _publisher = provider.GetRequiredService<IEventPublisher>();
+        _publisher = provider.GetRequiredService<EventPublisher>();
     }
 
     [Fact]

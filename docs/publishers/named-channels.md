@@ -99,7 +99,7 @@ builder.Services
 
 ### Convenience extension methods
 
-The simplest approach — use the `string channelName` overloads on `IEventPublisher`:
+The simplest approach — use the `string channelName` overloads on `EventPublisher`:
 
 ```csharp
 // Publish an annotated data object to a specific named channel
@@ -109,7 +109,7 @@ await publisher.PublishAsync(orderPlaced, channelName: "rabbit-orders");
 await publisher.PublishEventAsync(@event, channelName: "rabbit-notifications");
 ```
 
-These are extension methods on `IEventPublisher` and wrap the name in a `NamedChannelPublishOptions` internally, so no channel-specific knowledge is needed at the call site.
+These are convenience overloads on `EventPublisher` and wrap the name in a `NamedChannelPublishOptions` internally, so no channel-specific knowledge is needed at the call site.
 
 ### Per-call options with `ChannelName`
 

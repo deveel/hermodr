@@ -87,17 +87,22 @@ namespace Deveel.Events
         /// <see cref="Microsoft.Extensions.DependencyInjection.ActivatorUtilities"/>,
         /// so constructor-injected services are fully supported.
         /// </typeparam>
+        /// <param name="activationArguments">
+        /// Optional explicit constructor arguments to pass to middleware activation.
+        /// These values are provided in addition to DI-resolved services.
+        /// </param>
         /// <returns>This <see cref="EventPublisher"/> instance, to allow fluent chaining.</returns>
         /// <remarks>
         /// Middleware components run in registration order.  Calling this method after
         /// the first <c>PublishAsync</c> / <c>PublishEventAsync</c> call is allowed;
         /// the pipeline is rebuilt on the next publish.
         /// </remarks>
-        public EventPublisher Use<TMiddleware>() where TMiddleware : class, IEventMiddleware
+        public EventPublisher Use<TMiddleware>(params object[] activationArguments)
+            where TMiddleware : class, IEventMiddleware
         {
             lock (_pipelineLock)
             {
-                _pipelineDescriptor.Add(typeof(TMiddleware));
+                _pipelineDescriptor.Add(typeof(TMiddleware), activationArguments);
                 // Invalidate any cached factory so the next publish rebuilds the chain.
                 _pipelineFactory = null;
             }
@@ -492,12 +497,12 @@ namespace Deveel.Events
                 // Start with the identity: factory(terminal) = terminal.
                 Func<EventPublishDelegate, EventPublishDelegate> factory = static terminal => terminal;
 
-                var types = _pipelineDescriptor.MiddlewareTypes;
+                var registrations = _pipelineDescriptor.MiddlewareRegistrations;
 
                 // Compose in reverse so the first-registered type is the outermost wrapper.
-                for (var i = types.Count - 1; i >= 0; i--)
+                for (var i = registrations.Count - 1; i >= 0; i--)
                 {
-                    var middlewareType = types[i];
+                    var registration = registrations[i];
                     var prevFactory = factory;
 
                     factory = terminal =>
@@ -507,13 +512,16 @@ namespace Deveel.Events
                         {
                             // A stateless middleware instance is created per invocation; its
                             // constructor dependencies are resolved from ctx.Services.
-                            var mw = (IEventMiddleware)ActivatorUtilities.CreateInstance(ctx.Services, middlewareType);
+                            var mw = (IEventMiddleware)ActivatorUtilities.CreateInstance(
+                                ctx.Services,
+                                registration.MiddlewareType,
+                                registration.ActivationArguments);
                             return mw.InvokeAsync(ctx, inner);
                         };
                     };
                 }
 
-                _logger.TraceMiddlewarePipelineBuilt(types.Count);
+                _logger.TraceMiddlewarePipelineBuilt(registrations.Count);
                 _pipelineFactory = factory;
             }
 

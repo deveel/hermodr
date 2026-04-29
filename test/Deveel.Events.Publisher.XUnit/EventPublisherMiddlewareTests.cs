@@ -114,6 +114,17 @@ namespace Deveel.Events
             }
         }
 
+        private sealed class ParameterizedLoggingMiddleware(string marker) : IEventMiddleware
+        {
+            public async Task InvokeAsync(EventContext context, EventPublishDelegate next)
+            {
+                var log = context.Services.GetRequiredService<CallLog>();
+                log.Add($"{marker}:before");
+                await next(context);
+                log.Add($"{marker}:after");
+            }
+        }
+
         // ---------------------------------------------------------------
         // Tests
         // ---------------------------------------------------------------
@@ -319,6 +330,24 @@ namespace Deveel.Events
 
             Assert.Equal(2, received.Count);
             Assert.All(received, e => Assert.Equal("yes", e[EnrichmentMiddleware.AttributeName]));
+        }
+
+        [Fact]
+        public async Task UseMiddleware_WithActivationArguments_ForwardsArgumentsToConstructor()
+        {
+            var callLog = new CallLog();
+            var services = new ServiceCollection().AddLogging().AddSingleton(callLog);
+            services.AddEventPublisher(opts =>
+                    opts.Source = new Uri("https://test.example.com/source"))
+                .AddTestChannel(_ => callLog.Add("dispatch"));
+
+            await using var provider = services.BuildServiceProvider();
+            var publisher = provider.GetRequiredService<EventPublisher>()
+                .Use<ParameterizedLoggingMiddleware>("custom");
+
+            await publisher.PublishEventAsync(MakeEvent(), cancellationToken: TestContext.Current.CancellationToken);
+
+            Assert.Equal(["custom:before", "dispatch", "custom:after"], callLog);
         }
     }
 }

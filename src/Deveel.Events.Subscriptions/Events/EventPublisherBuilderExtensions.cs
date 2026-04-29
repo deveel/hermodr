@@ -9,7 +9,6 @@ using Deveel.Filters;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Logging;
 
 namespace Deveel.Events
 {
@@ -24,39 +23,36 @@ namespace Deveel.Events
         // ──────────────────────────────────────────────────────────────────────────────
 
         /// <summary>
-        /// Adds the in-process event dispatcher to the publisher pipeline.
+        /// Adds the in-process event dispatcher services.
         /// </summary>
         /// <remarks>
         /// <para>
         /// This registers:
         /// <list type="bullet">
         ///   <item>
-        ///     <see cref="EventSubscriptionRegistry"/> (singleton) — the default in-memory store,
+        ///     <see cref="EventSubscriptionRegistry"/> (singleton) -- the default in-memory store,
         ///     exposed as both <see cref="IEventSubscriptionRegistry"/> and
         ///     <see cref="IEventSubscriptionResolver"/>.
         ///   </item>
-        ///   <item><see cref="IEventDispatcher"/> / <see cref="EventDispatcher"/> (singleton).</item>
-        ///   <item><see cref="IEventPublishChannel"/> backed by the dispatcher — so every published
-        ///   event is routed to matching subscribers automatically.</item>
         /// </list>
         /// </para>
         /// <para>
+        /// To activate dispatcher routing in the publish pipeline, call
+        /// <see cref="EventPublisherExtensions.UseDispatcher(EventPublisher)"/> on the resolved
+        /// <see cref="EventPublisher"/> instance.
+        /// </para>
+        /// <para>
         /// Additional read-only resolvers can be added via
-        /// <see cref="AddSubscriptionResolver{TResolver}"/>.  The dispatcher aggregates
+        /// <see cref="AddSubscriptionResolver{TResolver}"/>. The dispatcher aggregates
         /// matching subscriptions from every registered <see cref="IEventSubscriptionResolver"/>
         /// when routing an event.
         /// </para>
         /// </remarks>
         /// <param name="builder">The builder to configure.</param>
-        /// <param name="configure">An optional action to configure <see cref="EventDispatcherOptions"/>.</param>
         /// <returns>The same <paramref name="builder"/> for chaining.</returns>
-        public static EventPublisherBuilder AddDispatcher(
-            this EventPublisherBuilder builder,
-            Action<EventDispatcherOptions>? configure = null)
+        public static EventPublisherBuilder AddSubscriptions(
+            this EventPublisherBuilder builder)
         {
-            builder.Services.AddOptions<EventDispatcherOptions>()
-                .Configure(configure ?? (_ => { }));
-
             // Register the concrete registry as a singleton so both interface registrations
             // below resolve the same instance.
             builder.Services.TryAddSingleton<EventSubscriptionRegistry>(sp =>
@@ -69,24 +65,10 @@ namespace Deveel.Events
             builder.Services.TryAddSingleton<IEventSubscriptionRegistry>(
                 sp => sp.GetRequiredService<EventSubscriptionRegistry>());
 
-            // Read interface — always added (not TryAdd) so that IEnumerable<IEventSubscriptionResolver>
+            // Read interface -- always added (not TryAdd) so that IEnumerable<IEventSubscriptionResolver>
             // picks it up alongside any custom resolvers added via AddSubscriptionResolver<T>.
             builder.Services.AddSingleton<IEventSubscriptionResolver>(
                 sp => sp.GetRequiredService<EventSubscriptionRegistry>());
-
-            builder.Services.AddSingleton<EventDispatcher>(sp =>
-                new EventDispatcher(
-                    sp.GetServices<IEventSubscriptionResolver>(),
-                    sp,
-                    options: sp.GetService<Microsoft.Extensions.Options.IOptions<EventDispatcherOptions>>()?.Value,
-                    sp.GetService<ILogger<EventDispatcher>>()));
-            builder.Services.TryAddSingleton<IEventDispatcher>(sp =>
-                sp.GetRequiredService<EventDispatcher>());
-
-            // Register the dispatcher as a publish channel so it receives every published event.
-            // Forward to the already-created singleton to avoid a second constructor resolution.
-            builder.Services.AddSingleton<IEventPublishChannel>(
-                sp => sp.GetRequiredService<EventDispatcher>());
 
             return builder;
         }
@@ -118,7 +100,7 @@ namespace Deveel.Events
         /// </remarks>
         /// <example>
         /// <code language="csharp">
-        /// builder.AddDispatcher()
+        /// builder.AddSubscriptions()
         ///        .AddSubscriptionResolver&lt;RemoteSubscriptionResolver&gt;();
         /// </code>
         /// </example>
@@ -215,7 +197,7 @@ namespace Deveel.Events
         /// }
         ///
         /// // Registration:
-        /// builder.AddDispatcher()
+        /// builder.AddSubscriptions()
         ///        .Subscribe&lt;AuditOrderSubscription&gt;();
         /// </code>
         /// </example>

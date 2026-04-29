@@ -67,16 +67,16 @@ public sealed class DatabaseSubscriptionResolver : IEventSubscriptionResolver
         var filters = new List<FilterExpression>();
 
         if (!string.IsNullOrEmpty(record.TypePattern))
-            filters.Add(CloudEventFilter.ByTypePattern(record.TypePattern));
+            filters.Add(EventFilter.ByTypePattern(record.TypePattern));
 
         foreach (var field in record.FieldFilters)
-            filters.Add(CloudEventFilter.ByField(field.Path, field.Value));
+            filters.Add(EventFilter.ByField(field.Path, field.Value));
 
         return filters.Count switch
         {
             0 => FilterExpression.Empty,
             1 => filters[0],
-            _ => CloudEventFilter.All(filters.ToArray())
+            _ => EventFilter.All(filters.ToArray())
         };
     }
 
@@ -94,7 +94,7 @@ public sealed class DatabaseSubscriptionResolver : IEventSubscriptionResolver
 ### Registering the Resolver
 
 ```csharp
-pub.AddDispatcher()
+pub.AddSubscriptions()
    .AddSubscriptionResolver<DatabaseSubscriptionResolver>();
 ```
 
@@ -103,7 +103,7 @@ The dispatcher will query **both** the built-in `EventSubscriptionRegistry` **an
 By default the resolver is registered as a singleton. Pass a different lifetime if needed:
 
 ```csharp
-pub.AddDispatcher()
+pub.AddSubscriptions()
    .AddSubscriptionResolver<DatabaseSubscriptionResolver>(ServiceLifetime.Scoped);
 ```
 
@@ -179,7 +179,7 @@ Task<IReadOnlyList<IEventSubscription>> ResolveSubscriptionsAsync(
     CancellationToken cancellationToken = default);
 ```
 
-The context overload passes the application `IServiceProvider` through to the built-in `CloudEventFilterEvaluator`, which calls `context.GetJsonData(event)` when resolving `data.*` variable paths. This allows DI-registered `IEventDataDeserializer` services to handle custom content types. Always prefer the context overload; the no-context overload is provided for backward compatibility.
+The context overload passes the application `IServiceProvider` through to the built-in `EventFilterEvaluator`, which calls `context.GetJsonData(event)` when resolving `data.*` variable paths. This allows DI-registered `IEventDataDeserializer` services to handle custom content types. Always prefer the context overload; the no-context overload is provided for backward compatibility.
 
 ### `EventSubscriptionContext`
 

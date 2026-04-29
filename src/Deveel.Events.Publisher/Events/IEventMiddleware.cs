@@ -24,7 +24,7 @@ namespace Deveel.Events
     /// </para>
     /// <para>
     /// Middleware types are registered via
-    /// <see cref="EventPublisherBuilder.Use{TMiddleware}"/> and a fresh
+    /// <see cref="EventPublisher.Use{TMiddleware}"/> and a fresh
     /// instance is created for every publish call using
     /// <see cref="Microsoft.Extensions.DependencyInjection.ActivatorUtilities"/>,
     /// resolving constructor dependencies from <see cref="EventContext.Services"/>.

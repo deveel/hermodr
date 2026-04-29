@@ -2,63 +2,42 @@
 
 ## Design overview
 
-### `IEventPublisher` — the injection contract
+### `EventPublisher` — the injection contract
 
-`IEventPublisher` is the **DI injection contract** that application code depends on.  
-It exposes three publish methods, covering the full spectrum of call sites:
+`EventPublisher` is the publishing contract that application code depends on through DI.  
+It exposes overloads that cover pre-built `CloudEvent` instances and annotation-driven publishing from CLR types.
 
-```csharp
-public interface IEventPublisher
-{
-    // Publish a pre-built CloudEvent directly.
-    Task PublishEventAsync(
-        CloudEvent @event,
-        EventPublishOptions? options = null,
-        CancellationToken cancellationToken = default);
+`PublishAsync` is the **primary entry point** for most application code. It accepts annotated 
+domain objects, delegates `CloudEvent` construction to 
+`IEventFactory`, and then pushes the result through the same enrich → middleware → validate → dispatch 
+pipeline as `PublishEventAsync`.
 
-    // Build a CloudEvent from an annotated data object and publish it.
-    // The eventType must carry [Event] annotations or implement IEventConvertible.
-    Task PublishAsync(
-        Type eventType,
-        object? data,
-        EventPublishOptions? options = null,
-        CancellationToken cancellationToken = default);
-}
-```
-
-`PublishAsync` is the **primary entry points** for most application code. It accepts annotated 
-domain objects, delegate `CloudEvent` construction to 
-`IEventCreator`, and then push the result through the same enrich → validate → dispatch 
-pipeline as `PublishEventAsync`.  Because these methods belong to the interface, injecting 
-`IEventPublisher` gives callers access to annotation-driven publishing without any coupling to 
-the concrete `EventPublisher` class.
-
-An extension method `PublishAsync<TEvent>(TEvent @event, ...)` 
+The generic overload `PublishAsync<TEvent>(TEvent @event, ...)` 
 is also available for an even more concise syntax when the event type is known at compile time.
 
-> **Warning — implementing `IEventPublisher` directly**
+> **Warning — replacing `EventPublisher` entirely**
 >
-> Implementing the interface from scratch means you own the **entire** publish pipeline:  
+> Replacing the publisher implementation means you own the **entire** publish pipeline:  
 > enrichment, validation, channel fan-out, per-call options resolution, typed-channel dispatch,
 > error handling and logging.  Only do this when you need to **completely replace** the pipeline
 > (e.g. a test double that captures events in memory, or an exotic transport that cannot be 
 > modelled as a channel).  For all other customisation needs, **extend `EventPublisher`** instead
 > (see [Extending `EventPublisher`](#extending-eventpublisher) below).
 
-### `EventPublisher` — the default implementation
+### `EventPublisher` — core capabilities
 
 `EventPublisher` is the production implementation registered by `AddEventPublisher()`.  
 It provides:
 
-- A structured, overridable **publish pipeline** (enrich → validate → dispatch).
+- A structured, overridable **publish pipeline** (enrich → middleware → validate → dispatch).
 - **Fan-out** delivery to every registered `IEventPublishChannel`.
 - Automatic routing to **typed channels** (`IEventPublishChannel<TEvent>`) when available.
 - **Per-call options** resolution and forwarding per channel.
-- Annotation-driven `CloudEvent` creation via `IEventCreator` / `PublishAsync`.
+- Annotation-driven `CloudEvent` creation via `IEventFactory` / `PublishAsync`.
+- A composable **runtime middleware pipeline** configured with `Use<TMiddleware>()`.
 - Structured logging and configurable error-propagation policy.
 
-Because every stage is exposed as a `protected virtual` method, you can override exactly the 
-behaviour you need without reimplementing the rest.
+Because the publisher-owned stages are exposed as `protected virtual` methods and middleware is composed separately at runtime, you can customise exactly the behaviour you need without reimplementing the rest.
 
 ---
 
@@ -85,6 +64,19 @@ builder.Services.AddEventPublisher("Events:Publisher");
 
 `AddEventPublisher` returns an `EventPublisherBuilder` that you chain to register channels and 
 other services.
+
+The builder configures DI and channel registrations. Runtime middleware is added on the resolved
+`EventPublisher` instance itself:
+
+```csharp
+var publisher = serviceProvider.GetRequiredService<EventPublisher>()
+    .Use<CorrelationIdMiddleware>()
+    .Use<AuditMiddleware>();
+```
+
+Middleware registration is per publisher instance and runs in the order you register it.
+
+If you use `Deveel.Events.Subscriptions`, call `AddSubscriptions()` during registration and then enable the middleware on the runtime publisher instance with `UseDispatcher()` (or `UseDispatcher(EventDispatcherOptions)`).
 
 ---
 
@@ -118,7 +110,7 @@ other services.
 ## The publish pipeline
 
 Every call to `PublishEventAsync` passes through the following ordered stages.  
-Each stage is a `protected virtual` method that subclasses can override individually.
+The publisher-owned stages remain `protected virtual`, while the middleware stage is composed at runtime.
 
 ```
 PublishEventAsync(CloudEvent, options)
@@ -129,18 +121,24 @@ PublishEventAsync(CloudEvent, options)
   │       SetSource(event)         → fills source from EventPublisherOptions
   │       SetAttributes(event)     → merges EventPublisherOptions.Attributes
   │
-  ├─ 2. Validate ────────────────────────────────────────────────────────────
-  │       ValidateCloudEvent(event)
-  │         → checks id, source, type, specversion
-  │         → throws InvalidCloudEventException if any are missing
+  ├─ 2. Create EventContext ─────────────────────────────────────────────────
+  │       EventContext(event, services, cancellationToken, options)
   │
-  └─ 3. Dispatch (fan-out) ──────────────────────────────────────────────────
-          FilterChannelsByName(channels, options) → named-channel filter
+  ├─ 3. Run middleware chain ────────────────────────────────────────────────
+  │       Use<TMiddleware>() registrations run in order
+  │       middleware may mutate context.Event
+  │       middleware may short-circuit by not calling next(context)
+  │
+  └─ 4. Terminal validate + dispatch ────────────────────────────────────────
+          ValidateCloudEvent(context.Event)
+          FilterChannelsByName(channels, context.Options) → named-channel filter
           for each IEventPublishChannel:
-            ResolveChannelOptions(channel, options) → per-channel options
-            PublishEventAsync(channel, event, resolvedOptions)
-              → channel.PublishAsync(event, resolvedOptions)
+            ResolveChannelOptions(channel, context.Options) → per-channel options
+            PublishEventAsync(channel, context.Event, resolvedOptions)
+              → channel.PublishAsync(context.Event, resolvedOptions)
 ```
+
+> **Important:** validation happens in the terminal step **after** middleware runs. This means middleware can enrich the event further, replace the event, or update per-call options before the publisher validates the envelope and fans out to channels.
 
 ### Stage 1 — Enrichment
 
@@ -157,9 +155,28 @@ in satisfy the subsequent validation check automatically.
 All four methods return the (mutated) `CloudEvent` and are `protected virtual` — override any 
 of them to customise enrichment without touching the rest of the pipeline.
 
-### Stage 2 — Validation
+### Stage 2 — `EventContext` creation
 
-`ValidateCloudEvent` checks the four mandatory CloudEvents 1.0 attributes after enrichment.
+After enrichment, the publisher creates an `EventContext` for the current publish operation. This context carries:
+
+- `EventContext.Event` — the enriched `CloudEvent`
+- `EventContext.Services` — the runtime `IServiceProvider`
+- `EventContext.CancellationToken` — the cancellation token for the current publish call
+- `EventContext.Options` — any per-call `EventPublishOptions`
+
+Middleware receives and can mutate this context before the terminal validate-and-dispatch step runs.
+
+### Stage 3 — Middleware
+
+If any middleware has been added with `Use<TMiddleware>()`, the publisher composes it around the terminal step.
+
+- Middleware runs in registration order
+- Middleware may inspect or replace `context.Event`
+- Middleware may short-circuit publishing by not calling `next(context)`
+
+### Stage 4 — Validation
+
+`ValidateCloudEvent` checks the four mandatory CloudEvents 1.0 attributes in the terminal step, after enrichment and after all middleware has run.
 
 | Attribute | Auto-filled? | Must be caller-supplied when… |
 |-----------|-------------|-------------------------------|
@@ -168,7 +185,7 @@ of them to customise enrichment without touching the rest of the pipeline.
 | `type` | ❌ | Always — no default exists |
 | `specversion` | ✅ by the CloudNative SDK (always `"1.0"`) | Never in practice |
 
-If any required attribute remains absent after enrichment, `ValidateCloudEvent` throws 
+If any required attribute remains absent after middleware completes, `ValidateCloudEvent` throws 
 `InvalidCloudEventException` **before** dispatching to any channel.  This exception is always 
 propagated regardless of the `ThrowOnErrors` option, because a structurally invalid envelope 
 is a programming error, not a transient delivery failure.
@@ -190,7 +207,7 @@ catch (InvalidCloudEventException ex)
 }
 ```
 
-### Stage 3 — Dispatch
+### Stage 5 — Dispatch
 
 The publisher's dispatch stage has two steps before iterating channels:
 
@@ -202,50 +219,141 @@ If a channel throws and `ThrowOnErrors` is `false` (the default), the error is l
 
 ---
 
+## Middleware pipeline
+
+Middleware is one of the runtime concepts in `EventPublisher`. It lets you attach composable processing steps around the terminal validate-and-fan-out stage without subclassing the publisher.
+
+### Core types
+
+| Type | Role |
+|------|------|
+| `IEventMiddleware` | A composable step in the publish pipeline |
+| `EventContext` | Carries the current `CloudEvent`, `IServiceProvider`, cancellation token, and per-call options |
+| `EventPublishDelegate` | Represents the remainder of the pipeline (`next`) |
+
+### Runtime registration
+
+Add middleware on the resolved publisher instance:
+
+```csharp
+var publisher = serviceProvider.GetRequiredService<EventPublisher>()
+    .Use<CorrelationIdMiddleware>()
+    .Use<MetricsMiddleware>();
+```
+
+You can also pass explicit constructor arguments:
+
+```csharp
+var publisher = serviceProvider.GetRequiredService<EventPublisher>()
+    .Use<AuditMiddleware>("orders");
+```
+
+### Ordering and activation rules
+
+- Middleware runs in **registration order**.
+- The first middleware registered is the **outermost** wrapper.
+- A **fresh middleware instance** is created for every publish call via `ActivatorUtilities`.
+- Constructor dependencies are resolved from `EventContext.Services`.
+- Calling `Use<TMiddleware>()` after the first publish is supported; the pipeline is rebuilt on the next call.
+
+### Common middleware patterns
+
+- **Enrichment** — add correlation IDs, tenant IDs, or trace attributes
+- **Validation / policy** — inspect `context.Event` and block certain publishes
+- **Observability** — log, trace, and measure before/after `next(context)`
+- **Routing hooks** — for example `UseDispatcher()` from subscriptions
+
+### Example custom middleware
+
+```csharp
+public sealed class CorrelationIdMiddleware : IEventMiddleware
+{
+    public async Task InvokeAsync(EventContext context, EventPublishDelegate next)
+    {
+        var accessor = context.Services.GetRequiredService<ICorrelationAccessor>();
+
+        if (!string.IsNullOrEmpty(accessor.CorrelationId))
+        {
+            var attr = CloudEventAttribute.CreateExtension("correlationid", CloudEventAttributeType.String);
+            context.Event[attr] = accessor.CorrelationId;
+        }
+
+        await next(context);
+    }
+}
+```
+
+### Short-circuiting
+
+Middleware can stop publishing by not calling `next(context)`:
+
+```csharp
+public sealed class DeduplicationMiddleware : IEventMiddleware
+{
+    public async Task InvokeAsync(EventContext context, EventPublishDelegate next)
+    {
+        var store = context.Services.GetRequiredService<IEventDeduplicationStore>();
+        if (await store.HasSeenAsync(context.Event.Id!, context.CancellationToken))
+            return;
+
+        await next(context);
+    }
+}
+```
+
+### Dispatcher middleware
+
+The subscriptions package builds on this pipeline model. `UseDispatcher()` adds the subscription dispatcher as middleware so subscription handling runs as part of the same publish flow:
+
+```csharp
+var publisher = serviceProvider.GetRequiredService<EventPublisher>()
+    .UseDispatcher();
+```
+
+See [Subscriptions Dispatcher](../subscriptions/dispatcher.md) for details.
+
+---
+
 ## Publishing events
 
-### Inject and use `IEventPublisher`
+### Inject and use `EventPublisher`
 
 ```csharp
 public class OrderService
 {
-    private readonly IEventPublisher _publisher;
+    private readonly EventPublisher _publisher;
 
-    public OrderService(IEventPublisher publisher) => _publisher = publisher;
+    public OrderService(EventPublisher publisher) => _publisher = publisher;
 
     public async Task PlaceOrderAsync(OrderPlaced orderPlaced)
     {
-        // PublishAsync<TEvent> is an extension to IEventPublisher — no cast needed.
+        // PublishAsync<TEvent> is available directly on EventPublisher.
         await _publisher.PublishAsync(orderPlaced);
     }
 }
 ```
 
-Application code should always depend on **`IEventPublisher`**, not on the concrete 
-`EventPublisher` class.  This keeps services decoupled from the publishing infrastructure and 
-makes testing straightforward.
+Application code can depend on **`EventPublisher`** directly via DI.
 
 ### From an annotated data class
 
- The method `PublishAsync(Type, object?, …)` is defined directly on 
-`IEventPublisher`, and the extension method `PublishAsync<TEvent>` is available, 
- so **every caller that holds the interface** can use annotation-driven 
-publishing without any cast or downcast to the concrete `EventPublisher`.
+ The method `PublishAsync(Type, object?, …)` is available on 
+`EventPublisher`, and the generic overload `PublishAsync<TEvent>` is also available.
 
 ```csharp
 [Event("order.placed")]
 public class OrderPlaced { /* … */ }
 
-// Works with IEventPublisher — no EventPublisher-specific API needed.
+// Works directly with EventPublisher.
 await publisher.PublishAsync(new OrderPlaced { /* … */ });
 ```
 
-`PublishAsync<TEvent>` delegates to `CreateEventFromData` internally, which calls `IEventCreator` 
+`PublishAsync<TEvent>` delegates to `CreateEventFromData` internally, which calls `IEventFactory` 
 to build the `CloudEvent` from the annotations on `TEvent`.  The event then flows through the 
-normal enrich → validate → dispatch pipeline.
+normal enrich → middleware → validate → dispatch pipeline.
 
 If the data type is only known at runtime (e.g. from a reflection-based dispatch layer), use 
-the non-generic overload — also part of `IEventPublisher`:
+the non-generic overload:
 
 ```csharp
 await publisher.PublishAsync(typeof(OrderPlaced), orderEvent);
@@ -378,6 +486,21 @@ exposed as a `protected virtual` method and the constructor receives its depende
 standard DI, so subclasses can call `base.XxxAsync(…)` to preserve default behaviour and 
 override only the specific step they need to change.
 
+### Middleware vs subclassing
+
+Use **middleware** when you want a reusable runtime step that wraps publish execution without changing the publisher's core protected methods.
+
+Use **subclassing** when you need to change one of the publisher's built-in decision points, such as how events are enriched, validated, filtered, or how per-channel options are resolved.
+
+| Need | Prefer |
+|------|--------|
+| Add cross-cutting logic before/after publish | `Use<TMiddleware>()` |
+| Short-circuit selected publishes | `Use<TMiddleware>()` |
+| Resolve scoped services during publish | `Use<TMiddleware>()` |
+| Change enrichment defaults globally | subclass + override `Set*` methods |
+| Change validation semantics | subclass + override `ValidateCloudEvent` |
+| Change channel selection / options matching | subclass + override dispatch-related protected methods |
+
 ### Protected virtual extension points
 
 | Method | Stage | Common override reason |
@@ -403,7 +526,7 @@ builder.Services
     .UsePublisher<MyCustomPublisher>();
 ```
 
-This replaces the `IEventPublisher` registration with your type while keeping all other 
+This replaces the default `EventPublisher` registration with your type while keeping all other 
 services (channels, ID generator, system time, etc.) intact.
 
 ### Example — tightening validation
@@ -416,11 +539,9 @@ public class StrictPublisher : EventPublisher
     public StrictPublisher(
         IOptions<EventPublisherOptions> options,
         IEnumerable<IEventPublishChannel> channels,
-        IEventCreator? eventCreator = null,
-        IEventIdGenerator? idGenerator = null,
-        IEventSystemTime? systemTime = null,
+        IServiceProvider serviceProvider,
         ILogger<StrictPublisher>? logger = null)
-        : base(options, channels, eventCreator, idGenerator, systemTime, logger) { }
+        : base(options, channels, serviceProvider, logger) { }
 
     protected override void ValidateCloudEvent(CloudEvent @event)
     {
@@ -490,25 +611,24 @@ public class ResilientPublisher : EventPublisher
 
 ---
 
-## When to implement `IEventPublisher` directly
+## When to replace `EventPublisher` entirely
 
-Implement the interface from scratch **only** when you need to replace the entire publish 
+Replace the publisher implementation **only** when you need to replace the entire publish 
 pipeline.  Typical cases:
 
 | Scenario | Recommended approach |
 |---|---|
-| In-memory test double (captures events for assertion) | Implement `IEventPublisher` directly |
-| Null publisher (no-op, e.g. integration-test isolation) | Implement `IEventPublisher` directly |
-| Completely different fan-out strategy (e.g. priority queues, event sourcing) | Implement `IEventPublisher` directly |
+| In-memory test double (captures events for assertion) | Build a dedicated `EventPublisher` replacement |
+| Null publisher (no-op, e.g. integration-test isolation) | Build a dedicated `EventPublisher` replacement |
+| Completely different fan-out strategy (e.g. priority queues, event sourcing) | Build a dedicated `EventPublisher` replacement |
 | Add custom enrichment / context stamping | **Extend `EventPublisher`**, override `SetAttributes` |
 | Stricter or relaxed validation | **Extend `EventPublisher`**, override `ValidateCloudEvent` |
 | Custom channel selection / name-based routing | **Extend `EventPublisher`**, override `FilterChannelsByName` |
 | Custom options matching per channel | **Extend `EventPublisher`**, override `ResolveChannelOptions` |
 | Retry / circuit-breaking around channel calls | **Extend `EventPublisher`**, override `PublishEventAsync(channel, …)` |
 
-For a test double you can use the `TestPublisher` provided by the 
-`Deveel.Events.TestPublisher` package, which already implements `IEventPublisher` and records
-published events for later assertion.
+For tests, you can use the channels in `Deveel.Events.TestPublisher` (for example `AddTestChannel`) 
+to assert what was published without a real transport.
 
 ---
 
@@ -546,6 +666,7 @@ public class FrozenSystemTime : IEventSystemTime
 ## Related pages
 
 - [Publish Channels](publish-channels.md)
+- [Subscriptions Dispatcher](../subscriptions/dispatcher.md)
 - [Named Channels](../publishers/named-channels.md)
 - [Typed Channels](../publishers/typed-channels.md)
 - [Event Annotations](event-annotations.md)

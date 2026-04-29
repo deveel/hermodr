@@ -22,7 +22,7 @@ namespace Deveel.Events
     /// on the first call to <see cref="HandleAsync"/> rather than at construction time.
     /// This breaks the potential circular dependency that would occur if
     /// <see cref="EventPublisher"/> were injected directly: the publisher pipeline depends
-    /// on <see cref="EventDispatcher"/> (as an <see cref="IEventPublishChannel"/>), which
+    /// on <see cref="EventDispatcher"/> middleware, which
     /// in turn depends on <see cref="IEventSubscriptionRegistry"/>, which enumerates all
     /// registered <see cref="IEventSubscription"/> instances — including this one.
     /// </para>
