@@ -250,8 +250,8 @@ namespace Deveel.Events {
             services.AddEventPublisher(options =>
             {
                 options.ThrowOnErrors = false;
-            });
-            services.AddSingleton<IEventPublishChannel>(new ThrowingChannel());
+            })
+            .AddChannel(new ThrowingChannel());
 
             var provider = services.BuildServiceProvider();
             var publisher = provider.GetRequiredService<EventPublisher>();
@@ -271,8 +271,8 @@ namespace Deveel.Events {
             services.AddEventPublisher(options =>
             {
                 options.ThrowOnErrors = true;
-            });
-            services.AddSingleton<IEventPublishChannel>(new ThrowingChannel());
+            })
+            .AddChannel(new ThrowingChannel());
 
             var provider = services.BuildServiceProvider();
             var publisher = provider.GetRequiredService<EventPublisher>();
@@ -288,17 +288,14 @@ namespace Deveel.Events {
         [Fact]
         public async Task PublishEventData_ThrowOnErrorsFalse_WhenNoEventCreator_Swallows()
         {
-            // Publisher without EventCreator - CreateEventFromData throws NotSupportedException
+            // Publisher without EventFactory - CreateEventFromData throws NotSupportedException
             var services = new ServiceCollection();
             services.AddOptions<EventPublisherOptions>();
-            services.AddSingleton<IEventPublishChannel>(new ThrowingChannel());
-            services.AddSingleton<IEventIdGenerator>(EventGuidGenerator.Default);
-            services.AddSingleton<IEventSystemTime>(EventSystemTime.Instance);
 
             var provider = services.BuildServiceProvider();
             var publisher = new EventPublisher(
                 provider.GetRequiredService<IOptions<EventPublisherOptions>>(),
-                provider.GetRequiredService<IEnumerable<IEventPublishChannel>>(),
+                [new ThrowingChannel()],
                 provider
             );
 
@@ -312,14 +309,11 @@ namespace Deveel.Events {
             var services = new ServiceCollection();
             services.AddOptions<EventPublisherOptions>()
                 .Configure(o => o.ThrowOnErrors = true);
-            services.AddSingleton<IEventPublishChannel>(new ThrowingChannel());
-            services.AddSingleton<IEventIdGenerator>(EventGuidGenerator.Default);
-            services.AddSingleton<IEventSystemTime>(EventSystemTime.Instance);
 
             var provider = services.BuildServiceProvider();
             var publisher = new EventPublisher(
                 provider.GetRequiredService<IOptions<EventPublisherOptions>>(),
-                provider.GetRequiredService<IEnumerable<IEventPublishChannel>>(),
+                [new ThrowingChannel()],
                 provider
             );
 

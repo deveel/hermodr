@@ -332,14 +332,14 @@ namespace Deveel.Events
             var services = new ServiceCollection();
             services.AddLogging();
             services.AddEventPublisher(opt => opt.Source = new Uri("https://example.com"))
-                .AddSubscriptions()
+
+                .AddSubscriptions(o => o.ThrowOnHandlerError = true)
                 .Subscribe(
                     FilterExpression.Constant(true),
                     (_, _) => throw new InvalidOperationException("boom"));
 
             var provider = services.BuildServiceProvider();
-            var publisher = provider.GetRequiredService<EventPublisher>()
-                .UseDispatcher(new EventDispatcherOptions { ThrowOnHandlerError = true });
+            var publisher = provider.GetRequiredService<EventPublisher>().UseDispatcher();
 
             await Assert.ThrowsAsync<InvalidOperationException>(() =>
                 publisher.PublishEventAsync(MakeEvent()));
@@ -429,18 +429,17 @@ namespace Deveel.Events
             };
 
         [Fact]
-        public static async Task AddSubscriptions_WithUseDispatcherOptions_ThrowOnHandlerError_Propagates()
+        public static async Task AddSubscriptions_WithDispatcherOptions_ThrowOnHandlerError_Propagates()
         {
             var services = new ServiceCollection();
             services.AddLogging();
             services.AddEventPublisher(opt => opt.Source = new Uri("https://example.com"))
-                    .AddSubscriptions()
+                    .AddSubscriptions(o => o.ThrowOnHandlerError = true)
                     .Subscribe(FilterExpression.Constant(true),
                         (_, _) => throw new InvalidOperationException("intentional"));
 
             var provider = services.BuildServiceProvider();
-            var publisher = provider.GetRequiredService<EventPublisher>()
-                .UseDispatcher(new EventDispatcherOptions { ThrowOnHandlerError = true });
+            var publisher = provider.GetRequiredService<EventPublisher>().UseDispatcher();
 
             await Assert.ThrowsAsync<InvalidOperationException>(() =>
                 publisher.PublishEventAsync(new CloudEvent

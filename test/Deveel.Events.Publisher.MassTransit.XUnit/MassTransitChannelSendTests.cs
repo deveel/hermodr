@@ -33,7 +33,7 @@ namespace Deveel.Events
                     o.DestinationAddress = options.DestinationAddress;
                     o.MapAttributesToHeaders = options.MapAttributesToHeaders;
                 });
-            return services.BuildServiceProvider().GetRequiredService<IEventPublishChannel>();
+            return services.BuildServiceProvider().GetRequiredKeyedService<IEventPublishChannel>(string.Empty);
         }
 
         private static CloudEvent MakeSampleEvent() => new CloudEvent

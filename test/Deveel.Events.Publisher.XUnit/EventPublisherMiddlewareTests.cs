@@ -12,7 +12,7 @@ namespace Deveel.Events
 {
     /// <summary>
     /// Tests for the composable middleware pipeline configured on
-    /// <see cref="EventPublisher"/> via <see cref="EventPublisher.Use{TMiddleware}"/>.
+    /// <see cref="EventPublisherBuilder"/> via <see cref="EventPublisherBuilder.Use{TMiddleware}"/>.
     /// </summary>
     [Trait("Function", "Middleware")]
     public class EventPublisherMiddlewareTests
@@ -150,13 +150,12 @@ namespace Deveel.Events
             var services = new ServiceCollection().AddLogging().AddSingleton(callLog);
             services.AddEventPublisher(opts =>
                     opts.Source = new Uri("https://test.example.com/source"))
+                .Use<LoggingMiddleware>()
                 .AddTestChannel(e => { callLog.Add("dispatch"); });
 
             await using var provider = services.BuildServiceProvider();
 
-            var publisher = provider.GetRequiredService<EventPublisher>()
-                .Use<LoggingMiddleware>();
-
+            var publisher = provider.GetRequiredService<EventPublisher>();
             await publisher.PublishEventAsync(MakeEvent(), cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Equal(["mw:before", "dispatch", "mw:after"], callLog);
@@ -169,14 +168,11 @@ namespace Deveel.Events
             var services = new ServiceCollection().AddLogging().AddSingleton(callLog);
             services.AddEventPublisher(opts =>
                     opts.Source = new Uri("https://test.example.com/source"))
+                .Use<OuterLoggingMiddleware>()
+                .Use<LoggingMiddleware>()
                 .AddTestChannel(_ => callLog.Add("dispatch"));
 
             await using var provider = services.BuildServiceProvider();
-
-            // Registration order: Outer first → outermost in chain.
-            provider.GetRequiredService<EventPublisher>()
-                .Use<OuterLoggingMiddleware>()
-                .Use<LoggingMiddleware>();
 
             var publisher = provider.GetRequiredService<EventPublisher>();
             await publisher.PublishEventAsync(MakeEvent(), cancellationToken: TestContext.Current.CancellationToken);
@@ -193,12 +189,12 @@ namespace Deveel.Events
             var services = new ServiceCollection().AddLogging();
             services.AddEventPublisher(opts =>
                     opts.Source = new Uri("https://test.example.com/source"))
+                .Use<EnrichmentMiddleware>()
                 .AddTestChannel(e => dispatched = e);
 
             await using var provider = services.BuildServiceProvider();
 
             await provider.GetRequiredService<EventPublisher>()
-                .Use<EnrichmentMiddleware>()
                 .PublishEventAsync(MakeEvent(), cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.NotNull(dispatched);
@@ -212,12 +208,12 @@ namespace Deveel.Events
             var services = new ServiceCollection().AddLogging();
             services.AddEventPublisher(opts =>
                     opts.Source = new Uri("https://test.example.com/source"))
+                .Use<ShortCircuitMiddleware>()
                 .AddTestChannel(e => received.Add(e));
 
             await using var provider = services.BuildServiceProvider();
 
             await provider.GetRequiredService<EventPublisher>()
-                .Use<ShortCircuitMiddleware>()
                 .PublishEventAsync(MakeEvent(), cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Empty(received);
@@ -233,13 +229,13 @@ namespace Deveel.Events
                 opts.Source = new Uri("https://test.example.com/source");
                 opts.Attributes["region"] = "eu-west-1";
             })
+            .Use<CapturingMiddleware>()
             .AddTestChannel(_ => { });
 
             await using var provider = services.BuildServiceProvider();
 
             var evt = new CloudEvent { Type = "test.event" };
             await provider.GetRequiredService<EventPublisher>()
-                .Use<CapturingMiddleware>()
                 .PublishEventAsync(evt, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.NotNull(spy.CapturedContext);
@@ -256,13 +252,13 @@ namespace Deveel.Events
             var services = new ServiceCollection().AddLogging().AddSingleton(spy);
             services.AddEventPublisher(opts =>
                     opts.Source = new Uri("https://test.example.com/source"))
+                .Use<CapturingMiddleware>()
                 .AddTestChannel(_ => { });
 
             await using var provider = services.BuildServiceProvider();
             using var cts = new CancellationTokenSource();
 
             await provider.GetRequiredService<EventPublisher>()
-                .Use<CapturingMiddleware>()
                 .PublishEventAsync(MakeEvent(), cancellationToken: cts.Token);
 
             Assert.NotNull(spy.CapturedContext);
@@ -270,21 +266,19 @@ namespace Deveel.Events
         }
 
         [Fact]
-        public async Task UseMiddleware_OnPublisherInstance_NotOnBuilder()
+        public async Task UseMiddleware_OnBuilder_IsAppliedAtPublishTime()
         {
-            // Confirm the builder no longer has Use; middleware is configured
-            // on the resolved publisher instance only.
+            // Middleware is configured on the builder (at registration time),
+            // not on the resolved publisher instance.
             var callLog = new CallLog();
             var services = new ServiceCollection().AddLogging().AddSingleton(callLog);
-            // Builder intentionally has NO Use call.
             services.AddEventPublisher(opts =>
                     opts.Source = new Uri("https://test.example.com/source"))
+                .Use<LoggingMiddleware>()
                 .AddTestChannel(_ => callLog.Add("dispatch"));
 
             await using var provider = services.BuildServiceProvider();
-            // Middleware is added directly on the publisher instance.
-            var publisher = provider.GetRequiredService<EventPublisher>()
-                .Use<LoggingMiddleware>();
+            var publisher = provider.GetRequiredService<EventPublisher>();
 
             await publisher.PublishEventAsync(MakeEvent(), cancellationToken: TestContext.Current.CancellationToken);
 
@@ -298,11 +292,11 @@ namespace Deveel.Events
             var services = new ServiceCollection().AddLogging().AddSingleton(callLog);
             services.AddEventPublisher(opts =>
                     opts.Source = new Uri("https://test.example.com/source"))
+                .Use<LoggingMiddleware>()
                 .AddTestChannel(_ => callLog.Add("dispatch"));
 
             await using var provider = services.BuildServiceProvider();
-            var publisher = provider.GetRequiredService<EventPublisher>()
-                .Use<LoggingMiddleware>();
+            var publisher = provider.GetRequiredService<EventPublisher>();
 
             await publisher.PublishEventAsync(MakeEvent(), cancellationToken: TestContext.Current.CancellationToken);
             await publisher.PublishEventAsync(MakeEvent(), cancellationToken: TestContext.Current.CancellationToken);
@@ -319,11 +313,11 @@ namespace Deveel.Events
             var services = new ServiceCollection().AddLogging();
             services.AddEventPublisher(opts =>
                     opts.Source = new Uri("https://test.example.com/source"))
+                .Use<EnrichmentMiddleware>()
                 .AddTestChannel(e => received.Add(e));
 
             await using var provider = services.BuildServiceProvider();
-            var publisher = provider.GetRequiredService<EventPublisher>()
-                .Use<EnrichmentMiddleware>();
+            var publisher = provider.GetRequiredService<EventPublisher>();
 
             await publisher.PublishEventAsync(MakeEvent(), cancellationToken: TestContext.Current.CancellationToken);
             await publisher.PublishEventAsync(MakeEvent(), cancellationToken: TestContext.Current.CancellationToken);
@@ -339,11 +333,11 @@ namespace Deveel.Events
             var services = new ServiceCollection().AddLogging().AddSingleton(callLog);
             services.AddEventPublisher(opts =>
                     opts.Source = new Uri("https://test.example.com/source"))
+                .Use<ParameterizedLoggingMiddleware>("custom")
                 .AddTestChannel(_ => callLog.Add("dispatch"));
 
             await using var provider = services.BuildServiceProvider();
-            var publisher = provider.GetRequiredService<EventPublisher>()
-                .Use<ParameterizedLoggingMiddleware>("custom");
+            var publisher = provider.GetRequiredService<EventPublisher>();
 
             await publisher.PublishEventAsync(MakeEvent(), cancellationToken: TestContext.Current.CancellationToken);
 
@@ -351,5 +345,4 @@ namespace Deveel.Events
         }
     }
 }
-
 

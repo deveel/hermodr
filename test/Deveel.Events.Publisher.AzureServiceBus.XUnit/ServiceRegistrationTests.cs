@@ -25,8 +25,10 @@ namespace Deveel.Events
             var serviceProvider = services.BuildServiceProvider();
 
             Assert.NotNull(serviceProvider.GetService<EventPublisher>());
-            Assert.NotNull(serviceProvider.GetService<IEventPublishChannel>());
-            Assert.Equal("ServiceBusPublishChannel", serviceProvider.GetService<IEventPublishChannel>()!.GetType().Name);
+            // Channels are registered as keyed services under the publisher name (empty string = default).
+            var channel = serviceProvider.GetKeyedService<IEventPublishChannel>(string.Empty);
+            Assert.NotNull(channel);
+            Assert.Equal("ServiceBusPublishChannel", channel!.GetType().Name);
             Assert.NotNull(serviceProvider.GetService<IServiceBusClientFactory>());
 
             var options = serviceProvider.GetService<IOptions<ServiceBusPublishOptions>>();
@@ -56,8 +58,10 @@ namespace Deveel.Events
             var provider = services.BuildServiceProvider();
 
             Assert.NotNull(provider.GetService<EventPublisher>());
-            Assert.NotNull(provider.GetService<IEventPublishChannel>());
-            Assert.Equal("ServiceBusPublishChannel", provider.GetService<IEventPublishChannel>()!.GetType().Name);
+            // Channels are registered as keyed services under the publisher name (empty string = default).
+            var channel = provider.GetKeyedService<IEventPublishChannel>(string.Empty);
+            Assert.NotNull(channel);
+            Assert.Equal("ServiceBusPublishChannel", channel!.GetType().Name);
 
             var options = provider.GetService<IOptions<ServiceBusPublishOptions>>();
             Assert.NotNull(options);

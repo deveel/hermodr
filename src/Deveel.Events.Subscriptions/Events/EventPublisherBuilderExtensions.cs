@@ -23,35 +23,93 @@ namespace Deveel.Events
         // ──────────────────────────────────────────────────────────────────────────────
 
         /// <summary>
-        /// Adds the in-process event dispatcher services.
+        /// Adds the in-process event dispatcher services and wires the
+        /// <see cref="EventDispatcher"/> into the publisher's middleware pipeline,
+        /// returning an <see cref="EventSubscriptionsBuilder"/> for fluent subscription
+        /// configuration.
         /// </summary>
         /// <remarks>
         /// <para>
         /// This registers:
         /// <list type="bullet">
         ///   <item>
-        ///     <see cref="EventSubscriptionRegistry"/> (singleton) -- the default in-memory store,
+        ///     <see cref="EventSubscriptionRegistry"/> (singleton) — the default in-memory store,
         ///     exposed as both <see cref="IEventSubscriptionRegistry"/> and
         ///     <see cref="IEventSubscriptionResolver"/>.
+        ///   </item>
+        ///   <item>
+        ///     <see cref="EventDispatcher"/> as a middleware step in the publish pipeline
+        ///     (order relative to other <c>Use&lt;T&gt;</c> calls is registration order).
         ///   </item>
         /// </list>
         /// </para>
         /// <para>
-        /// To activate dispatcher routing in the publish pipeline, call
-        /// <see cref="EventPublisherExtensions.UseDispatcher(EventPublisher)"/> on the resolved
-        /// <see cref="EventPublisher"/> instance.
+        /// Pass a <paramref name="configure"/> action to customise
+        /// <see cref="EventDispatcherOptions"/> (e.g. set
+        /// <see cref="EventDispatcherOptions.MaxRoutingDepth"/>) inline without a separate call.
         /// </para>
         /// <para>
-        /// Additional read-only resolvers can be added via
-        /// <see cref="AddSubscriptionResolver{TResolver}"/>. The dispatcher aggregates
-        /// matching subscriptions from every registered <see cref="IEventSubscriptionResolver"/>
-        /// when routing an event.
+        /// To return to the parent <see cref="EventPublisherBuilder"/> after configuring
+        /// subscriptions, use the <see cref="EventSubscriptionsBuilder.Builder"/> property or
+        /// prefer the <see cref="AddSubscriptions(EventPublisherBuilder, Action{EventSubscriptionsBuilder})"/>
+        /// overload.
         /// </para>
         /// </remarks>
         /// <param name="builder">The builder to configure.</param>
+        /// <param name="configure">
+        /// An optional action to configure <see cref="EventDispatcherOptions"/> for this
+        /// publisher's dispatcher (e.g. to set <c>MaxRoutingDepth</c>).
+        /// </param>
+        /// <returns>
+        /// An <see cref="EventSubscriptionsBuilder"/> for fluent subscription registration.
+        /// Call <see cref="EventSubscriptionsBuilder.Builder"/> to return to the parent
+        /// <see cref="EventPublisherBuilder"/>.
+        /// </returns>
+        public static EventSubscriptionsBuilder AddSubscriptions(
+            this EventPublisherBuilder builder,
+            Action<EventDispatcherOptions>? configure = null)
+        {
+            RegisterDispatcherServices(builder, configure);
+            return new EventSubscriptionsBuilder(builder);
+        }
+
+        /// <summary>
+        /// Adds the in-process event dispatcher services, invokes <paramref name="configure"/>
+        /// to register subscriptions via an <see cref="EventSubscriptionsBuilder"/>, and then
+        /// returns the parent <see cref="EventPublisherBuilder"/> so that publisher-level
+        /// configuration can continue.
+        /// </summary>
+        /// <param name="builder">The builder to configure.</param>
+        /// <param name="configure">
+        /// An action that receives an <see cref="EventSubscriptionsBuilder"/> and registers
+        /// subscriptions (and optionally configures dispatcher options) inline.
+        /// </param>
         /// <returns>The same <paramref name="builder"/> for chaining.</returns>
+        /// <example>
+        /// <code language="csharp">
+        /// services.AddEventPublisher(opt => opt.Source = new Uri("https://example.com"))
+        ///         .AddSubscriptions(subs =>
+        ///         {
+        ///             subs.ConfigureOptions(o => o.ThrowOnHandlerError = true);
+        ///             subs.Subscribe("com.example.order.*", HandleOrderAsync);
+        ///             subs.Subscribe&lt;AuditSubscription&gt;();
+        ///         })
+        ///         .AddChannel&lt;MyChannel&gt;();
+        /// </code>
+        /// </example>
         public static EventPublisherBuilder AddSubscriptions(
-            this EventPublisherBuilder builder)
+            this EventPublisherBuilder builder,
+            Action<EventSubscriptionsBuilder> configure)
+        {
+            RegisterDispatcherServices(builder, configure: null);
+            var subscriptionsBuilder = new EventSubscriptionsBuilder(builder);
+            configure(subscriptionsBuilder);
+            return builder;
+        }
+
+        private static void RegisterDispatcherServices(
+            EventPublisherBuilder builder,
+            Action<EventDispatcherOptions>? configure)
         {
             // Register the concrete registry as a singleton so both interface registrations
             // below resolve the same instance.
@@ -65,16 +123,26 @@ namespace Deveel.Events
             builder.Services.TryAddSingleton<IEventSubscriptionRegistry>(
                 sp => sp.GetRequiredService<EventSubscriptionRegistry>());
 
-            // Read interface -- always added (not TryAdd) so that IEnumerable<IEventSubscriptionResolver>
+            // Read interface — always added (not TryAdd) so that IEnumerable<IEventSubscriptionResolver>
             // picks it up alongside any custom resolvers added via AddSubscriptionResolver<T>.
             builder.Services.AddSingleton<IEventSubscriptionResolver>(
                 sp => sp.GetRequiredService<EventSubscriptionRegistry>());
 
-            return builder;
+            // Ensure the standard options infrastructure for EventDispatcherOptions is
+            // registered so that any configure action (and any later Configure<T>() calls)
+            // are respected by the EventDispatcher constructor.
+            builder.Services.AddOptions<EventDispatcherOptions>();
+
+            if (configure is not null)
+                builder.Services.Configure(configure);
+
+            // Wire the EventDispatcher into the pipeline at registration time — no runtime
+            // UseDispatcher() call is needed.
+            builder.Use<EventDispatcher>();
         }
 
         // ──────────────────────────────────────────────────────────────────────────────
-        // Custom resolver registration
+        // Custom resolver registration (EventPublisherBuilder convenience overload)
         // ──────────────────────────────────────────────────────────────────────────────
 
         /// <summary>
@@ -123,7 +191,7 @@ namespace Deveel.Events
         }
 
         // ──────────────────────────────────────────────────────────────────────────────
-        // Inline (delegate-based) subscriptions
+        // Inline (delegate-based) subscriptions (EventPublisherBuilder convenience overloads)
         // ──────────────────────────────────────────────────────────────────────────────
 
         /// <summary>
@@ -162,7 +230,7 @@ namespace Deveel.Events
         }
 
         // ──────────────────────────────────────────────────────────────────────────────
-        // Class-based IEventSubscription registration
+        // Class-based IEventSubscription registration (EventPublisherBuilder convenience overload)
         // ──────────────────────────────────────────────────────────────────────────────
 
         /// <summary>
@@ -218,11 +286,7 @@ namespace Deveel.Events
         }
 
         // ──────────────────────────────────────────────────────────────────────────────
-        // Legacy class-based subscription handler (obsolete — use Subscribe<T> instead)
-        // ──────────────────────────────────────────────────────────────────────────────
-
-        // ──────────────────────────────────────────────────────────────────────────────
-        // Routing subscriptions
+        // Routing subscriptions (EventPublisherBuilder convenience overloads)
         // ──────────────────────────────────────────────────────────────────────────────
 
         /// <summary>
@@ -280,8 +344,6 @@ namespace Deveel.Events
             var filter = EventFilter.ByTypePattern(typePattern);
             return builder.RouteToChannel(filter, routingOptions, name);
         }
-
-
     }
 }
 

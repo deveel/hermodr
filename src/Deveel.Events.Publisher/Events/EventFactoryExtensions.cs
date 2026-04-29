@@ -12,7 +12,7 @@ namespace Deveel.Events
     /// <summary>
     /// Extensions for the <see cref="IEventFactory"/> interface.
     /// </summary>
-    public static class EventCreatorExtensions
+    public static class EventFactoryExtensions
     {
         /// <summary>
         /// Creates a <see cref="CloudEvent"/> from the given data object.

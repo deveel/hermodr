@@ -71,14 +71,14 @@ namespace Deveel.Events
         private static EventPublisher BuildPublisher(params IEventPublishChannel[] channels)
         {
             var services = new ServiceCollection();
-            services.AddEventPublisher(o =>
+            var builder = services.AddEventPublisher(o =>
             {
                 o.Source = new Uri("https://api.example.com");
                 o.DataSchemaBaseUri = new Uri("https://schemas.example.com/events");
             });
 
             foreach (var ch in channels)
-                services.AddSingleton<IEventPublishChannel>(ch);
+                builder.AddChannel(ch);
 
             return services.BuildServiceProvider().GetRequiredService<EventPublisher>();
         }

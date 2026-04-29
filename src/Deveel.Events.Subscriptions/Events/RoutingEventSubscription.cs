@@ -33,6 +33,20 @@ namespace Deveel.Events
     /// </remarks>
     public sealed class RoutingEventSubscription : IRoutingEventSubscription
     {
+        /// <summary>
+        /// The maximum number of times a single event may be re-routed through
+        /// <see cref="RoutingEventSubscription"/> instances before a loop is detected
+        /// and the routing is aborted.
+        /// </summary>
+        private const int MaxRoutingDepth = 10;
+
+        /// <summary>
+        /// The name of the CloudEvents extension attribute used to track the current
+        /// routing depth and detect infinite routing loops.
+        /// </summary>
+        private static readonly CloudEventAttribute RoutingDepthAttribute =
+            CloudEventAttribute.CreateExtension("routingdepth", CloudEventAttributeType.Integer);
+
         private readonly IServiceProvider _services;
 
         /// <summary>
@@ -47,7 +61,7 @@ namespace Deveel.Events
         /// </param>
         /// <param name="routingOptions">
         /// The <see cref="EventPublishOptions"/> forwarded to
-        /// <see cref="EventPublisher.PublishEventAsync"/> to select the target channel.
+        /// <see cref="EventPublisher.PublishEventAsync(CloudNative.CloudEvents.CloudEvent,EventPublishOptions,System.Threading.CancellationToken)"/> to select the target channel.
         /// When <c>null</c> the publisher uses its default channel-selection rules.
         /// </param>
         /// <param name="name">An optional human-readable name for this subscription.</param>
@@ -75,12 +89,24 @@ namespace Deveel.Events
         /// <inheritdoc/>
         /// <remarks>
         /// Resolves the <see cref="EventPublisher"/> from the service provider and calls
-        /// <see cref="EventPublisher.PublishEventAsync"/> with <see cref="RoutingOptions"/>,
+        /// <c>PublishEventAsync</c> with <see cref="RoutingOptions"/>,
         /// effectively forwarding the matched event through the full publishing pipeline.
+        /// <para>
+        /// A routing-depth counter is tracked via the <c>routingdepth</c> CloudEvents
+        /// extension attribute. If the depth exceeds <see cref="MaxRoutingDepth"/> the
+        /// re-publish is skipped to prevent infinite routing loops.
+        /// </para>
         /// </remarks>
         public Task HandleAsync(CloudEvent @event, CancellationToken cancellationToken = default)
         {
-            var publisher = _services.GetRequiredService<EventPublisher>();
+            // Loop-detection: increment the routing depth counter; abort if limit exceeded.
+            var currentDepth = @event[RoutingDepthAttribute] is int d ? d : 0;
+            if (currentDepth >= MaxRoutingDepth)
+                return Task.CompletedTask;
+
+            @event[RoutingDepthAttribute] = currentDepth + 1;
+
+            var publisher = _services.GetRequiredService<IEventPublisher>();
             return publisher.PublishEventAsync(@event, RoutingOptions, cancellationToken);
         }
     }

@@ -93,6 +93,13 @@ namespace Deveel.Events
         /// channel's registered defaults.
         /// </summary>
         public EventPublishOptions? Options { get; set; }
+
+        /// <summary>
+        /// Gets a free-form dictionary for passing arbitrary data between middleware
+        /// components within the same pipeline invocation (e.g. correlation IDs,
+        /// intermediate results).
+        /// </summary>
+        public Dictionary<string, object?> Items { get; } = new Dictionary<string, object?>();
     }
 }
 

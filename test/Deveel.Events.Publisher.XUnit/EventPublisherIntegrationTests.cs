@@ -82,12 +82,10 @@ namespace Deveel.Events
             var channel2Events = new List<CloudEvent>();
 
             var services = new ServiceCollection();
-            // Register the publisher infrastructure
-            services.AddEventPublisher();
-            // Register two independent channels directly (bypassing AddTestChannel
-            // which shares a single IEventPublishCallback across all instances)
-            services.AddSingleton<IEventPublishChannel>(new CallbackChannel(e => channel1Events.Add(e)));
-            services.AddSingleton<IEventPublishChannel>(new CallbackChannel(e => channel2Events.Add(e)));
+            // Register the publisher infrastructure and two independent channels.
+            var builder = services.AddEventPublisher();
+            builder.AddChannel(new CallbackChannel(e => channel1Events.Add(e)));
+            builder.AddChannel(new CallbackChannel(e => channel2Events.Add(e)));
 
             var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
             var evt = ValidEvent();
@@ -211,9 +209,9 @@ namespace Deveel.Events
             var extraEvents   = new List<CloudEvent>();
 
             var services = new ServiceCollection();
-            services.AddEventPublisher();
-            services.AddSingleton<IEventPublishChannel>(new CallbackChannel(e => generalEvents.Add(e)));
-            services.AddSingleton<IEventPublishChannel>(new CallbackChannel(e => extraEvents.Add(e)));
+            var builder = services.AddEventPublisher();
+            builder.AddChannel(new CallbackChannel(e => generalEvents.Add(e)));
+            builder.AddChannel(new CallbackChannel(e => extraEvents.Add(e)));
 
             var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
             await publisher.PublishEventAsync(ValidEvent("generic.event"),

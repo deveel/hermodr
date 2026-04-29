@@ -134,9 +134,10 @@ namespace Deveel.Events
 
             var provider = services.BuildServiceProvider();
 
-            // Both interface registrations should resolve (and point to the same instance)
-            var asUntyped = provider.GetServices<IEventPublishChannel>().First(c => c is TypedCallbackChannel<TestEventData>);
-            var asTyped   = provider.GetService<IEventPublishChannel<TestEventData>>();
+            // Channels are registered as keyed services under the publisher name (empty string = default).
+            var asUntyped = provider.GetKeyedServices<IEventPublishChannel>(string.Empty)
+                                    .First(c => c is TypedCallbackChannel<TestEventData>);
+            var asTyped   = provider.GetKeyedService<IEventPublishChannel<TestEventData>>(string.Empty);
 
             Assert.NotNull(asUntyped);
             Assert.NotNull(asTyped);
@@ -144,11 +145,11 @@ namespace Deveel.Events
             Assert.Same(channel, asTyped);
         }
 
-        // ── UsePublisher<T> with Transient lifetime ───────────────────────────
+        // ── UsePublisher<T> ───────────────────────────────────────────────────
 
-        private sealed class TransientPublisher : EventPublisher
+        private sealed class CustomPublisher : EventPublisher
         {
-            public TransientPublisher(
+            public CustomPublisher(
                 Microsoft.Extensions.Options.IOptions<EventPublisherOptions> options,
                 System.Collections.Generic.IEnumerable<IEventPublishChannel> channels,
                 IServiceProvider serviceProvider)
@@ -156,23 +157,22 @@ namespace Deveel.Events
         }
 
         [Fact]
-        public static void UsePublisher_TransientLifetime_ResolvesToNewInstanceEachTime()
+        public static void UsePublisher_CustomType_ResolvesAsCustomType()
         {
             var services = new ServiceCollection();
             services.AddEventPublisher()
-                    .UsePublisher<TransientPublisher>(ServiceLifetime.Transient);
+                    .UsePublisher<CustomPublisher>();
 
             var provider = services.BuildServiceProvider();
 
-            // Resolving twice should yield different instances for Transient
+            // Publisher is a keyed singleton — resolves as the custom type consistently.
             var p1 = provider.GetService<EventPublisher>();
             var p2 = provider.GetService<EventPublisher>();
 
             Assert.NotNull(p1);
             Assert.NotNull(p2);
-            Assert.IsType<TransientPublisher>(p1);
-            Assert.IsType<TransientPublisher>(p2);
-            Assert.NotSame(p1, p2);
+            Assert.IsType<CustomPublisher>(p1);
+            Assert.Same(p1, p2); // singleton
         }
     }
 }
