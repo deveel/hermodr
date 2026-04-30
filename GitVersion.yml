@@ -1,4 +1,5 @@
 mode: ContinuousDeployment
+tag-prefix: '[vV]?'
 continuous-delivery-fallback-tag: ''
 branches:
   master:
