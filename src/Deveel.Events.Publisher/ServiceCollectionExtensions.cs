@@ -72,8 +72,8 @@ namespace Deveel {
         /// </summary>
         /// <param name="services">The service collection.</param>
         /// <param name="name">
-        /// A unique name for this pipeline. Use <see cref="IEventPublisherFactory"/> to
-        /// retrieve the named publisher at runtime.
+        /// A unique name for this pipeline. Retrieve the named publisher at runtime
+        /// via keyed DI: <c>IServiceProvider.GetRequiredKeyedService&lt;IEventPublisher&gt;(name)</c>.
         /// </param>
         /// <param name="configure">
         /// A delegate that configures the pipeline (channels, middleware, options).

@@ -48,8 +48,6 @@ namespace Deveel.Events {
             Services.TryAddSingleton<IEventSystemTime>(EventSystemTime.Instance);
             Services.TryAddSingleton<IEventFactory, EventFactory>();
 
-            // Register the factory singleton (shared).
-            Services.TryAddSingleton<IEventPublisherFactory, EventPublisherFactory>();
 
             // Capture builder state (by-reference) so the factory lambda reads the
             // final state when it is first invoked (after all Use<T>() / AddChannel<T>()

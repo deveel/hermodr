@@ -13,8 +13,8 @@ namespace Deveel.Events
     /// <remarks>
     /// <para>
     /// Inject the default publisher directly as <see cref="IEventPublisher"/>.
-    /// When multiple named pipelines are registered, use
-    /// <see cref="IEventPublisherFactory"/> to obtain the correct named instance.
+    /// When multiple named pipelines are registered, resolve the desired instance
+    /// using keyed DI: <c>IServiceProvider.GetRequiredKeyedService&lt;IEventPublisher&gt;(name)</c>.
     /// </para>
     /// </remarks>
     public interface IEventPublisher

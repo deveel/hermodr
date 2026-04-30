@@ -14,7 +14,7 @@ namespace Deveel.Events
     /// Tests for multiple named/unnamed <see cref="IEventPublisher"/> pipelines
     /// registered in the same DI container.
     /// <list type="bullet">
-    ///   <item>Named pipelines resolved via <see cref="IEventPublisherFactory"/> each
+    ///   <item>Named pipelines resolved via keyed DI (<see cref="IEventPublisher"/>) each
     ///   have independent middleware stacks and channels.</item>
     ///   <item>Multiple unnamed (<c>AddEventPublisher()</c>) registrations follow
     ///   last-registered-wins semantics for the keyed slot, so the last pipeline's
@@ -80,16 +80,15 @@ namespace Deveel.Events
                 .AddTestChannel(e => betaReceived.Add(e)));
 
             var provider = services.BuildServiceProvider();
-            var factory  = provider.GetRequiredService<IEventPublisherFactory>();
 
-            await factory.GetPublisher("alpha")
+            await provider.GetRequiredKeyedService<IEventPublisher>("alpha")
                 .PublishEventAsync(MakeEvent("alpha.event"), cancellationToken: TestContext.Current.CancellationToken);
 
             // Only "alpha" channel should have received the event.
             Assert.Single(alphaReceived);
             Assert.Empty(betaReceived);
 
-            await factory.GetPublisher("beta")
+            await provider.GetRequiredKeyedService<IEventPublisher>("beta")
                 .PublishEventAsync(MakeEvent("beta.event"), cancellationToken: TestContext.Current.CancellationToken);
 
             // "beta" channel now has one event; "alpha" channel unchanged.
@@ -123,9 +122,8 @@ namespace Deveel.Events
                 .AddTestChannel(_ => { }));
 
             var provider = services.BuildServiceProvider();
-            var factory  = provider.GetRequiredService<IEventPublisherFactory>();
 
-            await factory.GetPublisher("write")
+            await provider.GetRequiredKeyedService<IEventPublisher>("write")
                 .PublishEventAsync(MakeEvent(), cancellationToken: TestContext.Current.CancellationToken);
 
             // Only "write-mw" should have run.
@@ -136,7 +134,7 @@ namespace Deveel.Events
 
             var countAfterWrite = log.Entries.Count;
 
-            await factory.GetPublisher("read")
+            await provider.GetRequiredKeyedService<IEventPublisher>("read")
                 .PublishEventAsync(MakeEvent(), cancellationToken: TestContext.Current.CancellationToken);
 
             // Only "read-mw" should have run for the second call.
@@ -147,8 +145,8 @@ namespace Deveel.Events
         }
 
         /// <summary>
-        /// Named publishers resolved from <see cref="IEventPublisherFactory"/> are stable
-        /// singletons — the same instance is returned on repeated calls.
+        /// Named publishers resolved via keyed DI are stable singletons — the same
+        /// instance is returned on repeated calls.
         /// </summary>
         [Fact]
         public void NamedPublishers_Factory_ReturnsSameInstanceEachTime()
@@ -159,10 +157,9 @@ namespace Deveel.Events
                 .AddTestChannel(_ => { }));
 
             var provider = services.BuildServiceProvider();
-            var factory  = provider.GetRequiredService<IEventPublisherFactory>();
 
-            var p1 = factory.GetPublisher("stable");
-            var p2 = factory.GetPublisher("stable");
+            var p1 = provider.GetRequiredKeyedService<IEventPublisher>("stable");
+            var p2 = provider.GetRequiredKeyedService<IEventPublisher>("stable");
 
             Assert.NotNull(p1);
             Assert.Same(p1, p2);
@@ -191,16 +188,15 @@ namespace Deveel.Events
                 .AddTestChannel(e => betaSource = e.Source));
 
             var provider = services.BuildServiceProvider();
-            var factory  = provider.GetRequiredService<IEventPublisherFactory>();
 
             // Create events without a Source so the publisher's configured source is applied.
             var noSourceEvent = new CloudEvent { Type = "test.event", Id = Guid.NewGuid().ToString("N") };
 
-            await factory.GetPublisher("alpha")
+            await provider.GetRequiredKeyedService<IEventPublisher>("alpha")
                 .PublishEventAsync(noSourceEvent, cancellationToken: TestContext.Current.CancellationToken);
 
             noSourceEvent = new CloudEvent { Type = "test.event", Id = Guid.NewGuid().ToString("N") };
-            await factory.GetPublisher("beta")
+            await provider.GetRequiredKeyedService<IEventPublisher>("beta")
                 .PublishEventAsync(noSourceEvent, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Equal(new Uri("https://alpha.example.com"), alphaSource);
@@ -233,9 +229,8 @@ namespace Deveel.Events
             await provider.GetRequiredService<EventPublisher>()
                 .PublishEventAsync(MakeEvent("default.event"), cancellationToken: TestContext.Current.CancellationToken);
 
-            // Named publisher via factory.
-            var factory = provider.GetRequiredService<IEventPublisherFactory>();
-            await factory.GetPublisher("special")
+            // Named publisher via keyed service.
+            await provider.GetRequiredKeyedService<IEventPublisher>("special")
                 .PublishEventAsync(MakeEvent("special.event"), cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Single(defaultReceived);
@@ -294,9 +289,9 @@ namespace Deveel.Events
                 .AddTestChannel(_ => { }));
 
             var provider = services.BuildServiceProvider();
-            var factory  = provider.GetRequiredService<IEventPublisherFactory>();
 
-            Assert.Throws<InvalidOperationException>(() => factory.GetPublisher("unknown"));
+            Assert.Throws<InvalidOperationException>(
+                () => provider.GetRequiredKeyedService<IEventPublisher>("unknown"));
         }
 
         /// <summary>
@@ -326,15 +321,14 @@ namespace Deveel.Events
                 .AddTestChannel(_ => { }));
 
             var provider = services.BuildServiceProvider();
-            var factory  = provider.GetRequiredService<IEventPublisherFactory>();
 
-            await factory.GetPublisher("pipe-a")
+            await provider.GetRequiredKeyedService<IEventPublisher>("pipe-a")
                 .PublishEventAsync(MakeEvent(), cancellationToken: TestContext.Current.CancellationToken);
 
             var entriesA = log.Entries.ToList();
             Assert.Equal(["outer-a:before", "inner-a:before", "inner-a:after", "outer-a:after"], entriesA);
 
-            await factory.GetPublisher("pipe-b")
+            await provider.GetRequiredKeyedService<IEventPublisher>("pipe-b")
                 .PublishEventAsync(MakeEvent(), cancellationToken: TestContext.Current.CancellationToken);
 
             var entriesB = log.Entries.Skip(entriesA.Count).ToList();
@@ -342,5 +336,4 @@ namespace Deveel.Events
         }
     }
 }
-
 
