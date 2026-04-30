@@ -1,7 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.Text;
 
-using Azure.Messaging;
 using Azure.Messaging.ServiceBus;
 
 using CloudNative.CloudEvents;
@@ -12,14 +11,20 @@ using Microsoft.Extensions.Logging;
 namespace Deveel.Events {
 	[Trait("Channel", "ServiceBus")]
 	[Trait("Function", "Publish")]
-	public class ServiceBusChannelTests : IDisposable
+	public class ServiceBusChannelTests : IClassFixture<ServiceBusTestServer>, IAsyncLifetime
 	{
-		public ServiceBusChannelTests(ITestOutputHelper outputHelper)
+		private const string QueueName = "test-queue";
+
+		private readonly string _connectionString;
+		private ServiceBusClient? _receiverClient;
+		private ServiceBusReceiver? _receiver;
+
+		public ServiceBusChannelTests(ServiceBusTestServer testServer, ITestOutputHelper outputHelper)
 		{
+			_connectionString = testServer.ConnectionString;
+
 			var services = new ServiceCollection();
 			services.AddLogging(builder => builder.AddXUnit(outputHelper).SetMinimumLevel(LogLevel.Debug));
-
-			services.AddSingleton<IServiceBusClientFactory>(new TestServiceBusClientFactory(OnMessageSent));
 
 			services.AddEventPublisher(options =>
 			{
@@ -28,8 +33,8 @@ namespace Deveel.Events {
 			})
 			.AddServiceBus(options =>
 			{
-				options.ConnectionString = "Endpoint=sb://test.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc12345";
-				options.QueueName = "test-queue";
+				options.ConnectionString = _connectionString;
+				options.QueueName = QueueName;
 			});
 
 			Services = services.BuildServiceProvider();
@@ -39,15 +44,20 @@ namespace Deveel.Events {
 
 		private EventPublisher Publisher => Services.GetRequiredService<EventPublisher>();
 
-		private ServiceBusMessage? MessageSent { get; set; }
-
-		private void OnMessageSent(ServiceBusMessage message)
+		public async ValueTask InitializeAsync()
 		{
-			MessageSent = message;
+			_receiverClient = new ServiceBusClient(_connectionString);
+			_receiver = _receiverClient.CreateReceiver(QueueName);
 		}
 
-		public void Dispose()
+		public async ValueTask DisposeAsync()
 		{
+			if (_receiver != null)
+				await _receiver.DisposeAsync();
+
+			if (_receiverClient != null)
+				await _receiverClient.DisposeAsync();
+
 			(Services as IDisposable)?.Dispose();
 		}
 
@@ -61,21 +71,27 @@ namespace Deveel.Events {
 				Data = Encoding.UTF8.GetBytes(Convert.ToBase64String(Encoding.UTF8.GetBytes("Hello, World!"))),
 				Source = new Uri("https://api.svc.deveel.com/test-service"),
 				Type = "test.created",
-				Time = DateTime.UtcNow,
+				Time = DateTimeOffset.UtcNow,
 				Id = Guid.NewGuid().ToString("N"),
 				DataSchema = new Uri("http://example.com/schema/1.0")
 			};
 
-			await Publisher.PublishEventAsync(cloudEvent);
+			await Publisher.PublishEventAsync(cloudEvent, cancellationToken: TestContext.Current.CancellationToken);
 
-			Assert.NotNull(MessageSent);
-			Assert.Equal("test", MessageSent!.Subject);
-			Assert.Equal("application/binary", MessageSent.ContentType);
-			Assert.NotNull(MessageSent.Body);
-			Assert.NotNull(MessageSent.ApplicationProperties);
-			Assert.NotEmpty(MessageSent.ApplicationProperties);
-			Assert.NotNull(MessageSent.ApplicationProperties[ServiceBusMessageProperties.EventType]);
-			Assert.Equal("test.created", MessageSent.ApplicationProperties[ServiceBusMessageProperties.EventType]);
+			var received = await _receiver!.ReceiveMessageAsync(
+				maxWaitTime: TimeSpan.FromSeconds(30),
+				cancellationToken: TestContext.Current.CancellationToken);
+
+			Assert.NotNull(received);
+			Assert.Equal("test", received.Subject);
+			Assert.Equal("application/binary", received.ContentType);
+			Assert.NotNull(received.Body);
+			Assert.NotNull(received.ApplicationProperties);
+			Assert.NotEmpty(received.ApplicationProperties);
+			Assert.True(received.ApplicationProperties.ContainsKey(ServiceBusMessageProperties.EventType));
+			Assert.Equal("test.created", received.ApplicationProperties[ServiceBusMessageProperties.EventType]);
+
+			await _receiver.CompleteMessageAsync(received, TestContext.Current.CancellationToken);
 		}
 
 		[Fact]
@@ -88,21 +104,27 @@ namespace Deveel.Events {
 				Data = Encoding.UTF8.GetBytes("{\"message\": \"Hello, World!\"}"),
 				Source = new Uri("https://api.svc.deveel.com/test-service"),
 				Type = "test.created",
-				Time = DateTime.UtcNow,
+				Time = DateTimeOffset.UtcNow,
 				Id = Guid.NewGuid().ToString("N"),
 				DataSchema = new Uri("http://example.com/schema/1.0")
 			};
 
-			await Publisher.PublishEventAsync(cloudEvent);
+			await Publisher.PublishEventAsync(cloudEvent, cancellationToken: TestContext.Current.CancellationToken);
 
-			Assert.NotNull(MessageSent);
-			Assert.Equal("test", MessageSent!.Subject);
-			Assert.Equal("application/json", MessageSent.ContentType);
-			Assert.NotNull(MessageSent.Body);
-			Assert.NotNull(MessageSent.ApplicationProperties);
-			Assert.NotEmpty(MessageSent.ApplicationProperties);
-			Assert.NotNull(MessageSent.ApplicationProperties[ServiceBusMessageProperties.EventType]);
-			Assert.Equal("test.created", MessageSent.ApplicationProperties[ServiceBusMessageProperties.EventType]);
+			var received = await _receiver!.ReceiveMessageAsync(
+				maxWaitTime: TimeSpan.FromSeconds(30),
+				cancellationToken: TestContext.Current.CancellationToken);
+
+			Assert.NotNull(received);
+			Assert.Equal("test", received.Subject);
+			Assert.Equal("application/json", received.ContentType);
+			Assert.NotNull(received.Body);
+			Assert.NotNull(received.ApplicationProperties);
+			Assert.NotEmpty(received.ApplicationProperties);
+			Assert.True(received.ApplicationProperties.ContainsKey(ServiceBusMessageProperties.EventType));
+			Assert.Equal("test.created", received.ApplicationProperties[ServiceBusMessageProperties.EventType]);
+
+			await _receiver.CompleteMessageAsync(received, TestContext.Current.CancellationToken);
 		}
 
 		[Fact]
@@ -114,22 +136,27 @@ namespace Deveel.Events {
                 Age = 30
             };
 
-            await Publisher.PublishAsync(personCreated);
+            await Publisher.PublishAsync(personCreated, cancellationToken: TestContext.Current.CancellationToken);
 
-            Assert.NotNull(MessageSent);
+			var received = await _receiver!.ReceiveMessageAsync(
+				maxWaitTime: TimeSpan.FromSeconds(30),
+				cancellationToken: TestContext.Current.CancellationToken);
 
-            Assert.NotNull(MessageSent.Body);
-            Assert.NotNull(MessageSent.ApplicationProperties);
-            Assert.NotEmpty(MessageSent.ApplicationProperties);
-            Assert.NotNull(MessageSent.ApplicationProperties[ServiceBusMessageProperties.EventType]);
-            Assert.Equal("person.created", MessageSent.ApplicationProperties[ServiceBusMessageProperties.EventType]);
+			Assert.NotNull(received);
+            Assert.NotNull(received.Body);
+            Assert.NotNull(received.ApplicationProperties);
+            Assert.NotEmpty(received.ApplicationProperties);
+            Assert.True(received.ApplicationProperties.ContainsKey(ServiceBusMessageProperties.EventType));
+            Assert.Equal("person.created", received.ApplicationProperties[ServiceBusMessageProperties.EventType]);
+
+			await _receiver.CompleteMessageAsync(received, TestContext.Current.CancellationToken);
         }
 
 		[Event("person.created", "1.0")]
 		class PersonCreated
 		{
 			[Required]
-            public string Name { get; set; }
+            public string Name { get; set; } = string.Empty;
 
 			[Range(1, 100)]
             public int Age { get; set; }
