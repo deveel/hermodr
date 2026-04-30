@@ -127,6 +127,7 @@ namespace Deveel.Events {
 				return;
 
 			DisposeAsyncCore().GetAwaiter().GetResult();
+			disposed = true;
 		}
 
         /// <inheritdoc />

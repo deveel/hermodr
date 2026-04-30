@@ -136,6 +136,35 @@ namespace Deveel.Events
             var factory = provider.GetRequiredService<IRabbitMqConnectionFactory>();
             Assert.Same(customFactory, factory);
         }
+        [Fact]
+        public static void UseRabbitMq_TypedWithSectionPath_BindsOptionsFromConfiguration()
+        {
+            var configuration = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Orders:ExchangeName"] = "orders-exchange",
+                    ["Orders:RoutingKey"]   = "order.created",
+                })
+                .Build();
+
+            var services = new ServiceCollection();
+            services.AddSingleton<IConfiguration>(configuration);
+            services.AddEventPublisher()
+                .AddRabbitMq(options => { options.ConnectionString = ValidConnectionString; })
+                .AddRabbitMq<OrderEvent>("Orders");
+
+            Assert.Contains(services, d =>
+                d.ServiceType == typeof(IEventPublishChannel<OrderEvent>));
+
+            var provider = services.BuildServiceProvider();
+            var options  = provider.GetRequiredService<IOptions<RabbitMqPublishOptions<OrderEvent>>>();
+
+            Assert.Equal("orders-exchange", options.Value.ExchangeName);
+            Assert.Equal("order.created",   options.Value.RoutingKey);
+        }
+
+        private class OrderEvent { }
+
         private class CustomRabbitMqConnectionFactory : IRabbitMqConnectionFactory
         {
             public Task<IConnection> CreateConnectionAsync(CancellationToken cancellationToken = default)

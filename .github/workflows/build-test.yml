@@ -71,7 +71,7 @@ jobs:
         run: >
           dotnet test -c Release --no-build --verbosity normal
           --framework ${{ env.DOTNET_TFM }}
-          -- --filter-not-trait "Channel=RabbitMQ"
+          -- --filter-not-trait "CICD=WindowsExclude"
           ${{ inputs.collect-coverage && '--coverage --coverage-output-format cobertura' || '' }}
 
       - name: Upload coverage to Codecov
