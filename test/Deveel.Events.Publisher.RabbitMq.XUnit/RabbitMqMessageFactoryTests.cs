@@ -139,6 +139,59 @@ namespace Deveel.Events
             Assert.Throws<NotSupportedException>(() => factory.CreateMessage(MakeJsonEvent()));
         }
 
+        // ── EventData / Binary — body is non-empty ────────────────────────────
+
+        [Fact]
+        public static void CreateMessage_EventDataBinary_BodyIsNonEmpty()
+        {
+            var factory = CreateFactory(
+                content: RabbitMqMessageContent.EventData,
+                format: RabbitMqMessageFormat.Binary);
+
+            var message = factory.CreateMessage(MakeJsonEvent());
+
+            Assert.True(message.Body.Length > 0);
+        }
+
+        // ── Null event data ───────────────────────────────────────────────────
+
+        [Fact]
+        public static void CreateMessage_EventDataJson_WithNullData_BodyIsNullJson()
+        {
+            var factory = CreateFactory(
+                content: RabbitMqMessageContent.EventData,
+                format: RabbitMqMessageFormat.Json);
+
+            var nullDataEvent = new CloudEvent
+            {
+                Type   = "order.cancelled",
+                Source = new Uri("https://api.example.com"),
+                Id     = Guid.NewGuid().ToString("N"),
+                Time   = DateTimeOffset.UtcNow,
+                // Data is intentionally left null
+            };
+
+            var message = factory.CreateMessage(nullDataEvent);
+
+            // JsonSerializer.Serialize(null) produces "null"
+            var bodyText = System.Text.Encoding.UTF8.GetString(message.Body.Span);
+            Assert.Equal("null", bodyText);
+        }
+
+        // ── ContentType round-trip ────────────────────────────────────────────
+
+        [Fact]
+        public static void CreateMessage_CloudEventJson_ContentTypeRoundTrips()
+        {
+            var factory = CreateFactory(
+                content: RabbitMqMessageContent.CloudEvent,
+                format: RabbitMqMessageFormat.Json);
+
+            var message = factory.CreateMessage(MakeJsonEvent());
+
+            Assert.StartsWith("application/cloudevents", message.ContentType);
+        }
+
         // ── EventData / Binary ─────────────────────────────────────────────────
 
         [Fact]
@@ -166,7 +219,4 @@ namespace Deveel.Events
         }
     }
 }
-
-
-
 

@@ -7,6 +7,7 @@
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0"  Condition="$(TargetFramework) == 'net8.0'" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.15" Condition="$(TargetFramework) == 'net9.0'" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.7" Condition="$(TargetFramework) == 'net10.0'" />
+    <PackageReference Include="NSubstitute" Version="5.3.0" />
     <PackageReference Include="Testcontainers.RabbitMq" Version="4.11.0" />
   </ItemGroup>
 
