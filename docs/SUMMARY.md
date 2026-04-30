@@ -15,6 +15,7 @@
 * [Overview](concepts/README.md)
 * [CloudEvents Standard](concepts/cloudevents.md)
 * [Event Publisher](concepts/event-publisher.md)
+* [Publish Pipeline & Middleware](concepts/publish-pipeline.md)
 * [Publish Channels](concepts/publish-channels.md)
 * [Event Annotations](concepts/event-annotations.md)
 

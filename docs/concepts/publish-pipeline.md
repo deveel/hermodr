@@ -11,84 +11,136 @@ descriptor and compiled exactly once when the publisher singleton is first resol
 ```
 PublishEventAsync(CloudEvent, options)
   │
-  ├─ 1. Enrich ──────────────────────────────────────────────────────────────
-  │       SetEventId(event)        → fills id  via IEventIdGenerator
-  │       SetTimeStamp(event)      → fills time via IEventSystemTime
-  │       SetSource(event)         → fills source from EventPublisherOptions
-  │       SetAttributes(event)     → merges EventPublisherOptions.Attributes
+  ├─ 1. Filter channels by name ─────────────────────────────────────────────
+  │       FilterChannelsByName(channels, options)
+  │       → narrow channel list when options.ChannelName is set
   │
-  ├─ 2. Create EventContext ─────────────────────────────────────────────────
-  │       EventContext(event, services, cancellationToken, options)
+  ├─ 2. Create async scope + EventContext ────────────────────────────────────
+  │       await using scope = serviceProvider.CreateAsyncScope()
+  │       EventContext(rawEvent, scope.ServiceProvider, cancellationToken, options)
+  │       ⚠  The event has NOT been enriched yet at this point.
   │
-  ├─ 3. Run middleware chain ────────────────────────────────────────────────
-  │       Use<TMiddleware>() registrations run in order (frozen at build time)
-  │       middleware may mutate context.Event
+  ├─ 3. Run middleware chain ─────────────────────────────────────────────────
+  │       Use<TMiddleware>() / UseWhen<TMiddleware>(predicate) registrations
+  │       run in registration order (frozen at build time)
+  │       middleware may inspect or mutate context.Event (raw, un-enriched)
   │       middleware may short-circuit by not calling next(context)
   │
-  └─ 4. Terminal validate + dispatch ────────────────────────────────────────
-          ValidateCloudEvent(context.Event)
-          FilterChannelsByName(channels, context.Options) → named-channel filter
-          for each IEventPublishChannel:
-            ResolveChannelOptions(channel, context.Options) → per-channel options
-            PublishEventAsync(channel, context.Event, resolvedOptions)
-              → channel.PublishAsync(context.Event, resolvedOptions)
+  └─ 4. Terminal step ────────────────────────────────────────────────────────
+          a. Enrich ────────────────────────────────────────────────────────
+                SetEventId(event)     → fills id  via IEventIdGenerator
+                SetTimeStamp(event)   → fills time via IEventSystemTime
+                SetSource(event)      → fills source from EventPublisherOptions
+                SetAttributes(event)  → merges EventPublisherOptions.Attributes
+          b. Validate ──────────────────────────────────────────────────────
+                ValidateCloudEvent(context.Event)
+                → throws InvalidCloudEventException if required attrs still absent
+          c. Dispatch ──────────────────────────────────────────────────────
+                for each IEventPublishChannel (already name-filtered):
+                  ResolveChannelOptions(channel, context.Options)
+                  PublishEventAsync(channel, context.Event, resolvedOptions)
+                    → channel.PublishAsync(context.Event, resolvedOptions)
 ```
 
-> **Important:** validation happens in the terminal step **after** middleware runs.
-> This means middleware can enrich the event further, replace the event, or update
-> per-call options before the publisher validates the envelope and fans out to channels.
+> **Important — middleware sees the raw event.**  
+> Because enrichment happens in the terminal step, middleware receives the **un-enriched**
+> `CloudEvent`.  This means middleware can freely set `id`, `time`, `source`, or custom
+> extension attributes, and the built-in enrichment hooks will only fill in the values that
+> are still absent once middleware has finished.
 
 ---
 
-## Stage 1 — Enrichment
+## Stage 1 — Channel name filtering
 
-The four enrichment methods run in sequence before any validation occurs, so values they
-fill in satisfy the subsequent validation check automatically.
+Before the `EventContext` is created, `FilterChannelsByName` narrows the set of target
+channels based on `options`:
 
-| Method | What it fills | Condition |
-|--------|---------------|-----------|
-| `SetEventId(CloudEvent)` | `id` attribute | Only when `id` is `null` and an `IEventIdGenerator` is registered |
-| `SetTimeStamp(CloudEvent)` | `time` attribute | Only when `time` is `null` and an `IEventSystemTime` is registered |
-| `SetSource(CloudEvent)` | `source` attribute | Only when `source` is `null` and `EventPublisherOptions.Source` is set |
-| `SetAttributes(CloudEvent)` | Extension attributes from `EventPublisherOptions.Attributes` | Always; existing attributes are overwritten |
+- When `options` implements `INamedChannelFilter` with a non-empty `ChannelName`, only
+  channels whose `INamedEventPublishChannel.Name` matches (case-insensitive) are kept.
+  Anonymous channels (those not implementing `INamedEventPublishChannel`) always pass
+  through.
+- When `options` is `null`, or `ChannelName` is empty/null, **all** channels are included.
 
-All four methods return the (mutated) `CloudEvent` and are `protected virtual` — override any
-of them in a subclass to customise enrichment without touching the rest of the pipeline.  See
-[Extending EventPublisher](event-publisher.md#extending-eventpublisher) for examples.
+`FilterChannelsByName` is `protected virtual` — override it in a subclass to implement
+custom routing logic.
 
 ---
 
 ## Stage 2 — `EventContext` creation
 
-After enrichment, the publisher creates an `EventContext` for the current publish operation.
-This context is passed through the middleware chain and carries:
+An **async DI scope** is created for each publish call via
+`IServiceProvider.CreateAsyncScope()`.  The `EventContext` is then initialised with:
 
 | Property | Description |
 |----------|-------------|
-| `EventContext.Event` | The enriched `CloudEvent` (middleware may mutate or replace it) |
-| `EventContext.Services` | The runtime `IServiceProvider` for the current publish call |
-| `EventContext.CancellationToken` | The cancellation token for the current publish call |
-| `EventContext.Options` | Any per-call `EventPublishOptions` passed by the caller |
+| `EventContext.Event` | The **raw** (not yet enriched) `CloudEvent`. Middleware and the terminal enrichment step may mutate or replace it. |
+| `EventContext.Services` | A **scoped** `IServiceProvider` — a fresh scope per publish call, so scoped services (e.g. `IHttpContextAccessor`, `DbContext`) are resolved correctly. |
+| `EventContext.CancellationToken` | The cancellation token for the current publish call. |
+| `EventContext.Options` | The per-call `EventPublishOptions` passed by the caller (may be `null`). |
+| `EventContext.Items` | A free-form `Dictionary<string, object?>` for passing arbitrary data between middleware steps within the same call. |
+
+### `EventContext.Items` — sharing data between middleware
+
+`Items` is the recommended way to pass intermediate results between middleware without
+coupling the types to each other:
+
+```csharp
+// First middleware: stamp a correlation ID and store it for downstream steps.
+public sealed class CorrelationMiddleware : IEventMiddleware
+{
+    private readonly ICorrelationAccessor _accessor;
+
+    public CorrelationMiddleware(ICorrelationAccessor accessor)
+        => _accessor = accessor;
+
+    public async Task InvokeAsync(EventContext context, EventPublishDelegate next)
+    {
+        var correlationId = _accessor.CorrelationId ?? Guid.NewGuid().ToString();
+        context.Items["correlationId"] = correlationId;
+
+        var attr = CloudEventAttribute.CreateExtension("correlationid", CloudEventAttributeType.String);
+        context.Event[attr] = correlationId;
+
+        await next(context);
+    }
+}
+
+// Second middleware: use the correlation ID set by the first one.
+public sealed class AuditMiddleware : IEventMiddleware
+{
+    private readonly IAuditLog _audit;
+
+    public AuditMiddleware(IAuditLog audit) => _audit = audit;
+
+    public async Task InvokeAsync(EventContext context, EventPublishDelegate next)
+    {
+        var correlationId = context.Items.TryGetValue("correlationId", out var v) ? v as string : null;
+        await next(context);
+        await _audit.RecordAsync(context.Event.Type!, correlationId, context.CancellationToken);
+    }
+}
+```
 
 ---
 
 ## Stage 3 — Middleware
 
 Middleware is a **registration-time** concept: steps are added to the pipeline when the
-publisher is configured via `EventPublisherBuilder.Use<TMiddleware>()`.  The pipeline
-descriptor is **frozen** (compiled into an immutable `EventPublisherPipelineDescriptor`)
-the first time the publisher singleton is resolved from the container.  You cannot add or
-remove middleware after that point.
+publisher is configured via `EventPublisherBuilder.Use<TMiddleware>()` or
+`EventPublisherBuilder.UseWhen<TMiddleware>(predicate)`.  The pipeline descriptor is
+**frozen** the first time the publisher singleton is resolved from the container.  You
+cannot add or remove middleware after that point.
 
 ### Core types
 
 | Type | Role |
 |------|------|
 | `IEventMiddleware` | A composable step in the publish pipeline |
-| `EventContext` | Carries the current `CloudEvent`, `IServiceProvider`, cancellation token, and per-call options |
+| `EventContext` | Carries the current `CloudEvent`, scoped `IServiceProvider`, cancellation token, per-call options, and an `Items` bag |
 | `EventPublishDelegate` | `Task InvokeAsync(EventContext)` — represents the remainder of the pipeline (`next`) |
+| `MiddlewareRegistration` | Describes a registered middleware step (type, activation arguments, optional predicate) |
 
-### Registering middleware at build time
+### Registering middleware — `Use<TMiddleware>()`
 
 Add middleware on the `EventPublisherBuilder` during DI registration:
 
@@ -99,7 +151,7 @@ builder.Services
     .Use<MetricsMiddleware>();
 ```
 
-You can also pass explicit extra constructor arguments (activated via `ActivatorUtilities`):
+You can pass explicit extra constructor arguments (forwarded to `ActivatorUtilities`):
 
 ```csharp
 builder.Services
@@ -107,13 +159,35 @@ builder.Services
     .Use<AuditMiddleware>("orders");  // "orders" forwarded as an extra ctor arg
 ```
 
+### Registering conditional middleware — `UseWhen<TMiddleware>(predicate)`
+
+`UseWhen` registers a middleware that is **skipped** when the predicate returns `false`.
+When skipped, the pipeline proceeds directly to the next registered step.
+
+```csharp
+builder.Services
+    .AddEventPublisher()
+    // Only stamp a trace ID when tracing is active for this request
+    .UseWhen<TraceMiddleware>(ctx =>
+        System.Diagnostics.Activity.Current is not null)
+    // Only throttle events whose type starts with "com.example.bulk"
+    .UseWhen<ThrottleMiddleware>(ctx =>
+        ctx.Event.Type?.StartsWith("com.example.bulk") == true)
+    .AddChannel<RabbitMqPublishChannel>();
+```
+
+> **Tip:** prefer `UseWhen` over an `if` block inside the middleware body when the
+> predicate is a pure, allocation-free expression (e.g. checking a flag or an event-type
+> prefix).  This avoids instantiating the middleware object when it would immediately
+> short-circuit anyway.
+
 ### Ordering and activation rules
 
 - Middleware runs in **registration order** — the first `Use<T>()` call becomes the
   **outermost** wrapper (closest to the caller).
 - A **fresh middleware instance** is created for every publish call via `ActivatorUtilities`.
 - Constructor dependencies are resolved from `EventContext.Services` at invocation time,
-  which means **scoped services are supported**.
+  which means **scoped services are fully supported**.
 - The pipeline is compiled **once** when the publisher is first resolved; it cannot be
   changed after that point.
 
@@ -124,14 +198,18 @@ A middleware class implements `IEventMiddleware.InvokeAsync(EventContext, EventP
 ```csharp
 public sealed class CorrelationIdMiddleware : IEventMiddleware
 {
+    // Dependencies injected by ActivatorUtilities from the scoped EventContext.Services
+    private readonly ICorrelationAccessor _accessor;
+
+    public CorrelationIdMiddleware(ICorrelationAccessor accessor)
+        => _accessor = accessor;
+
     public async Task InvokeAsync(EventContext context, EventPublishDelegate next)
     {
-        var accessor = context.Services.GetRequiredService<ICorrelationAccessor>();
-
-        if (!string.IsNullOrEmpty(accessor.CorrelationId))
+        if (!string.IsNullOrEmpty(_accessor.CorrelationId))
         {
             var attr = CloudEventAttribute.CreateExtension("correlationid", CloudEventAttributeType.String);
-            context.Event[attr] = accessor.CorrelationId;
+            context.Event[attr] = _accessor.CorrelationId;
         }
 
         await next(context);
@@ -156,11 +234,67 @@ receive the event if short-circuited:
 ```csharp
 public sealed class DeduplicationMiddleware : IEventMiddleware
 {
+    private readonly IEventDeduplicationStore _store;
+
+    public DeduplicationMiddleware(IEventDeduplicationStore store)
+        => _store = store;
+
     public async Task InvokeAsync(EventContext context, EventPublishDelegate next)
     {
-        var store = context.Services.GetRequiredService<IEventDeduplicationStore>();
-        if (await store.HasSeenAsync(context.Event.Id!, context.CancellationToken))
+        if (await _store.HasSeenAsync(context.Event.Id!, context.CancellationToken))
             return;   // stop here — do not forward to channels
+
+        await next(context);
+
+        // Mark as seen after successful delivery
+        await _store.MarkAsync(context.Event.Id!, context.CancellationToken);
+    }
+}
+```
+
+### Observability middleware pattern
+
+```csharp
+public sealed class MetricsMiddleware : IEventMiddleware
+{
+    private readonly IMetricsCollector _metrics;
+
+    public MetricsMiddleware(IMetricsCollector metrics) => _metrics = metrics;
+
+    public async Task InvokeAsync(EventContext context, EventPublishDelegate next)
+    {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        try
+        {
+            await next(context);
+            _metrics.RecordPublish(context.Event.Type!, sw.Elapsed, success: true);
+        }
+        catch
+        {
+            _metrics.RecordPublish(context.Event.Type!, sw.Elapsed, success: false);
+            throw;
+        }
+    }
+}
+```
+
+### Modifying `context.Options` in middleware
+
+Middleware can replace or wrap the per-call options before the terminal dispatch step reads
+them.  This is useful for injecting per-call routing decisions that depend on runtime state:
+
+```csharp
+public sealed class TenantRoutingMiddleware : IEventMiddleware
+{
+    private readonly ITenantContext _tenant;
+
+    public TenantRoutingMiddleware(ITenantContext tenant) => _tenant = tenant;
+
+    public async Task InvokeAsync(EventContext context, EventPublishDelegate next)
+    {
+        // Route to a tenant-specific named channel
+        if (context.Options == null)
+            context.Options = new NamedChannelPublishOptions(_tenant.ChannelName);
 
         await next(context);
     }
@@ -171,9 +305,13 @@ public sealed class DeduplicationMiddleware : IEventMiddleware
 
 | Pattern | Description |
 |---------|-------------|
-| Enrichment | Add correlation IDs, tenant IDs, trace attributes |
+| Enrichment | Add correlation IDs, tenant IDs, trace attributes to every event |
+| Conditional enrichment | Use `UseWhen` to add attributes only when a condition is met |
 | Validation / policy | Inspect `context.Event` and block selected publishes |
+| Deduplication | Short-circuit when the same event ID has already been seen |
 | Observability | Log, trace, and measure latency before/after `next(context)` |
+| Options injection | Set or wrap `context.Options` to change channel routing at runtime |
+| Data sharing | Use `context.Items` to pass intermediate results between steps |
 | Subscription dispatching | Wired automatically by `AddSubscriptions()` — see below |
 
 ### Dispatcher middleware (subscriptions)
@@ -199,10 +337,35 @@ See [Subscriptions Dispatcher](../subscriptions/dispatcher.md) for full details.
 
 ---
 
-## Stage 4 — Validation
+## Stage 4 (terminal) — Enrichment
 
-`ValidateCloudEvent` checks the four mandatory CloudEvents 1.0 attributes **after** all
-middleware has run, in the terminal step.
+Once all middleware has run, the terminal step **enriches** the event by calling the four
+`Set*` methods in sequence.
+
+| Method | What it fills | Condition |
+|--------|---------------|-----------|
+| `SetEventId(CloudEvent)` | `id` attribute | Only when `id` is `null` and an `IEventIdGenerator` is registered |
+| `SetTimeStamp(CloudEvent)` | `time` attribute | Only when `time` is `null` and an `IEventSystemTime` is registered |
+| `SetSource(CloudEvent)` | `source` attribute | Only when `source` is `null` and `EventPublisherOptions.Source` is set |
+| `SetAttributes(CloudEvent)` | Extension attributes from `EventPublisherOptions.Attributes` | Always; existing attributes are **overwritten** |
+
+> **Middleware-set attributes vs. `EventPublisherOptions.Attributes`:**  
+> Because `SetAttributes` runs after middleware and always overwrites existing values,
+> any attribute key listed in `EventPublisherOptions.Attributes` will **overwrite** a value
+> set by middleware.  If you need middleware to have the final say, do not list that
+> attribute key in `EventPublisherOptions.Attributes`, or override `SetAttributes` in a
+> subclass to change the merge strategy.
+
+All four methods are `protected virtual` — override any of them in a subclass to customise
+enrichment without touching the rest of the pipeline.  See
+[Extending EventPublisher](event-publisher.md#extending-eventpublisher) for examples.
+
+---
+
+## Stage 4 (terminal) — Validation
+
+`ValidateCloudEvent` checks the four mandatory CloudEvents 1.0 attributes **after**
+middleware and enrichment have both run.
 
 | Attribute | Auto-filled? | Must be caller-supplied when… |
 |-----------|-------------|-------------------------------|
@@ -211,11 +374,10 @@ middleware has run, in the terminal step.
 | `type` | ❌ | Always — no default exists |
 | `specversion` | ✅ by the CloudNative SDK (always `"1.0"`) | Never in practice |
 
-If any required attribute is still absent after middleware completes,
-`ValidateCloudEvent` throws `InvalidCloudEventException` **before** dispatching to any
-channel.  This exception is always propagated regardless of the `ThrowOnErrors` option,
-because a structurally invalid envelope is a programming error, not a transient delivery
-failure.
+If any required attribute is still absent, `ValidateCloudEvent` throws
+`InvalidCloudEventException` **before** dispatching to any channel.  This exception is
+always propagated regardless of the `ThrowOnErrors` option, because a structurally invalid
+envelope is a programming error, not a transient delivery failure.
 
 ### `InvalidCloudEventException`
 
@@ -237,25 +399,45 @@ catch (InvalidCloudEventException ex)
 
 ---
 
-## Stage 5 — Dispatch
+## Stage 4 (terminal) — Dispatch
 
 The publisher's dispatch stage:
 
-1. **Name filtering** — `FilterChannelsByName` narrows the channel list when the
-   caller-supplied `options` implement `INamedChannelFilter` with a non-empty `ChannelName`.
-   Only channels that implement `INamedEventPublishChannel` with a matching `Name` are kept;
-   anonymous channels always pass through.  `CombinedPublishOptions` does not implement
-   `INamedChannelFilter`; for combined options, name matching is done per bundled entry inside
-   `ResolveChannelOptions`.
+1. **Fan-out** over the already name-filtered channels (filtering was done in Stage 1).
 2. **Per-channel options resolution** — `ResolveChannelOptions` extracts the compatible
    `EventPublishOptions` entry for the current channel (see
    [Per-call publish options](event-publisher.md#per-call-publish-options)).
-3. **Fan-out** — `PublishEventAsync(IEventPublishChannel, CloudEvent, EventPublishOptions?)`
+3. **Delivery** — `PublishEventAsync(IEventPublishChannel, CloudEvent, EventPublishOptions?)`
    forwards the call to `channel.PublishAsync`.
 
 If a channel throws and `ThrowOnErrors` is `false` (the default), the error is logged and
 delivery continues to the remaining channels.  When `ThrowOnErrors` is `true` the exception
 is wrapped in `EventPublishException` and re-thrown, stopping fan-out immediately.
+
+---
+
+## `MiddlewareRegistration`
+
+`EventPublisherPipeline.MiddlewareRegistrations` exposes the ordered list of
+`MiddlewareRegistration` entries that make up the pipeline.  Each entry carries:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `MiddlewareType` | `Type` | The concrete `IEventMiddleware` implementation type. |
+| `ActivationArguments` | `object[]` | Extra constructor arguments forwarded to `ActivatorUtilities`. |
+| `Predicate` | `Func<EventContext, bool>?` | The condition predicate registered via `UseWhen`, or `null` when the middleware is unconditional. |
+| `IsConditional` | `bool` | `true` when a predicate is attached (i.e. registered via `UseWhen`). |
+
+This API is read-only and primarily useful for diagnostics and testing:
+
+```csharp
+// Resolving the pipeline (e.g. in a health-check or startup validation):
+var pipeline = serviceProvider.GetRequiredService<EventPublisherPipeline>();
+foreach (var reg in pipeline.MiddlewareRegistrations)
+{
+    Console.WriteLine($"{reg.MiddlewareType.Name} (conditional: {reg.IsConditional})");
+}
+```
 
 ---
 
@@ -266,8 +448,10 @@ Middleware and subclassing are complementary extensibility mechanisms:
 | Need | Prefer |
 |------|--------|
 | Add cross-cutting logic before/after publish | `Use<TMiddleware>()` on the builder |
+| Skip middleware based on a runtime condition | `UseWhen<TMiddleware>(predicate)` on the builder |
 | Short-circuit selected publishes | `Use<TMiddleware>()` on the builder |
 | Resolve scoped services during publish | `Use<TMiddleware>()` on the builder |
+| Share data between middleware steps | `EventContext.Items` |
 | Change enrichment defaults globally | Subclass + override `Set*` methods |
 | Change validation semantics | Subclass + override `ValidateCloudEvent` |
 | Change channel selection / options matching | Subclass + override dispatch-related protected methods |
@@ -277,11 +461,35 @@ subclassing examples.
 
 ---
 
-## Related pages
+## End-to-end example
 
-- [Event Publisher](event-publisher.md)
-- [Event Creation](event-creation.md)
-- [Publish Channels](publish-channels.md)
-- [Named Channels](../publishers/named-channels.md)
-- [Subscriptions Dispatcher](../subscriptions/dispatcher.md)
+The following example wires a correlation middleware, a conditional trace middleware, and
+a metrics middleware into the default publisher pipeline:
 
+```csharp
+// Program.cs / Startup.cs
+builder.Services
+    .AddEventPublisher(opts =>
+    {
+        opts.Source = new Uri("https://myapp.example.com");
+        opts.ThrowOnErrors = true;
+    })
+    // Unconditional — stamps a correlation ID on every event
+    .Use<CorrelationIdMiddleware>()
+    // Conditional — only stamps a W3C trace ID when a trace is active
+    .UseWhen<TraceIdMiddleware>(ctx => System.Diagnostics.Activity.Current is not null)
+    // Unconditional — measures latency for every publish call
+    .Use<MetricsMiddleware>()
+    .AddChannel<RabbitMqPublishChannel>();
+```
+
+Pipeline execution for a single `PublishEventAsync` call:
+
+```
+caller → CorrelationIdMiddleware.InvokeAsync
+          → TraceIdMiddleware.InvokeAsync  (only if Activity.Current != null)
+            → MetricsMiddleware.InvokeAsync
+              → [terminal] SetEventId / SetTimeStamp / SetSource / SetAttributes
+                         → ValidateCloudEvent
+                         → RabbitMqPublishChannel.PublishAsync
+```
