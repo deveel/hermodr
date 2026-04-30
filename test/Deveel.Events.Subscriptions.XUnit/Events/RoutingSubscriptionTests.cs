@@ -43,7 +43,9 @@ namespace Deveel.Events
             public override Task PublishEventAsync(CloudEvent @event, EventPublishOptions? options = null, CancellationToken cancellationToken = default)
             {
                 Published.Add(@event);
-                LastOptions = options;
+                // Peel off any transport wrapper (e.g. bypass signal) so that assertions
+                // work against the effective channel options, not the internal plumbing.
+                LastOptions = options?.Unwrap();
                 return Task.CompletedTask;
             }
         }

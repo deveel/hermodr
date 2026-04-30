@@ -55,4 +55,58 @@ public abstract class EventPublishOptions
     /// </example>
     public static CombinedPublishOptions Combine(params EventPublishOptions[] options)
         => new CombinedPublishOptions(options);
+
+    /// <summary>
+    /// Creates an <see cref="EventPublishOptions"/> instance that signals to the
+    /// <see cref="EventPublisher"/> that the middleware pipeline should be skipped
+    /// entirely for the publish call, dispatching the event directly to the target
+    /// channels.
+    /// </summary>
+    /// <param name="innerOptions">
+    /// Optional channel-specific options to forward to channel selection and per-channel
+    /// option resolution.  Use this when you need to target a specific channel (e.g. by
+    /// name or type) while still bypassing the middleware pipeline.  When <c>null</c>
+    /// every registered channel receives the event and each channel's defaults are used.
+    /// </param>
+    /// <returns>
+    /// An <see cref="EventPublishOptions"/> that carries the bypass signal and wraps
+    /// any supplied <paramref name="innerOptions"/>.
+    /// </returns>
+    /// <remarks>
+    /// <para>
+    /// This method is intended for components that are themselves invoked from within
+    /// the publish pipeline (such as a routing subscription or an outbox relay processor)
+    /// and that need to re-publish an event without triggering the full middleware stack
+    /// again.  Running the pipeline a second time would cause re-entrant behaviour such
+    /// as duplicate subscription dispatches or, in the outbox case, an infinite
+    /// persist-and-relay loop.
+    /// </para>
+    /// <para>
+    /// Example — route to a named channel while bypassing the pipeline:
+    /// <code language="csharp">
+    /// var options = EventPublishOptions.BypassPipeline(
+    ///     new RabbitMqPublishOptions { ChannelName = "rabbit-orders", RoutingKey = "orders" });
+    ///
+    /// await publisher.PublishEventAsync(myEvent, options);
+    /// </code>
+    /// </para>
+    /// </remarks>
+    public static EventPublishOptions BypassPipeline(EventPublishOptions? innerOptions = null)
+        => new BypassPipelinePublishOptions(innerOptions);
+
+    /// <summary>
+    /// Returns the effective options after stripping any transport-only wrappers
+    /// (such as the internal bypass-pipeline signal).
+    /// </summary>
+    /// <returns>
+    /// For most subclasses this is <c>this</c>.  When the instance is a bypass
+    /// transport wrapper it returns the wrapped inner options, or <c>null</c> when
+    /// no inner options were supplied.
+    /// </returns>
+    /// <remarks>
+    /// Middleware authors and test helpers should use this method rather than
+    /// inspecting the concrete type of the options object, so that transport wrappers
+    /// remain an implementation detail of the publisher infrastructure.
+    /// </remarks>
+    public virtual EventPublishOptions? Unwrap() => this;
 }

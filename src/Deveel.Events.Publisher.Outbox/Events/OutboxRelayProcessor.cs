@@ -123,11 +123,14 @@ internal sealed class OutboxRelayProcessor<TMessage> : IOutboxRelayProcessor
 
         try
         {
-            // Pass OutboxRelayPublishOptions as the skip signal so that any
-            // OutboxPublishChannel in the same pipeline does not re-persist the event.
+            // Bypass the middleware pipeline for this relay publish call so that other
+            // middlewares (e.g. the subscription dispatcher) do not re-run.  The inner
+            // OutboxRelayPublishOptions is forwarded to channel resolution so that any
+            // OutboxPublishChannel present in the same pipeline can recognise the relay
+            // signal and short-circuit without re-persisting the event.
             await publisher.PublishEventAsync(
                 message.CloudEvent,
-                new OutboxRelayPublishOptions(),
+                EventPublishOptions.BypassPipeline(new OutboxRelayPublishOptions()),
                 cancellationToken);
 
             await repository.SetDeliveredAsync(message, cancellationToken);

@@ -136,6 +136,10 @@ namespace Deveel.Events
         protected virtual EventPublishOptions? ResolveChannelOptions(IEventPublishChannel channel,
             EventPublishOptions? options)
         {
+            // Peel off any transport wrapper so channel resolution always works
+            // against the effective channel-specific options.
+            options = options?.Unwrap();
+
             if (options == null) return null;
             var channelType = channel.GetType();
             var expectedOptionsType = FindExpectedOptionsType(channelType);
@@ -210,7 +214,10 @@ namespace Deveel.Events
             IEnumerable<IEventPublishChannel> channels,
             EventPublishOptions? options)
         {
-            if (options is not INamedChannelFilter { ChannelName: { Length: > 0 } name })
+            // Peel off any transport wrapper before applying the named-channel filter.
+            var effectiveOptions = options?.Unwrap();
+
+            if (effectiveOptions is not INamedChannelFilter { ChannelName: { Length: > 0 } name })
                 return channels;
             return channels.Where(c =>
                 c is not INamedEventPublishChannel named ||
@@ -296,14 +303,26 @@ namespace Deveel.Events
         {
             var targetChannels = FilterChannelsByName(channels, options).ToList();
             await using var scope = _serviceProvider.CreateAsyncScope();
-            var context = new EventContext(@event, scope.ServiceProvider, cancellationToken, options);
+
+            // The bypass wrapper is transport-only: peel it off so the EventContext
+            // (and any middleware that inspects context.Options) sees the real options.
+            var bypassPipeline = options is BypassPipelinePublishOptions;
+            var effectiveOptions = options?.Unwrap();
+
+            var context = new EventContext(@event, scope.ServiceProvider, cancellationToken, effectiveOptions);
             EventPublishDelegate terminal = ctx =>
             {
                 ctx.Event = EnsureEvent(ctx.Event);
                 return DispatchToChannelsAsync(targetChannels, ctx);
             };
-            var pipeline = _pipelineFactory.Value(terminal);
-            _logger.TracePipelineExecuting(@event.Type);
+
+            var pipeline = bypassPipeline ? terminal : _pipelineFactory.Value(terminal);
+
+            if (bypassPipeline)
+                _logger.TracePipelineExecuting(@event.Type + " [pipeline bypassed]");
+            else
+                _logger.TracePipelineExecuting(@event.Type);
+
             await pipeline(context);
             _logger.TracePipelineCompleted(@event.Type);
         }
