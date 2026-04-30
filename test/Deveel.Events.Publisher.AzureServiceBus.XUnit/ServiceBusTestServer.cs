@@ -9,7 +9,7 @@ namespace Deveel.Events
     public sealed class ServiceBusTestServer : IAsyncLifetime
     {
         private static readonly string ConfigFilePath =
-            Path.Combine(AppContext.BaseDirectory, "service-bus-config.json");
+            Path.Join(AppContext.BaseDirectory, "service-bus-config.json");
 
         private readonly ServiceBusContainer _container;
 
