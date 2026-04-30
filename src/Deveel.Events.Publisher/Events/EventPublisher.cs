@@ -340,7 +340,8 @@ namespace Deveel.Events
         {
             var targetChannels = FilterChannelsByName(channels, options).ToList();
             var eventToPublish = EnsureEvent(@event);
-            var context = new EventContext(eventToPublish, _serviceProvider, cancellationToken, options);
+            await using var scope = _serviceProvider.CreateAsyncScope();
+            var context = new EventContext(eventToPublish, scope.ServiceProvider, cancellationToken, options);
             EventPublishDelegate terminal = ctx => DispatchToChannelsAsync(targetChannels, ctx);
             var pipeline = _pipelineFactory.Value(terminal);
             await pipeline(context);

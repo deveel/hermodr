@@ -58,6 +58,14 @@ namespace Deveel.Events
         private sealed class ContextSpy
         {
             public EventContext? CapturedContext { get; set; }
+
+            /// <summary>
+            /// Set by <see cref="CapturingMiddleware"/> to the instance resolved from
+            /// <see cref="EventContext.Services"/> during pipeline execution, proving that
+            /// the scoped provider supplies the correct singleton.  Checked after the scope
+            /// has been disposed so we must not re-resolve from the provider here.
+            /// </summary>
+            public ContextSpy? ResolvedInstance { get; set; }
         }
 
         // ---------------------------------------------------------------
@@ -110,6 +118,10 @@ namespace Deveel.Events
             {
                 var spy = context.Services.GetRequiredService<ContextSpy>();
                 spy.CapturedContext = context;
+                // Capture the resolved instance NOW (while the scope is still alive)
+                // so that assertions can verify DI resolution without accessing the
+                // disposed provider after PublishEventAsync returns.
+                spy.ResolvedInstance = spy;
                 return next(context);
             }
         }
@@ -239,7 +251,10 @@ namespace Deveel.Events
                 .PublishEventAsync(evt, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.NotNull(spy.CapturedContext);
-            Assert.Same(spy, spy.CapturedContext!.Services.GetRequiredService<ContextSpy>());
+            // ResolvedInstance is set by CapturingMiddleware while the scope is alive;
+            // we must not call ctx.Services.GetRequiredService<> here because the
+            // per-publish DI scope has already been disposed.
+            Assert.Same(spy, spy.ResolvedInstance);
             Assert.NotNull(spy.CapturedContext.Event.Id);
             Assert.NotNull(spy.CapturedContext.Event.Source);
             Assert.Equal("eu-west-1", spy.CapturedContext.Event["region"]);

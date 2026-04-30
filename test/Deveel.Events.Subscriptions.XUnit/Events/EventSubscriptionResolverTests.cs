@@ -270,7 +270,10 @@ namespace Deveel.Events
             await publisher.PublishEventAsync(MakeEvent());
 
             Assert.NotNull(resolver.ReceivedContext);
-            Assert.Same(resolver, resolver.ReceivedContext!.Services!.GetRequiredService<CapturingResolver>());
+            // ResolvedInstance is set by CapturingResolver while the scope is alive;
+            // we must not call Services.GetRequiredService<> here because the
+            // per-publish DI scope has already been disposed.
+            Assert.Same(resolver, resolver.ResolvedInstance);
         }
 
         [Fact]
@@ -401,6 +404,13 @@ namespace Deveel.Events
         {
             public EventSubscriptionContext? ReceivedContext { get; private set; }
 
+            /// <summary>
+            /// Set during <see cref="ResolveSubscriptionsAsync(CloudEvent, EventSubscriptionContext?, CancellationToken)"/>
+            /// while the DI scope is still alive, so assertions can verify the resolved instance
+            /// without accessing the already-disposed scoped <see cref="IServiceProvider"/> afterwards.
+            /// </summary>
+            public CapturingResolver? ResolvedInstance { get; private set; }
+
             public Task<IReadOnlyList<IEventSubscription>> ResolveSubscriptionsAsync(
                 CloudEvent @event, CancellationToken cancellationToken = default)
                 => Task.FromResult<IReadOnlyList<IEventSubscription>>([]);
@@ -411,6 +421,8 @@ namespace Deveel.Events
                 CancellationToken cancellationToken = default)
             {
                 ReceivedContext = context;
+                // Capture the resolved instance NOW while the scope is still live.
+                ResolvedInstance = context?.Services?.GetRequiredService<CapturingResolver>();
                 return Task.FromResult<IReadOnlyList<IEventSubscription>>([]);
             }
         }
