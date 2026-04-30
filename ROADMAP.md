@@ -374,27 +374,60 @@ This document outlines the planned evolution of the **Deveel Events** framework.
 
 ## Event Consumers
 
-### 20. Webhook Consumer for ASP.NET Core
+### 20. Webhook Consumer Framework for ASP.NET Core
 
-> *Receive and dispatch inbound CloudEvents delivered via HTTP webhooks directly inside an ASP.NET Core application.*
+> *A transport-agnostic foundation for receiving and dispatching inbound webhook events inside an ASP.NET Core application.*
 
-**The problem today:** Deveel Events only covers the *publishing* side of the event lifecycle. Services that need to receive webhook payloads — for example, from a SaaS platform or another Deveel Events publisher — must build their own endpoint, deserialization, signature verification, and routing logic from scratch.
+**The problem today:** Deveel Events only covers the *publishing* side of the event lifecycle. Services that need to receive webhook payloads — for example, from a SaaS platform or another Deveel Events publisher — must build their own endpoint, deserialisation, signature verification, and routing logic from scratch.
 
-**What we will build:** A `Deveel.Events.Consumer.Webhook` package providing an ASP.NET Core middleware and a minimal-API endpoint registration (`MapCloudEventWebhook(...)`) that:
-- Accepts HTTP POST requests carrying CloudEvents in structured or binary content mode.
-- Verifies optional HMAC signatures or shared-secret headers.
-- Deserialises the payload into a typed `CloudEvent` and routes it through the `IEventSubscription` registry (item 1).
-- Returns appropriate HTTP status codes and problem-detail responses on validation failure.
+**What we will build:** A `Deveel.Events.Consumer.Webhook` package providing:
+- An ASP.NET Core middleware and a minimal-API endpoint registration (`MapCloudEventWebhook(...)`) that accepts HTTP POST requests carrying CloudEvents in structured or binary content mode.
+- An `IWebhookSignatureVerifier` abstraction for pluggable signature verification, with a built-in HMAC-SHA256/384/512 implementation.
+- Deserialisation of the payload into a typed `CloudEvent` and routing through the `IEventSubscription` registry (item 1).
+- An `IWebhookPayloadMapper` extensibility point that translates arbitrary third-party JSON payloads into `CloudEvent` objects before dispatch — the foundation that service-specific adapters (item 21) build on.
+- Appropriate HTTP status codes and problem-detail responses on validation or deserialization failure.
 
 **Benefits:**
 - Turns any ASP.NET Core application into a capable CloudEvents consumer with a single `UseCloudEventWebhook()` or `MapCloudEventWebhook()` call.
 - Integrates with the existing subscription and routing infrastructure — no separate consumer-side wiring needed.
-- Built-in signature verification reduces the risk of processing forged payloads.
-- Compatible with platforms that deliver events over webhooks (GitHub, Stripe, Azure Event Grid, etc.).
+- The pluggable `IWebhookPayloadMapper` and `IWebhookSignatureVerifier` abstractions allow any third-party webhook format and signing scheme to be supported without forking the core package.
+- Compatible with any platform that delivers events over HTTP webhooks (GitHub, Stripe, Azure Event Grid, etc.).
 
 ---
 
-### 21. RabbitMQ Consumer
+### 21. Pre-built Webhook Consumer Adapters
+
+> *Ready-made adapters that translate the proprietary webhook payloads of major SaaS platforms into `CloudEvent` objects and verify their signatures automatically.*
+
+**The problem today:** Even with the generic webhook consumer framework in place (item 20), teams integrating with popular SaaS platforms must still write the platform-specific payload mapping and signature verification themselves. Each platform uses a different JSON schema, a different signing mechanism (HMAC, RSA, Ed25519, shared token), and a different delivery header convention, resulting in repeated boilerplate across projects.
+
+**What we will build:** A suite of thin adapter packages — each implementing `IWebhookPayloadMapper` and `IWebhookSignatureVerifier` from item 20 — for the most widely used webhook-emitting platforms:
+
+| Package | Platform | Signature scheme |
+|---------|----------|-----------------|
+| `Deveel.Events.Consumer.Webhook.Facebook` | Meta / Facebook Graph API (Messenger, WhatsApp Business, Instagram) | HMAC-SHA256 (`X-Hub-Signature-256`) |
+| `Deveel.Events.Consumer.Webhook.SendGrid` | SendGrid Event Webhook | HMAC-SHA256 (`X-Twilio-Email-Event-Webhook-Signature`) |
+| `Deveel.Events.Consumer.Webhook.Twilio` | Twilio (SMS, Voice, WhatsApp) | HMAC-SHA1 (`X-Twilio-Signature`) |
+| `Deveel.Events.Consumer.Webhook.Stripe` | Stripe (payments, subscriptions, disputes) | HMAC-SHA256 (`Stripe-Signature` with timestamp replay protection) |
+| `Deveel.Events.Consumer.Webhook.GitHub` | GitHub (push, PR, release, issues) | HMAC-SHA256 (`X-Hub-Signature-256`) |
+| `Deveel.Events.Consumer.Webhook.Shopify` | Shopify (orders, products, customers) | HMAC-SHA256 (`X-Shopify-Hmac-Sha256`) |
+
+Each adapter package:
+- Registers with `AddFacebookWebhookConsumer()` / `AddSendGridWebhookConsumer()` etc. via `IServiceCollection` extension methods, wiring the platform-specific mapper and verifier into the framework from item 20.
+- Maps canonical platform event fields to standard CloudEvents attributes (`type`, `source`, `subject`, `id`, `time`) and preserves the original payload in `data`.
+- Exposes strongly-typed event objects (e.g., `FacebookMessagingEvent`, `StripePaymentIntentEvent`) that consumers can work with after subscription routing.
+- Includes a test helper (`FakeWebhookSender`) that generates correctly signed HTTP requests for use in unit and integration tests.
+
+**Benefits:**
+- Eliminates per-project boilerplate for the most common webhook integrations — drop in a package and register the adapter.
+- Signature verification is handled correctly out of the box for each platform's specific scheme, reducing the risk of security mistakes (missing timestamp validation, incorrect HMAC algorithm, etc.).
+- Strongly-typed event objects make handler code readable and refactor-safe.
+- Test helpers make it straightforward to write deterministic, broker-free tests for webhook-triggered flows.
+- New adapters for additional platforms can be contributed as standalone packages without touching the core framework.
+
+---
+
+### 22. RabbitMQ Consumer
 
 > *Consume CloudEvents from RabbitMQ queues and exchanges and route them through the subscription registry.*
 
@@ -415,7 +448,7 @@ This document outlines the planned evolution of the **Deveel Events** framework.
 
 ---
 
-### 22. Azure Service Bus Consumer
+### 23. Azure Service Bus Consumer
 
 > *Consume CloudEvents from Azure Service Bus queues and topics/subscriptions and route them through the subscription registry.*
 
@@ -434,7 +467,7 @@ This document outlines the planned evolution of the **Deveel Events** framework.
 
 ---
 
-### 23. MassTransit Consumer Bridge
+### 24. MassTransit Consumer Bridge
 
 > *Expose Deveel Events subscriptions as MassTransit consumers, and vice versa, to unify both programming models.*
 
@@ -451,7 +484,7 @@ This document outlines the planned evolution of the **Deveel Events** framework.
 
 ## Developer Experience
 
-### 24. Expanded Testing Utilities
+### 25. Expanded Testing Utilities
 
 > *First-class test helpers for asserting which events were published, with what attributes, and in what order.*
 
@@ -469,7 +502,7 @@ This document outlines the planned evolution of the **Deveel Events** framework.
 
 ## Subscription Management
 
-### 25. Subscription Management Framework
+### 26. Subscription Management Framework
 
 > *A provider-agnostic framework for persisting, querying, and lifecycle-managing event subscriptions at runtime.*
 
@@ -491,7 +524,7 @@ This document outlines the planned evolution of the **Deveel Events** framework.
 
 ---
 
-### 26. Relational Registry Provider (Entity Framework Core)
+### 27. Relational Registry Provider (Entity Framework Core)
 
 > *Persist subscription state in any EF Core-compatible relational database — SQL Server, PostgreSQL, or SQLite — with ready-made migrations and polling-based synchronisation.*
 
@@ -511,7 +544,7 @@ This document outlines the planned evolution of the **Deveel Events** framework.
 
 ---
 
-### 27. Document Registry Provider (MongoDB)
+### 28. Document Registry Provider (MongoDB)
 
 > *Persist subscription state as MongoDB documents with change-stream-based synchronisation for real-time, cluster-wide routing updates.*
 
@@ -531,7 +564,7 @@ This document outlines the planned evolution of the **Deveel Events** framework.
 
 ---
 
-### 28. Subscription Management REST API
+### 29. Subscription Management REST API
 
 > *Expose subscription lifecycle operations as secured HTTP endpoints, providing an admin surface for operations tooling and self-service tenant portals.*
 
@@ -547,7 +580,7 @@ This document outlines the planned evolution of the **Deveel Events** framework.
   - `DELETE /subscriptions/{id}` — soft-delete with an optional hard-delete flag.
 - Full OpenAPI / Swagger metadata generated via `Microsoft.AspNetCore.OpenApi` annotations, compatible with Scalar and Swashbuckle.
 - Authorization policy hooks: each endpoint group can be secured independently using standard ASP.NET Core `IAuthorizationPolicy` names passed at registration time (`MapSubscriptionManagementApi(o => o.RequirePolicy("SubscriptionAdmin"))`).
-- An `ETag`-based optimistic-concurrency model on `PUT` and `PATCH` using the `EventSubscription` version counter from item 25.
+- An `ETag`-based optimistic-concurrency model on `PUT` and `PATCH` using the `EventSubscription` version counter from item 26.
 - Optional Webhook callback on subscription changes: posts a CloudEvent payload to a configured URL whenever a subscription is created, updated, or deleted — enabling external systems to react to registry mutations without polling.
 
 **Benefits:**
@@ -571,9 +604,9 @@ The table below maps each roadmap item to the release milestone in which it is p
 | **Observability** | **v1.3.0** | End-to-end distributed tracing via OpenTelemetry, schema validation at publish time, the append-only event store / audit log channel, and the publish delivery log for operational delivery telemetry. | 6 · 7 · 8 · 9 |
 | **Schema Governance** | **v1.4.0** | Formal schema versioning, compatibility checking, upcasting, and AsyncAPI / schema export tooling improvements. | 10 · 11 |
 | **New Transports** | **v1.5.0** | CloudEvents HTTP binding compliance for the Webhook publisher, a new lightweight HTTP CloudEvents channel, plus new channel adapters for gRPC streaming, Apache Kafka, Amazon SQS, Amazon SNS, Google Cloud Pub/Sub, and NATS/JetStream. | 12 · 13 · 14 · 15 · 16 · 17 · 18 · 19 |
-| **Event Consumers** | **v2.0.0** | First-class consumer adapters — ASP.NET Core Webhook, RabbitMQ, Azure Service Bus, and MassTransit — completing the publish / consume lifecycle. This is a **major** release because it introduces a new, independently versioned surface area (`Deveel.Events.Consumer.*` packages) and changes the framing of the framework from a pure publisher to a full event-driven toolkit. | 20 · 21 · 22 · 23 |
-| **Testing & DX** | **v2.1.0** | Expanded testing utilities with fluent publish assertions, an in-memory event bus, and consumer-side test helpers. | 24 |
-| **Subscription Management** | **v2.2.0** | Provider-agnostic subscription management framework, EF Core and MongoDB registry providers, and a secured REST management API with OpenAPI metadata and change-notification webhooks. | 25 · 26 · 27 · 28 |
+| **Event Consumers** | **v2.0.0** | First-class consumer adapters — ASP.NET Core Webhook framework, pre-built SaaS platform adapters (Facebook, SendGrid, Twilio, Stripe, GitHub, Shopify), RabbitMQ, Azure Service Bus, and MassTransit — completing the publish / consume lifecycle. This is a **major** release because it introduces a new, independently versioned surface area (`Deveel.Events.Consumer.*` packages) and changes the framing of the framework from a pure publisher to a full event-driven toolkit. | 20 · 21 · 22 · 23 · 24 |
+| **Testing & DX** | **v2.1.0** | Expanded testing utilities with fluent publish assertions, an in-memory event bus, and consumer-side test helpers. | 25 |
+| **Subscription Management** | **v2.2.0** | Provider-agnostic subscription management framework, EF Core and MongoDB registry providers, and a secured REST management API with OpenAPI metadata and change-notification webhooks. | 26 · 27 · 28 · 29 |
 
 ### Version increment rationale
 
