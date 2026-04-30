@@ -9,7 +9,7 @@ namespace Deveel.Events
 {
     /// <summary>
     /// Tests for the named-channel convenience extension methods on
-    /// <see cref="IEventPublisher"/>:
+    /// <see cref="EventPublisher"/>:
     ///   - <c>PublishAsync{TEvent}(publisher, event, channelName, ct)</c>
     ///   - <c>PublishEventAsync(publisher, event, channelName, ct)</c>
     /// </summary>
@@ -68,19 +68,19 @@ namespace Deveel.Events
             }
         }
 
-        private static IEventPublisher BuildPublisher(params IEventPublishChannel[] channels)
+        private static EventPublisher BuildPublisher(params IEventPublishChannel[] channels)
         {
             var services = new ServiceCollection();
-            services.AddEventPublisher(o =>
+            var builder = services.AddEventPublisher(o =>
             {
                 o.Source = new Uri("https://api.example.com");
                 o.DataSchemaBaseUri = new Uri("https://schemas.example.com/events");
             });
 
             foreach (var ch in channels)
-                services.AddSingleton<IEventPublishChannel>(ch);
+                builder.AddChannel(ch);
 
-            return services.BuildServiceProvider().GetRequiredService<IEventPublisher>();
+            return services.BuildServiceProvider().GetRequiredService<EventPublisher>();
         }
 
         private static CloudEvent ValidEvent(string type = "test.event") => new()

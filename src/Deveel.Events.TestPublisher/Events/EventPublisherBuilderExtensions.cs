@@ -34,7 +34,8 @@ namespace Deveel.Events {
         /// test channel added.
         /// </returns>
         public static EventPublisherBuilder AddTestChannel(this EventPublisherBuilder builder, IEventPublishCallback callback, string? channelName = null) {
-			builder.Services.AddSingleton<IEventPublishChannel>(_ => new TestEventPublishChannel(callback, channelName));
+			var channel = new TestEventPublishChannel(callback);
+			builder.AddChannel(channel, channelName);
 			builder.Services.AddSingleton<IEventPublishCallback>(callback);
 
 			return builder;
@@ -111,8 +112,8 @@ namespace Deveel.Events {
             where TEvent : class
         {
             IEventPublishChannel<TEvent> channel = new TypedTestEventPublishChannel<TEvent>(
-                new DelegatedEventPublishCallback(callback), channelName);
-            return builder.AddChannel<TEvent>(channel);
+                new DelegatedEventPublishCallback(callback));
+            return builder.AddChannel<TEvent>(channel, channelName);
         }
 
         /// <summary>
@@ -144,8 +145,8 @@ namespace Deveel.Events {
             where TEvent : class
         {
             IEventPublishChannel<TEvent> channel = new TypedTestEventPublishChannel<TEvent>(
-                new DelegatedEventPublishCallback(callback), channelName);
-            return builder.AddChannel<TEvent>(channel);
+                new DelegatedEventPublishCallback(callback));
+            return builder.AddChannel<TEvent>(channel, channelName);
         }
 	}
 }

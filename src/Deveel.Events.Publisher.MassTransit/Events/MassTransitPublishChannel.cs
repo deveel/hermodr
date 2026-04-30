@@ -15,7 +15,7 @@ using Microsoft.Extensions.Options;
 namespace Deveel.Events
 {
     /// <summary>
-    /// An implementation of <see cref="IEventPublishChannel{TOptions}"/> that publishes
+    /// An <see cref="EventPublishChannel{TOptions}"/> implementation that publishes
     /// CloudEvents via MassTransit.
     /// </summary>
     internal class MassTransitPublishChannel :

@@ -13,9 +13,9 @@ namespace Deveel.Events
 {
     /// <summary>
     /// Tests that verify <see cref="IEventSubscriptionResolver"/> semantics: the read-only
-    /// contract extracted from <see cref="IEventSubscriptionRegistry"/>, including
-    /// read-only resolver implementations and multiple-resolver fan-out via
-    /// <see cref="EventDispatcher"/>.
+        /// contract extracted from <see cref="IEventSubscriptionRegistry"/>, including
+        /// read-only resolver implementations and multiple-resolver fan-out through the
+        /// publisher middleware pipeline.
     /// </summary>
     [Trait("Feature", "Subscriptions")]
     [Trait("Subject", "Resolver")]
@@ -93,7 +93,7 @@ namespace Deveel.Events
         // ── read-only resolver (does not implement IEventSubscriptionRegistry) ─────────
 
         [Fact]
-        public static async Task ReadOnlyResolver_CanBeUsedWithDispatcher()
+        public static async Task ReadOnlyResolver_CanBeUsedWithPublisherPipeline()
         {
             var handled = new List<string>();
 
@@ -103,9 +103,17 @@ namespace Deveel.Events
                 "from-readonly");
 
             IEventSubscriptionResolver readonlyResolver = new StaticResolver([sub]);
-            var dispatcher = new EventDispatcher(readonlyResolver);
 
-            await dispatcher.DispatchAsync(MakeEvent("com.example.order.placed"));
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddEventPublisher(opt => opt.Source = new Uri("https://example.com"))
+                .AddSubscriptions();
+            services.AddSingleton(readonlyResolver);
+
+            var provider = services.BuildServiceProvider();
+            var publisher = provider.GetRequiredService<EventPublisher>().UseDispatcher();
+
+            await publisher.PublishEventAsync(MakeEvent("com.example.order.placed"));
 
             Assert.Single(handled);
             Assert.Equal("com.example.order.placed", handled[0]);
@@ -120,7 +128,7 @@ namespace Deveel.Events
             await Task.CompletedTask;
         }
 
-        // ── multiple resolver fan-out via EventDispatcher ──────────────────────────────
+        // ── multiple resolver fan-out via middleware ───────────────────────────────────
 
         [Fact]
         public static async Task MultipleResolvers_AllMatchingSubscriptionsAreDispatched()
@@ -137,14 +145,17 @@ namespace Deveel.Events
                 (_, _) => { invoked.Add("resolver-2"); return Task.CompletedTask; },
                 "from-resolver-2");
 
-            var dispatcher = new EventDispatcher(
-                new IEventSubscriptionResolver[]
-                {
-                    new StaticResolver([sub1]),
-                    new StaticResolver([sub2])
-                });
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddEventPublisher(opt => opt.Source = new Uri("https://example.com"))
+                .AddSubscriptions();
+            services.AddSingleton<IEventSubscriptionResolver>(new StaticResolver([sub1]));
+            services.AddSingleton<IEventSubscriptionResolver>(new StaticResolver([sub2]));
 
-            await dispatcher.DispatchAsync(MakeEvent("com.example.order.placed"));
+            var provider = services.BuildServiceProvider();
+            var publisher = provider.GetRequiredService<EventPublisher>().UseDispatcher();
+
+            await publisher.PublishEventAsync(MakeEvent("com.example.order.placed"));
 
             Assert.Equal(["resolver-1", "resolver-2"], invoked);
         }
@@ -164,15 +175,18 @@ namespace Deveel.Events
                 (_, _) => { invoked.Add("user"); return Task.CompletedTask; },
                 "user");
 
-            var dispatcher = new EventDispatcher(
-                new IEventSubscriptionResolver[]
-                {
-                    new StaticResolver([orderSub]),
-                    new StaticResolver([userSub])
-                });
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddEventPublisher(opt => opt.Source = new Uri("https://example.com"))
+                .AddSubscriptions();
+            services.AddSingleton<IEventSubscriptionResolver>(new StaticResolver([orderSub]));
+            services.AddSingleton<IEventSubscriptionResolver>(new StaticResolver([userSub]));
+
+            var provider = services.BuildServiceProvider();
+            var publisher = provider.GetRequiredService<EventPublisher>().UseDispatcher();
 
             // Only the order resolver should match.
-            await dispatcher.DispatchAsync(MakeEvent("com.example.order.placed"));
+            await publisher.PublishEventAsync(MakeEvent("com.example.order.placed"));
 
             Assert.Single(invoked);
             Assert.Equal("order", invoked[0]);
@@ -187,14 +201,17 @@ namespace Deveel.Events
                 EventFilter.ByType("com.example.other"),
                 (_, _) => { invoked = true; return Task.CompletedTask; });
 
-            var dispatcher = new EventDispatcher(
-                new IEventSubscriptionResolver[]
-                {
-                    new StaticResolver([sub]),
-                    new StaticResolver([])
-                });
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddEventPublisher(opt => opt.Source = new Uri("https://example.com"))
+                .AddSubscriptions();
+            services.AddSingleton<IEventSubscriptionResolver>(new StaticResolver([sub]));
+            services.AddSingleton<IEventSubscriptionResolver>(new StaticResolver([]));
 
-            await dispatcher.DispatchAsync(MakeEvent("com.example.order.placed"));
+            var provider = services.BuildServiceProvider();
+            var publisher = provider.GetRequiredService<EventPublisher>().UseDispatcher();
+
+            await publisher.PublishEventAsync(MakeEvent("com.example.order.placed"));
 
             Assert.False(invoked);
         }
@@ -204,22 +221,25 @@ namespace Deveel.Events
         {
             var order = new List<string>();
 
-            var dispatcher = new EventDispatcher(
-                new IEventSubscriptionResolver[]
-                {
-                    new StaticResolver([
-                        new EventSubscription(FilterExpression.Constant(true),
-                            (_, _) => { order.Add("A"); return Task.CompletedTask; }, "A")
-                    ]),
-                    new StaticResolver([
-                        new EventSubscription(FilterExpression.Constant(true),
-                            (_, _) => { order.Add("B"); return Task.CompletedTask; }, "B"),
-                        new EventSubscription(FilterExpression.Constant(true),
-                            (_, _) => { order.Add("C"); return Task.CompletedTask; }, "C")
-                    ])
-                });
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddEventPublisher(opt => opt.Source = new Uri("https://example.com"))
+                .AddSubscriptions();
+            services.AddSingleton<IEventSubscriptionResolver>(new StaticResolver([
+                new EventSubscription(FilterExpression.Constant(true),
+                    (_, _) => { order.Add("A"); return Task.CompletedTask; }, "A")
+            ]));
+            services.AddSingleton<IEventSubscriptionResolver>(new StaticResolver([
+                new EventSubscription(FilterExpression.Constant(true),
+                    (_, _) => { order.Add("B"); return Task.CompletedTask; }, "B"),
+                new EventSubscription(FilterExpression.Constant(true),
+                    (_, _) => { order.Add("C"); return Task.CompletedTask; }, "C")
+            ]));
 
-            await dispatcher.DispatchAsync(MakeEvent());
+            var provider = services.BuildServiceProvider();
+            var publisher = provider.GetRequiredService<EventPublisher>().UseDispatcher();
+
+            await publisher.PublishEventAsync(MakeEvent());
 
             Assert.Equal(["A", "B", "C"], order);
         }
@@ -233,29 +253,46 @@ namespace Deveel.Events
         }
 
         [Fact]
-        public static async Task Resolver_ReceivesContext_WithServicesFromDispatcher()
+        public static async Task Resolver_ReceivesContext_WithServicesFromEventContext()
         {
-            // The CapturingResolver records whatever context it receives.
-            var capturingResolver = new CapturingResolver();
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddSingleton<CapturingResolver>();
+            services.AddEventPublisher(opt => opt.Source = new Uri("https://example.com"))
+                .AddSubscriptions()
+                .AddSubscriptionResolver<CapturingResolver>();
 
-            var services = new ServiceCollection().BuildServiceProvider();
-            var dispatcher = new EventDispatcher(capturingResolver, services: services);
+            var provider = services.BuildServiceProvider();
+            var resolver = provider.GetRequiredService<CapturingResolver>();
+            var publisher = provider.GetRequiredService<EventPublisher>()
+                .UseDispatcher();
 
-            await dispatcher.DispatchAsync(MakeEvent());
+            await publisher.PublishEventAsync(MakeEvent());
 
-            Assert.NotNull(capturingResolver.ReceivedContext);
-            Assert.Same(services, capturingResolver.ReceivedContext!.Services);
+            Assert.NotNull(resolver.ReceivedContext);
+            // ResolvedInstance is set by CapturingResolver while the scope is alive;
+            // we must not call Services.GetRequiredService<> here because the
+            // per-publish DI scope has already been disposed.
+            Assert.Same(resolver, resolver.ResolvedInstance);
         }
 
         [Fact]
-        public static async Task Resolver_ReceivesNullContext_WhenDispatcherHasNoServices()
+        public static async Task Resolver_ReceivesContext_WhenDispatchedViaPublisher()
         {
-            var capturingResolver = new CapturingResolver();
-            var dispatcher = new EventDispatcher(capturingResolver, services: null);
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddSingleton<CapturingResolver>();
+            services.AddEventPublisher(opt => opt.Source = new Uri("https://example.com"))
+                .AddSubscriptions()
+                .AddSubscriptionResolver<CapturingResolver>();
 
-            await dispatcher.DispatchAsync(MakeEvent());
+            var provider = services.BuildServiceProvider();
+            var resolver = provider.GetRequiredService<CapturingResolver>();
+            var publisher = provider.GetRequiredService<EventPublisher>().UseDispatcher();
 
-            Assert.Null(capturingResolver.ReceivedContext);
+            await publisher.PublishEventAsync(MakeEvent());
+
+            Assert.NotNull(resolver.ReceivedContext);
         }
 
         // ── DI: AddSubscriptionResolver<T> ────────────────────────────────────────────
@@ -268,7 +305,7 @@ namespace Deveel.Events
             var services = new ServiceCollection();
             services.AddLogging();
             services.AddEventPublisher(opt => opt.Source = new Uri("https://example.com"))
-                .AddDispatcher()
+                .AddSubscriptions()
                 // Inline subscription on the registry.
                 .Subscribe("com.example.order.placed",
                     (_, _) => { invoked.Add("registry"); return Task.CompletedTask; },
@@ -277,7 +314,8 @@ namespace Deveel.Events
                 .AddSubscriptionResolver<ReadOnlyOrderResolver>();
 
             var provider = services.BuildServiceProvider();
-            var publisher = provider.GetRequiredService<IEventPublisher>();
+            var publisher = provider.GetRequiredService<EventPublisher>()
+                .UseDispatcher();
 
             // Wire the invoked list into the resolver instance.
             var resolver = provider.GetRequiredService<ReadOnlyOrderResolver>();
@@ -303,7 +341,7 @@ namespace Deveel.Events
             var services = new ServiceCollection();
             services.AddLogging();
             services.AddEventPublisher()
-                .AddDispatcher()
+                .AddSubscriptions()
                 .AddSubscriptionResolver<StaticEmptyResolver>();
 
             var provider = services.BuildServiceProvider();
@@ -315,12 +353,12 @@ namespace Deveel.Events
         }
 
         [Fact]
-        public static void AddDispatcher_RegistryIsAlsoExposedAsResolver()
+        public static void AddSubscriptions_RegistryIsAlsoExposedAsResolver()
         {
             var services = new ServiceCollection();
             services.AddLogging();
             services.AddEventPublisher()
-                .AddDispatcher();
+                .AddSubscriptions();
 
             var provider = services.BuildServiceProvider();
 
@@ -366,6 +404,13 @@ namespace Deveel.Events
         {
             public EventSubscriptionContext? ReceivedContext { get; private set; }
 
+            /// <summary>
+            /// Set during <see cref="ResolveSubscriptionsAsync(CloudEvent, EventSubscriptionContext?, CancellationToken)"/>
+            /// while the DI scope is still alive, so assertions can verify the resolved instance
+            /// without accessing the already-disposed scoped <see cref="IServiceProvider"/> afterwards.
+            /// </summary>
+            public CapturingResolver? ResolvedInstance { get; private set; }
+
             public Task<IReadOnlyList<IEventSubscription>> ResolveSubscriptionsAsync(
                 CloudEvent @event, CancellationToken cancellationToken = default)
                 => Task.FromResult<IReadOnlyList<IEventSubscription>>([]);
@@ -376,6 +421,8 @@ namespace Deveel.Events
                 CancellationToken cancellationToken = default)
             {
                 ReceivedContext = context;
+                // Capture the resolved instance NOW while the scope is still live.
+                ResolvedInstance = context?.Services?.GetRequiredService<CapturingResolver>();
                 return Task.FromResult<IReadOnlyList<IEventSubscription>>([]);
             }
         }

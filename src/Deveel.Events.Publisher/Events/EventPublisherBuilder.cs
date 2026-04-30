@@ -9,235 +9,302 @@ using Microsoft.Extensions.Options;
 
 namespace Deveel.Events {
     /// <summary>
-    /// A builder to configure the <see cref="EventPublisher"/> and its services.
+    /// A builder to configure an <see cref="EventPublisher"/> (and its services) for a
+    /// specific named pipeline slot.
     /// </summary>
     public sealed class EventPublisherBuilder {
-		internal EventPublisherBuilder(IServiceCollection services) {
-			Services = services;
+        private readonly EventPublisherPipeline _pipeline = new();
+        private Type _publisherType = typeof(EventPublisher);
 
-			AddDefaultServices();
-		}
+        // Tracks the channels for THIS builder instance only.
+        // Using a per-instance list (instead of reading from keyed DI) ensures that
+        // multiple registrations under the same name do not accumulate each other's
+        // channels in the pipeline.
+        private readonly List<Func<IServiceProvider, IEventPublishChannel>> _channelFactories = new();
+
+        internal EventPublisherBuilder(IServiceCollection services, string name = "") {
+            Services = services;
+            Name = name;
+            AddDefaultServices();
+        }
 
         /// <summary>
-        /// Gets the collection of services that are used to configure the publisher.
+        /// Gets the name of this publisher pipeline slot.
+        /// An empty string denotes the default (unnamed) pipeline.
+        /// </summary>
+        public string Name { get; }
+
+        /// <summary>
+        /// Gets the collection of services used to configure the publisher.
         /// </summary>
         public IServiceCollection Services { get; }
 
-		private void AddDefaultServices() {
-			Services.AddOptions<EventPublisherOptions>()
-				.ValidateOnStart();
-			Services.TryAddSingleton<IValidateOptions<EventPublisherOptions>>(_ => new EventPublisherOptionsValidator(Services));
-			Services.TryAddSingleton<IEventPublisher, EventPublisher>();
-			Services.TryAddSingleton<EventPublisher>();
-			Services.TryAddSingleton<IEventIdGenerator>(EventGuidGenerator.Default);
-			Services.TryAddSingleton<IEventSystemTime>(EventSystemTime.Instance);
-			Services.TryAddSingleton<IEventCreator, EventCreator>();
-		}
+        private void AddDefaultServices() {
+            // Shared infrastructure services (registered once regardless of how many named publishers exist).
+            Services.AddOptions<EventPublisherOptions>(Name).ValidateOnStart();
+            Services.TryAddSingleton<IValidateOptions<EventPublisherOptions>>(
+                _ => new EventPublisherOptionsValidator(Services));
+            Services.TryAddSingleton<IEventIdGenerator>(EventGuidGenerator.Default);
+            Services.TryAddSingleton<IEventSystemTime>(EventSystemTime.Instance);
+            Services.TryAddSingleton<IEventFactory, EventFactory>();
+
+            // Register the factory singleton (shared).
+            Services.TryAddSingleton<IEventPublisherFactory, EventPublisherFactory>();
+
+            // Capture builder state (by-reference) so the factory lambda reads the
+            // final state when it is first invoked (after all Use<T>() / AddChannel<T>()
+            // calls have completed).
+            var builder = this;
+
+            // Keyed IEventPublisher[Name] ─ one per named slot.
+            Services.AddKeyedSingleton<IEventPublisher>(Name, (sp, _) =>
+            {
+                var pipeline = builder._pipeline;
+                var publisherType = builder._publisherType;
+
+                var optionsMonitor = sp.GetRequiredService<IOptionsMonitor<EventPublisherOptions>>();
+                var options = Microsoft.Extensions.Options.Options.Create(optionsMonitor.Get(builder.Name));
+
+                // Read channels from this builder's own isolated list, not from keyed DI.
+                // This guarantees that a second AddEventPublisher() call for the same name
+                // (or the default empty name) does not appear in this pipeline.
+                var channels = builder._channelFactories.Select(f => f(sp)).ToList();
+                var logger = sp.GetService<Microsoft.Extensions.Logging.ILogger<EventPublisher>>();
+
+                if (publisherType == typeof(EventPublisher))
+                    return new EventPublisher(options, channels, sp, pipeline, logger);
+
+                // Custom publisher sub-class: created via ActivatorUtilities so it can
+                // use its own constructor while still receiving options and channels.
+                return (IEventPublisher)ActivatorUtilities.CreateInstance(
+                    sp, publisherType, options, (IEnumerable<IEventPublishChannel>)channels);
+            });
+
+            if (string.IsNullOrEmpty(Name)) {
+                // Default (unnamed) publisher ─ also expose as non-keyed IEventPublisher
+                // and as the concrete EventPublisher for backward-compatible injection.
+                Services.TryAddSingleton<IEventPublisher>(
+                    sp => sp.GetRequiredKeyedService<IEventPublisher>(string.Empty));
+                Services.TryAddSingleton<EventPublisher>(
+                    sp => (EventPublisher)sp.GetRequiredKeyedService<IEventPublisher>(string.Empty));
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────────
+        // Options
+        // ─────────────────────────────────────────────────────────────────
 
         /// <summary>
-        /// Configures the options for the publisher using the given action.
+        /// Configures the options for this publisher pipeline using the given action.
         /// </summary>
-        /// <param name="configure">
-        /// The action that configures the options for the publisher.
-        /// </param>
-        /// <returns>
-        /// Returns the instance of the <see cref="EventPublisherBuilder"/> to
-        /// further configure the publisher.
-        /// </returns>
         public EventPublisherBuilder Configure(Action<EventPublisherOptions> configure) {
-			Services.Configure(configure);
-
-			return this;
-		}
+            Services.Configure(Name, configure);
+            return this;
+        }
 
         /// <summary>
-        /// Configures the options for the publisher using the configuration section
-        /// at the given path within the application configuration.
+        /// Configures the options for this publisher pipeline from the configuration
+        /// section at <paramref name="sectionPath"/>.
         /// </summary>
-        /// <param name="sectionPath">
-        /// The path to the configuration section that contains the options
-        /// to configure the publisher.
-        /// </param>
-        /// <returns>
-        /// Returns the instance of the <see cref="EventPublisherBuilder"/> to
-        /// further configure the publisher.
-        /// </returns>
         public EventPublisherBuilder Configure(string sectionPath) {
-			Services.AddOptions<EventPublisherOptions>()
-				.BindConfiguration(sectionPath);
+            Services.AddOptions<EventPublisherOptions>(Name)
+                .BindConfiguration(sectionPath);
+            return this;
+        }
 
-			return this;
-		}
+        // ─────────────────────────────────────────────────────────────────
+        // Pipeline middleware
+        // ─────────────────────────────────────────────────────────────────
 
         /// <summary>
-        /// Replace the default <see cref="EventPublisher"/> with the given type.
+        /// Appends a middleware component of type <typeparamref name="TMiddleware"/> to
+        /// the publish pipeline for this publisher.
         /// </summary>
-        /// <typeparam name="TPublisher">
-        /// The type of the publisher to use instead of the default.
+        /// <typeparam name="TMiddleware">
+        /// A concrete type that implements <see cref="IEventMiddleware"/>. A new instance
+        /// is created for every publish call via
+        /// <see cref="ActivatorUtilities"/>, so constructor-injected services are fully
+        /// supported.
         /// </typeparam>
-        /// <param name="lifetime">
-        /// The lifetime of the service to register.
+        /// <param name="activationArguments">
+        /// Optional explicit constructor arguments forwarded to middleware activation.
         /// </param>
-        /// <returns>
-        /// Returns the instance of the <see cref="EventPublisherBuilder"/> to
-        /// further configure the publisher.
-        /// </returns>
-        public EventPublisherBuilder UsePublisher<TPublisher>(ServiceLifetime lifetime = ServiceLifetime.Singleton)
-			where TPublisher : IEventPublisher
+        /// <returns>This <see cref="EventPublisherBuilder"/> for chaining.</returns>
+        public EventPublisherBuilder Use<TMiddleware>(params object[] activationArguments)
+            where TMiddleware : class, IEventMiddleware
         {
-	        Services.RemoveAll<IEventPublisher>();
-			Services.Add(new ServiceDescriptor(typeof(IEventPublisher), typeof(TPublisher), lifetime));
-			Services.Add(new ServiceDescriptor(typeof(TPublisher), typeof(TPublisher), lifetime));
-
-			if (typeof(TPublisher) != typeof(EventPublisher) &&
-			    typeof(EventPublisher).IsAssignableFrom(typeof(TPublisher)))
-			{
-				Services.RemoveAll<EventPublisher>();
-				Services.Add(new ServiceDescriptor(typeof(EventPublisher), typeof(TPublisher), lifetime));
-			}
-			
-			return this;
-		}
+            _pipeline.Add(typeof(TMiddleware), activationArguments);
+            return this;
+        }
 
         /// <summary>
-        /// Replace the default <see cref="IEventIdGenerator"/> with a generator
-        /// that uses a GUID as the identifier of the events.
+        /// Appends a middleware component of type <typeparamref name="TMiddleware"/> to the
+        /// publish pipeline that is only executed when <paramref name="predicate"/> returns
+        /// <c>true</c> for the current <see cref="EventContext"/>.
+        /// When the predicate returns <c>false</c> the middleware step is skipped and the
+        /// next registered step is invoked directly.
         /// </summary>
-        /// <param name="format">
-        /// The format to use for the GUIDs generated.
+        /// <typeparam name="TMiddleware">
+        /// A concrete type that implements <see cref="IEventMiddleware"/>. A new instance
+        /// is created for every publish call (when the predicate passes) via
+        /// <see cref="ActivatorUtilities"/>, so constructor-injected services are fully
+        /// supported.
+        /// </typeparam>
+        /// <param name="predicate">
+        /// A function evaluated against the current <see cref="EventContext"/>. The
+        /// middleware is invoked only when the function returns <c>true</c>.
         /// </param>
-        /// <returns>
-        /// Returns the instance of the <see cref="EventPublisherBuilder"/> to
-        /// further configure the publisher.
-        /// </returns>
+        /// <param name="activationArguments">
+        /// Optional explicit constructor arguments forwarded to middleware activation.
+        /// </param>
+        /// <returns>This <see cref="EventPublisherBuilder"/> for chaining.</returns>
+        public EventPublisherBuilder UseWhen<TMiddleware>(
+            Func<EventContext, bool> predicate,
+            params object[] activationArguments)
+            where TMiddleware : class, IEventMiddleware
+        {
+            ArgumentNullException.ThrowIfNull(predicate);
+            _pipeline.AddWhen(typeof(TMiddleware), predicate, activationArguments);
+            return this;
+        }
+
+        // ─────────────────────────────────────────────────────────────────
+        // Custom publisher type
+        // ─────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Replaces the default <see cref="EventPublisher"/> with a custom sub-class.
+        /// The publisher pipeline is always registered as a keyed singleton.
+        /// </summary>
+        public EventPublisherBuilder UsePublisher<TPublisher>()
+            where TPublisher : EventPublisher
+        {
+            _publisherType = typeof(TPublisher);
+            return this;
+        }
+
+        // ─────────────────────────────────────────────────────────────────
+        // ID generator / system time
+        // ─────────────────────────────────────────────────────────────────
+
+        /// <summary>Replaces the default ID generator with a GUID-based generator.</summary>
         public EventPublisherBuilder UseGuid(string? format = null) {
-			Services.RemoveAll<IEventIdGenerator>();
-			Services.AddSingleton<IEventIdGenerator, EventGuidGenerator>();
+            Services.RemoveAll<IEventIdGenerator>();
+            Services.AddSingleton<IEventIdGenerator, EventGuidGenerator>();
+            Services.AddOptions<EventGuidGeneratorOptions>()
+                .Configure(o => o.Format = format);
+            return this;
+        }
 
-			Services.AddOptions<EventGuidGeneratorOptions>()
-				.Configure(o => o.Format = format);
-
-			return this;
-		}
-
-        /// <summary>
-        /// Replace the default <see cref="IEventSystemTime"/> with the given type.
-        /// </summary>
-        /// <typeparam name="TSystemTime">
-        /// The type of the system time to use for the events.
-        /// </typeparam>
-        /// <param name="lifetime">
-        /// The lifetime of the service to register.
-        /// </param>
-        /// <returns>
-        /// Returns the instance of the <see cref="EventPublisherBuilder"/> to
-        /// further configure the publisher.
-        /// </returns>
+        /// <summary>Replaces the default <see cref="IEventSystemTime"/> implementation.</summary>
         public EventPublisherBuilder UseSystemTime<TSystemTime>(ServiceLifetime lifetime = ServiceLifetime.Singleton)
-			where TSystemTime : class, IEventSystemTime {
-			Services.RemoveAll<IEventSystemTime>();
-			Services.Add(new ServiceDescriptor(typeof(IEventSystemTime), typeof(TSystemTime), lifetime));
+            where TSystemTime : class, IEventSystemTime {
+            Services.RemoveAll<IEventSystemTime>();
+            Services.Add(new ServiceDescriptor(typeof(IEventSystemTime), typeof(TSystemTime), lifetime));
+            return this;
+        }
 
-			return this;
-		}
+        // ─────────────────────────────────────────────────────────────────
+        // Channels
+        // ─────────────────────────────────────────���───────────────────────
 
         /// <summary>
-        /// Registers a publish channel of type <typeparamref name="TChannel"/>
-        /// as an <see cref="IEventPublishChannel"/> that receives all events
-        /// dispatched by the <see cref="EventPublisher"/>.
+        /// Wraps <paramref name="channel"/> in a <see cref="NamedChannelDecorator"/> when
+        /// <paramref name="channelName"/> is non-null/non-empty, otherwise returns the
+        /// channel unchanged.
         /// </summary>
-        /// <typeparam name="TChannel">
-        /// The concrete channel type to register. Must implement
-        /// <see cref="IEventPublishChannel"/>.
-        /// </typeparam>
-        /// <param name="lifetime">
-        /// The <see cref="ServiceLifetime"/> of the channel registration.
-        /// Defaults to <see cref="ServiceLifetime.Singleton"/>.
+        private static IEventPublishChannel ApplyChannelName(IEventPublishChannel channel, string? channelName)
+            => !string.IsNullOrEmpty(channelName) ? new NamedChannelDecorator(channel, channelName!) : channel;
+
+        /// <summary>
+        /// Wraps <paramref name="channel"/> in a <see cref="NamedChannelDecorator{TEvent}"/> when
+        /// <paramref name="channelName"/> is non-null/non-empty, otherwise returns the
+        /// channel unchanged.
+        /// </summary>
+        private static IEventPublishChannel<TEvent> ApplyChannelName<TEvent>(IEventPublishChannel<TEvent> channel, string? channelName)
+            where TEvent : class
+            => !string.IsNullOrEmpty(channelName) ? new NamedChannelDecorator<TEvent>(channel, channelName!) : channel;
+
+        /// <summary>
+        /// Registers a publish channel of type <typeparamref name="TChannel"/> for
+        /// this publisher pipeline.
+        /// </summary>
+        /// <param name="lifetime">The service lifetime for the channel registration.</param>
+        /// <param name="channelName">
+        /// An optional logical name for the channel. When set the publisher will only route
+        /// events to this channel when the per-call options carry the same channel name.
+        /// This is applied at the builder level via a <see cref="NamedChannelDecorator"/> so
+        /// the channel class itself does not need to implement
+        /// <see cref="INamedEventPublishChannel"/>.
         /// </param>
-        /// <returns>
-        /// Returns this <see cref="EventPublisherBuilder"/> instance so that
-        /// further calls can be chained.
-        /// </returns>
-        public EventPublisherBuilder AddChannel<TChannel>(ServiceLifetime lifetime = ServiceLifetime.Singleton)
+        public EventPublisherBuilder AddChannel<TChannel>(
+            ServiceLifetime lifetime = ServiceLifetime.Singleton,
+            string? channelName = null)
             where TChannel : class, IEventPublishChannel
         {
             Services.TryAdd(new ServiceDescriptor(typeof(TChannel), typeof(TChannel), lifetime));
-            Services.Add(new ServiceDescriptor(typeof(IEventPublishChannel),
-                sp => sp.GetRequiredService<TChannel>(), lifetime));
-
+            Services.Add(ServiceDescriptor.KeyedSingleton<IEventPublishChannel>(
+                Name, (sp, _) => ApplyChannelName(sp.GetRequiredService<TChannel>(), channelName)));
+            _channelFactories.Add(sp => ApplyChannelName(sp.GetRequiredService<TChannel>(), channelName));
             return this;
         }
 
         /// <summary>
-        /// Registers the given <paramref name="channel"/> instance as an
-        /// <see cref="IEventPublishChannel"/> that receives all events
-        /// dispatched by the <see cref="EventPublisher"/>.
+        /// Registers a pre-built channel instance for this publisher pipeline.
         /// </summary>
-        /// <param name="channel">The pre-built channel instance to register.</param>
-        /// <returns>
-        /// Returns this <see cref="EventPublisherBuilder"/> instance so that
-        /// further calls can be chained.
-        /// </returns>
-        public EventPublisherBuilder AddChannel(IEventPublishChannel channel)
+        /// <param name="channel">The channel instance to register.</param>
+        /// <param name="channelName">
+        /// An optional logical name for the channel. When set the publisher will only route
+        /// events to this channel when the per-call options carry the same channel name.
+        /// </param>
+        public EventPublisherBuilder AddChannel(IEventPublishChannel channel, string? channelName = null)
         {
-            Services.AddSingleton<IEventPublishChannel>(channel);
+            var entry = ApplyChannelName(channel, channelName);
+            Services.AddKeyedSingleton<IEventPublishChannel>(Name, entry);
+            _channelFactories.Add(_ => entry);
             return this;
         }
 
         /// <summary>
-        /// Registers a publish channel of type <typeparamref name="TChannel"/>
-        /// as both an <see cref="IEventPublishChannel"/> and an
-        /// <see cref="IEventPublishChannel{TEvent}"/>, so that the channel
+        /// Registers a typed publish channel of type <typeparamref name="TChannel"/> that
         /// receives only events whose data class is <typeparamref name="TEvent"/>.
         /// </summary>
-        /// <typeparam name="TChannel">
-        /// The concrete channel type to register. Must implement
-        /// <see cref="IEventPublishChannel{TEvent}"/>.
-        /// </typeparam>
-        /// <typeparam name="TEvent">
-        /// The event data class this channel is keyed against.
-        /// </typeparam>
-        /// <param name="lifetime">
-        /// The <see cref="ServiceLifetime"/> of the channel registration.
-        /// Defaults to <see cref="ServiceLifetime.Singleton"/>.
+        /// <param name="lifetime">The service lifetime for the channel registration.</param>
+        /// <param name="channelName">
+        /// An optional logical name for the channel. When set the publisher will only route
+        /// events to this channel when the per-call options carry the same channel name.
         /// </param>
-        /// <returns>
-        /// Returns this <see cref="EventPublisherBuilder"/> instance so that
-        /// further calls can be chained.
-        /// </returns>
-        public EventPublisherBuilder AddChannel<TChannel, TEvent>(ServiceLifetime lifetime = ServiceLifetime.Singleton)
+        public EventPublisherBuilder AddChannel<TChannel, TEvent>(
+            ServiceLifetime lifetime = ServiceLifetime.Singleton,
+            string? channelName = null)
             where TChannel : class, IEventPublishChannel<TEvent>
             where TEvent : class
         {
             Services.TryAdd(new ServiceDescriptor(typeof(TChannel), typeof(TChannel), lifetime));
-            Services.Add(new ServiceDescriptor(typeof(IEventPublishChannel),
-                sp => sp.GetRequiredService<TChannel>(), lifetime));
-            Services.Add(new ServiceDescriptor(typeof(IEventPublishChannel<TEvent>),
-                sp => sp.GetRequiredService<TChannel>(), lifetime));
-
+            Services.Add(ServiceDescriptor.KeyedSingleton<IEventPublishChannel>(
+                Name, (sp, _) => (IEventPublishChannel)ApplyChannelName(sp.GetRequiredService<TChannel>(), channelName)));
+            Services.Add(ServiceDescriptor.KeyedSingleton<IEventPublishChannel<TEvent>>(
+                Name, (sp, _) => ApplyChannelName(sp.GetRequiredService<TChannel>(), channelName)));
+            _channelFactories.Add(sp => (IEventPublishChannel)ApplyChannelName(sp.GetRequiredService<TChannel>(), channelName));
             return this;
         }
 
         /// <summary>
-        /// Registers the given <paramref name="channel"/> instance as both an
-        /// <see cref="IEventPublishChannel"/> and an
-        /// <see cref="IEventPublishChannel{TEvent}"/>, so that the channel
-        /// receives only events whose data class is <typeparamref name="TEvent"/>.
+        /// Registers a pre-built typed channel instance for this publisher pipeline.
         /// </summary>
-        /// <typeparam name="TEvent">
-        /// The event data class this channel is keyed against.
-        /// </typeparam>
-        /// <param name="channel">The pre-built typed channel instance to register.</param>
-        /// <returns>
-        /// Returns this <see cref="EventPublisherBuilder"/> instance so that
-        /// further calls can be chained.
-        /// </returns>
-        public EventPublisherBuilder AddChannel<TEvent>(IEventPublishChannel<TEvent> channel)
+        /// <param name="channel">The typed channel instance to register.</param>
+        /// <param name="channelName">
+        /// An optional logical name for the channel. When set the publisher will only route
+        /// events to this channel when the per-call options carry the same channel name.
+        /// </param>
+        public EventPublisherBuilder AddChannel<TEvent>(IEventPublishChannel<TEvent> channel, string? channelName = null)
             where TEvent : class
         {
-            Services.AddSingleton<IEventPublishChannel>(channel);
-            Services.AddSingleton<IEventPublishChannel<TEvent>>(channel);
+            var entry = ApplyChannelName(channel, channelName);
+            Services.AddKeyedSingleton<IEventPublishChannel>(Name, (IEventPublishChannel)entry);
+            Services.AddKeyedSingleton<IEventPublishChannel<TEvent>>(Name, entry);
+            _channelFactories.Add(_ => (IEventPublishChannel)entry);
             return this;
         }
-	}
+    }
 }

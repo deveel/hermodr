@@ -195,7 +195,7 @@ namespace Deveel.Events
             // Act – use the generic overload
             await publisher.PublishAsync(
                 new OrderPlaced { OrderId = "generic-1" },
-                null,
+                cancellationToken:
                 TestContext.Current.CancellationToken);
 
             // Assert
@@ -255,6 +255,33 @@ namespace Deveel.Events
         }
 
         [Fact]
+        public async Task PublishAsync_TypedChannelResultCache_IsStableUnderConcurrentAccess()
+        {
+            var typedEvents = new List<CloudEvent>();
+            var sync = new object();
+
+            var publisher = BuildPublisher(b => b
+                .AddTestChannel<OrderPlaced>(e =>
+                {
+                    lock (sync)
+                    {
+                        typedEvents.Add(e);
+                    }
+                }));
+
+            var tasks = Enumerable.Range(0, 24)
+                .Select(i => publisher.PublishAsync(
+                    typeof(OrderPlaced),
+                    new OrderPlaced { OrderId = $"parallel-{i}" },
+                    null,
+                    TestContext.Current.CancellationToken));
+
+            await Task.WhenAll(tasks);
+
+            Assert.Equal(24, typedEvents.Count);
+        }
+
+        [Fact]
         public async Task PublishEventAsync_UntypedCloudEvent_AlwaysUsesAllRegisteredChannels()
         {
             // PublishEventAsync(CloudEvent,...) directly — this path always broadcasts
@@ -272,7 +299,7 @@ namespace Deveel.Events
                 Type   = "order.placed",
                 Source = new Uri("https://api.example.com"),
                 Id     = Guid.NewGuid().ToString("N"),
-            }, null, TestContext.Current.CancellationToken);
+            }, cancellationToken: TestContext.Current.CancellationToken);
 
             // Assert – ALL channels receive the event because no data type was resolved
             Assert.Single(typedEvents);

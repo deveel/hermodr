@@ -7,7 +7,7 @@ namespace Deveel.Events
 {
     /// <summary>
     /// An <see cref="IEventSubscription"/> that, when an event matches its filter,
-    /// re-publishes that event to another channel by calling <see cref="IEventPublisher"/>
+    /// re-publishes that event to another channel by calling <see cref="EventPublisher"/>
     /// with a set of <see cref="EventPublishOptions"/> that select the target channel.
     /// </summary>
     /// <remarks>

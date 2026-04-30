@@ -101,14 +101,14 @@ namespace Deveel.Events
         private static EventPublisher BuildPublisher(params IEventPublishChannel[] channels)
         {
             var services = new ServiceCollection();
-            services.AddEventPublisher(o =>
+            var builder = services.AddEventPublisher(o =>
             {
                 o.Source = new Uri("https://api.example.com");
                 o.ThrowOnErrors = true;
             });
 
             foreach (var ch in channels)
-                services.AddSingleton<IEventPublishChannel>(ch);
+                builder.AddChannel(ch);
 
             return services.BuildServiceProvider().GetRequiredService<EventPublisher>();
         }
@@ -184,7 +184,7 @@ namespace Deveel.Events
             var publisher = BuildPublisher(channel);
 
             // Act – explicitly pass null
-            await publisher.PublishEventAsync(MakeEvent(), null, TestContext.Current.CancellationToken);
+            await publisher.PublishEventAsync(MakeEvent(), cancellationToken: TestContext.Current.CancellationToken);
 
             // Assert – null forwarded; channel used its registered defaults
             Assert.NotNull(channel.LastEffectiveOptions);

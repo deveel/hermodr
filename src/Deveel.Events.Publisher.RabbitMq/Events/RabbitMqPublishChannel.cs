@@ -14,8 +14,8 @@ using RabbitMQ.Client;
 namespace Deveel.Events
 {
     /// <summary>
-    /// The implementation of the <see cref="IEventPublishChannel{TOptions}"/> that
-    /// is used to publish events to a RabbitMQ exchange.
+    /// An <see cref="EventPublishChannel{TOptions}"/> implementation that
+    /// publishes events to a RabbitMQ exchange.
     /// </summary>
     class RabbitMqPublishChannel :
         EventPublishChannel<RabbitMqPublishOptions>,

@@ -65,5 +65,28 @@ namespace Deveel {
 			return new EventPublisherBuilder(services)
 				.Configure(configure);
 		}
+
+        /// <summary>
+        /// Adds a named event-publisher pipeline and configures it via
+        /// <paramref name="configure"/>.
+        /// </summary>
+        /// <param name="services">The service collection.</param>
+        /// <param name="name">
+        /// A unique name for this pipeline. Use <see cref="IEventPublisherFactory"/> to
+        /// retrieve the named publisher at runtime.
+        /// </param>
+        /// <param name="configure">
+        /// A delegate that configures the pipeline (channels, middleware, options).
+        /// </param>
+        public static EventPublisherBuilder AddEventPublisher(
+            this IServiceCollection services,
+            string name,
+            Action<EventPublisherBuilder> configure)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(name);
+            var builder = new EventPublisherBuilder(services, name);
+            configure(builder);
+            return builder;
+        }
 	}
 }

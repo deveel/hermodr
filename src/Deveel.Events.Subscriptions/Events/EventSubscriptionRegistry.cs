@@ -24,6 +24,11 @@ namespace Deveel.Events
                 _subscriptions.AddRange(subscriptions);
         }
         
+        /// <summary>
+        /// Registers a new <paramref name="subscription"/> in the registry.
+        /// </summary>
+        /// <param name="subscription">The subscription to register.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="subscription"/> is <c>null</c>.</exception>
         public void Register(IEventSubscription subscription)
         {
             ArgumentNullException.ThrowIfNull(subscription);
@@ -41,17 +46,16 @@ namespace Deveel.Events
             return Task.CompletedTask;
         }
         
+        /// <summary>
+        /// Returns all subscriptions whose <see cref="IEventSubscription.Filter"/> matches
+        /// the given <paramref name="event"/>.
+        /// </summary>
+        /// <param name="event">The event to match against.</param>
+        /// <returns>A read-only list of matching subscriptions.</returns>
         public IReadOnlyList<IEventSubscription> GetMatchingSubscriptions(CloudEvent @event)
         {
             ArgumentNullException.ThrowIfNull(@event);
-
-            List<IEventSubscription> snapshot;
-            lock (_lock)
-                snapshot = new List<IEventSubscription>(_subscriptions);
-
-            return snapshot
-                .Where(s => s.Filter.Matches(@event, EventSubscriptionContext.Empty))
-                .ToList();
+            return GetMatchingSnapshot(@event, EventSubscriptionContext.Empty);
         }
 
         /// <inheritdoc/>
@@ -68,16 +72,24 @@ namespace Deveel.Events
         {
             ArgumentNullException.ThrowIfNull(@event);
             cancellationToken.ThrowIfCancellationRequested();
+            IReadOnlyList<IEventSubscription> result =
+                GetMatchingSnapshot(@event, context ?? EventSubscriptionContext.Empty);
+            return Task.FromResult(result);
+        }
 
+        /// <summary>
+        /// Takes a thread-safe snapshot of the subscription list and filters it against
+        /// the given <paramref name="event"/> and <paramref name="context"/>.
+        /// </summary>
+        private List<IEventSubscription> GetMatchingSnapshot(CloudEvent @event, EventSubscriptionContext context)
+        {
             List<IEventSubscription> snapshot;
             lock (_lock)
                 snapshot = new List<IEventSubscription>(_subscriptions);
 
-            IReadOnlyList<IEventSubscription> result = snapshot
-                .Where(s => s.Filter.Matches(@event, context ?? EventSubscriptionContext.Empty))
+            return snapshot
+                .Where(s => s.Filter.Matches(@event, context))
                 .ToList();
-
-            return Task.FromResult(result);
         }
     }
 }

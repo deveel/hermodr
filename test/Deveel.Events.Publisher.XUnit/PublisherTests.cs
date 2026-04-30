@@ -30,6 +30,13 @@ namespace Deveel.Events {
 		private EventPublisher Publisher { get; }
 
 		[Fact]
+    public async Task PublishEvent_NullCloudEvent_Throws()
+    {
+      await Assert.ThrowsAsync<ArgumentNullException>(() =>
+        Publisher.PublishEventAsync((CloudEvent)null!, cancellationToken: TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
 		public async Task PublishSimpleEvent() {
 			var @event = new CloudEvent {
 				Type = "person.created",
@@ -46,7 +53,7 @@ namespace Deveel.Events {
 
 			@event[CloudEventAttribute.CreateExtension("env", CloudEventAttributeType.String)] = "test";
 
-			await Publisher.PublishEventAsync(@event, null, TestContext.Current.CancellationToken);
+			await Publisher.PublishEventAsync(@event, cancellationToken: TestContext.Current.CancellationToken);
 
 			Assert.Single(Events);
 			Assert.Equal("person.created", Events[0].Type);
@@ -65,7 +72,7 @@ namespace Deveel.Events {
 				Id = "123",
 				FirstName = "John",
 				LastName = "Doe"
-			},  null, TestContext.Current.CancellationToken);
+			},  cancellationToken: TestContext.Current.CancellationToken);
 
 			Assert.Single(Events);
 			Assert.Equal("person.created", Events[0].Type);
@@ -95,7 +102,7 @@ namespace Deveel.Events {
                 LastName = "Doe"
             };
 
-            await Publisher.PublishAsync(personDeleted, null, TestContext.Current.CancellationToken);
+            await Publisher.PublishAsync(personDeleted, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Single(Events);
             Assert.Equal("person.deleted", Events[0].Type);
@@ -126,7 +133,7 @@ namespace Deveel.Events {
                 Source = new Uri("https://api.svc.deveel.com/test-service"),
             };
 
-            await Publisher.PublishEventAsync(@event, null, TestContext.Current.CancellationToken);
+            await Publisher.PublishEventAsync(@event, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Single(Events);
             Assert.Equal(existingId, Events[0].Id);
@@ -142,7 +149,7 @@ namespace Deveel.Events {
                 Source = customSource,
             };
 
-            await Publisher.PublishEventAsync(@event, null, TestContext.Current.CancellationToken);
+            await Publisher.PublishEventAsync(@event, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Single(Events);
             Assert.Equal(customSource, Events[0].Source);
@@ -159,7 +166,7 @@ namespace Deveel.Events {
                 Time = fixedTime,
             };
 
-            await Publisher.PublishEventAsync(@event, null, TestContext.Current.CancellationToken);
+            await Publisher.PublishEventAsync(@event, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Single(Events);
             Assert.Equal(fixedTime, Events[0].Time);
@@ -173,7 +180,7 @@ namespace Deveel.Events {
                 Type = "test.event",
             };
 
-            await Publisher.PublishEventAsync(@event, null, TestContext.Current.CancellationToken);
+            await Publisher.PublishEventAsync(@event, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Single(Events);
             Assert.Equal(new Uri("https://api.svc.deveel.com/test-service"), Events[0].Source);
@@ -188,7 +195,7 @@ namespace Deveel.Events {
                 Source = new Uri("https://api.svc.deveel.com"),
             };
 
-            await Publisher.PublishEventAsync(@event, null, TestContext.Current.CancellationToken);
+            await Publisher.PublishEventAsync(@event, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Single(Events);
             Assert.NotNull(Events[0].Time);
@@ -203,7 +210,7 @@ namespace Deveel.Events {
                 Source = new Uri("https://api.svc.deveel.com"),
             };
 
-            await Publisher.PublishEventAsync(@event, null, TestContext.Current.CancellationToken);
+            await Publisher.PublishEventAsync(@event, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Single(Events);
             Assert.NotNull(Events[0].Id);
@@ -230,7 +237,7 @@ namespace Deveel.Events {
             {
                 Type = "test.event",
                 Source = new Uri("https://api.example.com"),
-            }, null, TestContext.Current.CancellationToken);
+            }, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Single(publishedEvents);
             // Just verify the event was published successfully with all attribute types
@@ -243,8 +250,8 @@ namespace Deveel.Events {
             services.AddEventPublisher(options =>
             {
                 options.ThrowOnErrors = false;
-            });
-            services.AddSingleton<IEventPublishChannel>(new ThrowingChannel());
+            })
+            .AddChannel(new ThrowingChannel());
 
             var provider = services.BuildServiceProvider();
             var publisher = provider.GetRequiredService<EventPublisher>();
@@ -254,7 +261,7 @@ namespace Deveel.Events {
             {
                 Type = "test.event",
                 Source = new Uri("https://api.example.com"),
-            }, null, TestContext.Current.CancellationToken);
+            }, cancellationToken: TestContext.Current.CancellationToken);
         }
 
         [Fact]
@@ -264,8 +271,8 @@ namespace Deveel.Events {
             services.AddEventPublisher(options =>
             {
                 options.ThrowOnErrors = true;
-            });
-            services.AddSingleton<IEventPublishChannel>(new ThrowingChannel());
+            })
+            .AddChannel(new ThrowingChannel());
 
             var provider = services.BuildServiceProvider();
             var publisher = provider.GetRequiredService<EventPublisher>();
@@ -275,24 +282,21 @@ namespace Deveel.Events {
                 {
                     Type = "test.event",
                     Source = new Uri("https://api.example.com"),
-                }, null, TestContext.Current.CancellationToken));
+                }, cancellationToken: TestContext.Current.CancellationToken));
         }
 
         [Fact]
         public async Task PublishEventData_ThrowOnErrorsFalse_WhenNoEventCreator_Swallows()
         {
-            // Publisher without EventCreator - CreateEventFromData throws NotSupportedException
+            // Publisher without EventFactory - CreateEventFromData throws NotSupportedException
             var services = new ServiceCollection();
             services.AddOptions<EventPublisherOptions>();
-            services.AddSingleton<IEventPublishChannel>(new ThrowingChannel());
-            services.AddSingleton<IEventIdGenerator>(EventGuidGenerator.Default);
-            services.AddSingleton<IEventSystemTime>(EventSystemTime.Instance);
 
             var provider = services.BuildServiceProvider();
             var publisher = new EventPublisher(
                 provider.GetRequiredService<IOptions<EventPublisherOptions>>(),
-                provider.GetRequiredService<IEnumerable<IEventPublishChannel>>(),
-                eventCreator: null  // No event creator
+                [new ThrowingChannel()],
+                provider
             );
 
             // ThrowOnErrors = false by default, should swallow
@@ -305,15 +309,12 @@ namespace Deveel.Events {
             var services = new ServiceCollection();
             services.AddOptions<EventPublisherOptions>()
                 .Configure(o => o.ThrowOnErrors = true);
-            services.AddSingleton<IEventPublishChannel>(new ThrowingChannel());
-            services.AddSingleton<IEventIdGenerator>(EventGuidGenerator.Default);
-            services.AddSingleton<IEventSystemTime>(EventSystemTime.Instance);
 
             var provider = services.BuildServiceProvider();
             var publisher = new EventPublisher(
                 provider.GetRequiredService<IOptions<EventPublisherOptions>>(),
-                provider.GetRequiredService<IEnumerable<IEventPublishChannel>>(),
-                eventCreator: null
+                [new ThrowingChannel()],
+                provider
             );
 
             await Assert.ThrowsAsync<EventPublishException>(() =>
@@ -332,7 +333,7 @@ namespace Deveel.Events {
             var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
 
             // Should not throw
-            await publisher.PublishAsync(new BrokenConvertible(), null, TestContext.Current.CancellationToken);
+            await publisher.PublishAsync(new BrokenConvertible(), cancellationToken: TestContext.Current.CancellationToken);
         }
 
         [Fact]
@@ -347,7 +348,7 @@ namespace Deveel.Events {
             var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
 
             await Assert.ThrowsAsync<EventPublishException>(() =>
-                publisher.PublishAsync(new BrokenConvertible(), null, TestContext.Current.CancellationToken));
+                publisher.PublishAsync(new BrokenConvertible(), cancellationToken: TestContext.Current.CancellationToken));
         }
 
         [Fact]
@@ -358,7 +359,7 @@ namespace Deveel.Events {
                 Id = "generic-test",
                 FirstName = "Generic",
                 LastName = "Test"
-            }, null, TestContext.Current.CancellationToken);
+            }, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Single(Events);
             Assert.Equal("person.created", Events[0].Type);
@@ -379,7 +380,7 @@ namespace Deveel.Events {
             {
                 Type = "test.event",
                 Source = new Uri("https://api.example.com"),
-            }, null, TestContext.Current.CancellationToken);
+            }, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Single(publishedEvents);
             Assert.NotNull(publishedEvents[0]["binattr"]);
@@ -389,7 +390,7 @@ namespace Deveel.Events {
         public async Task PublishEventFactory_NullFactory_Throws()
         {
             await Assert.ThrowsAsync<ArgumentNullException>(() =>
-                Publisher.PublishAsync<PersonDeleted>(null!, null, TestContext.Current.CancellationToken));
+                Publisher.PublishAsync<PersonDeleted>(null!, cancellationToken: TestContext.Current.CancellationToken));
         }
 
         [Event("person.created", "https://example.com/events/person.created/1.0")]

@@ -266,121 +266,148 @@ namespace Deveel.Events
             };
 
         [Fact]
-        public async Task DispatchAsync_InvokesMatchingHandler()
+        public async Task Publish_WithDispatcher_InvokesMatchingHandler()
         {
             var handled = new List<CloudEvent>();
 
-            var registry = new EventSubscriptionRegistry([
-                new EventSubscription(
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddEventPublisher(opt => opt.Source = new Uri("https://example.com"))
+                .AddSubscriptions()
+                .Subscribe(
                     EventFilter.ByType("com.example.test"),
                     (e, _) => { handled.Add(e); return Task.CompletedTask; },
-                    "sub")
-            ]);
+                    "sub");
 
-            var dispatcher = new EventDispatcher(registry);
+            var provider = services.BuildServiceProvider();
+            var publisher = provider.GetRequiredService<EventPublisher>().UseDispatcher();
             var @event = MakeEvent();
-            await dispatcher.DispatchAsync(@event);
+            await publisher.PublishEventAsync(@event);
 
             Assert.Single(handled);
             Assert.Same(@event, handled[0]);
         }
 
         [Fact]
-        public async Task DispatchAsync_DoesNotInvokeNonMatchingHandler()
+        public async Task Publish_WithDispatcher_DoesNotInvokeNonMatchingHandler()
         {
             var handled = false;
 
-            var registry = new EventSubscriptionRegistry([
-                new EventSubscription(
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddEventPublisher(opt => opt.Source = new Uri("https://example.com"))
+                .AddSubscriptions()
+                .Subscribe(
                     EventFilter.ByType("com.example.other"),
-                    (_, _) => { handled = true; return Task.CompletedTask; })
-            ]);
+                    (_, _) => { handled = true; return Task.CompletedTask; });
 
-            var dispatcher = new EventDispatcher(registry);
-            await dispatcher.DispatchAsync(MakeEvent("com.example.test"));
+            var provider = services.BuildServiceProvider();
+            var publisher = provider.GetRequiredService<EventPublisher>().UseDispatcher();
+
+            await publisher.PublishEventAsync(MakeEvent("com.example.test"));
 
             Assert.False(handled);
         }
 
         [Fact]
-        public async Task DispatchAsync_DefaultOptions_DoesNotThrowOnHandlerError()
+        public async Task Publish_WithDispatcher_DefaultOptions_DoesNotThrowOnHandlerError()
         {
-            var registry = new EventSubscriptionRegistry([
-                new EventSubscription(
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddEventPublisher(opt => opt.Source = new Uri("https://example.com"))
+                .AddSubscriptions()
+                .Subscribe(
                     FilterExpression.Constant(true),
-                    (_, _) => throw new InvalidOperationException("boom"))
-            ]);
+                    (_, _) => throw new InvalidOperationException("boom"));
 
-            var dispatcher = new EventDispatcher(registry);
-            await dispatcher.DispatchAsync(MakeEvent());
+            var provider = services.BuildServiceProvider();
+            var publisher = provider.GetRequiredService<EventPublisher>().UseDispatcher();
+
+            await publisher.PublishEventAsync(MakeEvent());
         }
 
         [Fact]
-        public async Task DispatchAsync_ThrowOnHandlerError_PropagatesException()
+        public async Task Publish_WithDispatcher_ThrowOnHandlerError_PropagatesException()
         {
-            var registry = new EventSubscriptionRegistry([
-                new EventSubscription(
-                    FilterExpression.Constant(true),
-                    (_, _) => throw new InvalidOperationException("boom"))
-            ]);
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddEventPublisher(opt => opt.Source = new Uri("https://example.com"))
 
-            var dispatcher = new EventDispatcher(registry, options: new EventDispatcherOptions { ThrowOnHandlerError = true });
+                .AddSubscriptions(o => o.ThrowOnHandlerError = true)
+                .Subscribe(
+                    FilterExpression.Constant(true),
+                    (_, _) => throw new InvalidOperationException("boom"));
+
+            var provider = services.BuildServiceProvider();
+            var publisher = provider.GetRequiredService<EventPublisher>().UseDispatcher();
 
             await Assert.ThrowsAsync<InvalidOperationException>(() =>
-                dispatcher.DispatchAsync(MakeEvent()));
+                publisher.PublishEventAsync(MakeEvent()));
         }
 
         [Fact]
-        public async Task DispatchAsync_MultipleSubscribers_AllInvoked()
+        public async Task Publish_WithDispatcher_MultipleSubscribers_AllInvoked()
         {
             var invoked = new List<string>();
 
-            var registry = new EventSubscriptionRegistry([
-                new EventSubscription(
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddEventPublisher(opt => opt.Source = new Uri("https://example.com"))
+                .AddSubscriptions()
+                .Subscribe(
                     FilterExpression.Constant(true),
                     (_, _) => { invoked.Add("sub1"); return Task.CompletedTask; },
-                    "sub1"),
-                new EventSubscription(
+                    "sub1")
+                .Subscribe(
                     FilterExpression.Constant(true),
                     (_, _) => { invoked.Add("sub2"); return Task.CompletedTask; },
-                    "sub2")
-            ]);
+                    "sub2");
 
-            var dispatcher = new EventDispatcher(registry);
-            await dispatcher.DispatchAsync(MakeEvent());
+            var provider = services.BuildServiceProvider();
+            var publisher = provider.GetRequiredService<EventPublisher>().UseDispatcher();
+            await publisher.PublishEventAsync(MakeEvent());
 
             Assert.Equal(["sub1", "sub2"], invoked);
         }
 
         [Fact]
-        public async Task AsPublishChannel_DispatchesEvent()
+        public async Task AsMiddleware_DispatchesEvent()
         {
             var handled = false;
 
-            var registry = new EventSubscriptionRegistry([
-                new EventSubscription(
-                    FilterExpression.Constant(true),
-                    (_, _) => { handled = true; return Task.CompletedTask; })
-            ]);
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddEventPublisher(opt => opt.Source = new Uri("https://example.com"))
+                .AddSubscriptions()
+                .Subscribe(FilterExpression.Constant(true),
+                    (_, _) => { handled = true; return Task.CompletedTask; });
 
-            IEventPublishChannel channel = new EventDispatcher(registry);
-            await channel.PublishAsync(MakeEvent());
+            var provider = services.BuildServiceProvider();
+            var publisher = provider.GetRequiredService<EventPublisher>()
+                .UseDispatcher();
+
+            await publisher.PublishEventAsync(MakeEvent());
 
             Assert.True(handled);
         }
 
         [Fact]
-        public async Task DispatchAsync_RespectsCancellation()
+        public async Task Publish_WithDispatcher_RespectsCancellation()
         {
-            var registry = new EventSubscriptionRegistry([
-                new EventSubscription(FilterExpression.Constant(true),
-                    async (_, ct) => await Task.Delay(Timeout.Infinite, ct))
-            ]);
-
             using var cts = new CancellationTokenSource();
-            var dispatcher = new EventDispatcher(registry);
 
-            var task = dispatcher.DispatchAsync(MakeEvent(), cts.Token);
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddEventPublisher(opt => opt.Source = new Uri("https://example.com"))
+                .AddSubscriptions()
+                .Subscribe(
+                    FilterExpression.Constant(true),
+                    async (_, ct) => await Task.Delay(Timeout.Infinite, ct));
+
+            var provider = services.BuildServiceProvider();
+            var publisher = provider.GetRequiredService<EventPublisher>().UseDispatcher();
+
+            var task = publisher.PublishEventAsync(MakeEvent(), cancellationToken: cts.Token);
             await Task.Delay(50);
             cts.Cancel();
 
@@ -402,20 +429,20 @@ namespace Deveel.Events
             };
 
         [Fact]
-        public static async Task AddDispatcher_WithConfigureAction_ThrowOnHandlerError_Propagates()
+        public static async Task AddSubscriptions_WithDispatcherOptions_ThrowOnHandlerError_Propagates()
         {
             var services = new ServiceCollection();
             services.AddLogging();
             services.AddEventPublisher(opt => opt.Source = new Uri("https://example.com"))
-                    .AddDispatcher(o => o.ThrowOnHandlerError = true)
+                    .AddSubscriptions(o => o.ThrowOnHandlerError = true)
                     .Subscribe(FilterExpression.Constant(true),
                         (_, _) => throw new InvalidOperationException("intentional"));
 
-            var provider   = services.BuildServiceProvider();
-            var dispatcher = provider.GetRequiredService<EventDispatcher>();
+            var provider = services.BuildServiceProvider();
+            var publisher = provider.GetRequiredService<EventPublisher>().UseDispatcher();
 
             await Assert.ThrowsAsync<InvalidOperationException>(() =>
-                dispatcher.DispatchAsync(new CloudEvent
+                publisher.PublishEventAsync(new CloudEvent
                 {
                     Type   = "com.example.test",
                     Source = new Uri("https://example.com"),
@@ -424,32 +451,35 @@ namespace Deveel.Events
         }
 
         [Fact]
-        public static async Task DispatchAsync_NullEvent_Throws()
+        public static async Task PublishEventAsync_NullEvent_Throws()
         {
-            var dispatcher = new EventDispatcher(new EventSubscriptionRegistry());
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddEventPublisher().AddSubscriptions();
+
+            var provider = services.BuildServiceProvider();
+            var publisher = provider.GetRequiredService<EventPublisher>().UseDispatcher();
 
             await Assert.ThrowsAsync<ArgumentNullException>(() =>
-                dispatcher.DispatchAsync(null!));
+                publisher.PublishEventAsync(null!));
         }
 
         [Fact]
-        public static void AddDispatcher_RegistersRequiredServices()
+        public static void AddSubscriptions_RegistersRequiredServices()
         {
             var services = new ServiceCollection();
             services.AddLogging();
             services.AddEventPublisher()
-                    .AddDispatcher();
+                    .AddSubscriptions();
 
             var provider = services.BuildServiceProvider();
 
             Assert.NotNull(provider.GetService<IEventSubscriptionRegistry>());
             Assert.NotNull(provider.GetService<IEventSubscriptionResolver>());
-            Assert.NotNull(provider.GetService<IEventDispatcher>());
-            Assert.NotNull(provider.GetService<EventDispatcher>());
         }
 
         [Fact]
-        public static async Task AddDispatcher_WithInlineSubscription_RoutesEvent()
+        public static async Task AddSubscriptions_WithInlineSubscription_RoutesEvent()
         {
             var handled = new List<string>();
 
@@ -460,13 +490,14 @@ namespace Deveel.Events
                     opt.Source = new Uri("https://example.com");
                     opt.ThrowOnErrors = true;
                 })
-                .AddDispatcher()
+                .AddSubscriptions()
                 .Subscribe("com.example.test",
                     (e, _) => { handled.Add(e.Type!); return Task.CompletedTask; },
                     name: "test-handler");
 
             var provider = services.BuildServiceProvider();
-            var publisher = provider.GetRequiredService<IEventPublisher>();
+            var publisher = provider.GetRequiredService<EventPublisher>()
+                .UseDispatcher();
 
             var @event = MakeEvent();
             @event.Time = DateTimeOffset.UtcNow;
@@ -478,19 +509,20 @@ namespace Deveel.Events
         }
 
         [Fact]
-        public static async Task AddDispatcher_WithPatternSubscription_RoutesMatchingEvents()
+        public static async Task AddSubscriptions_WithPatternSubscription_RoutesMatchingEvents()
         {
             var handled = new List<string>();
 
             var services = new ServiceCollection();
             services.AddLogging();
             services.AddEventPublisher(opt => opt.Source = new Uri("https://example.com"))
-                .AddDispatcher()
+                .AddSubscriptions()
                 .Subscribe("com.example.*",
                     (e, _) => { handled.Add(e.Type!); return Task.CompletedTask; });
 
             var provider = services.BuildServiceProvider();
-            var publisher = provider.GetRequiredService<IEventPublisher>();
+            var publisher = provider.GetRequiredService<EventPublisher>()
+                .UseDispatcher();
 
             CloudEvent Evt(string type) => new()
             {
@@ -510,14 +542,14 @@ namespace Deveel.Events
         }
 
         [Fact]
-        public static async Task AddDispatcher_WithFilterBuilder_RoutesMatchingEvents()
+        public static async Task AddSubscriptions_WithFilterBuilder_RoutesMatchingEvents()
         {
             var handled = false;
 
             var services = new ServiceCollection();
             services.AddLogging();
             services.AddEventPublisher(opt => opt.Source = new Uri("https://example.com"))
-                .AddDispatcher()
+                .AddSubscriptions()
                 .Subscribe(
                     EventFilter.All(
                         EventFilter.ByTypePattern("com.example.*"),
@@ -526,7 +558,8 @@ namespace Deveel.Events
                     (_, _) => { handled = true; return Task.CompletedTask; });
 
             var provider = services.BuildServiceProvider();
-            var publisher = provider.GetRequiredService<IEventPublisher>();
+            var publisher = provider.GetRequiredService<EventPublisher>()
+                .UseDispatcher();
 
             await publisher.PublishEventAsync(new CloudEvent
             {
@@ -540,16 +573,17 @@ namespace Deveel.Events
         }
 
         [Fact]
-        public static async Task AddDispatcher_WithHandlerClass_RoutesEvents()
+        public static async Task AddSubscriptions_WithHandlerClass_RoutesEvents()
         {
             var services = new ServiceCollection();
             services.AddLogging();
             services.AddEventPublisher(opt => opt.Source = new Uri("https://example.com"))
-                .AddDispatcher()
+                .AddSubscriptions()
                 .Subscribe<OrderPlacedSubscription>();
 
             var provider = services.BuildServiceProvider();
-            var publisher = provider.GetRequiredService<IEventPublisher>();
+            var publisher = provider.GetRequiredService<EventPublisher>()
+                .UseDispatcher();
             var subscription = provider.GetRequiredService<OrderPlacedSubscription>();
 
             await publisher.PublishEventAsync(new CloudEvent
@@ -722,7 +756,7 @@ namespace Deveel.Events
             var services = new ServiceCollection();
             services.AddLogging();
             services.AddEventPublisher(opt => opt.Source = new Uri("https://example.com"))
-                .AddDispatcher()
+                .AddSubscriptions()
                 .Subscribe(
                     EventFilter.All(
                         EventFilter.ByType("com.example.order.placed"),
@@ -730,7 +764,8 @@ namespace Deveel.Events
                     (_, _) => { invoked = true; return Task.CompletedTask; });
 
             var provider = services.BuildServiceProvider();
-            var publisher = provider.GetRequiredService<IEventPublisher>();
+            var publisher = provider.GetRequiredService<EventPublisher>()
+                .UseDispatcher();
 
             await publisher.PublishEventAsync(new CloudEvent
             {
@@ -753,7 +788,7 @@ namespace Deveel.Events
             var services = new ServiceCollection();
             services.AddLogging();
             services.AddEventPublisher(opt => opt.Source = new Uri("https://example.com"))
-                .AddDispatcher()
+                .AddSubscriptions()
                 .Subscribe(
                     EventFilter.All(
                         EventFilter.ByType("com.example.order.placed"),
@@ -761,7 +796,8 @@ namespace Deveel.Events
                     (_, _) => { invoked = true; return Task.CompletedTask; });
 
             var provider = services.BuildServiceProvider();
-            var publisher = provider.GetRequiredService<IEventPublisher>();
+            var publisher = provider.GetRequiredService<EventPublisher>()
+                .UseDispatcher();
 
             await publisher.PublishEventAsync(new CloudEvent
             {

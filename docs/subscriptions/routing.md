@@ -1,21 +1,21 @@
 # Routing Subscriptions
 
-A **routing subscription** intercepts a matched `CloudEvent` and **re-publishes** it through the `IEventPublisher` pipeline, optionally targeting a specific channel. This is useful for conditional fan-out, format conversion, or splitting a single publish call into multiple targeted deliveries.
+A **routing subscription** intercepts a matched `CloudEvent` and **re-publishes** it through the `EventPublisher` pipeline, optionally targeting a specific channel. This is useful for conditional fan-out, format conversion, or splitting a single publish call into multiple targeted deliveries.
 
 ## How It Works
 
-`RoutingEventSubscription` implements `IRoutingEventSubscription` (which extends `IEventSubscription`). When an event matches its filter, it resolves `IEventPublisher` from the DI container (lazily, to avoid circular dependencies) and re-publishes the event using optional `EventPublishOptions` to select the target channel.
+`RoutingEventSubscription` implements `IRoutingEventSubscription` (which extends `IEventSubscription`). When an event matches its filter, it resolves `EventPublisher` from the DI container (lazily, to avoid circular dependencies) and re-publishes the event using optional `EventPublishOptions` to select the target channel.
 
 ```
-IEventPublisher.PublishAsync(event)
-  └── EventDispatcher receives event (as IEventPublishChannel)
+EventPublisher.PublishAsync(event)
+  └── EventDispatcher middleware receives event
         └── Filter matches RoutingEventSubscription
               └── RoutingEventSubscription.HandleAsync(event)
-                    └── IEventPublisher.PublishEventAsync(event, routingOptions)
+                    └── EventPublisher.PublishEventAsync(event, routingOptions)
                           └── Routed to the target channel (e.g. Azure Service Bus queue)
 ```
 
-> **Circular dependency:** The publisher depends on the dispatcher (as an `IEventPublishChannel`), which in turn invokes the routing subscription, which calls back into the publisher. This is safe because `IEventPublisher` is resolved **lazily** (on the first `HandleAsync` call), after the DI container is fully built.
+> **Circular dependency:** The publisher pipeline includes `EventDispatcher` middleware, which can invoke routing subscriptions that call back into the publisher. This is safe because `EventPublisher` is resolved lazily (on first `HandleAsync`), after DI is fully built.
 
 ---
 
@@ -23,10 +23,12 @@ IEventPublisher.PublishAsync(event)
 
 Use the `RouteToChannel` extension methods on `EventPublisherBuilder`:
 
+> Routing subscriptions run only when dispatcher middleware is enabled on the runtime publisher (`publisher.UseDispatcher()` or `publisher.UseDispatcher(options)`).
+
 ### By Type Pattern
 
 ```csharp
-pub.AddDispatcher()
+pub.AddSubscriptions()
    .RouteToChannel(
        typePattern: "com.example.order.*",
        routingOptions: new EventPublishOptions { ChannelName = "orders-bus" },
@@ -36,11 +38,11 @@ pub.AddDispatcher()
 ### By Pre-Built Filter
 
 ```csharp
-FilterExpression filter = CloudEventFilter.All(
-    CloudEventFilter.ByTypePattern("com.example.order.*"),
-    CloudEventFilter.ByExtension("priority", "high"));
+FilterExpression filter = EventFilter.All(
+    EventFilter.ByTypePattern("com.example.order.*"),
+    EventFilter.ByExtension("priority", "high"));
 
-pub.AddDispatcher()
+pub.AddSubscriptions()
    .RouteToChannel(
        filter: filter,
        routingOptions: new EventPublishOptions { ChannelName = "high-priority-bus" },
@@ -50,11 +52,11 @@ pub.AddDispatcher()
 ### With Combined Expressions
 
 ```csharp
-pub.AddDispatcher()
+pub.AddSubscriptions()
    .RouteToChannel(
-       filter: CloudEventFilter.All(
-           CloudEventFilter.ByTypePattern("com.example.payment.*"),
-           CloudEventFilter.ByField("currency", "USD")),
+       filter: EventFilter.All(
+           EventFilter.ByTypePattern("com.example.payment.*"),
+           EventFilter.ByField("currency", "USD")),
        routingOptions: new EventPublishOptions { ChannelName = "usd-payments" },
        name: "route-usd-payments");
 ```
@@ -79,12 +81,12 @@ pub.AddDispatcher()
 Re-publish the same event to a high-priority queue when the amount exceeds a threshold, and to a standard queue otherwise:
 
 ```csharp
-pub.AddDispatcher()
+pub.AddSubscriptions()
    // High-value orders → priority queue
    .RouteToChannel(
-       filter: CloudEventFilter.All(
-           CloudEventFilter.ByTypePattern("com.example.order.*"),
-           CloudEventFilter.ByField("amount", FilterExpressionType.GreaterThanOrEqual, 1000.0)),
+       filter: EventFilter.All(
+           EventFilter.ByTypePattern("com.example.order.*"),
+           EventFilter.ByField("amount", FilterExpressionType.GreaterThanOrEqual, 1000.0)),
        new EventPublishOptions { ChannelName = "priority-orders" })
    // All orders → standard queue (separate channel registration)
    .RouteToChannel(
@@ -99,7 +101,7 @@ Forward events to a different channel in non-production environments:
 ```csharp
 if (!environment.IsProduction())
 {
-    pub.AddDispatcher()
+    pub.AddSubscriptions()
        .RouteToChannel(
            "com.example.*",
            new EventPublishOptions { ChannelName = "dev-sink" },
@@ -112,7 +114,7 @@ if (!environment.IsProduction())
 Re-publish payment events to a dedicated audit channel while normal processing continues:
 
 ```csharp
-pub.AddDispatcher()
+pub.AddSubscriptions()
    .RouteToChannel(
        "com.example.payment.*",
        new EventPublishOptions { ChannelName = "audit-log" },
@@ -140,7 +142,7 @@ public sealed class TenantRoutingSubscription : IRoutingEventSubscription
     public string? Name => "tenant-router";
 
     public FilterExpression Filter =>
-        CloudEventFilter.ByTypePattern("com.example.*");
+        EventFilter.ByTypePattern("com.example.*");
 
     // RoutingOptions is null here because the target channel is resolved dynamically in HandleAsync.
     public EventPublishOptions? RoutingOptions => null;
@@ -150,7 +152,7 @@ public sealed class TenantRoutingSubscription : IRoutingEventSubscription
         var tenantId = e["tenantid"]?.ToString();
         var channel  = await _resolver.ResolveChannelAsync(tenantId, ct);
 
-        var publisher = _services.GetRequiredService<IEventPublisher>();
+        var publisher = _services.GetRequiredService<EventPublisher>();
         await publisher.PublishEventAsync(
             e,
             new EventPublishOptions { ChannelName = channel },
@@ -159,6 +161,6 @@ public sealed class TenantRoutingSubscription : IRoutingEventSubscription
 }
 
 // Registration:
-pub.AddDispatcher()
+pub.AddSubscriptions()
    .Subscribe<TenantRoutingSubscription>();
 ```

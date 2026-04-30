@@ -7,7 +7,7 @@ The framework is split into focused NuGet packages so you only take what you nee
 | Package | Description |
 |---------|-------------|
 | [`Deveel.Events.Annotations`](#deveeleeventsannotations) | Attributes for describing event metadata on your data classes |
-| [`Deveel.Events.Publisher`](#deveeleventsublisher) | Core publisher infrastructure (`IEventPublisher`, `EventPublisherBuilder`, DI helpers) |
+| [`Deveel.Events.Publisher`](#deveeleventsublisher) | Core publisher infrastructure (`EventPublisher`, `EventPublisherBuilder`, DI helpers) |
 
 ## Channel packages
 
@@ -18,6 +18,12 @@ The framework is split into focused NuGet packages so you only take what you nee
 | [`Deveel.Events.Publisher.MassTransit`](#deveeleventsublishermasstransit) | Publish events through a MassTransit bus |
 | [`Deveel.Events.Publisher.Webhook`](#deveeleventsublisherwebhook) | Deliver events to HTTP webhook endpoints |
 | [`Deveel.Events.Amqp.Annotations`](#deveeleventsampqannotations) | AMQP-specific attributes (exchange name, routing key) |
+
+## Subscriptions package
+
+| Package | Description |
+|---------|-------------|
+| [`Deveel.Events.Subscriptions`](#deveeleventssubscriptions) | In-process event subscription registry and dispatcher |
 
 ## Schema packages
 
@@ -57,8 +63,8 @@ dotnet add package Deveel.Events.Annotations
 
 The heart of the framework.  Provides:
 
-- `IEventPublisher` / `EventPublisher`
-- `IEventPublishChannel` and `IBatchEventPublishChannel<TOptions>`
+- `EventPublisher`
+- `IEventPublishChannel` and `IBatchEventPublishChannel`
 - `EventPublisherBuilder` for fluent DI registration
 - `IEventCreator` and `IEventIdGenerator` extensibility points
 - `EventPublisherOptions` for global defaults
@@ -130,6 +136,25 @@ Adds `[AmqpExchange]` and `[AmqpRoutingKey]` attributes to let you declare per-e
 
 ```bash
 dotnet add package Deveel.Events.Amqp.Annotations
+```
+
+---
+
+### `Deveel.Events.Subscriptions`
+
+[![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Subscriptions.svg)](https://www.nuget.org/packages/Deveel.Events.Subscriptions)
+[![GitHub pre-release](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/deveel.events/pkgs/nuget/Deveel.Events.Subscriptions)
+
+Adds an in-process event subscription registry and dispatcher middleware to the `EventPublisher` pipeline. Includes:
+
+- `IEventSubscription` and `EventSubscription` — the subscription model
+- `IEventSubscriptionRegistry` — default in-memory registry
+- `IEventSubscriptionResolver` — extensibility point for database- or remote-backed resolvers
+- `EventDispatcher` — middleware that queries resolvers and invokes matched handlers
+- `EventFilter` / `EventFilterBuilder` — composable `FilterExpression` factory for envelope and data-payload filtering
+
+```bash
+dotnet add package Deveel.Events.Subscriptions
 ```
 
 ---

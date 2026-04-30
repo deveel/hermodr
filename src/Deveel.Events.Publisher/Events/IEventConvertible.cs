@@ -10,12 +10,12 @@ namespace Deveel.Events
     /// <summary>
     /// Implemented by a data object that can convert itself directly into a
     /// <see cref="CloudEvent"/> without requiring the reflection-based
-    /// <see cref="IEventCreator"/> factory.
+    /// <see cref="IEventFactory"/> factory.
     /// </summary>
     /// <remarks>
     /// When <see cref="EventPublisher"/> receives a data object that implements
     /// this interface, it calls <see cref="ToCloudEvent"/> instead of delegating
-    /// to <see cref="IEventCreator"/>.  This allows strongly-typed data classes to
+    /// to <see cref="IEventFactory"/>.  This allows strongly-typed data classes to
     /// control their own CloudEvent representation without relying on
     /// <c>[Event]</c> / <c>[EventProperty]</c> annotation reflection.
     /// </remarks>

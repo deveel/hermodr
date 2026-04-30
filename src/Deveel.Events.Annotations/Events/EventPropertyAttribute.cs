@@ -61,14 +61,14 @@ namespace Deveel.Events {
 
         /// <summary>
         /// The version of the event schema this property belongs to.
-        /// Only set when the <c>schemaOrVersion</c> constructor argument is a valid version string.
+        /// Only set when the <paramref name="schemaOrVersion"/> constructor argument is a valid version string.
         /// <c>null</c> when a <see cref="Schema"/> URI was provided instead.
         /// </summary>
         public string? Version { get; set; }
 
         /// <summary>
         /// The URI to the schema of the data that this property carries.
-        /// Only set when the <c>schemaOrVersion</c> constructor argument is a valid absolute URI.
+        /// Only set when the <paramref name="schemaOrVersion"/> constructor argument is a valid absolute URI.
         /// <c>null</c> when a <see cref="Version"/> string was provided instead.
         /// </summary>
         public Uri? Schema { get; set; }

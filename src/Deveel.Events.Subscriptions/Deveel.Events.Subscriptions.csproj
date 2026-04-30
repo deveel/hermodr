@@ -3,7 +3,7 @@
     <Title>Deveel Events Subscriptions</Title>
     <Description>
       Event subscription abstractions and in-process dispatcher for the Deveel Events Publisher.
-      Provides IEventSubscription, IEventSubscriptionRegistry, IEventDispatcher,
+      Provides IEventSubscription, IEventSubscriptionRegistry,
       serializable filter expressions, and DI integration via EventPublisherBuilder extensions.
     </Description>
     <PackageTags>event;events;ddd;subscription;dispatcher;routing;filter</PackageTags>

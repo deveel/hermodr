@@ -140,7 +140,7 @@ namespace Deveel.Events
         [Fact]
         public async Task PublishCloudEvent_NullEvent_ThrowsArgumentNullException()
         {
-            var channel = _services.GetRequiredService<IEventPublishChannel>();
+            var channel = _services.GetRequiredKeyedService<IEventPublishChannel>(string.Empty);
             await Assert.ThrowsAsync<ArgumentNullException>(() =>
                 channel.PublishAsync(null!, null, TestContext.Current.CancellationToken));
         }

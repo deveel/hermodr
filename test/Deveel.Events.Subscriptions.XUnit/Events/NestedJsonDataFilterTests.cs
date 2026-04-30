@@ -225,7 +225,7 @@ namespace Deveel.Events
             var services = new ServiceCollection();
             services.AddLogging();
             services.AddEventPublisher(opt => opt.Source = new Uri("https://example.com"))
-                .AddDispatcher()
+                .AddSubscriptions()
                 // subscription 1: gold tier
                 .Subscribe(
                     EventFilter.All(
@@ -242,7 +242,8 @@ namespace Deveel.Events
                     name: "us-handler");
 
             var provider = services.BuildServiceProvider();
-            var publisher = provider.GetRequiredService<IEventPublisher>();
+            var publisher = provider.GetRequiredService<EventPublisher>()
+                .UseDispatcher();
 
             var goldUs   = EventWithData(MakeOrder(tier: "gold",   country: "US"));
             var silverUs = EventWithData(MakeOrder(tier: "silver", country: "US"));
@@ -273,7 +274,7 @@ namespace Deveel.Events
             var services = new ServiceCollection();
             services.AddLogging();
             services.AddEventPublisher(opt => opt.Source = new Uri("https://example.com"))
-                .AddDispatcher()
+                .AddSubscriptions()
                 .Subscribe(
                     EventFilter.All(
                         EventFilter.ByType("com.example.order.placed"),
@@ -286,7 +287,8 @@ namespace Deveel.Events
                     });
 
             var provider = services.BuildServiceProvider();
-            var publisher = provider.GetRequiredService<IEventPublisher>();
+            var publisher = provider.GetRequiredService<EventPublisher>()
+                .UseDispatcher();
 
             await publisher.PublishEventAsync(EventWithData(MakeOrder(amount: 600,  isPaid: true)));   // match
             await publisher.PublishEventAsync(EventWithData(MakeOrder(amount: 499,  isPaid: true)));   // amount too low

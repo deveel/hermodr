@@ -9,7 +9,7 @@ This section explains the fundamental building blocks of the Deveel Events frame
 │                   Your application                   │
 │                                                      │
 │   ┌──────────────┐      ┌──────────────────────────┐ │
-│   │  Event data  │─────▶│     IEventPublisher      │ │
+│   │  Event data  │─────▶│      EventPublisher      │ │
 │   │  (annotated  │      └──────────┬───────────────┘ │
 │   │   classes)   │                 │ fan-out         │
 │   └──────────────┘        ┌────────┴────────┐        │
@@ -22,7 +22,7 @@ This section explains the fundamental building blocks of the Deveel Events frame
 ```
 
 1. You describe an event using an annotated data class (or construct a raw `CloudEvent`).
-2. You call `IEventPublisher.PublishAsync` (or `PublishEventAsync`).
+2. You call `EventPublisher.PublishAsync` (or `PublishEventAsync`).
 3. The publisher fans the event out to **every registered `IEventPublishChannel`**.
 4. Each channel serialises the event and dispatches it to the appropriate transport.
 
@@ -30,10 +30,10 @@ This section explains the fundamental building blocks of the Deveel Events frame
 
 | Abstraction | Role |
 |-------------|------|
-| `IEventPublisher` | The single entry point for publishing events |
+| `EventPublisher` | The single entry point for publishing events |
 | `IEventPublishChannel` | One transport target (Azure Service Bus queue, RabbitMQ exchange, …) |
 | `IBatchEventPublishChannel` | A channel that also supports delivering multiple events in a single batched call |
-| `IEventCreator` | Converts an annotated data object into a `CloudEvent` |
+| `IEventFactory` | Converts an annotated data object into a `CloudEvent` |
 | `IEventIdGenerator` | Generates unique identifiers for events (default: GUID) |
 | `IEventSystemTime` | Supplies the event timestamp (replaceable for testing) |
 

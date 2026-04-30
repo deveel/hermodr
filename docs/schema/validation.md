@@ -45,9 +45,9 @@ using System.ComponentModel.DataAnnotations;
 public class OrderService
 {
     private readonly IEventSchemaValidator _validator;
-    private readonly IEventPublisher _publisher;
+    private readonly EventPublisher _publisher;
 
-    public OrderService(IEventSchemaValidator validator, IEventPublisher publisher)
+    public OrderService(IEventSchemaValidator validator, EventPublisher publisher)
     {
         _validator = validator;
         _publisher = publisher;

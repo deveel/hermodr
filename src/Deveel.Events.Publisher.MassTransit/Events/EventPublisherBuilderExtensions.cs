@@ -23,12 +23,9 @@ namespace Deveel.Events
         private static EventPublisherBuilder AddMassTransitChannel(this EventPublisherBuilder builder)
         {
             builder.AddMassTransitInfrastructure();
-            // Register the concrete channel once under its own type so callers can resolve it
-            // directly and supply per-call option overrides.
-            builder.Services.TryAddSingleton<MassTransitPublishChannel>();
-            // Expose it as IEventPublishChannel (type-based so ImplementationType is preserved).
-            builder.Services.AddSingleton<IEventPublishChannel, MassTransitPublishChannel>();
-            return builder;
+            // Register the concrete channel and expose it as a keyed IEventPublishChannel
+            // scoped to this publisher pipeline.
+            return builder.AddChannel<MassTransitPublishChannel>();
         }
 
         /// <summary>

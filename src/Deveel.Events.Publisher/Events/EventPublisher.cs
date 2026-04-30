@@ -5,585 +5,404 @@
 
 using CloudNative.CloudEvents;
 
+using System.Linq;
+
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
-using System.ComponentModel.DataAnnotations;
+using System.Collections.Concurrent;
 
-namespace Deveel.Events {
-	/// <summary>
-	/// The service that is responsible for publishing events 
-	/// to the configured channels.
-	/// </summary>
-	public class EventPublisher : IEventPublisher
-	{
-		private readonly IEnumerable<IEventPublishChannel> _channels;
-		private readonly ILogger _logger;
-		private IDictionary<Type, IReadOnlyList<IEventPublishChannel>>? _typedChannels;
-
-		/// <summary>
-		/// Constructs the publisher with the given options 
-		/// and channels.
-		/// </summary>
-		/// <param name="options">
-		/// The options that are used to configure the publisher.
-		/// </param>
-		/// <param name="channels">
-		/// The list of channels that are used to publish the events.
-		/// </param>
-		/// <param name="eventCreator">
-		/// An instance of the service that is used to create events.
-		/// </param>
-		/// <param name="idGenerator">
-		/// A service that is used to generate the event identifiers.
-		/// </param>
-		/// <param name="systemTime">
-		/// The object that is used to get the current system time.
-		/// </param>
-		/// <param name="logger">
-		/// A logger that is used to log the events.
-		/// </param>
-		public EventPublisher(
-			IOptions<EventPublisherOptions> options,
-			IEnumerable<IEventPublishChannel> channels,
-			IEventCreator? eventCreator = null,
-			IEventIdGenerator? idGenerator = null,
-			IEventSystemTime? systemTime = null,
-			ILogger<EventPublisher>? logger = null)
-		{
-			PublisherOptions = options == null ? new EventPublisherOptions() : options.Value;
-			IdGenerator = idGenerator;
-			SystemTime = systemTime;
-			_channels = channels;
-			EventCreator = eventCreator;
-			_logger = logger ?? NullLogger<EventPublisher>.Instance;
-		}
-
-		/// <summary>
-		/// Gets the service that is used to create events.
-		/// </summary>
-		protected IEventCreator? EventCreator { get; }
-		
-		    /// <summary>
-    /// Gets the options that are used to configure the publisher.
-    /// </summary>
-    protected EventPublisherOptions PublisherOptions { get; }
-
+namespace Deveel.Events
+{
     /// <summary>
-    /// Gets the service used to obtain the current UTC time for event timestamps.
-    /// When <c>null</c>, the <see cref="SetTimeStamp"/> method does not fill in
-    /// the event <c>time</c> attribute automatically.
+    /// The service that is responsible for publishing events
+    /// to the configured channels.
     /// </summary>
-    protected IEventSystemTime? SystemTime { get; }
+    public class EventPublisher : IEventPublisher
+    {
+        private readonly IEnumerable<IEventPublishChannel> _channels;
+        private readonly ILogger _logger;
+        private readonly EventPublisherPipeline? _pipeline;
+        private readonly IServiceProvider _serviceProvider;
 
-    /// <summary>
-    /// Gets the service used to generate unique identifiers for events.
-    /// When <c>null</c>, the <see cref="SetEventId"/> method does not fill in
-    /// the event <c>id</c> attribute automatically.
-    /// </summary>
-    protected IEventIdGenerator? IdGenerator { get; }
+        // Pipeline factory is built exactly once from the immutable descriptor.
+        private readonly Lazy<Func<EventPublishDelegate, EventPublishDelegate>> _pipelineFactory;
 
-    /// <summary>
-    /// Sets the timestamp of the event if it was 
-    /// not already set.
-    /// </summary>
-    /// <param name="event">
-    /// The event to set the timestamp.
-    /// </param>
-    /// <remarks>
-    /// This method uses the <see cref="IEventSystemTime"/> service
-    /// to get the current system time to be used as the timestamp
-    /// of the event.
-    /// </remarks>
-    /// <returns>
-    /// Returns the event with the timestamp set.
-    /// </returns>
-    protected virtual CloudEvent SetTimeStamp(CloudEvent @event) {
-        if (@event.Time == null && SystemTime != null)
-            @event.Time = SystemTime.UtcNow;
-
-        return @event;
-    }
-
-    /// <summary>
-    /// Sets the source of the event if it was not already set.
-    /// </summary>
-    /// <param name="event">
-    /// The event to set the source.
-    /// </param>
-    /// <remarks>
-    /// This method uses the <see cref="EventPublisherOptions.Source"/>
-    /// to set the source of the event.
-    /// </remarks>
-    /// <returns>
-    /// Returns the event with the source set.
-    /// </returns>
-    protected virtual CloudEvent SetSource(CloudEvent @event) {
-        if (@event.Source == null && PublisherOptions.Source != null)
-            @event.Source = PublisherOptions.Source;
-
-        return @event;
-    }
-
-    /// <summary>
-    /// Sets the identifier of the event if it was not already set.
-    /// </summary>
-    /// <param name="event">
-    /// The event to set the identifier.
-    /// </param>
-    /// <remarks>
-    /// This method uses the <see cref="IEventIdGenerator"/> service
-    /// to generate a new identifier for the event.
-    /// </remarks>
-    /// <returns>
-    /// Returns the event with the identifier set.
-    /// </returns>
-    protected virtual CloudEvent SetEventId(CloudEvent @event) {
-        if (@event.Id == null && IdGenerator != null)
-            @event.Id = IdGenerator.GenerateId();
-
-        return @event;
-    }
-
-    /// <summary>
-    /// Adds the attributes configured for the publisher 
-    /// into the event.
-    /// </summary>
-    /// <param name="event">
-    /// The event to add the attributes.
-    /// </param>
-    /// <returns>
-    /// Returns the event with the attributes set.
-    /// </returns>
-    protected virtual CloudEvent SetAttributes(CloudEvent @event) {
-        if (PublisherOptions.Attributes != null)
+        private readonly ConcurrentDictionary<Type, IReadOnlyList<IEventPublishChannel>> _typedChannels = new();
+        
+        /// <summary>
+        /// Internal constructor used by <see cref="EventPublisherBuilder"/> to supply a
+        /// pre-built, frozen <paramref name="pipeline"/> at construction time.
+        /// </summary>
+        public EventPublisher(
+            IOptions<EventPublisherOptions> options,
+            IEnumerable<IEventPublishChannel> channels,
+            IServiceProvider serviceProvider,
+            EventPublisherPipeline? pipeline = null,
+            ILogger<EventPublisher>? logger = null)
         {
-            foreach (var attribute in PublisherOptions.Attributes)
+            PublisherOptions = options == null ? new EventPublisherOptions() : options.Value;
+            _channels = channels;
+            _serviceProvider = serviceProvider;
+            _logger = logger ?? NullLogger<EventPublisher>.Instance;
+            _pipeline = pipeline ?? new EventPublisherPipeline();
+            _pipelineFactory = new Lazy<Func<EventPublishDelegate, EventPublishDelegate>>(
+                () => _pipeline.Build(), LazyThreadSafetyMode.ExecutionAndPublication);
+        }
+
+        /// <summary>Gets the service that is used to create events.</summary>
+        protected IEventFactory? EventFactory => _serviceProvider.GetService<IEventFactory>();
+
+        /// <summary>Gets the options that are used to configure the publisher.</summary>
+        protected EventPublisherOptions PublisherOptions { get; }
+
+        /// <summary>Gets the service used to obtain the current UTC time for event timestamps.</summary>
+        protected IEventSystemTime? SystemTime => _serviceProvider.GetService<IEventSystemTime>();
+
+        /// <summary>Gets the service used to generate unique identifiers for events.</summary>
+        protected IEventIdGenerator? IdGenerator => _serviceProvider.GetService<IEventIdGenerator>();
+
+        /// <summary>Sets the timestamp of the event if it was not already set.</summary>
+        protected virtual CloudEvent SetTimeStamp(CloudEvent @event)
+        {
+            if (@event.Time == null && SystemTime != null)
+                @event.Time = SystemTime.UtcNow;
+            return @event;
+        }
+
+        /// <summary>Sets the source of the event if it was not already set.</summary>
+        protected virtual CloudEvent SetSource(CloudEvent @event)
+        {
+            if (@event.Source == null && PublisherOptions.Source != null)
+                @event.Source = PublisherOptions.Source;
+            return @event;
+        }
+
+        /// <summary>Sets the identifier of the event if it was not already set.</summary>
+        protected virtual CloudEvent SetEventId(CloudEvent @event)
+        {
+            if (@event.Id == null && IdGenerator != null)
+                @event.Id = IdGenerator.GenerateId();
+            return @event;
+        }
+
+        /// <summary>Adds the attributes configured for the publisher into the event.</summary>
+        protected virtual CloudEvent SetAttributes(CloudEvent @event)
+        {
+            if (PublisherOptions.Attributes != null)
             {
-                var attr = CloudEventAttribute.CreateExtension(attribute.Key, GetAttributeType(attribute.Value));
-                @event[attr] = attribute.Value;
+                foreach (var attribute in PublisherOptions.Attributes)
+                {
+                    var attr = CloudEventAttribute.CreateExtension(attribute.Key, GetAttributeType(attribute.Value));
+                    @event[attr] = attribute.Value;
+                }
+            }
+            return @event;
+        }
+
+        private CloudEventAttributeType GetAttributeType(object? value)
+        {
+            return value switch
+            {
+                bool => CloudEventAttributeType.Boolean,
+                byte[] _ => CloudEventAttributeType.Binary,
+                string _ => CloudEventAttributeType.String,
+                int _ => CloudEventAttributeType.Integer,
+                long _ => CloudEventAttributeType.Integer,
+                Uri _ => CloudEventAttributeType.Uri,
+                DateTimeOffset _ => CloudEventAttributeType.Timestamp,
+                DateTime _ => CloudEventAttributeType.Timestamp,
+                _ => CloudEventAttributeType.String
+            };
+        }
+
+        /// <summary>
+        /// Validates that the given event satisfies the four mandatory CloudEvents
+        /// attributes after enrichment and before dispatch to any channel.
+        /// </summary>
+        protected virtual void ValidateCloudEvent(CloudEvent @event)
+        {
+            var missing = new List<string>();
+            if (string.IsNullOrWhiteSpace(@event.Id)) missing.Add("id");
+            if (@event.Source == null) missing.Add("source");
+            if (string.IsNullOrWhiteSpace(@event.Type)) missing.Add("type");
+            if (string.IsNullOrWhiteSpace(@event.SpecVersion?.VersionId)) missing.Add("specversion");
+            if (missing.Count > 0) throw new InvalidCloudEventException(missing);
+        }
+
+        /// <summary>Resolves the options to pass to the given channel.</summary>
+        protected virtual EventPublishOptions? ResolveChannelOptions(IEventPublishChannel channel,
+            EventPublishOptions? options)
+        {
+            if (options == null) return null;
+            var channelType = channel.GetType();
+            var expectedOptionsType = FindExpectedOptionsType(channelType);
+            if (expectedOptionsType is null) return null;
+            var channelEventType = FindChannelEventType(channelType);
+            if (options is CombinedPublishOptions combined)
+                return ResolveCombinedOptions(channel, combined, expectedOptionsType, channelEventType);
+            return ResolveSingleOptions(channel, options, expectedOptionsType, channelEventType);
+        }
+
+        private static EventPublishOptions? ResolveCombinedOptions(
+            IEventPublishChannel channel,
+            CombinedPublishOptions combined,
+            Type expectedOptionsType,
+            Type? channelEventType)
+        {
+            var compatibleEntries = combined.Options.Where(o =>
+                expectedOptionsType.IsInstanceOfType(o) &&
+                NameMatchesChannel(o, channel));
+
+            return channelEventType != null
+                ? compatibleEntries.FirstOrDefault(o => IsTypedForEvent(o.GetType(), channelEventType))
+                : compatibleEntries.FirstOrDefault(o => !IsAnyTypedOptions(o.GetType()));
+        }
+
+        private static EventPublishOptions? ResolveSingleOptions(
+            IEventPublishChannel channel,
+            EventPublishOptions options,
+            Type expectedOptionsType,
+            Type? channelEventType)
+        {
+            if (!expectedOptionsType.IsInstanceOfType(options) || !NameMatchesChannel(options, channel))
+                return null;
+            if (channelEventType != null)
+                return IsTypedForEvent(options.GetType(), channelEventType) ? options : null;
+            return IsAnyTypedOptions(options.GetType()) ? null : options;
+        }
+
+        private static Type? FindExpectedOptionsType(Type channelType)
+        {
+            for (var t = channelType; t != null && t != typeof(object); t = t.BaseType)
+            {
+                if (t.IsGenericType && t.GetGenericTypeDefinition() == typeof(EventPublishChannel<>))
+                    return t.GetGenericArguments()[0];
+            }
+            return null;
+        }
+
+        private static Type? FindChannelEventType(Type channelType)
+        {
+            foreach (var iface in channelType.GetInterfaces()
+                .Where(iface => iface.IsGenericType && iface.GetGenericTypeDefinition() == typeof(IEventPublishChannel<>)))
+            {
+                return iface.GetGenericArguments()[0];
+            }
+            return null;
+        }
+
+        private static bool NameMatchesChannel(EventPublishOptions options, IEventPublishChannel channel)
+        {
+            if (options is not INamedChannelFilter filter || string.IsNullOrEmpty(filter.ChannelName))
+                return true;
+            if (channel is not INamedEventPublishChannel named)
+                return true;
+            if (string.IsNullOrEmpty(named.Name))
+                return true;
+            return string.Equals(filter.ChannelName, named.Name, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>Filters channels by name according to the options.</summary>
+        protected virtual IEnumerable<IEventPublishChannel> FilterChannelsByName(
+            IEnumerable<IEventPublishChannel> channels,
+            EventPublishOptions? options)
+        {
+            if (options is not INamedChannelFilter { ChannelName: { Length: > 0 } name })
+                return channels;
+            return channels.Where(c =>
+                c is not INamedEventPublishChannel named ||
+                string.IsNullOrEmpty(named.Name) ||
+                string.Equals(named.Name, name, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static bool IsTypedForEvent(Type optionsType, Type eventType)
+        {
+            for (var t = optionsType; t != null && t != typeof(object); t = t.BaseType)
+            {
+                if (t.IsGenericType && t.GetGenericArguments().Any(arg => arg == eventType))
+                    return true;
+            }
+            return false;
+        }
+
+        private static bool IsAnyTypedOptions(Type optionsType)
+        {
+            for (var t = optionsType; t != null && t != typeof(object); t = t.BaseType)
+            {
+                if (t.IsGenericType) return true;
+            }
+            return false;
+        }
+
+        /// <summary>Publishes the event to a single channel, resolving per-call options first.</summary>
+        protected virtual Task PublishEventAsync(IEventPublishChannel channel, CloudEvent @event,
+            EventPublishOptions? options = null,
+            CancellationToken cancellationToken = default)
+        {
+            var resolvedOptions = ResolveChannelOptions(channel, options);
+            return channel.PublishAsync(@event, resolvedOptions, cancellationToken);
+        }
+
+        private CloudEvent EnsureEvent(CloudEvent @event)
+        {
+            ArgumentNullException.ThrowIfNull(@event);
+            var eventToPublish = @event;
+            eventToPublish = SetEventId(eventToPublish);
+            eventToPublish = SetTimeStamp(eventToPublish);
+            eventToPublish = SetSource(eventToPublish);
+            eventToPublish = SetAttributes(eventToPublish);
+            return eventToPublish;
+        }
+
+
+        private async Task DispatchToChannelsAsync(
+            IReadOnlyList<IEventPublishChannel> channels,
+            EventContext context)
+        {
+            ValidateCloudEvent(context.Event);
+            foreach (var channel in channels)
+            {
+                _logger.TraceEventPublishing(context.Event.Type!, channel.GetType());
+                try
+                {
+                    await PublishEventAsync(channel, context.Event, context.Options, context.CancellationToken);
+                    _logger.TraceEventPublished(context.Event.Type!, channel.GetType());
+                }
+                catch (OperationCanceledException) when (context.CancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    HandleChannelPublishError(ex, context.Event.Type!, channel.GetType());
+                }
             }
         }
 
-        return @event;
-    }
-    
-    private CloudEventAttributeType GetAttributeType(object? value)
-    {
-        return value switch
+        private void HandleChannelPublishError(Exception ex, string eventType, Type channelType)
         {
-            bool => CloudEventAttributeType.Boolean,
-            byte[] _ => CloudEventAttributeType.Binary,
-            string _ => CloudEventAttributeType.String,
-            int _ => CloudEventAttributeType.Integer,
-            long _ => CloudEventAttributeType.Integer,
-            Uri _ => CloudEventAttributeType.Uri,
-            DateTimeOffset _ => CloudEventAttributeType.Timestamp,
-            DateTime _ => CloudEventAttributeType.Timestamp,
-            _ => CloudEventAttributeType.String
-        };
+            _logger.LogEventPublishError(ex, eventType, channelType);
+            if (!PublisherOptions.ThrowOnErrors) return;
+            throw new EventPublishException(
+                $"An error occurred while publishing an event of type {eventType} to the channel '{channelType.Name}'",
+                ex);
+        }
+
+        private async Task PublishEventToChannelsAsync(IEnumerable<IEventPublishChannel> channels, CloudEvent @event,
+            EventPublishOptions? options = null, CancellationToken cancellationToken = default)
+        {
+            var targetChannels = FilterChannelsByName(channels, options).ToList();
+            await using var scope = _serviceProvider.CreateAsyncScope();
+            var context = new EventContext(@event, scope.ServiceProvider, cancellationToken, options);
+            EventPublishDelegate terminal = ctx =>
+            {
+                ctx.Event = EnsureEvent(ctx.Event);
+                return DispatchToChannelsAsync(targetChannels, ctx);
+            };
+            var pipeline = _pipelineFactory.Value(terminal);
+            _logger.TracePipelineExecuting(@event.Type);
+            await pipeline(context);
+            _logger.TracePipelineCompleted(@event.Type);
+        }
+
+        /// <inheritdoc/>
+        public virtual Task PublishEventAsync(CloudEvent @event, EventPublishOptions? options = null,
+            CancellationToken cancellationToken = default)
+            => PublishEventToChannelsAsync(_channels, @event, options, cancellationToken);
+
+        /// <inheritdoc/>
+        public Task PublishAsync(Type eventType, object? @event, EventPublishOptions? options = null,
+            CancellationToken cancellationToken = default)
+        {
+            if (!TryCreateCloudEvent(eventType, @event, out var cloudEvent))
+                return Task.CompletedTask;
+
+            var typedChannels = GetTypedChannels(eventType);
+            if (typedChannels.Count > 0)
+                return PublishEventToChannelsAsync(typedChannels, cloudEvent, options, cancellationToken);
+
+            return PublishEventAsync(cloudEvent, options, cancellationToken);
+        }
+
+        private bool TryCreateCloudEvent(Type eventType, object? @event, out CloudEvent cloudEvent)
+        {
+            try
+            {
+                cloudEvent = CreateEventFromData(eventType, @event);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogEventCreateError(ex, eventType);
+                if (PublisherOptions.ThrowOnErrors)
+                    throw new EventPublishException(
+                        $"An error occurred while creating an event of type {eventType.FullName} from the provided event",
+                        ex);
+                cloudEvent = null!;
+                return false;
+            }
+        }
+
+        private IReadOnlyList<IEventPublishChannel> GetTypedChannels(Type dataType)
+        {
+            return _typedChannels.GetOrAdd(dataType, static (type, channels) =>
+            {
+                var channelType = typeof(IEventPublishChannel<>).MakeGenericType(type);
+                return channels.Where(channelType.IsInstanceOfType).ToList();
+            }, _channels);
+        }
+
+        /// <summary>Creates an event from the given data type and the instance of the data.</summary>
+        protected virtual CloudEvent CreateEventFromData(Type dataType, object? data)
+        {
+            if (EventFactory == null)
+                throw new NotSupportedException("Cannot create events from the data");
+            return EventFactory.CreateEventFromData(dataType, data);
+        }
+        
+        public Task PublishAsync<TEvent>(TEvent @event, EventPublishOptions? options = null,
+            CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(@event);
+
+            if (@event is IEventConvertible eventConvertible)
+            {
+                if (!TryConvertToCloudEvent(eventConvertible, typeof(TEvent), out var convertedEvent))
+                    return Task.CompletedTask;
+                return PublishEventAsync(convertedEvent, options, cancellationToken);
+            }
+
+            if (@event is CloudEvent cloudEvent)
+                return PublishEventAsync(cloudEvent, options, cancellationToken);
+
+            return PublishAsync(typeof(TEvent), @event, options, cancellationToken);
+        }
+
+        private bool TryConvertToCloudEvent(IEventConvertible convertible, Type dataType, out CloudEvent cloudEvent)
+        {
+            try
+            {
+                var converted = convertible.ToCloudEvent();
+                if (converted == null)
+                {
+                    cloudEvent = null!;
+                    return false;
+                }
+                cloudEvent = converted;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogEventCreateError(ex, dataType);
+                if (PublisherOptions.ThrowOnErrors)
+                    throw new EventPublishException("An error occurred while converting data", ex);
+                cloudEvent = null!;
+                return false;
+            }
+        }
     }
-
-
-    /// <summary>
-    /// Validates that the given event satisfies the four mandatory CloudEvents
-    /// attributes (<c>id</c>, <c>source</c>, <c>type</c>, <c>specversion</c>)
-    /// after enrichment and before the event is dispatched to any channel.
-    /// </summary>
-    /// <param name="event">
-    /// The enriched event to validate.
-    /// </param>
-    /// <exception cref="InvalidCloudEventException">
-    /// Thrown when one or more required CloudEvents attributes are absent or empty.
-    /// </exception>
-    protected virtual void ValidateCloudEvent(CloudEvent @event) {
-        var missing = new List<string>();
-
-        if (string.IsNullOrWhiteSpace(@event.Id))
-            missing.Add("id");
-
-        if (@event.Source == null)
-            missing.Add("source");
-
-        if (string.IsNullOrWhiteSpace(@event.Type))
-            missing.Add("type");
-
-        // specversion is always "1.0" when using the CloudNative SDK, but we
-        // check it explicitly so that any unexpected null surfaces clearly.
-        if (string.IsNullOrWhiteSpace(@event.SpecVersion?.VersionId))
-            missing.Add("specversion");
-
-        if (missing.Count > 0)
-            throw new InvalidCloudEventException(missing);
-    }
-
-
-		/// <summary>
-		/// Resolves the options to pass to the given channel.
-		/// </summary>
-		/// <remarks>
-		/// <para>
-		/// The method first determines the channel's declared options type
-		/// (<c>TOptions</c> from <see cref="EventPublishChannel{TOptions}"/>) and
-		/// whether the channel is a <em>typed</em> channel (i.e. implements
-		/// <see cref="IEventPublishChannel{TEvent}"/> for some <c>TEvent</c>).
-		/// </para>
-		/// <para>
-		/// Matching rules for per-call <paramref name="options"/>:
-		/// <list type="bullet">
-		///   <item>
-		///     <description>
-		///       <strong>Typed channel</strong> (<c>IEventPublishChannel&lt;TEvent&gt;</c>) —
-		///       only accepts options whose runtime type (or an ancestor in its hierarchy) is a
-		///       closed generic type parameterised with <c>TEvent</c>
-		///       (e.g. <c>RabbitMqPublishOptions&lt;OrderPlaced&gt;</c>).
-		///       A non-generic options instance (e.g. bare <c>RabbitMqPublishOptions</c>)
-		///       is <strong>not</strong> forwarded; the channel falls back to its registered
-		///       defaults instead.
-		///     </description>
-		///   </item>
-		///   <item>
-		///     <description>
-		///       <strong>General channel</strong> (no <c>IEventPublishChannel&lt;TEvent&gt;</c>) —
-		///       only accepts options whose runtime type (and every ancestor) is
-		///       a non-generic type.  Typed options (e.g.
-		///       <c>RabbitMqPublishOptions&lt;OrderPlaced&gt;</c>) are
-		///       <strong>not</strong> forwarded to general channels.
-		///     </description>
-		///   </item>
-		/// </list>
-		/// </para>
-		/// <para>
-		/// When <paramref name="options"/> is a <see cref="CombinedPublishOptions"/> the same
-		/// rules are applied to each bundled entry; the first compatible entry wins.
-		/// </para>
-		/// </remarks>
-		/// <param name="channel">The target channel.</param>
-		/// <param name="options">The caller-supplied per-call options, or <c>null</c>.</param>
-		/// <returns>
-		/// Compatible options for the channel, or <c>null</c> to use the channel defaults.
-		/// </returns>
-		protected virtual EventPublishOptions? ResolveChannelOptions(IEventPublishChannel channel, EventPublishOptions? options)
-		{
-			if (options == null)
-				return null;
-
-			// Walk the inheritance chain looking for EventPublishChannel<TOptions>.
-			var channelType = channel.GetType();
-			Type? expectedOptionsType = null;
-			for (var t = channelType; t != null && t != typeof(object); t = t.BaseType)
-			{
-				if (t.IsGenericType && t.GetGenericTypeDefinition() == typeof(EventPublishChannel<>))
-				{
-					expectedOptionsType = t.GetGenericArguments()[0];
-					break;
-				}
-			}
-
-			// Channel does not derive from EventPublishChannel<TOptions> – pass null.
-			if (expectedOptionsType == null)
-				return null;
-
-			// Determine whether this is a typed channel (IEventPublishChannel<TEvent>).
-			Type? channelEventType = null;
-			foreach (var iface in channelType.GetInterfaces())
-			{
-				if (iface.IsGenericType && iface.GetGenericTypeDefinition() == typeof(IEventPublishChannel<>))
-				{
-					channelEventType = iface.GetGenericArguments()[0];
-					break;
-				}
-			}
-
-		if (options is CombinedPublishOptions combined)
-		{
-			// For combined options each bundled entry may carry its own ChannelName.
-			// Only entries whose name matches the target channel (or carry no name) are eligible.
-			var compatibleEntries = combined.Options.Where(o =>
-				expectedOptionsType.IsInstanceOfType(o) &&
-				NameMatchesChannel(o, channel));
-
-			return channelEventType != null
-				// Typed channel: find the first bundled entry typed for this TEvent.
-				? compatibleEntries.FirstOrDefault(o => IsTypedForEvent(o.GetType(), channelEventType))
-				// General channel: find the first non-typed bundled entry.
-				: compatibleEntries.FirstOrDefault(o => !IsAnyTypedOptions(o.GetType()));
-		}
-
-		// Single options instance.
-		if (!expectedOptionsType.IsInstanceOfType(options))
-			return null;
-
-		// If the options carry a name filter, the channel must match.
-		if (!NameMatchesChannel(options, channel))
-			return null;
-
-		if (channelEventType != null)
-			// Typed channel: only accept options specifically typed for this TEvent.
-			return IsTypedForEvent(options.GetType(), channelEventType) ? options : null;
-
-		// General channel: only accept non-typed options instances.
-		return IsAnyTypedOptions(options.GetType()) ? null : options;
-	}
-
-	/// <summary>
-	/// Returns <c>true</c> when the <paramref name="options"/> carry no name filter,
-	/// when the <paramref name="channel"/> does not implement
-	/// <see cref="INamedEventPublishChannel"/>, or when their
-	/// <see cref="INamedChannelFilter.ChannelName"/> matches the channel's
-	/// <see cref="INamedEventPublishChannel.Name"/> (case-insensitive).
-	/// </summary>
-	private static bool NameMatchesChannel(EventPublishOptions options, IEventPublishChannel channel)
-	{
-		if (options is not INamedChannelFilter filter || string.IsNullOrEmpty(filter.ChannelName))
-			return true;
-
-		// Anonymous channels (non-INamedEventPublishChannel) receive everything.
-		if (channel is not INamedEventPublishChannel named)
-			return true;
-
-		// A named-channel implementation with a null/empty Name is treated as unnamed.
-		if (string.IsNullOrEmpty(named.Name))
-			return true;
-
-		return string.Equals(filter.ChannelName, named.Name, StringComparison.OrdinalIgnoreCase);
-	}
-
-	/// <summary>
-	/// Filters <paramref name="channels"/> to those whose
-	/// <see cref="INamedEventPublishChannel.Name"/> matches the
-	/// <see cref="INamedChannelFilter.ChannelName"/> specified in
-	/// <paramref name="options"/>.
-	/// </summary>
-	/// <remarks>
-	/// When <paramref name="options"/> is <c>null</c>, does not implement
-	/// <see cref="INamedChannelFilter"/>, or carries an empty/null channel name,
-	/// all channels are returned unchanged.
-	/// Channels that do not implement <see cref="INamedEventPublishChannel"/> are
-	/// treated as anonymous and always pass the filter.
-	/// <see cref="CombinedPublishOptions"/> intentionally does not implement
-	/// <see cref="INamedChannelFilter"/>; its per-entry name filtering is handled
-	/// inside <see cref="ResolveChannelOptions"/>.
-	/// </remarks>
-	protected virtual IEnumerable<IEventPublishChannel> FilterChannelsByName(
-		IEnumerable<IEventPublishChannel> channels,
-		EventPublishOptions? options)
-	{
-		if (options is not INamedChannelFilter { ChannelName: { Length: > 0 } name })
-			return channels;
-
-		return channels.Where(c =>
-			c is not INamedEventPublishChannel named ||
-			string.IsNullOrEmpty(named.Name) ||
-			string.Equals(named.Name, name, StringComparison.OrdinalIgnoreCase));
-	}
-
-		/// <summary>
-		/// Returns <c>true</c> when <paramref name="optionsType"/> or any type in its
-		/// inheritance chain is a closed generic type that carries <paramref name="eventType"/>
-		/// as one of its type arguments.
-		/// </summary>
-		private static bool IsTypedForEvent(Type optionsType, Type eventType)
-		{
-			for (var t = optionsType; t != null && t != typeof(object); t = t.BaseType)
-			{
-				if (t.IsGenericType && t.GetGenericArguments().Any(arg => arg == eventType))
-					return true;
-			}
-			return false;
-		}
-
-		/// <summary>
-		/// Returns <c>true</c> when <paramref name="optionsType"/> or any type in its
-		/// inheritance chain is a generic type (indicating typed-channel options such as
-		/// <c>RabbitMqPublishOptions&lt;TEvent&gt;</c>).
-		/// </summary>
-		private static bool IsAnyTypedOptions(Type optionsType)
-		{
-			for (var t = optionsType; t != null && t != typeof(object); t = t.BaseType)
-			{
-				if (t.IsGenericType)
-					return true;
-			}
-			return false;
-		}
-
-		/// <summary>
-		/// Publishes the event to the given channel, resolving per-call options first.
-		/// </summary>
-		/// <param name="channel">The instance of the channel to publish to.</param>
-		/// <param name="event">The event to publish.</param>
-		/// <param name="options">Optional per-call options; incompatible types are resolved to <c>null</c>.</param>
-		/// <param name="cancellationToken">A token to cancel the operation.</param>
-		protected virtual Task PublishEventAsync(IEventPublishChannel channel, CloudEvent @event, EventPublishOptions? options = null,
-			CancellationToken cancellationToken = default)
-		{
-			var resolvedOptions = ResolveChannelOptions(channel, options);
-			return channel.PublishAsync(@event, resolvedOptions, cancellationToken);
-		}
-		
-		private CloudEvent EnsureEvent(CloudEvent @event) {
-			ArgumentNullException.ThrowIfNull(nameof(@event));
-
-			var eventToPublish = @event;
-			eventToPublish = SetEventId(eventToPublish);
-			eventToPublish = SetTimeStamp(eventToPublish);
-			eventToPublish = SetSource(eventToPublish);
-			eventToPublish = SetAttributes(eventToPublish);
-			
-			return eventToPublish;
-		}
-
-	private async Task PublishEventToChannelsAsync(IEnumerable<IEventPublishChannel> channels, CloudEvent @event, EventPublishOptions? options = null, CancellationToken cancellationToken = default)
-	{
-		var targetChannels = FilterChannelsByName(channels, options);
-		var eventToPublish = EnsureEvent(@event);
-		
-		ValidateCloudEvent(@eventToPublish);
-		
-		foreach (var channel in targetChannels)
-			{
-				_logger.TraceEventPublishing(@event.Type!, channel.GetType());
-
-				try
-				{
-					await PublishEventAsync(channel, @eventToPublish, options, cancellationToken);
-
-					_logger.TraceEventPublished(@event.Type!, channel.GetType());
-				}
-				catch (Exception ex)
-				{
-					_logger.LogEventPublishError(ex, @event.Type!, channel.GetType());
-
-					if (PublisherOptions.ThrowOnErrors)
-					{
-						throw new EventPublishException(
-							$"An error occurred while publishing an event of type {@event.Type} to the channel '{channel.GetType().Name}'",
-							ex);
-					}
-				}
-			}
-		}
-		
-		/// <inheritdoc cref="IEventPublisher.PublishEventAsync"/>
-		/// <exception cref="InvalidCloudEventException">
-		/// Thrown when any of the required CloudEvents attributes (<c>id</c>,
-		/// <c>source</c>, <c>type</c>, <c>specversion</c>) is still absent after
-		/// enrichment.
-		/// </exception>
-		public virtual Task PublishEventAsync(CloudEvent @event, EventPublishOptions? options = null, CancellationToken cancellationToken = default)
-		{
-			return PublishEventToChannelsAsync(_channels, @event, options, cancellationToken);
-		}
-
-		/// <inheritdoc cref="IEventPublisher.PublishAsync(Type,object,EventPublishOptions,CancellationToken)"/>
-		/// <exception cref="EventPublishException">
-		/// Thrown when an error occurs while creating the event from the event and
-		/// <see cref="EventPublisherOptions.ThrowOnErrors"/> is <c>true</c>.
-		/// </exception>
-		public Task PublishAsync(Type eventType, object? @event, EventPublishOptions? options = null, CancellationToken cancellationToken = default)
-		{
-			CloudEvent cloudEvent;
-
-			try
-			{
-				cloudEvent = CreateEventFromData(eventType, @event);
-			}
-			catch (Exception ex)
-			{
-				_logger.LogEventCreateError(ex, eventType);
-
-				if (PublisherOptions.ThrowOnErrors)
-					throw new EventPublishException(
-						$"An error occurred while creating an event of type {eventType.FullName} from the provided event",
-						ex);
-
-				return Task.CompletedTask;
-			}
-
-			// First let's try to resolve event publishers specific for this
-			// type of object...
-			
-			var typedChannels = GetTypedChannels(eventType);
-			if (typedChannels.Count > 0)
-			{
-				return PublishEventToChannelsAsync(typedChannels, @cloudEvent, options, cancellationToken);
-			}
-
-			return PublishEventAsync(cloudEvent, options, cancellationToken);
-		}
-
-		private IReadOnlyList<IEventPublishChannel> GetTypedChannels(Type dataType)
-		{
-			if (_typedChannels == null)
-				_typedChannels = new Dictionary<Type, IReadOnlyList<IEventPublishChannel>>();
-			
-			if (!_typedChannels.TryGetValue(dataType, out var typedChannels))
-			{
-				var channelType = typeof(IEventPublishChannel<>).MakeGenericType(dataType);
-				typedChannels = _channels.Where(channelType.IsInstanceOfType).ToList();
-				_typedChannels[dataType] = typedChannels;
-			}
-			
-			return typedChannels;
-		}
-
-		/// <summary>
-		/// Creates an event from the given data type and 
-		/// the instance of the data.
-		/// </summary>
-		/// <param name="dataType">
-		/// The type of the data that is used to create the event.
-		/// </param>
-		/// <param name="data">
-		/// The instance of the data contained in the event.
-		/// </param>
-		/// <returns>
-		/// Returns the created event from the data.
-		/// </returns>
-		/// <exception cref="NotSupportedException">
-		/// Thrown when the event creator is not set.
-		/// </exception>
-		protected virtual CloudEvent CreateEventFromData(Type dataType, object? data)
-		{
-			if (EventCreator == null)
-				throw new NotSupportedException("Cannot create events from the data");
-
-			return EventCreator.CreateEventFromData(dataType, data);
-		}
-
-		/// <inheritdoc cref="IEventPublisher.PublishAsync{TData}(TData,EventPublishOptions,CancellationToken)"/>
-		public Task PublishAsync<TData>(TData data, EventPublishOptions? options = null, CancellationToken cancellationToken = default)
-		{
-			ArgumentNullException.ThrowIfNull(data);
-
-			if (data is IEventConvertible eventConvertible)
-			{
-				CloudEvent? @event = null;
-				try
-				{
-					@event = eventConvertible.ToCloudEvent();
-				}
-				catch (Exception ex)
-				{
-					_logger.LogEventCreateError(ex, typeof(TData));
-					
-					if (PublisherOptions.ThrowOnErrors)
-						throw new EventPublishException("An error occurred while converting data", ex);
-				}
-				
-				if (@event != null)
-					return PublishEventAsync(@event, options, cancellationToken);
-				
-				return Task.CompletedTask;
-			}
-			
-
-			if (data is CloudEvent cloudEvent)
-				return PublishEventAsync(cloudEvent, options, cancellationToken);
-
-			return PublishAsync(typeof(TData), data,  options, cancellationToken);
-		}
-	}
 }
+

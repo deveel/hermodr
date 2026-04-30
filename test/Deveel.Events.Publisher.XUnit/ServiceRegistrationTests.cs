@@ -22,7 +22,7 @@ namespace Deveel.Events
             var provider = services.BuildServiceProvider();
 
             Assert.NotNull(provider.GetService<EventPublisher>());
-            Assert.NotNull(provider.GetService<IEventCreator>());
+            Assert.NotNull(provider.GetService<IEventFactory>());
             Assert.NotNull(provider.GetService<IEventIdGenerator>());
             Assert.NotNull(provider.GetService<IEventSystemTime>());
         }
@@ -174,10 +174,8 @@ namespace Deveel.Events
             public CustomEventPublisher(
                 IOptions<EventPublisherOptions> options,
                 IEnumerable<IEventPublishChannel> channels,
-                IEventCreator? eventCreator = null,
-                IEventIdGenerator? idGenerator = null,
-                IEventSystemTime? systemTime = null)
-                : base(options, channels, eventCreator, idGenerator, systemTime)
+                IServiceProvider serviceProvider)
+                : base(options, channels, serviceProvider)
             {
             }
         }

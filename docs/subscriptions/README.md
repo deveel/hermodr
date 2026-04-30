@@ -1,6 +1,6 @@
 # Event Subscriptions
 
-The `Deveel.Events.Subscriptions` package extends the publisher pipeline with an **event dispatcher** that routes published `CloudEvent`s to registered subscriber handlers.
+The `Deveel.Events.Subscriptions` package adds an **event dispatcher middleware** that routes published `CloudEvent` instances to matching subscriber handlers.
 
 ## Overview
 
@@ -21,16 +21,15 @@ Subscriptions are evaluated by one or more `IEventSubscriptionResolver` implemen
 │                      Your application                       │
 │                                                             │
 │   ┌──────────────┐      ┌────────────────────────────┐      │
-│   │  Event data  │─────▶│      IEventPublisher       │      │
+│   │  Event data  │─────▶│       EventPublisher       │      │
 │   └──────────────┘      └────────────┬───────────────┘      │
 │                                      │ fan-out              │
 │                       ┌──────────────┴──────────────┐       │
 │                       │                             │       │
 │              ┌────────▼────────┐         ┌──────────▼───┐   │
 │              │ EventDispatcher │         │  Channel B   │   │
-│              │  (IEventPublish │         │ (Azure SB …) │   │
-│              │    Channel)     │         └──────────────┘   │
-│              └────────┬────────┘                            │
+│              │ (middleware)    │         │ (Azure SB …) │   │
+│              └────────┬────────┘         └──────────────┘   │
 │                       │ resolves matching subscriptions     │
 │              ┌────────┴──────────────────────────────────┐  │
 │              │  IEventSubscriptionResolver (× N)         │  │
@@ -42,9 +41,9 @@ Subscriptions are evaluated by one or more `IEventSubscriptionResolver` implemen
 └─────────────────────────────────────────────────────────────┘
 ```
 
-1. You register the dispatcher with `AddDispatcher()`.
-2. The dispatcher is registered as an `IEventPublishChannel` — it receives every event published through `IEventPublisher`.
-3. For each event, the dispatcher queries **all** registered `IEventSubscriptionResolver` instances and collects matching subscriptions.
+1. You register resolver/registry services with `AddSubscriptions()`.
+2. You enable dispatcher middleware at runtime with `UseDispatcher()` (or `UseDispatcher(EventDispatcherOptions)`).
+3. For each event, the dispatcher queries **all** `IEventSubscriptionResolver` instances and aggregates matches.
 4. Every matched subscription's `HandleAsync` is invoked sequentially.
 
 ## Quick Start
@@ -55,25 +54,32 @@ Subscriptions are evaluated by one or more `IEventSubscriptionResolver` implemen
 dotnet add package Deveel.Events.Subscriptions
 ```
 
-### 2. Register the dispatcher
+### 2. Register subscriptions in DI
 
 ```csharp
-services.AddEventPublisher(pub => pub
-    .AddDispatcher()
+services.AddEventPublisher()
+    .AddSubscriptions()
     .Subscribe("com.example.order.*", async (cloudEvent, ct) =>
     {
         Console.WriteLine($"Order event received: {cloudEvent.Type}");
         await Task.CompletedTask;
-    }, name: "log-orders"));
+    }, name: "log-orders");
 ```
 
-### 3. Publish — subscriptions fire automatically
+### 3. Enable dispatcher middleware and publish
 
 ```csharp
-var publisher = serviceProvider.GetRequiredService<IEventPublisher>();
+var publisher = serviceProvider.GetRequiredService<EventPublisher>()
+    .UseDispatcher(new EventDispatcherOptions
+    {
+        ThrowOnHandlerError = false // default; set true to fail-fast on handler errors
+    });
+
 await publisher.PublishAsync(new OrderPlaced { OrderId = "42" });
 // ↑ "log-orders" subscription fires because "com.example.order.placed" matches "com.example.order.*"
 ```
+
+Use `UseDispatcher()` when you want default behavior without explicitly creating options.
 
 ## Pages in This Section
 
