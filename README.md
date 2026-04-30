@@ -6,11 +6,11 @@
 
 # Deveel Events
 
-**Deveel Events** is a lightweight, extensible framework for publishing domain events in .NET applications, built on top of the [CloudEvents](https://cloudevents.io/) standard.
+**Deveel Events** is a lightweight, extensible framework for building event-driven .NET applications, built on top of the [CloudEvents](https://cloudevents.io/) standard.
 
-The ambition of this framework is to implement a set of common patterns and practices for a simple and efficient event-driven architecture in .NET, without reinventing the wheel every time a team needs to broadcast domain events.
+The ambition of this framework is to implement a set of common patterns and practices for a simple and efficient event-driven architecture in .NET — from publishing domain events to consuming them, managing subscriptions, and validating event schemas — without reinventing the wheel every time a team needs to integrate across bounded contexts.
 
-It is not in the scope of this project to provide a full-featured event storage system or a complex pub/sub platform. If you need those capabilities, consider pairing this library with a dedicated message broker — Deveel Events already ships channel adapters for the most popular ones.
+The current release focuses on the **publishing side**: a transport-agnostic layer that broadcasts domain events from a bounded context to any number of downstream consumers. Upcoming releases will introduce consumer adapters, persistent subscription registries, and additional transport channels. See the [roadmap](ROADMAP.md) for the full plan.
 
 ## Domain Events and DDD
 
@@ -62,6 +62,7 @@ Every package requires the **Microsoft Dependency Injection** infrastructure (`M
 | Package | Key Dependencies |
 |---------|-----------------|
 | `Deveel.Events.Annotations` | *(none — pure attribute library)* |
+| `Deveel.Events.Amqp.Annotations` | *(none — pure attribute library)* |
 | `Deveel.Events.Publisher` | `CloudNative.CloudEvents` · `Microsoft.Extensions.Options` · `Microsoft.Extensions.Logging.Abstractions` |
 | `Deveel.Events.Publisher.AzureServiceBus` | `Azure.Messaging.ServiceBus` ≥ 7.20 |
 | `Deveel.Events.Publisher.RabbitMq` | `RabbitMQ.Client` ≥ 7.2 · `Deveel.Events.Amqp.Annotations` |
@@ -117,30 +118,59 @@ The source of the documentation is also available in the [`docs/`](docs/README.m
 
 ## Future Work
 
-The framework is still evolving. See the [ROADMAP](ROADMAP.md) for the full list of planned features and the version milestone in which each is expected to ship.
+The framework is still evolving. See the [ROADMAP](ROADMAP.md) for the full description of every planned feature and the version milestone in which each is expected to ship.
 
-### v1.x — Publisher & Schema maturity
+### v1.1 — Routing & Middleware ✅
 
-- [x] **Event Subscription & Routing** *(v1.1)* — subscribe to event types with attribute-based filtering
-- [x] **Event Middleware Pipeline** *(v1.1)* — composable cross-cutting hooks (logging, validation, tracing)
-- [ ] **Dead-Letter Handling & Replay** *(v1.2)* — capture and resubmit failed events
-- [ ] **Outbox Pattern** *(v1.2)* — guaranteed exactly-once publishing via a transactional outbox
-- [ ] **Event Scheduler** *(v1.2)* — defer event publishing to a future time or after a delay
-- [ ] **OpenTelemetry Integration** *(v1.3)* — end-to-end distributed tracing across service boundaries
-- [ ] **Event Store & Audit Log** *(v1.3)* — append-only persistence of domain events for auditing and read-model rebuilding
-- [ ] **Publish Delivery Log** *(v1.3)* — per-attempt operational record of every publish (channel, outcome, error code, latency, retry count) across pluggable storage backends (SQL, file, in-memory)
-- [ ] **Schema Validation at Publish Time** *(v1.3)* — validate events against their registered schema before dispatch
-- [ ] **Event Versioning & Compatibility** *(v1.4)* — breaking-change detection and upcasting
-- [ ] **AsyncAPI / Schema Export Improvements** *(v1.4)* — assembly scanning, CLI tooling, OpenAPI 3.1 webhooks
-- [ ] **HTTP & gRPC Channels** *(v1.5)* — direct service-to-service delivery without a broker
+- [x] **Event Subscription & Routing** — subscribe to event types with attribute-based filtering and in-process routing
+- [x] **Event Middleware Pipeline** — composable cross-cutting hooks (logging, validation, correlation, tracing)
 
-### v2.x — Event Consumers
+### v1.2 — Reliability
 
-- [ ] **Webhook Consumer for ASP.NET Core** *(v2.0)* — receive inbound CloudEvents over HTTP with signature verification and automatic routing
-- [ ] **RabbitMQ Consumer** *(v2.0)* — consume CloudEvents from RabbitMQ queues and route them through the subscription registry
-- [ ] **Azure Service Bus Consumer** *(v2.0)* — consume CloudEvents from Service Bus queues and topic subscriptions
-- [ ] **MassTransit Consumer Bridge** *(v2.0)* — expose Deveel Events subscriptions as MassTransit consumers
-- [ ] **Expanded Testing Utilities** *(v2.1)* — fluent publish assertions, in-memory event bus, and consumer-side test helpers
+- [ ] **Event Replay & Dead-Letter Handling** — capture and resubmit failed events with configurable retry and back-off
+- [ ] **Outbox Pattern Integration** — guaranteed exactly-once publishing via a transactional outbox channel
+- [ ] **Event Scheduler & Deferred Publishing** — defer event publishing to a future point in time or after a delay
+
+### v1.3 — Observability
+
+- [ ] **OpenTelemetry & Distributed Tracing Integration** — propagate W3C trace context as CloudEvents extensions for end-to-end traces
+- [ ] **Event Store & Audit Log Channel** — append-only persistence of every domain event for auditing and read-model rebuilding
+- [ ] **Schema Validation at Publish Time** — validate event payloads against their registered schema before channel dispatch
+- [ ] **Publish Delivery Log** — per-attempt operational record (channel, outcome, error code, latency, retry count) across pluggable storage backends
+
+### v1.4 — Schema Governance
+
+- [ ] **Event Versioning & Compatibility** — breaking-change detection, upcasting pipeline, and version-aware routing
+- [ ] **AsyncAPI & Schema Export Improvements** — assembly scanning, dotnet CLI tool, OpenAPI 3.1 webhook export
+
+### v1.5 — New Transports
+
+- [ ] **CloudEvents HTTP Binding for the Webhook Publisher** — bring the existing Webhook publisher into full structured/binary content-mode compliance
+- [ ] **HTTP Publisher Channel** — lightweight, sign-free point-to-point delivery to statically-configured endpoints
+- [ ] **gRPC Publisher Channel** — low-latency service-to-service delivery using the CloudEvents gRPC protocol binding
+- [ ] **Apache Kafka Publisher Channel** — publish CloudEvents to Kafka topics with partition key control and Schema Registry support
+- [ ] **Amazon SQS Publisher Channel** — standard and FIFO queue delivery on AWS with batch publish and S3 offload
+- [ ] **Amazon SNS Publisher Channel** — fan-out to SQS queues, Lambda functions, and HTTP endpoints via SNS topics
+- [ ] **Google Cloud Pub/Sub Publisher Channel** — ordered delivery to GCP Pub/Sub topics with Workload Identity support
+- [ ] **NATS / JetStream Publisher Channel** — ultra-low-latency delivery to NATS subjects or durable JetStream streams
+
+### v2.0 — Event Consumers
+
+- [ ] **Webhook Consumer for ASP.NET Core** — receive inbound CloudEvents over HTTP with HMAC signature verification and automatic routing
+- [ ] **RabbitMQ Consumer** — consume CloudEvents from RabbitMQ queues and route them through the subscription registry
+- [ ] **Azure Service Bus Consumer** — consume CloudEvents from Service Bus queues and topic subscriptions
+- [ ] **MassTransit Consumer Bridge** — expose Deveel Events subscriptions as MassTransit consumers and vice versa
+
+### v2.1 — Testing & DX
+
+- [ ] **Expanded Testing Utilities** — fluent publish assertions (`AssertPublished`, `AssertNotPublished`), in-memory event bus, and consumer-side test helpers
+
+### v2.2 — Subscription Management
+
+- [ ] **Subscription Management Framework** — provider-agnostic `ISubscriptionStore` abstraction with in-memory default and runtime lifecycle operations
+- [ ] **Relational Registry Provider (Entity Framework Core)** — persist subscriptions in SQL Server, PostgreSQL, or SQLite with bundled migrations
+- [ ] **Document Registry Provider (MongoDB)** — persist subscriptions as MongoDB documents with real-time change-stream synchronisation
+- [ ] **Subscription Management REST API** — secured minimal-API endpoint group with OpenAPI metadata and change-notification webhooks
 
 Monitor the [open issues](https://github.com/deveel/deveel.events/issues) to see what is being actively worked on.
 
