@@ -24,7 +24,7 @@ namespace Deveel.Events
     {
         private readonly IEnumerable<IEventPublishChannel> _channels;
         private readonly ILogger _logger;
-        private readonly EventPublisherPipeline _pipeline;
+        private readonly EventPublisherPipeline? _pipeline;
         private readonly IServiceProvider _serviceProvider;
 
         // Pipeline factory is built exactly once from the immutable descriptor.
@@ -295,14 +295,17 @@ namespace Deveel.Events
             EventPublishOptions? options = null, CancellationToken cancellationToken = default)
         {
             var targetChannels = FilterChannelsByName(channels, options).ToList();
-            var eventToPublish = EnsureEvent(@event);
             await using var scope = _serviceProvider.CreateAsyncScope();
-            var context = new EventContext(eventToPublish, scope.ServiceProvider, cancellationToken, options);
-            EventPublishDelegate terminal = ctx => DispatchToChannelsAsync(targetChannels, ctx);
+            var context = new EventContext(@event, scope.ServiceProvider, cancellationToken, options);
+            EventPublishDelegate terminal = ctx =>
+            {
+                ctx.Event = EnsureEvent(ctx.Event);
+                return DispatchToChannelsAsync(targetChannels, ctx);
+            };
             var pipeline = _pipelineFactory.Value(terminal);
-            _logger.TracePipelineExecuting(eventToPublish.Type);
+            _logger.TracePipelineExecuting(@event.Type);
             await pipeline(context);
-            _logger.TracePipelineCompleted(eventToPublish.Type);
+            _logger.TracePipelineCompleted(@event.Type);
         }
 
         /// <inheritdoc/>

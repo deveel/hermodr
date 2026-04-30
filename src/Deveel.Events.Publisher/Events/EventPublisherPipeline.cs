@@ -62,6 +62,39 @@ namespace Deveel.Events
         }
 
         /// <summary>
+        /// Appends a conditionally-executed middleware type to the pipeline.
+        /// The middleware is only invoked when <paramref name="predicate"/> returns
+        /// <c>true</c> for the current <see cref="EventContext"/>; otherwise the
+        /// next step in the pipeline is called directly.
+        /// </summary>
+        /// <param name="middlewareType">
+        /// A concrete type that implements <see cref="IEventMiddleware"/>.
+        /// </param>
+        /// <param name="predicate">
+        /// A function evaluated against the current <see cref="EventContext"/> that
+        /// determines whether the middleware should run.
+        /// </param>
+        /// <param name="activationArguments">
+        /// Optional activation arguments forwarded to
+        /// <see cref="Microsoft.Extensions.DependencyInjection.ActivatorUtilities.CreateInstance(IServiceProvider,Type,object[])"/>.
+        /// </param>
+        internal void AddWhen(Type middlewareType, Func<EventContext, bool> predicate, params object[] activationArguments)
+        {
+            ArgumentNullException.ThrowIfNull(middlewareType);
+            ArgumentNullException.ThrowIfNull(predicate);
+
+            if (!typeof(IEventMiddleware).IsAssignableFrom(middlewareType))
+                throw new ArgumentException(
+                    $"The type '{middlewareType.FullName}' does not implement {nameof(IEventMiddleware)}.",
+                    nameof(middlewareType));
+
+            _middlewareRegistrations.Add(new MiddlewareRegistration(
+                middlewareType,
+                activationArguments?.ToArray() ?? [],
+                predicate));
+        }
+
+        /// <summary>
         /// Builds a pipeline factory from the registered middleware components.
         /// The returned delegate wraps a terminal <see cref="EventPublishDelegate"/>
         /// with all middleware in registration order (outermost first).
@@ -90,6 +123,14 @@ namespace Deveel.Events
                     var inner = prevFactory(terminal);
                     return async ctx =>
                     {
+                        // If the registration is conditional and the predicate is not satisfied,
+                        // skip this middleware and invoke the next step directly.
+                        if (registration.IsConditional && !registration.Predicate!(ctx))
+                        {
+                            await inner(ctx);
+                            return;
+                        }
+
                         var mw = (IEventMiddleware)ActivatorUtilities.CreateInstance(
                             ctx.Services,
                             registration.MiddlewareType,

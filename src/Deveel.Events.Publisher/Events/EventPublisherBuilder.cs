@@ -137,6 +137,37 @@ namespace Deveel.Events {
             return this;
         }
 
+        /// <summary>
+        /// Appends a middleware component of type <typeparamref name="TMiddleware"/> to the
+        /// publish pipeline that is only executed when <paramref name="predicate"/> returns
+        /// <c>true</c> for the current <see cref="EventContext"/>.
+        /// When the predicate returns <c>false</c> the middleware step is skipped and the
+        /// next registered step is invoked directly.
+        /// </summary>
+        /// <typeparam name="TMiddleware">
+        /// A concrete type that implements <see cref="IEventMiddleware"/>. A new instance
+        /// is created for every publish call (when the predicate passes) via
+        /// <see cref="ActivatorUtilities"/>, so constructor-injected services are fully
+        /// supported.
+        /// </typeparam>
+        /// <param name="predicate">
+        /// A function evaluated against the current <see cref="EventContext"/>. The
+        /// middleware is invoked only when the function returns <c>true</c>.
+        /// </param>
+        /// <param name="activationArguments">
+        /// Optional explicit constructor arguments forwarded to middleware activation.
+        /// </param>
+        /// <returns>This <see cref="EventPublisherBuilder"/> for chaining.</returns>
+        public EventPublisherBuilder UseWhen<TMiddleware>(
+            Func<EventContext, bool> predicate,
+            params object[] activationArguments)
+            where TMiddleware : class, IEventMiddleware
+        {
+            ArgumentNullException.ThrowIfNull(predicate);
+            _pipeline.AddWhen(typeof(TMiddleware), predicate, activationArguments);
+            return this;
+        }
+
         // ─────────────────────────────────────────────────────────────────
         // Custom publisher type
         // ─────────────────────────────────────────────────────────────────
