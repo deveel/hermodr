@@ -24,46 +24,32 @@ namespace Deveel.Events
     {
         private readonly IEnumerable<IEventPublishChannel> _channels;
         private readonly ILogger _logger;
-        private readonly EventPublisherPipelineDescriptor _pipelineDescriptor;
+        private readonly EventPublisherPipeline _pipeline;
         private readonly IServiceProvider _serviceProvider;
 
         // Pipeline factory is built exactly once from the immutable descriptor.
         private readonly Lazy<Func<EventPublishDelegate, EventPublishDelegate>> _pipelineFactory;
 
         private readonly ConcurrentDictionary<Type, IReadOnlyList<IEventPublishChannel>> _typedChannels = new();
-
+        
         /// <summary>
-        /// Public constructor used by the DI container and by custom publisher sub-classes.
-        /// The middleware pipeline will be empty; use <see cref="EventPublisherBuilder.Use{TMiddleware}"/>
-        /// at DI-registration time to add middleware.
+        /// Internal constructor used by <see cref="EventPublisherBuilder"/> to supply a
+        /// pre-built, frozen <paramref name="pipeline"/> at construction time.
         /// </summary>
         public EventPublisher(
             IOptions<EventPublisherOptions> options,
             IEnumerable<IEventPublishChannel> channels,
             IServiceProvider serviceProvider,
-            ILogger<EventPublisher>? logger = null)
-            : this(options, channels, serviceProvider, null, logger)
-        {
-        }
-
-        /// <summary>
-        /// Internal constructor used by <see cref="EventPublisherBuilder"/> to supply a
-        /// pre-built, frozen <paramref name="pipeline"/> at construction time.
-        /// </summary>
-        internal EventPublisher(
-            IOptions<EventPublisherOptions> options,
-            IEnumerable<IEventPublishChannel> channels,
-            IServiceProvider serviceProvider,
-            EventPublisherPipelineDescriptor? pipeline,
+            EventPublisherPipeline? pipeline = null,
             ILogger<EventPublisher>? logger = null)
         {
             PublisherOptions = options == null ? new EventPublisherOptions() : options.Value;
             _channels = channels;
             _serviceProvider = serviceProvider;
             _logger = logger ?? NullLogger<EventPublisher>.Instance;
-            _pipelineDescriptor = pipeline ?? new EventPublisherPipelineDescriptor();
+            _pipeline = pipeline ?? new EventPublisherPipeline();
             _pipelineFactory = new Lazy<Func<EventPublishDelegate, EventPublishDelegate>>(
-                BuildPipelineFactory, LazyThreadSafetyMode.ExecutionAndPublication);
+                () => _pipeline.Build(), LazyThreadSafetyMode.ExecutionAndPublication);
         }
 
         /// <summary>Gets the service that is used to create events.</summary>
@@ -271,36 +257,6 @@ namespace Deveel.Events
             return eventToPublish;
         }
 
-        /// <summary>
-        /// Builds the immutable pipeline factory from the frozen pipeline descriptor.
-        /// Called exactly once via the <see cref="Lazy{T}"/> wrapper.
-        /// </summary>
-        private Func<EventPublishDelegate, EventPublishDelegate> BuildPipelineFactory()
-        {
-            Func<EventPublishDelegate, EventPublishDelegate> factory = static terminal => terminal;
-            var registrations = _pipelineDescriptor.MiddlewareRegistrations;
-
-            for (var i = registrations.Count - 1; i >= 0; i--)
-            {
-                var registration = registrations[i];
-                var prevFactory = factory;
-                factory = terminal =>
-                {
-                    var inner = prevFactory(terminal);
-                    return ctx =>
-                    {
-                        var mw = (IEventMiddleware)ActivatorUtilities.CreateInstance(
-                            ctx.Services,
-                            registration.MiddlewareType,
-                            registration.ActivationArguments);
-                        return mw.InvokeAsync(ctx, inner);
-                    };
-                };
-            }
-
-            _logger.TraceMiddlewarePipelineBuilt(registrations.Count);
-            return factory;
-        }
 
         private async Task DispatchToChannelsAsync(
             IReadOnlyList<IEventPublishChannel> channels,
@@ -344,7 +300,9 @@ namespace Deveel.Events
             var context = new EventContext(eventToPublish, scope.ServiceProvider, cancellationToken, options);
             EventPublishDelegate terminal = ctx => DispatchToChannelsAsync(targetChannels, ctx);
             var pipeline = _pipelineFactory.Value(terminal);
+            _logger.TracePipelineExecuting(eventToPublish.Type);
             await pipeline(context);
+            _logger.TracePipelineCompleted(eventToPublish.Type);
         }
 
         /// <inheritdoc/>
@@ -401,24 +359,23 @@ namespace Deveel.Events
                 throw new NotSupportedException("Cannot create events from the data");
             return EventFactory.CreateEventFromData(dataType, data);
         }
-
-        /// <inheritdoc/>
-        public Task PublishAsync<TData>(TData data, EventPublishOptions? options = null,
+        
+        public Task PublishAsync<TEvent>(TEvent @event, EventPublishOptions? options = null,
             CancellationToken cancellationToken = default)
         {
-            ArgumentNullException.ThrowIfNull(data);
+            ArgumentNullException.ThrowIfNull(@event);
 
-            if (data is IEventConvertible eventConvertible)
+            if (@event is IEventConvertible eventConvertible)
             {
-                if (!TryConvertToCloudEvent(eventConvertible, typeof(TData), out var convertedEvent))
+                if (!TryConvertToCloudEvent(eventConvertible, typeof(TEvent), out var convertedEvent))
                     return Task.CompletedTask;
                 return PublishEventAsync(convertedEvent, options, cancellationToken);
             }
 
-            if (data is CloudEvent cloudEvent)
+            if (@event is CloudEvent cloudEvent)
                 return PublishEventAsync(cloudEvent, options, cancellationToken);
 
-            return PublishAsync(typeof(TData), data, options, cancellationToken);
+            return PublishAsync(typeof(TEvent), @event, options, cancellationToken);
         }
 
         private bool TryConvertToCloudEvent(IEventConvertible convertible, Type dataType, out CloudEvent cloudEvent)

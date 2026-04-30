@@ -13,7 +13,7 @@ namespace Deveel.Events {
     /// specific named pipeline slot.
     /// </summary>
     public sealed class EventPublisherBuilder {
-        private readonly EventPublisherPipelineDescriptor _pipeline = new();
+        private readonly EventPublisherPipeline _pipeline = new();
         private Type _publisherType = typeof(EventPublisher);
 
         // Tracks the channels for THIS builder instance only.
