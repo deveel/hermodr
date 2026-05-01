@@ -47,4 +47,18 @@ public interface IOutboxMessage
     /// <c>null</c> means the message is eligible for immediate dispatch.
     /// </summary>
     DateTimeOffset? NextRetryAt { get; }
+
+    /// <summary>
+    /// Returns <c>true</c> when this message is ready to be relayed at
+    /// <paramref name="asOf"/>: its <see cref="Status"/> must be
+    /// <see cref="OutboxMessageStatus.Pending"/> and either
+    /// <see cref="NextRetryAt"/> is <c>null</c> (immediate dispatch) or the
+    /// scheduled retry point is in the past relative to <paramref name="asOf"/>.
+    /// </summary>
+    /// <param name="asOf">
+    /// The reference UTC timestamp to compare against <see cref="NextRetryAt"/>.
+    /// Pass the current wall-clock time in production; pass a frozen test clock
+    /// in tests to make assertions deterministic.
+    /// </param>
+    bool IsAvailableForDispatch(DateTimeOffset asOf);
 }

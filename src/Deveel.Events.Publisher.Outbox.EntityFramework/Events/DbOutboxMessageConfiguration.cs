@@ -90,9 +90,16 @@ public class DbOutboxMessageConfiguration : IEntityTypeConfiguration<DbOutboxMes
             .HasMaxLength(1024)
             .IsRequired(false);
 
+        // MySql.EntityFrameworkCore cannot translate DateTimeOffset comparisons
+        // (e.g. NextRetryAt <= @now) in LINQ.  Explicit DateTime converters store
+        // the UTC instant as a plain DATETIME column, which every EF Core relational
+        // provider supports.  The DateTimeOffset CLR type is preserved for the C# API.
         builder.Property(m => m.EventTime)
             .HasColumnName("Time")
-            .IsRequired(false);
+            .IsRequired(false)
+            .HasConversion(
+                dto  => dto.HasValue  ? (DateTime?)dto.Value.UtcDateTime  : null,
+                dt   => dt.HasValue   ? new DateTimeOffset(dt.Value, TimeSpan.Zero) : null);
 
         builder.Property(m => m.DataContentType)
             .HasMaxLength(256)
@@ -123,13 +130,22 @@ public class DbOutboxMessageConfiguration : IEntityTypeConfiguration<DbOutboxMes
             .HasDefaultValue(0);
 
         builder.Property(m => m.NextRetryAt)
-            .IsRequired(false);
+            .IsRequired(false)
+            .HasConversion(
+                dto  => dto.HasValue  ? (DateTime?)dto.Value.UtcDateTime  : null,
+                dt   => dt.HasValue   ? new DateTimeOffset(dt.Value, TimeSpan.Zero) : null);
 
         builder.Property(m => m.CreatedAt)
-            .IsRequired();
+            .IsRequired()
+            .HasConversion(
+                dto => dto.UtcDateTime,
+                dt  => new DateTimeOffset(dt, TimeSpan.Zero));
 
         builder.Property(m => m.LastStatusAt)
-            .IsRequired(false);
+            .IsRequired(false)
+            .HasConversion(
+                dto  => dto.HasValue  ? (DateTime?)dto.Value.UtcDateTime  : null,
+                dt   => dt.HasValue   ? new DateTimeOffset(dt.Value, TimeSpan.Zero) : null);
 
         // ── Indexes for the relay processor ───────────────────────────────────
         // The relay queries for pending messages ordered by creation time, so a

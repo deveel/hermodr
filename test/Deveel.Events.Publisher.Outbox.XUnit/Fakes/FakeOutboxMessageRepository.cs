@@ -103,9 +103,8 @@ internal sealed class FakeOutboxMessageRepository : IOutboxMessageRepository<Fak
         int? limit = null,
         CancellationToken cancellationToken = default)
     {
-        var query = _store.Where(m =>
-            m.Status == OutboxMessageStatus.Pending &&
-            (m.NextRetryAt == null || m.NextRetryAt <= DateTimeOffset.UtcNow));
+        var now = DateTimeOffset.UtcNow;
+        IEnumerable<FakeOutboxMessage> query = _store.Where(m => m.IsAvailableForDispatch(now));
 
         if (limit.HasValue)
             query = query.Take(limit.Value);

@@ -5,25 +5,22 @@
 
 using System.Collections.Concurrent;
 
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-
-using Testcontainers.MySql;
 
 namespace Deveel.Events;
 
 /// <summary>
-/// xUnit class fixture that starts a MySQL container via Testcontainers and wires the
-/// full production DI pipeline — <c>AddEventPublisher().AddOutbox&lt;DbOutboxMessage&gt;().WithEntityFramework(UseMySQL)</c>
+/// xUnit class fixture that opens a shared SQLite in-memory connection and wires the
+/// full production DI pipeline — <c>AddEventPublisher().AddOutbox&lt;DbOutboxMessage&gt;().WithEntityFramework(UseSqlite)</c>
 /// — exactly as a real application would.  <see cref="OutboxDbContext"/> is resolved
 /// from this DI container instead of being constructed manually.
 /// </summary>
 /// <remarks>
 /// <para>
-/// The container is started once per test-class collection and torn down when the last
-/// test class in that collection finishes.  Individual tests are responsible for cleaning
-/// up the rows they insert (or they can rely on unique IDs so that tests are naturally
-/// isolated).
+/// A single <see cref="SqliteConnection"/> is kept open for the fixture lifetime so that
+/// all contexts resolved from the DI container share the same in-memory database.
 /// </para>
 /// <para>
 /// <see cref="WithEntityFramework"/> registers <see cref="OutboxDbContext"/> as
@@ -32,21 +29,19 @@ namespace Deveel.Events;
 /// scope.  All outstanding scopes are disposed when the fixture is torn down.
 /// </para>
 /// </remarks>
-public sealed class MySqlDatabaseFixture : IAsyncLifetime
+public sealed class SqliteOutboxFixture : IAsyncLifetime
 {
-    private readonly MySqlContainer _container;
+    private readonly SqliteConnection _connection;
 
-    // Built in InitializeAsync once the container connection string is available.
+    // Built in InitializeAsync once the connection is open.
     private ServiceProvider _serviceProvider = null!;
 
     // Tracks every scope created by CreateContext() so they are all disposed on teardown.
     private readonly ConcurrentBag<IServiceScope> _scopes = [];
 
-    public MySqlDatabaseFixture()
+    public SqliteOutboxFixture()
     {
-        _container = new MySqlBuilder()
-            .WithImage("mysql:8.0")
-            .Build();
+        _connection = new SqliteConnection("Data Source=:memory:");
     }
 
     // ── Public helpers ────────────────────────────────────────────────────────
@@ -68,19 +63,18 @@ public sealed class MySqlDatabaseFixture : IAsyncLifetime
 
     public async ValueTask InitializeAsync()
     {
-        await _container.StartAsync();
+        await _connection.OpenAsync();
 
         // Use the same DI registration flow a production application would use.
-        // The connection string is known only after the container has started.
+        // WithEntityFramework registers OutboxDbContext via AddDbContext (Scoped by default).
         var services = new ServiceCollection();
         services.AddEventPublisher()
             .AddOutbox<DbOutboxMessage>()
-            .WithEntityFramework(options => options.UseMySQL(_container.GetConnectionString()));
+            .WithEntityFramework(options => options.UseSqlite(_connection));
 
         _serviceProvider = services.BuildServiceProvider();
 
-        // Create the two tables (OutboxMessages + OutboxMessageAttributes)
-        // using the production EF mapping – ensures we test the real schema.
+        // Create the outbox schema once using a scoped context, then let the scope dispose.
         using var scope = _serviceProvider.CreateScope();
         var ctx = scope.ServiceProvider.GetRequiredService<OutboxDbContext>();
         await ctx.Database.EnsureCreatedAsync();
@@ -92,7 +86,6 @@ public sealed class MySqlDatabaseFixture : IAsyncLifetime
             scope.Dispose();
 
         await _serviceProvider.DisposeAsync();
-        await _container.StopAsync();
-        await _container.DisposeAsync();
+        await _connection.DisposeAsync();
     }
 }

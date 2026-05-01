@@ -45,10 +45,9 @@ namespace Deveel.Events;
 /// serialised form).
 /// </para>
 /// </remarks>
-public class EntityOutboxMessageRepository<TMessage, TContext>
+public class EntityOutboxMessageRepository<TMessage>
     : EntityRepository<TMessage, string>, IOutboxMessageRepository<TMessage>
     where TMessage : DbOutboxMessage
-    where TContext : DbContext
 {
     /// <summary>
     /// Initialises a new instance of
@@ -71,7 +70,7 @@ public class EntityOutboxMessageRepository<TMessage, TContext>
     /// In production the DI container will typically supply an <see cref="ILoggerFactory"/>
     /// automatically.
     /// </param>
-    public EntityOutboxMessageRepository(TContext context, ISystemTime? systemTime = null, ILoggerFactory? loggerFactory = null)
+    public EntityOutboxMessageRepository(OutboxDbContext context, ISystemTime? systemTime = null, ILoggerFactory? loggerFactory = null)
         : base(context, CreateBaseLogger(loggerFactory))
     {
         _systemTime = systemTime ?? SystemTime.Default;
@@ -82,7 +81,7 @@ public class EntityOutboxMessageRepository<TMessage, TContext>
     /// <summary>
     /// Gets the strongly-typed <typeparamref name="TContext"/> instance.
     /// </summary>
-    protected new TContext Context => (TContext)base.Context;
+    protected new OutboxDbContext Context => (OutboxDbContext)base.Context;
 
     // ── Helpers ──────────────────────────────────────────────────────
 
@@ -153,21 +152,45 @@ public class EntityOutboxMessageRepository<TMessage, TContext>
     }
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// <para>
+    /// The query is deliberately split into two phases to avoid provider-specific
+    /// <see cref="DateTimeOffset"/> translation failures.
+    /// </para>
+    /// <para>
+    /// <b>Phase 1 – SQL</b>: loads rows whose <c>Status</c> column equals
+    /// <see cref="OutboxMessageStatus.Pending"/> (integer 0).  An integer equality
+    /// is universally translatable by every EF Core provider (SQLite, MySQL,
+    /// PostgreSQL, SQL Server, …).
+    /// </para>
+    /// <para>
+    /// <b>Phase 2 – in-process</b>: calls
+    /// <see cref="IOutboxMessage.IsAvailableForDispatch"/> on each materialised
+    /// entity. The CLR performs the <see cref="DateTimeOffset"/> comparison, so
+    /// there is no risk of provider-specific translation errors.  The batch
+    /// <paramref name="limit"/> is applied here as well, after the time gate,
+    /// to guarantee that only truly eligible messages count towards the limit.
+    /// </para>
+    /// </remarks>
     public async Task<IReadOnlyList<TMessage>> GetPendingMessagesAsync(
         int? limit = null,
         CancellationToken cancellationToken = default)
     {
-        var now = _systemTime.UtcNow;
+        // Phase 1: pull all Pending rows from the database.
+        // Status is stored as an integer; the equality is trivially translatable
+        // by every EF Core provider.
+        var candidates = await Context.Set<TMessage>()
+            .Where(m => m.Status == OutboxMessageStatus.Pending)
+            .ToListAsync(cancellationToken);
 
-        var query = Context.Set<TMessage>()
-            .Where(m =>
-                m.Status == OutboxMessageStatus.Pending &&
-                (m.NextRetryAt == null || m.NextRetryAt <= now));
+        // Phase 2: apply the time-based gate in CLR memory, then the optional limit.
+        var now = _systemTime.UtcNow;
+        IEnumerable<TMessage> eligible = candidates.Where(m => m.IsAvailableForDispatch(now));
 
         if (limit.HasValue)
-            query = query.Take(limit.Value);
+            eligible = eligible.Take(limit.Value);
 
-        var result = await query.ToListAsync(cancellationToken);
+        var result = eligible.ToList();
 
         Logger.LogDebug("Retrieved {Count} pending outbox message(s)", result.Count);
 

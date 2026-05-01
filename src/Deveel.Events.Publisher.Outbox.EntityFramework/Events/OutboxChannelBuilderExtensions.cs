@@ -55,11 +55,10 @@ public static class OutboxChannelBuilderExtensions
     ///     options.UseSqlServer(connectionString));
     /// </code>
     /// </example>
-    public static OutboxChannelBuilder WithEntityFramework<TContext>(
+    public static OutboxChannelBuilder WithEntityFramework(
         this OutboxChannelBuilder builder,
         Action<DbContextOptionsBuilder>? configure = null,
         ServiceLifetime lifetime = ServiceLifetime.Scoped)
-        where TContext : OutboxDbContext
     {
         if (!typeof(DbOutboxMessage).IsAssignableFrom(builder.MessageType))
             throw new InvalidOperationException(
@@ -68,15 +67,15 @@ public static class OutboxChannelBuilderExtensions
 
         var managerType = typeof(OutboxMessageManager<>)
             .MakeGenericType(builder.MessageType);
-        var repositoryType = typeof(EntityOutboxMessageRepository<,>)
-            .MakeGenericType(builder.MessageType, typeof(TContext));
+        var repositoryType = typeof(EntityOutboxMessageRepository<>)
+            .MakeGenericType(builder.MessageType);
         var repositoryInterfaceType = typeof(IOutboxMessageRepository<>)
             .MakeGenericType(builder.MessageType);
         
         var validatorType = typeof(OutboxMessageValidator<>).MakeGenericType(builder.MessageType);
         // var baseValidatorType = typeof(IEntityValidator<,>).MakeGenericType(builder.MessageType, typeof(string));
 
-        builder.Services.AddDbContext<TContext>(configure);
+        builder.Services.AddDbContext<OutboxDbContext>(configure, lifetime);
         builder.Services.AddEntityManager(managerType, lifetime);
         builder.Services.AddRepository(repositoryType, lifetime);
         builder.Services.TryAdd(ServiceDescriptor.Describe(
