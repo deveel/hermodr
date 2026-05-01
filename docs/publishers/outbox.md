@@ -1,16 +1,16 @@
 # Transactional Outbox Channel
 
-The `Deveel.Events.Publisher.Outbox` package implements the **Transactional Outbox** pattern for Deveel Events.  Instead of sending a `CloudEvent` directly to a broker, the publisher persists the event into the same transactional store as the business data.  A separate relay process then reads pending messages and forwards them to the real transport channel.
+The `Deveel.Events.Publisher.Outbox` package implements the **Transactional Outbox** pattern for Deveel Events.  Instead of dispatching a `CloudEvent` directly to a message broker, the publisher first persists the event into the same transactional store as the business data.  A separate relay process then picks up pending records and forwards them to the real transport channel.
 
 ## Why use the Outbox pattern?
 
-In a distributed system the moment between committing a domain change and dispatching a message to a broker is a window for data loss.  If the application crashes after the commit but before the send, the event is silently dropped.  If it crashes after the send but before the commit, the event is sent for a change that never happened.
+In a distributed system, the moment between committing a domain change and dispatching a message to a broker is a window of potential data loss.  If the application crashes after the commit but before the send, the event is silently dropped.  If it crashes after the send but before the commit, the broker receives an event for a change that never happened.
 
-The Transactional Outbox pattern closes that window:
+The Transactional Outbox pattern closes that window in three steps:
 
-1. **Write atomically** – save the domain change **and** the outbox record in the same database transaction.
-2. **Relay independently** – a background process reads confirmed outbox records and delivers them to the broker.
-3. **Guaranteed delivery** – if the relay crashes, it can restart and pick up exactly where it left off; the outbox record is only removed (or marked `Delivered`) once the broker acknowledges receipt.
+1. **Write atomically** – the domain change and the outbox record are saved in the **same database transaction**, so they either both succeed or both roll back.
+2. **Relay independently** – a background process reads confirmed outbox records and delivers their payloads to the broker.  This decouples durability from transport availability.
+3. **Guarantee delivery** – if the relay crashes mid-flight it can restart and pick up exactly where it left off, because an outbox record is only removed (or marked `Delivered`) after the broker has acknowledged receipt.
 
 ```
 ┌───────────────────────────────────────────────────────────────┐
@@ -37,425 +37,39 @@ The Transactional Outbox pattern closes that window:
 dotnet add package Deveel.Events.Publisher.Outbox
 ```
 
-## Core concepts
+## How it works
 
-### `IOutboxMessage`
+When `IEventPublisher.PublishAsync` is called, the outbox channel serialises the `CloudEvent` and persists it as a new record in the outbox store with status `Pending`.  The business transaction that triggered the publish can commit both the domain row and the outbox row atomically — no message has yet been sent to the broker.
 
-Every record written to the outbox store must implement `IOutboxMessage`.  The interface exposes the wrapped `CloudEvent` and tracks the message through its delivery lifecycle:
+The relay service wakes up on a configurable interval and queries the repository for all `Pending` records whose earliest retry time has passed.  For each record it:
 
-| Member | Type | Description |
-|--------|------|-------------|
+1. Marks the record as `Sending` so that concurrent relay instances do not double-deliver it.
+2. Forwards the `CloudEvent` payload to the configured transport channel (RabbitMQ, Azure Service Bus, etc.).
+3. On success, marks the record `Delivered`.
+4. On a transient error, schedules a retry and increments the retry counter.
+5. When retries are exhausted, marks the record `Failed`.
+
+## Implementing the outbox contract
+
+To use the outbox channel you provide three components that adapt the library to your persistence technology.  The library defines the contracts; you supply the implementations.
+
+### Outbox message entity
+
+Your entity class must implement `IOutboxMessage`.  It acts as the database row that the relay service reads and the channel writes.  The interface requires the following properties:
+
+| Property | Type | Purpose |
+|----------|------|---------|
 | `CloudEvent` | `CloudEvent` | The event payload to deliver |
-| `Status` | `OutboxMessageStatus` | Current delivery state |
-| `ErrorMessage` | `string?` | Failure reason (set on error) |
-| `RetryCount` | `int` | Number of failed delivery attempts |
-| `NextRetryAt` | `DateTimeOffset?` | Earliest time the relay should retry; `null` means ready immediately |
+| `Status` | `OutboxMessageStatus` | Tracks where the record is in the delivery lifecycle |
+| `ErrorMessage` | `string?` | The last failure reason, populated when the relay encounters an error |
+| `RetryCount` | `int` | How many delivery attempts have been made |
+| `NextRetryAt` | `DateTimeOffset?` | Earliest time the relay may attempt delivery again; `null` means immediately eligible |
 
-### `OutboxMessageStatus`
+Your entity should also carry whatever primary-key and ORM-mapping attributes your data layer requires (e.g., `[Key]` for EF Core, column mappings, index attributes).
 
-| Value | Meaning |
-|-------|---------|
-| `Pending` | Waiting to be picked up by the relay |
-| `Sending` | Claimed by the relay – in flight |
-| `Delivered` | Successfully forwarded to the transport |
-| `Failed` | Permanently failed after exhausting retries |
-
-### `IOutboxMessageFactory<TMessage>`
-
-The factory converts a `CloudEvent` into a concrete `TMessage` entity ready for persistence.  Implement it to map event data to your persistence model (e.g., a database entity):
+A minimal entity looks like:
 
 ```csharp
-public TMessage Create(CloudEvent cloudEvent, OutboxPublishOptions? options = null);
-```
-
-The returned entity should have `Status = OutboxMessageStatus.Pending`.
-
-### `IOutboxMessageRepository<TMessage>`
-
-Beyond the standard CRUD surface (`IRepository<TMessage, string>`), the repository exposes outbox-specific state-transition methods:
-
-| Method | Description |
-|--------|-------------|
-| `GetPendingMessagesAsync(limit?, ct)` | Returns messages eligible for relay (Pending, `NextRetryAt` in the past or null) |
-| `SetSendingAsync(msg, ct)` | Marks the message as claimed by the relay |
-| `SetDeliveredAsync(msg, ct)` | Marks the message as successfully delivered |
-| `SetRetryAsync(msg, error, nextRetryAt, ct)` | Records a transient failure and schedules a retry |
-| `SetFailedAsync(msg, error, ct)` | Permanently marks the message as failed |
-
-## Implementation guide
-
-### Step 1 – implement `IOutboxMessage`
-
-Create an entity class that your persistence layer can store.  The example below uses plain properties, but you can add any ORM-specific annotations your database provider needs:
-
-```csharp
-using CloudNative.CloudEvents;
-using Deveel.Events;
-
-public class OrderOutboxMessage : IOutboxMessage
-{
-    // Primary key used by IRepository<TMessage, string>
-    public string Id { get; set; } = Guid.NewGuid().ToString("N");
-
-    // Persisted as JSON in the database
-    public CloudEvent CloudEvent { get; set; } = default!;
-
-    public OutboxMessageStatus Status { get; set; } = OutboxMessageStatus.Pending;
-    public string? ErrorMessage { get; set; }
-    public int RetryCount { get; set; }
-    public DateTimeOffset? NextRetryAt { get; set; }
-}
-```
-
-### Step 2 – implement `IOutboxMessageFactory<TMessage>`
-
-The factory is called once per `PublishAsync` call.  It should be **stateless** and **fast** — just wrap the event and return the entity:
-
-```csharp
-using CloudNative.CloudEvents;
-using Deveel.Events;
-
-public class OrderOutboxMessageFactory : IOutboxMessageFactory<OrderOutboxMessage>
-{
-    public OrderOutboxMessage Create(CloudEvent cloudEvent, OutboxPublishOptions? options = null)
-    {
-        return new OrderOutboxMessage
-        {
-            CloudEvent = cloudEvent,
-            Status     = OutboxMessageStatus.Pending,
-        };
-    }
-}
-```
-
-### Step 3 – implement `IOutboxMessageRepository<TMessage>`
-
-The repository must persist the outbox record **inside the same unit of work** as your domain entity so that both writes commit or roll back together:
-
-```csharp
-using Deveel.Events;
-
-// Example using Entity Framework Core
-public class OrderOutboxRepository : IOutboxMessageRepository<OrderOutboxMessage>
-{
-    private readonly AppDbContext _db;
-
-    public OrderOutboxRepository(AppDbContext db) => _db = db;
-
-    // ── IRepository<OrderOutboxMessage, string> ──────────────────────
-
-    public string GetEntityKey(OrderOutboxMessage entity) => entity.Id;
-
-    public async Task AddAsync(OrderOutboxMessage entity, CancellationToken ct = default)
-    {
-        await _db.OutboxMessages.AddAsync(entity, ct);
-        await _db.SaveChangesAsync(ct);
-    }
-
-    public async Task<bool> UpdateAsync(OrderOutboxMessage entity, CancellationToken ct = default)
-    {
-        _db.OutboxMessages.Update(entity);
-        return await _db.SaveChangesAsync(ct) > 0;
-    }
-
-    public async Task<bool> RemoveAsync(OrderOutboxMessage entity, CancellationToken ct = default)
-    {
-        _db.OutboxMessages.Remove(entity);
-        return await _db.SaveChangesAsync(ct) > 0;
-    }
-
-    public async Task<OrderOutboxMessage?> FindAsync(string key, CancellationToken ct = default)
-        => await _db.OutboxMessages.FindAsync(new object[] { key }, ct);
-
-    // ── IOutboxMessageRepository<OrderOutboxMessage> ─────────────────
-
-    public Task<IReadOnlyList<OrderOutboxMessage>> GetPendingMessagesAsync(
-        int? limit = null, CancellationToken ct = default)
-    {
-        var query = _db.OutboxMessages
-            .Where(m => m.Status == OutboxMessageStatus.Pending
-                     && (m.NextRetryAt == null || m.NextRetryAt <= DateTimeOffset.UtcNow));
-
-        if (limit.HasValue)
-            query = query.Take(limit.Value);
-
-        return Task.FromResult<IReadOnlyList<OrderOutboxMessage>>(query.ToList());
-    }
-
-    public async Task SetSendingAsync(OrderOutboxMessage msg, CancellationToken ct = default)
-    {
-        msg.Status = OutboxMessageStatus.Sending;
-        await _db.SaveChangesAsync(ct);
-    }
-
-    public async Task SetDeliveredAsync(OrderOutboxMessage msg, CancellationToken ct = default)
-    {
-        msg.Status = OutboxMessageStatus.Delivered;
-        await _db.SaveChangesAsync(ct);
-    }
-
-    public async Task SetRetryAsync(
-        OrderOutboxMessage msg, string error, DateTimeOffset nextRetry, CancellationToken ct = default)
-    {
-        msg.Status       = OutboxMessageStatus.Pending;
-        msg.ErrorMessage = error;
-        msg.RetryCount  += 1;
-        msg.NextRetryAt  = nextRetry;
-        await _db.SaveChangesAsync(ct);
-    }
-
-    public async Task SetFailedAsync(OrderOutboxMessage msg, string error, CancellationToken ct = default)
-    {
-        msg.Status       = OutboxMessageStatus.Failed;
-        msg.ErrorMessage = error;
-        await _db.SaveChangesAsync(ct);
-    }
-
-    // ── Remaining IRepository members (AddRangeAsync / RemoveRangeAsync) ──
-
-    public async Task AddRangeAsync(IEnumerable<OrderOutboxMessage> entities, CancellationToken ct = default)
-    {
-        await _db.OutboxMessages.AddRangeAsync(entities, ct);
-        await _db.SaveChangesAsync(ct);
-    }
-
-    public async Task RemoveRangeAsync(IEnumerable<OrderOutboxMessage> entities, CancellationToken ct = default)
-    {
-        _db.OutboxMessages.RemoveRange(entities);
-        await _db.SaveChangesAsync(ct);
-    }
-}
-```
-
-> **Tip:** If you use an ORM that tracks changes automatically (EF Core, NHibernate), you can skip calling `SaveChangesAsync` inside each method and let the unit-of-work (e.g., the HTTP request scope) flush the changes.  The example above calls `SaveChangesAsync` explicitly only for clarity.
-
-## Registration
-
-Wire everything up in `Program.cs` (or your `Startup.cs`) using the fluent API:
-
-### Basic registration
-
-```csharp
-using Deveel.Events;
-
-builder.Services
-    .AddEventPublisher()
-    .AddOutbox<OrderOutboxMessage>()
-    .WithRepository<OrderOutboxRepository>()
-    .WithFactory<OrderOutboxMessageFactory>();
-```
-
-### Inline options
-
-```csharp
-builder.Services
-    .AddEventPublisher()
-    .AddOutbox<OrderOutboxMessage>(options =>
-    {
-        // OutboxPublishOptions inherits from EventPublishOptions –
-        // set channel-name, content-type, etc. here if needed.
-    })
-    .WithRepository<OrderOutboxRepository>()
-    .WithFactory<OrderOutboxMessageFactory>();
-```
-
-### From `appsettings.json`
-
-```csharp
-builder.Services
-    .AddEventPublisher()
-    .AddOutbox<OrderOutboxMessage>("Events:Outbox")
-    .WithRepository<OrderOutboxRepository>()
-    .WithFactory<OrderOutboxMessageFactory>();
-```
-
-```json
-// appsettings.json
-{
-  "Events": {
-    "Outbox": {
-      "ChannelName": "outbox"
-    }
-  }
-}
-```
-
-## Options reference
-
-### `OutboxPublishOptions`
-
-Inherits from `EventPublishOptions`.  Currently carries no outbox-specific properties; it exists so that future versions can add settings without a breaking change, and so that callers can pass per-call overrides through the standard options mechanism.
-
-### `OutboxRelayOptions`
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `Interval` | `TimeSpan` | `00:00:30` | How often the relay polls for pending messages |
-| `MaxBatchSize` | `int` | `0` | Maximum messages processed per tick (0 = unlimited) |
-| `TransportPublisherName` | `string` | `""` | Name of the publisher pipeline the relay uses to forward messages. Empty string targets the default pipeline |
-
-## The Relay service
-
-The relay is an `IHostedService` (`OutboxRelayService<TMessage>`) that wakes up on a configurable interval, fetches `Pending` messages from the repository, and publishes their `CloudEvent` payloads through the configured transport channels.
-
-### Same-process deployment
-
-In a same-process deployment the application writes to the outbox **and** runs the relay in the same host.  The relay uses `OutboxRelayPublishOptions` as a skip signal: any `OutboxPublishChannel<TMessage>` in the pipeline detects this signal and skips re-persisting the event, preventing infinite loops.
-
-```
-┌────────────────────────────────────────────────────────┐
-│  App host                                              │
-│                                                        │
-│  ┌─────────────┐  write    ┌───────────────────────┐   │
-│  │  Publisher  │ ────────► │  OutboxPublishChannel │   │
-│  └─────────────┘           └──────────┬────────────┘   │
-│                                       │ persists       │
-│                             ┌─────────▼────────┐       │
-│                             │  Outbox table    │       │
-│                             └─────────┬────────┘       │
-│                                       │ polls          │
-│  ┌────────────────────────────────────▼────────────┐   │
-│  │  OutboxRelayService (IHostedService)            │   │
-│  │  → fetches pending → publishes via transport    │   │
-│  └─────────────────────────────────────────────────┘   │
-└────────────────────────────────────────────────────────┘
-```
-
-Add the relay to the same builder chain using `.WithRelay()`:
-
-```csharp
-builder.Services
-    .AddEventPublisher()
-    .AddOutbox<OrderOutboxMessage>()
-    .WithRepository<OrderOutboxRepository>()
-    .WithFactory<OrderOutboxMessageFactory>()
-    .WithRelay(relay =>
-    {
-        relay.Interval     = TimeSpan.FromSeconds(15);
-        relay.MaxBatchSize = 100;
-    })
-    // Also register the real transport to deliver to
-    .AddRabbitMq(opts =>
-    {
-        opts.ConnectionString = "amqp://guest:guest@localhost:5672";
-        opts.ExchangeName     = "events";
-    });
-```
-
-Or bind relay options from configuration:
-
-```csharp
-builder.Services
-    .AddEventPublisher()
-    .AddOutbox<OrderOutboxMessage>("Events:Outbox")
-    .WithRepository<OrderOutboxRepository>()
-    .WithFactory<OrderOutboxMessageFactory>()
-    .WithRelay("Events:OutboxRelay")
-    .AddRabbitMq("Events:RabbitMq");
-```
-
-```json
-{
-  "Events": {
-    "OutboxRelay": {
-      "Interval": "00:00:15",
-      "MaxBatchSize": 100,
-      "TransportPublisherName": ""
-    },
-    "RabbitMq": {
-      "ConnectionString": "amqp://guest:guest@localhost:5672",
-      "ExchangeName": "events"
-    }
-  }
-}
-```
-
-### Cross-process deployment
-
-In a cross-process deployment a **separate** relay application reads the shared outbox store and delivers messages.  The relay app does **not** register the `OutboxPublishChannel` — it only needs the transport channel and the repository:
-
-```csharp
-// Relay worker (separate host / console app)
-builder.Services
-    .AddEventPublisher()
-    .AddOutbox<OrderOutboxMessage>()
-    .WithRepository<OrderOutboxRepository>()   // shared DB context
-    .WithFactory<OrderOutboxMessageFactory>()
-    .WithRelay(relay =>
-    {
-        relay.Interval     = TimeSpan.FromSeconds(10);
-        relay.MaxBatchSize = 200;
-    })
-    .AddRabbitMq(opts =>
-    {
-        opts.ConnectionString = "amqp://guest:guest@rabbitmq:5672";
-        opts.ExchangeName     = "events";
-    });
-```
-
-In this configuration:
-
-- The main application only has the `OutboxPublishChannel` registered (no transport).
-- The relay worker has both the `OutboxRelayService` and the transport channel (no `OutboxPublishChannel`).
-
-## Message lifecycle
-
-```
-              Publish call
-                  │
-                  ▼
-            ┌──────────┐
-            │ Pending  │ ◄─────────────────────────────┐
-            └────┬─────┘                               │
-                 │ relay picks up                      │
-                 ▼                                     │
-            ┌──────────┐                               │  retry scheduled
-            │ Sending  │                               │
-            └────┬─────┘                               │
-        ┌────────┴────────┐                            │
-   success           transient error        permanent error (max retries)
-        │                 │                            │
-        ▼                 └────────────────────────────┘
-  ┌───────────┐                                        │
-  │ Delivered │                                   ┌────▼────┐
-  └───────────┘                                   │ Failed  │
-                                                  └─────────┘
-```
-
-The relay processor handles the state transitions:
-
-1. `GetPendingMessagesAsync` – fetch eligible messages.
-2. `SetSendingAsync` – claim the message (prevents concurrent relay instances from double-delivering).
-3. Publish via transport channel.
-4. On success → `SetDeliveredAsync`.
-5. On transient error → `SetRetryAsync` (with back-off timestamp).
-6. When `RetryCount` exceeds the configured limit → `SetFailedAsync`.
-
-## Complete end-to-end example
-
-The following example shows an order service that atomically saves an order and writes an outbox record, with an in-process relay that forwards the event to RabbitMQ.
-
-### Domain models
-
-```csharp
-using Deveel.Events;
-
-// Event data class
-[Event("order.placed", "1.0")]
-public class OrderPlaced
-{
-    public Guid   OrderId    { get; set; }
-    public string CustomerId { get; set; } = default!;
-    public decimal Total     { get; set; }
-}
-```
-
-### Outbox entity
-
-```csharp
-using CloudNative.CloudEvents;
-using Deveel.Events;
-
 public class OrderOutboxMessage : IOutboxMessage
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
@@ -467,12 +81,13 @@ public class OrderOutboxMessage : IOutboxMessage
 }
 ```
 
-### Factory
+### Message factory
+
+`IOutboxMessageFactory<TMessage>` has a single method, `Create`, that converts a `CloudEvent` into a new instance of your entity.  The framework calls it once per `PublishAsync` invocation.
+
+The factory should be **stateless** and **allocation-light** — it only needs to wrap the provided event and set `Status = Pending`.  
 
 ```csharp
-using CloudNative.CloudEvents;
-using Deveel.Events;
-
 public class OrderOutboxMessageFactory : IOutboxMessageFactory<OrderOutboxMessage>
 {
     public OrderOutboxMessage Create(CloudEvent cloudEvent, OutboxPublishOptions? options = null)
@@ -480,42 +95,37 @@ public class OrderOutboxMessageFactory : IOutboxMessageFactory<OrderOutboxMessag
 }
 ```
 
-### Repository (Entity Framework Core)
+The `options` parameter carries any per-call publish options (channel name, content-type overrides, etc.) in case you need to store them alongside the entity.
+
+### Repository
+
+`IOutboxMessageRepository<TMessage>` extends the standard `IRepository<TMessage, string>` CRUD surface with outbox-specific state-transition methods.  The CRUD methods (`AddAsync`, `UpdateAsync`, `RemoveAsync`, `FindAsync`, `AddRangeAsync`, `RemoveRangeAsync`) are straightforward persistence operations that you implement using your ORM or data-access library of choice.
+
+The outbox-specific methods handle the delivery lifecycle:
+
+| Method | When called | What to do |
+|--------|-------------|------------|
+| `GetPendingMessagesAsync(limit?, ct)` | Every relay tick | Return `Pending` records whose `NextRetryAt` is `null` or in the past; apply `limit` if provided |
+| `SetSendingAsync(msg, ct)` | Before each delivery attempt | Set `Status = Sending` so concurrent relay instances skip this record |
+| `SetDeliveredAsync(msg, ct)` | After successful delivery | Set `Status = Delivered`; the record may now be archived or deleted |
+| `SetRetryAsync(msg, error, nextRetryAt, ct)` | After a transient failure | Set `Status = Pending`, record the error, increment `RetryCount`, set `NextRetryAt` |
+| `SetFailedAsync(msg, error, ct)` | When retry limit is exceeded | Set `Status = Failed`; human intervention or a dead-letter process is required |
+
+> **Atomicity tip:** the `AddAsync` method is called from within the same `DbContext` scope as the domain entity write, so for EF Core you should **not** call `SaveChangesAsync` inside it — let the caller flush the unit of work.  The state-transition methods (`SetSendingAsync`, etc.) are called by the relay service outside of a business transaction, so they should persist immediately.
+
+For Entity Framework Core the outbox-specific methods typically query the `DbSet` with a `Where` clause on `Status` and `NextRetryAt`, update the entity's properties, then call `SaveChangesAsync`:
 
 ```csharp
-using Deveel.Events;
-using Microsoft.EntityFrameworkCore;
-
-public class AppDbContext : DbContext
-{
-    public DbSet<OrderOutboxMessage> OutboxMessages => Set<OrderOutboxMessage>();
-    // ... other DbSets
-}
-
 public class EfOrderOutboxRepository : IOutboxMessageRepository<OrderOutboxMessage>
 {
     private readonly AppDbContext _db;
     public EfOrderOutboxRepository(AppDbContext db) => _db = db;
 
-    public string GetEntityKey(OrderOutboxMessage e) => e.Id;
+    // --- IRepository<OrderOutboxMessage, string> members ---
+    // Implement AddAsync, UpdateAsync, RemoveAsync, FindAsync,
+    // AddRangeAsync, and RemoveRangeAsync using _db.OutboxMessages.
 
-    public async Task AddAsync(OrderOutboxMessage e, CancellationToken ct = default)
-    { await _db.OutboxMessages.AddAsync(e, ct); await _db.SaveChangesAsync(ct); }
-
-    public async Task<bool> UpdateAsync(OrderOutboxMessage e, CancellationToken ct = default)
-    { _db.Update(e); return await _db.SaveChangesAsync(ct) > 0; }
-
-    public async Task<bool> RemoveAsync(OrderOutboxMessage e, CancellationToken ct = default)
-    { _db.Remove(e); return await _db.SaveChangesAsync(ct) > 0; }
-
-    public Task AddRangeAsync(IEnumerable<OrderOutboxMessage> entities, CancellationToken ct = default)
-    { _db.OutboxMessages.AddRange(entities); return _db.SaveChangesAsync(ct); }
-
-    public Task RemoveRangeAsync(IEnumerable<OrderOutboxMessage> entities, CancellationToken ct = default)
-    { _db.OutboxMessages.RemoveRange(entities); return _db.SaveChangesAsync(ct); }
-
-    public async Task<OrderOutboxMessage?> FindAsync(string key, CancellationToken ct = default)
-        => await _db.OutboxMessages.FindAsync(new object[] { key }, ct);
+    // --- Outbox-specific members ---
 
     public Task<IReadOnlyList<OrderOutboxMessage>> GetPendingMessagesAsync(
         int? limit = null, CancellationToken ct = default)
@@ -541,13 +151,202 @@ public class EfOrderOutboxRepository : IOutboxMessageRepository<OrderOutboxMessa
 }
 ```
 
-### Registration (`Program.cs`)
+## Registration
+
+Once your three components are ready, wire them up in `Program.cs` using the fluent `EventPublisherBuilder` chain.  The `.AddOutbox<TMessage>()` call registers the `OutboxPublishChannel`, and the subsequent `.WithRepository<T>()` and `.WithFactory<T>()` calls bind your implementations.
+
+### Minimal setup
 
 ```csharp
-using Deveel.Events;
+builder.Services
+    .AddEventPublisher()
+    .AddOutbox<OrderOutboxMessage>()
+    .WithRepository<EfOrderOutboxRepository>()
+    .WithFactory<OrderOutboxMessageFactory>();
+```
 
-var builder = WebApplication.CreateBuilder(args);
+### With inline options
 
+```csharp
+builder.Services
+    .AddEventPublisher()
+    .AddOutbox<OrderOutboxMessage>(options =>
+    {
+        options.ChannelName = "outbox";
+    })
+    .WithRepository<EfOrderOutboxRepository>()
+    .WithFactory<OrderOutboxMessageFactory>();
+```
+
+### Bound from configuration
+
+```csharp
+builder.Services
+    .AddEventPublisher()
+    .AddOutbox<OrderOutboxMessage>("Events:Outbox")
+    .WithRepository<EfOrderOutboxRepository>()
+    .WithFactory<OrderOutboxMessageFactory>();
+```
+
+```json
+{
+  "Events": {
+    "Outbox": {
+      "ChannelName": "outbox"
+    }
+  }
+}
+```
+
+## Options reference
+
+### `OutboxPublishOptions`
+
+Inherits from `EventPublishOptions` and currently adds no outbox-specific properties.  It exists as a dedicated type so that future releases can introduce outbox-only settings without a breaking change, and so that callers can provide per-publish overrides through the standard options path.
+
+### `OutboxRelayOptions`
+
+Controls the background relay service.
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `Interval` | `TimeSpan` | `00:00:30` | How often the relay polls the repository for pending messages |
+| `MaxBatchSize` | `int` | `0` | Maximum number of messages the relay processes per poll cycle; `0` means no limit |
+| `TransportPublisherName` | `string` | `""` | Name of the downstream publisher pipeline used to forward messages. Leave empty to target the default pipeline |
+
+## The relay service
+
+The relay is an `IHostedService` that the framework registers automatically when you call `.WithRelay(…)`.  It runs in the background on the configured `Interval`, fetches a batch of `Pending` messages, and publishes each one's `CloudEvent` to the transport channel.
+
+### Same-process deployment
+
+The simplest topology runs the relay inside the same application host as the publisher.  The relay detects that it is running in the same process and automatically skips the outbox channel during forwarding, so events are not re-persisted in an infinite loop.
+
+Add `.WithRelay()` to the builder chain and then register the target transport:
+
+```csharp
+builder.Services
+    .AddEventPublisher()
+    .AddOutbox<OrderOutboxMessage>()
+    .WithRepository<EfOrderOutboxRepository>()
+    .WithFactory<OrderOutboxMessageFactory>()
+    .WithRelay(relay =>
+    {
+        relay.Interval     = TimeSpan.FromSeconds(15);
+        relay.MaxBatchSize = 100;
+    })
+    .AddRabbitMq(opts =>
+    {
+        opts.ConnectionString = "amqp://guest:guest@localhost:5672";
+        opts.ExchangeName     = "events";
+    });
+```
+
+Configuration-bound equivalent:
+
+```csharp
+builder.Services
+    .AddEventPublisher()
+    .AddOutbox<OrderOutboxMessage>("Events:Outbox")
+    .WithRepository<EfOrderOutboxRepository>()
+    .WithFactory<OrderOutboxMessageFactory>()
+    .WithRelay("Events:OutboxRelay")
+    .AddRabbitMq("Events:RabbitMq");
+```
+
+```json
+{
+  "Events": {
+    "OutboxRelay": { "Interval": "00:00:15", "MaxBatchSize": 100 },
+    "RabbitMq":    { "ConnectionString": "amqp://...", "ExchangeName": "events" }
+  }
+}
+```
+
+### Cross-process deployment
+
+For larger deployments it is common to run the relay as a **dedicated worker process** that shares the database with the main application but runs independently.  This allows the relay to be scaled, deployed, and restarted without affecting the application.
+
+In this topology:
+
+- The **main application** registers only `AddOutbox<TMessage>()` (no relay, no transport channel).  Its sole job is to persist outbox records atomically with domain data.
+- The **relay worker** registers the repository, the factory, `.WithRelay(…)`, and the transport channel — but **not** the `OutboxPublishChannel` itself.
+
+```csharp
+// Relay worker Program.cs
+builder.Services
+    .AddEventPublisher()
+    .AddOutbox<OrderOutboxMessage>()
+    .WithRepository<EfOrderOutboxRepository>()  // points at the shared database
+    .WithFactory<OrderOutboxMessageFactory>()
+    .WithRelay(relay =>
+    {
+        relay.Interval     = TimeSpan.FromSeconds(10);
+        relay.MaxBatchSize = 200;
+    })
+    .AddRabbitMq(opts =>
+    {
+        opts.ConnectionString = "amqp://guest:guest@rabbitmq:5672";
+        opts.ExchangeName     = "events";
+    });
+```
+
+## Message lifecycle
+
+Each outbox record moves through a well-defined set of states that reflect its position in the delivery pipeline:
+
+| Status | Meaning |
+|--------|---------|
+| `Pending` | The record has been written and is waiting to be picked up by the relay |
+| `Sending` | The relay has claimed the record and is attempting delivery |
+| `Delivered` | The transport channel has acknowledged receipt; the record can be archived or removed |
+| `Failed` | All delivery attempts have been exhausted; manual intervention is needed |
+
+```
+              Publish call
+                  │
+                  ▼
+            ┌──────────┐
+            │ Pending  │ ◄──────────────────────────────┐
+            └────┬─────┘                                │
+                 │ relay claims                         │
+                 ▼                                      │
+            ┌──────────┐                                │  back-off & retry
+            │ Sending  │                                │
+            └────┬─────┘                                │
+        ┌────────┴────────┐                             │
+   success           transient error       max retries exceeded
+        │                 │                             │
+        ▼                 └─────────────────────────────┘
+  ┌───────────┐                                         │
+  │ Delivered │                                    ┌────▼────┐
+  └───────────┘                                    │ Failed  │
+                                                   └─────────┘
+```
+
+## End-to-end example
+
+The following walkthrough shows a minimal order service that atomically writes an order row and an outbox record, then relies on the in-process relay to forward the event to RabbitMQ.
+
+### Event data class
+
+Annotate the event data class with `[Event]` so that the framework can generate the correct CloudEvents `type` and `dataschemaversion` attributes automatically:
+
+```csharp
+[Event("order.placed", "1.0")]
+public class OrderPlaced
+{
+    public Guid    OrderId    { get; set; }
+    public string  CustomerId { get; set; } = default!;
+    public decimal Total      { get; set; }
+}
+```
+
+### Host registration
+
+Wire all components in `Program.cs`:
+
+```csharp
 builder.Services.AddDbContext<AppDbContext>(opts =>
     opts.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
 
@@ -566,13 +365,11 @@ builder.Services
         opts.ConnectionString = builder.Configuration["RabbitMq:ConnectionString"]!;
         opts.ExchangeName     = "events";
     });
-
-var app = builder.Build();
-// ... configure middleware, routes
-app.Run();
 ```
 
-### Service layer
+### Publishing from a service
+
+Inject `IEventPublisher` and call `PublishAsync` as usual.  No special outbox API is required — the channel selection is transparent:
 
 ```csharp
 public class OrderService
@@ -591,36 +388,38 @@ public class OrderService
         var order = new Order { CustomerId = cmd.CustomerId, Total = cmd.Total };
         await _db.Orders.AddAsync(order, ct);
 
-        // PublishAsync writes ONLY to the outbox table (same transaction context).
-        // The outbox record and the order row are saved in the same SaveChangesAsync call
-        // further down, or each AddAsync flushes immediately for simplicity.
+        // Writes only to the outbox table; the relay will forward to RabbitMQ.
         await _publisher.PublishAsync(new OrderPlaced
         {
             OrderId    = order.Id,
             CustomerId = order.CustomerId,
             Total      = order.Total,
         }, cancellationToken: ct);
+
+        await _db.SaveChangesAsync(ct);  // commits both the order row and the outbox record
     }
 }
 ```
 
+Notice that `SaveChangesAsync` is called **once** after both the domain write and the publish call, ensuring that the two rows commit atomically.
+
 ## Combining Outbox with other channels
 
-You can register the outbox channel alongside transport channels.  All registered channels receive every event.  Use [Named Channels](named-channels.md) to direct specific events to specific channels or to suppress certain channels for certain events.
+The outbox channel participates in the same fan-out as any other channel — every event published to the `IEventPublisher` is delivered to all registered channels.  You can therefore mix the outbox with a direct transport channel to get different delivery guarantees for different scenarios.
+
+Use [Named Channels](named-channels.md) to route specific event types to specific channels or to exclude a channel for a particular publish call.
 
 ```csharp
 builder.Services
     .AddEventPublisher()
-    // Persist every event to the outbox
-    .AddOutbox<OrderOutboxMessage>()
+    .AddOutbox<OrderOutboxMessage>()           // guaranteed, async delivery for all events
         .WithRepository<EfOrderOutboxRepository>()
         .WithFactory<OrderOutboxMessageFactory>()
         .WithRelay(r => r.Interval = TimeSpan.FromSeconds(20))
-    // Also deliver high-priority events directly via webhook
-    .AddWebhooks(opts =>
+    .AddWebhooks(opts =>                       // direct delivery for high-priority events
     {
-        opts.ChannelName  = "priority-webhook";
-        opts.EndpointUrl  = "https://partner.example.com/events";
+        opts.ChannelName   = "priority-webhook";
+        opts.EndpointUrl   = "https://partner.example.com/events";
         opts.SigningSecret = "s3cr3t";
     });
 ```
