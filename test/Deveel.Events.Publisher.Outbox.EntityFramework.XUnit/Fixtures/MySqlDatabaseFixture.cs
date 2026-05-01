@@ -3,6 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 //
 
+using Deveel.Data;
+
 using Microsoft.EntityFrameworkCore;
 
 using Testcontainers.MySql;
@@ -56,8 +58,13 @@ public sealed class MySqlDatabaseFixture : IAsyncLifetime
     /// Creates a new <see cref="EntityOutboxMessageRepository{TMessage,TContext}"/> backed
     /// by a fresh <see cref="OutboxDbContext"/>.
     /// </summary>
-    public EntityOutboxMessageRepository<DbOutboxMessage, OutboxDbContext> CreateRepository()
-        => new(CreateContext());
+    /// <param name="systemTime">
+    /// An optional frozen clock to inject.  Pass a <see cref="TestSystemTime"/> instance in
+    /// tests that need predictable timestamps.  When <c>null</c>, the real wall clock is used.
+    /// </param>
+    public EntityOutboxMessageRepository<DbOutboxMessage, OutboxDbContext> CreateRepository(
+        ISystemTime? systemTime = null)
+        => new(CreateContext(), systemTime);
 
     // ── IAsyncLifetime ────────────────────────────────────────────────────────
 

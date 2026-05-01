@@ -504,7 +504,11 @@ public class EntityOutboxMessageRepositoryTests
         // Arrange
         var ct        = TestContext.Current.CancellationToken;
         var errMsg    = Faker.Lorem.Sentence();
-        var retryAt   = DateTimeOffset.UtcNow.AddMinutes(Faker.Random.Int(1, 30));
+        // Use a frozen clock so that both the retryAt value and the LastStatusAt
+        // timestamp written by the repository are fully predictable and survive
+        // MySQL DATETIME storage without any sub-second rounding differences.
+        var clock     = new TestSystemTime();
+        var retryAt   = clock.UtcNow.AddMinutes(Faker.Random.Int(1, 30));
         var message   = new DbOutboxMessage();
         message.PopulateFromCloudEvent(BuildCloudEvent());
 
@@ -512,7 +516,7 @@ public class EntityOutboxMessageRepositoryTests
         await writeCtx.OutboxMessages.AddAsync(message, ct);
         await writeCtx.SaveChangesAsync(ct);
 
-        var repo = new EntityOutboxMessageRepository<DbOutboxMessage, OutboxDbContext>(writeCtx);
+        var repo = new EntityOutboxMessageRepository<DbOutboxMessage, OutboxDbContext>(writeCtx, clock);
 
         // Act
         await repo.SetRetryAsync(message, errMsg, retryAt, ct);
@@ -526,7 +530,6 @@ public class EntityOutboxMessageRepositoryTests
         Assert.Equal(errMsg,                      loaded.ErrorMessage);
         Assert.Equal(1,                           loaded.RetryCount);
         Assert.NotNull(loaded.NextRetryAt);
-        // Compare up to the second to avoid sub-millisecond DB rounding differences
         Assert.Equal(retryAt.ToUnixTimeSeconds(), loaded.NextRetryAt!.Value.ToUnixTimeSeconds());
     }
 

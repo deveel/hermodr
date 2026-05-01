@@ -57,6 +57,13 @@ public class EntityOutboxMessageRepository<TMessage, TContext>
     /// <param name="context">
     /// The <typeparamref name="TContext"/> instance used to access the database.
     /// </param>
+    /// <param name="systemTime">
+    /// An optional <see cref="ISystemTime"/> used to obtain the current UTC time when
+    /// recording status-transition timestamps (<c>LastStatusAt</c>).
+    /// When <c>null</c>, <see cref="SystemTime.Default"/> is used, which delegates to
+    /// <see cref="DateTimeOffset.UtcNow"/>.
+    /// Provide a test double in unit / integration tests to make timestamps deterministic.
+    /// </param>
     /// <param name="loggerFactory">
     /// An optional <see cref="ILoggerFactory"/> used to create loggers both for the
     /// base <see cref="EntityRepository{TEntity,TKey}"/> and for this derived class.
@@ -64,10 +71,13 @@ public class EntityOutboxMessageRepository<TMessage, TContext>
     /// In production the DI container will typically supply an <see cref="ILoggerFactory"/>
     /// automatically.
     /// </param>
-    public EntityOutboxMessageRepository(TContext context, ILoggerFactory? loggerFactory = null)
+    public EntityOutboxMessageRepository(TContext context, ISystemTime? systemTime = null, ILoggerFactory? loggerFactory = null)
         : base(context, CreateBaseLogger(loggerFactory))
     {
+        _systemTime = systemTime ?? SystemTime.Default;
     }
+
+    private readonly ISystemTime _systemTime;
 
     /// <summary>
     /// Gets the strongly-typed <typeparamref name="TContext"/> instance.
@@ -147,7 +157,7 @@ public class EntityOutboxMessageRepository<TMessage, TContext>
         int? limit = null,
         CancellationToken cancellationToken = default)
     {
-        var now = DateTimeOffset.UtcNow;
+        var now = _systemTime.UtcNow;
 
         var query = Context.Set<TMessage>()
             .Where(m =>
