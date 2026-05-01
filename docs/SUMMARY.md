@@ -27,6 +27,7 @@
   * [AMQP Annotations](publishers/rabbitmq.md#amqp-annotations)
 * [MassTransit](publishers/masstransit.md)
 * [Webhook](publishers/webhook.md)
+* [Transactional Outbox](publishers/outbox.md)
 * [Typed Channels](publishers/typed-channels.md)
 * [Named Channels](publishers/named-channels.md)
 
