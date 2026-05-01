@@ -382,6 +382,16 @@ namespace Deveel.Events
             return EventFactory.CreateEventFromData(dataType, data);
         }
         
+        /// <inheritdoc cref="IEventPublisher.PublishAsync(Type,object,EventPublishOptions,CancellationToken)"/>
+        /// <typeparam name="TEvent">
+        /// The compile-time type of the event data object.  When
+        /// <typeparamref name="TEvent"/> implements <see cref="IEventConvertible"/> the
+        /// event is converted via <see cref="IEventConvertible.ToCloudEvent"/> rather
+        /// than through the <see cref="IEventFactory"/> pipeline.
+        /// </typeparam>
+        /// <param name="event">The event data or <see cref="CloudEvent"/> to publish.</param>
+        /// <param name="options">Optional per-call options forwarded to the channel(s).</param>
+        /// <param name="cancellationToken">A token to cancel the operation.</param>
         public Task PublishAsync<TEvent>(TEvent @event, EventPublishOptions? options = null,
             CancellationToken cancellationToken = default)
         {

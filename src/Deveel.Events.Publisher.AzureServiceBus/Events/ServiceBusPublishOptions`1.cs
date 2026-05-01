@@ -34,6 +34,9 @@ namespace Deveel.Events
         /// <paramref name="typedOpts"/> take precedence; all other values fall back to
         /// <paramref name="baseOpts"/>.
         /// </summary>
+        /// <param name="baseOpts">The base (channel-level) options to merge from.</param>
+        /// <param name="typedOpts">The typed per-event overrides to apply.</param>
+        /// <returns>A new <see cref="ServiceBusPublishOptions"/> with the merged values.</returns>
         public static ServiceBusPublishOptions Merge(
             ServiceBusPublishOptions baseOpts,
             ServiceBusPublishOptions<TEvent> typedOpts)

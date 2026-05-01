@@ -40,7 +40,10 @@ public sealed class OutboxChannelBuilder
         _publisherBuilder.Services.AddOptions<OutboxPublishOptions>();
         _publisherBuilder.AddChannel(channelType);
     }
-    
+
+    /// <summary>
+    /// Gets the CLR type of the outbox message entity used by this channel.
+    /// </summary>
     public Type MessageType { get; }
 
     /// <summary>

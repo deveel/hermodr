@@ -19,6 +19,15 @@ namespace Deveel.Events;
 public interface IOutboxMessageRepository<TMessage> : IRepository<TMessage, string>
      where TMessage : class, IOutboxMessage
 {
+    /// <summary>
+    /// Returns the current <see cref="OutboxMessageStatus"/> of the given
+    /// <paramref name="message"/> as stored in the underlying persistence layer.
+    /// </summary>
+    /// <param name="message">The message whose status is to be retrieved.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>
+    /// The current <see cref="OutboxMessageStatus"/> of <paramref name="message"/>.
+    /// </returns>
     Task<OutboxMessageStatus> GetStatusAsync(TMessage message, CancellationToken cancellationToken = default);
     
     /// <summary>

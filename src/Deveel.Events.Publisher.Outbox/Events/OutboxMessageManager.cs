@@ -5,9 +5,28 @@ using Microsoft.Extensions.Logging;
 
 namespace Deveel.Events;
 
+/// <summary>
+/// A domain-oriented manager for <typeparamref name="TMessage"/> outbox entities that
+/// extends the standard <see cref="EntityManager{TEntity,TKey}"/> with outbox-specific
+/// state-transition helpers.
+/// </summary>
+/// <typeparam name="TMessage">
+/// The outbox message entity type.  Must be a reference type and implement
+/// <see cref="IOutboxMessage"/>.
+/// </typeparam>
 public class OutboxMessageManager<TMessage> : EntityManager<TMessage, string>
     where TMessage : class, IOutboxMessage
 {
+    /// <summary>
+    /// Initialises the manager with its dependencies.
+    /// </summary>
+    /// <param name="repository">The outbox message repository.</param>
+    /// <param name="validator">Optional entity validator.</param>
+    /// <param name="cache">Optional entity cache.</param>
+    /// <param name="systemTime">Optional system-time abstraction.</param>
+    /// <param name="errorFactory">Optional operation-error factory.</param>
+    /// <param name="services">Optional service provider.</param>
+    /// <param name="loggerFactory">Optional logger factory.</param>
     public OutboxMessageManager(
         IOutboxMessageRepository<TMessage> repository, 
         IEntityValidator<TMessage, string>? validator = null, 
@@ -17,17 +36,41 @@ public class OutboxMessageManager<TMessage> : EntityManager<TMessage, string>
         IServiceProvider? services = null, ILoggerFactory? loggerFactory = null) : base(repository, validator, cache, systemTime, errorFactory, services, loggerFactory)
     {
     }
-    
+
+    /// <summary>Gets the typed outbox message repository.</summary>
     protected IOutboxMessageRepository<TMessage> MessageRepository => (IOutboxMessageRepository<TMessage>) Repository;
-    
+
+    /// <summary>
+    /// Returns the current <see cref="OutboxMessageStatus"/> of <paramref name="message"/>.
+    /// </summary>
+    /// <param name="message">The message to query.</param>
+    /// <returns>The current status of the message.</returns>
     public Task<OutboxMessageStatus> GetStatusAsync(TMessage message) {
         return MessageRepository.GetStatusAsync(message, CancellationToken);
     }
 
+    /// <summary>
+    /// Returns messages eligible for relay, up to the optional <paramref name="limit"/>.
+    /// </summary>
+    /// <param name="limit">
+    /// Maximum number of messages to return; <c>null</c> returns all pending messages.
+    /// </param>
+    /// <returns>A read-only list of pending messages.</returns>
     public Task<IReadOnlyList<TMessage>> GetPendingMessagesAsync(int? limit = null) {
         return MessageRepository.GetPendingMessagesAsync(limit, CancellationToken);
     }
-    
+
+    /// <summary>
+    /// Transitions <paramref name="message"/> to <see cref="OutboxMessageStatus.Failed"/>
+    /// and persists the <paramref name="errorMessage"/>.
+    /// </summary>
+    /// <param name="message">The message to mark as failed.</param>
+    /// <param name="errorMessage">A description of the failure reason.</param>
+    /// <returns>
+    /// <see cref="OperationResult.NotChanged"/> when the message is already failed;
+    /// an error result when the message is already delivered or in an invalid state;
+    /// otherwise the result of the update operation.
+    /// </returns>
     public virtual async Task<OperationResult> MarkFailedAsync(TMessage message, string errorMessage) {
         var status = await GetStatusAsync(message);
         if (status == OutboxMessageStatus.Failed)
@@ -42,7 +85,16 @@ public class OutboxMessageManager<TMessage> : EntityManager<TMessage, string>
         await MessageRepository.SetFailedAsync(message, errorMessage, CancellationToken);
         return await UpdateAsync(message);
     }
-    
+
+    /// <summary>
+    /// Transitions <paramref name="message"/> to <see cref="OutboxMessageStatus.Delivered"/>.
+    /// </summary>
+    /// <param name="message">The message to mark as delivered.</param>
+    /// <returns>
+    /// <see cref="OperationResult.NotChanged"/> when the message is already delivered;
+    /// an error result when the message is failed or in an invalid state;
+    /// otherwise the result of the update operation.
+    /// </returns>
     public virtual async Task<OperationResult> MarkDeliveredAsync(TMessage message) {
         var status = await GetStatusAsync(message);
         if (status == OutboxMessageStatus.Delivered)
@@ -57,7 +109,18 @@ public class OutboxMessageManager<TMessage> : EntityManager<TMessage, string>
         await MessageRepository.SetDeliveredAsync(message, CancellationToken);
         return await UpdateAsync(message);
     }
-    
+
+    /// <summary>
+    /// Schedules a retry for <paramref name="message"/> by recording the
+    /// <paramref name="errorMessage"/> and the <paramref name="nextRetryAt"/> timestamp.
+    /// </summary>
+    /// <param name="message">The message to retry.</param>
+    /// <param name="errorMessage">A description of the failure that triggered the retry.</param>
+    /// <param name="nextRetryAt">The UTC time at which the relay should next attempt delivery.</param>
+    /// <returns>
+    /// An error result when the message is already failed, delivered, or in an invalid state;
+    /// otherwise the result of the update operation.
+    /// </returns>
     public virtual async Task<OperationResult> ScheduleRetryAsync(TMessage message, string errorMessage, DateTimeOffset nextRetryAt) {
         var status = await GetStatusAsync(message);
         if (status == OutboxMessageStatus.Failed)

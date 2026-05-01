@@ -14,14 +14,14 @@ using Microsoft.EntityFrameworkCore;
 namespace Deveel.Events.Integration;
 
 /// <summary>
-/// Abstract base class that contains all integration tests for
-/// <see cref="EntityOutboxMessageRepository{TMessage,TContext}"/> and the
-/// <see cref="DbOutboxMessage"/> / <see cref="DbCloudEventAttribute"/> entity mapping.
+/// Abstract base class for integration tests that exercise
+/// <see cref="EntityOutboxMessageRepository{TMessage}"/> together with the
+/// <see cref="DbOutboxMessage"/> and <see cref="DbCloudEventAttribute"/> entity mappings.
 /// </summary>
 /// <remarks>
-/// Concrete subclasses supply the database via <see cref="CreateContext"/>, which
-/// allows the same suite to be run against different providers (e.g. MySQL via
-/// Testcontainers, SQLite in-memory).
+/// Concrete subclasses provide the target database by overriding <see cref="CreateContext"/>,
+/// enabling the same test suite to run against multiple EF Core providers
+/// (e.g. SQLite in-memory, MySQL via Testcontainers).
 /// </remarks>
 [Trait("Category",    "Integration")]
 [Trait("Layer",       "Infrastructure")]
@@ -38,14 +38,22 @@ public abstract class EntityOutboxMessageRepositoryTestsBase
     /// <summary>
     /// Creates and returns a new, fully configured <see cref="OutboxDbContext"/>
     /// connected to the database provided by the concrete subclass.
-    /// Each call must return an independent context instance so that tests can
-    /// verify round-trips without reading from EF's first-level cache.
     /// </summary>
+    /// <returns>A fresh, independent <see cref="OutboxDbContext"/> instance.</returns>
+    /// <remarks>
+    /// Each call must return a distinct context instance so that tests can verify
+    /// round-trips without reading stale data from EF Core's first-level cache.
+    /// </remarks>
     protected abstract OutboxDbContext CreateContext();
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     /// <summary>Builds a random, valid <see cref="CloudEvent"/> with no extension attributes.</summary>
+    /// <param name="configure">
+    /// An optional callback invoked after the event is initialised, allowing the caller to
+    /// override individual properties or add extension attributes before the event is returned.
+    /// </param>
+    /// <returns>A new <see cref="CloudEvent"/> populated with randomised field values.</returns>
     protected static CloudEvent BuildCloudEvent(Action<CloudEvent>? configure = null)
     {
         var ce = new CloudEvent
@@ -63,17 +71,30 @@ public abstract class EntityOutboxMessageRepositoryTestsBase
     }
 
     /// <summary>
-    /// Creates a new <see cref="EntityOutboxMessageRepository{TMessage,TContext}"/>
-    /// backed by a fresh context from <see cref="CreateContext"/>.
+    /// Creates a new <see cref="EntityOutboxMessageRepository{TMessage}"/>
+    /// backed by a fresh context obtained from <see cref="CreateContext"/>.
     /// </summary>
+    /// <param name="systemTime">
+    /// An optional <see cref="ISystemTime"/> used to control the current UTC time.
+    /// Pass a test double to make status-transition timestamps deterministic.
+    /// When <see langword="null"/>, the repository uses <c>SystemTime.Default</c>.
+    /// </param>
+    /// <returns>
+    /// A ready-to-use <see cref="EntityOutboxMessageRepository{TMessage}"/> connected
+    /// to the provider-specific database.
+    /// </returns>
     protected EntityOutboxMessageRepository<DbOutboxMessage> CreateRepository(
         ISystemTime? systemTime = null)
         => new(CreateContext(), systemTime);
 
     /// <summary>
-    /// Persists <paramref name="message"/> and detaches it so the next load
-    /// hits the database instead of the first-level cache.
+    /// Adds <paramref name="message"/> to the database and then clears the
+    /// change tracker, ensuring the next load goes to the database rather
+    /// than EF Core's first-level cache.
     /// </summary>
+    /// <param name="ctx">The <see cref="OutboxDbContext"/> used for the write.</param>
+    /// <param name="message">The <see cref="DbOutboxMessage"/> to persist.</param>
+    /// <param name="ct">A token that can be used to cancel the operation.</param>
     protected static async Task SaveAndDetachAsync(
         OutboxDbContext ctx,
         DbOutboxMessage message,
