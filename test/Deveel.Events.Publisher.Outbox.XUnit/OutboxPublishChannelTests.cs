@@ -15,7 +15,9 @@ namespace Deveel.Events
     /// Tests that verify the <see cref="OutboxPublishChannel{TMessage}"/> persists
     /// events correctly through the factory/repository pair.
     /// </summary>
-    [Trait("Component", "OutboxPublishChannel")]
+    [Trait("Category", "Unit")]
+    [Trait("Layer", "Infrastructure")]
+    [Trait("Feature", "Outbox")]
     public class OutboxPublishChannelTests
     {
         // ── Helpers ──────────────────────────────────────────────────────────

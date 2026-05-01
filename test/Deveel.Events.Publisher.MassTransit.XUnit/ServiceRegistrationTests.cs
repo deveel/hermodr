@@ -7,7 +7,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 namespace Deveel.Events
 {
-    [Trait("Channel", "MassTransit")]
+    [Trait("Category", "Unit")]
+    [Trait("Layer", "Infrastructure")]
+    [Trait("Feature", "MassTransit")]
     [Trait("Function", "Registration")]
     public static class ServiceRegistrationTests
     {

@@ -6,23 +6,30 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
+
 namespace Deveel.Events
 {
-    [Trait("Function", "Registration")]
+    [Trait("Category", "Unit")]
+    [Trait("Layer", "Infrastructure")]
+    [Trait("Feature", "RabbitMq")]
     public static class ServiceRegistrationTests
     {
         private const string ValidConnectionString = "amqp://guest:guest@localhost:5672/";
+
         [Fact]
-        public static void UseRabbitMq_WithConfigureAction_RegistersServices()
+        public static void Should_RegisterRabbitMqServices_When_AddRabbitMqWithConfigureActionIsCalled()
         {
+            // Arrange
             var services = new ServiceCollection();
             services.AddEventPublisher()
                 .AddRabbitMq(options =>
                 {
                     options.ConnectionString = ValidConnectionString;
-                    options.ExchangeName = "my-exchange";
-                    options.QueueName = "my-queue";
+                    options.ExchangeName     = "my-exchange";
+                    options.QueueName        = "my-queue";
                 });
+
+            // Act & Assert
             Assert.Contains(services, d =>
                 d.ServiceType == typeof(IEventPublishChannel));
             Assert.Contains(services, d =>
@@ -34,27 +41,33 @@ namespace Deveel.Events
             Assert.Contains(services, d =>
                 d.ServiceType == typeof(IConnection));
         }
+
         [Fact]
-        public static void UseRabbitMq_WithConfigureAction_ConfiguresOptions()
+        public static void Should_ConfigureOptions_When_AddRabbitMqWithConfigureActionIsCalled()
         {
+            // Arrange
             var services = new ServiceCollection();
             services.AddEventPublisher()
                 .AddRabbitMq(options =>
                 {
-                    options.ConnectionString = ValidConnectionString;
-                    options.ExchangeName = "my-exchange";
-                    options.QueueName = "my-queue";
-                    options.RoutingKey = "my-routing-key";
-                    options.ClientName = "TestClient";
+                    options.ConnectionString  = ValidConnectionString;
+                    options.ExchangeName      = "my-exchange";
+                    options.QueueName         = "my-queue";
+                    options.RoutingKey        = "my-routing-key";
+                    options.ClientName        = "TestClient";
                     options.PersistentMessages = false;
-                    options.PublisherConfirms = false;
-                    options.Mandatory = true;
-                    options.MessageFormat = RabbitMqMessageFormat.Json;
-                    options.MessageContent = RabbitMqMessageContent.CloudEvent;
-                    options.ConfirmTimeout = TimeSpan.FromSeconds(10);
+                    options.PublisherConfirms  = false;
+                    options.Mandatory          = true;
+                    options.MessageFormat      = RabbitMqMessageFormat.Json;
+                    options.MessageContent     = RabbitMqMessageContent.CloudEvent;
+                    options.ConfirmTimeout     = TimeSpan.FromSeconds(10);
                 });
+
+            // Act
             var provider = services.BuildServiceProvider();
-            var options = provider.GetRequiredService<IOptions<RabbitMqPublishOptions>>();
+            var options  = provider.GetRequiredService<IOptions<RabbitMqPublishOptions>>();
+
+            // Assert
             Assert.NotNull(options.Value);
             Assert.Equal(ValidConnectionString, options.Value.ConnectionString);
             Assert.Equal("my-exchange", options.Value.ExchangeName);
@@ -68,20 +81,24 @@ namespace Deveel.Events
             Assert.Equal(RabbitMqMessageContent.CloudEvent, options.Value.MessageContent);
             Assert.Equal(TimeSpan.FromSeconds(10), options.Value.ConfirmTimeout);
         }
+
         [Fact]
-        public static void UseRabbitMq_DefaultOptions_HasExpectedDefaults()
+        public static void Should_HaveNullableDefaults_When_AddRabbitMqIsCalledWithMinimalOptions()
         {
+            // Arrange
             var services = new ServiceCollection();
             services.AddEventPublisher()
                 .AddRabbitMq(options =>
                 {
                     options.ConnectionString = ValidConnectionString;
                 });
+
+            // Act
             var provider = services.BuildServiceProvider();
-            var options = provider.GetRequiredService<IOptions<RabbitMqPublishOptions>>();
+            var options  = provider.GetRequiredService<IOptions<RabbitMqPublishOptions>>();
+
+            // Assert — nullable value-type properties are null when not explicitly configured
             Assert.NotNull(options.Value);
-            // Nullable value-type properties are null when not explicitly configured;
-            // the effective defaults (true/false/5s etc.) are applied during MergeOptions.
             Assert.Null(options.Value.PersistentMessages);
             Assert.Null(options.Value.PublisherConfirms);
             Assert.Null(options.Value.Mandatory);
@@ -89,29 +106,35 @@ namespace Deveel.Events
             Assert.Null(options.Value.MessageFormat);
             Assert.Null(options.Value.MessageContent);
         }
+
         [Fact]
-        public static void UseRabbitMq_WithSectionPath_BindsOptionsFromConfiguration()
+        public static void Should_BindOptionsFromConfiguration_When_SectionPathIsProvided()
         {
+            // Arrange
             var configuration = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
                 {
                     ["RabbitMq:ConnectionString"] = ValidConnectionString,
-                    ["RabbitMq:ExchangeName"] = "config-exchange",
-                    ["RabbitMq:QueueName"] = "config-queue",
-                    ["RabbitMq:RoutingKey"] = "config-routing-key",
-                    ["RabbitMq:ClientName"] = "ConfigClient",
+                    ["RabbitMq:ExchangeName"]     = "config-exchange",
+                    ["RabbitMq:QueueName"]        = "config-queue",
+                    ["RabbitMq:RoutingKey"]        = "config-routing-key",
+                    ["RabbitMq:ClientName"]        = "ConfigClient",
                     ["RabbitMq:PersistentMessages"] = "false",
-                    ["RabbitMq:PublisherConfirms"] = "false",
+                    ["RabbitMq:PublisherConfirms"]  = "false",
                 })
                 .Build();
+
             var services = new ServiceCollection();
             services.AddSingleton<IConfiguration>(configuration);
             services.AddEventPublisher()
                 .AddRabbitMq("RabbitMq");
-            Assert.Contains(services, d =>
-                d.ServiceType == typeof(IEventPublishChannel));
+
+            // Act
             var provider = services.BuildServiceProvider();
-            var options = provider.GetRequiredService<IOptions<RabbitMqPublishOptions>>();
+            var options  = provider.GetRequiredService<IOptions<RabbitMqPublishOptions>>();
+
+            // Assert
+            Assert.Contains(services, d => d.ServiceType == typeof(IEventPublishChannel));
             Assert.NotNull(options.Value);
             Assert.Equal(ValidConnectionString, options.Value.ConnectionString);
             Assert.Equal("config-exchange", options.Value.ExchangeName);
@@ -121,24 +144,32 @@ namespace Deveel.Events
             Assert.False(options.Value.PersistentMessages);
             Assert.False(options.Value.PublisherConfirms);
         }
+
         [Fact]
-        public static void UseRabbitMq_CustomConnectionFactory_IsNotReplaced()
+        public static void Should_PreserveCustomConnectionFactory_When_AlreadyRegistered()
         {
-            var services = new ServiceCollection();
+            // Arrange
             var customFactory = new CustomRabbitMqConnectionFactory();
+            var services = new ServiceCollection();
             services.AddSingleton<IRabbitMqConnectionFactory>(customFactory);
             services.AddEventPublisher()
                 .AddRabbitMq(options =>
                 {
                     options.ConnectionString = ValidConnectionString;
                 });
+
+            // Act
             var provider = services.BuildServiceProvider();
-            var factory = provider.GetRequiredService<IRabbitMqConnectionFactory>();
+            var factory  = provider.GetRequiredService<IRabbitMqConnectionFactory>();
+
+            // Assert
             Assert.Same(customFactory, factory);
         }
+
         [Fact]
-        public static void UseRabbitMq_TypedWithSectionPath_BindsOptionsFromConfiguration()
+        public static void Should_BindTypedOptionsFromConfiguration_When_TypedSectionPathIsProvided()
         {
+            // Arrange
             var configuration = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
                 {
@@ -153,15 +184,17 @@ namespace Deveel.Events
                 .AddRabbitMq(options => { options.ConnectionString = ValidConnectionString; })
                 .AddRabbitMq<OrderEvent>("Orders");
 
-            Assert.Contains(services, d =>
-                d.ServiceType == typeof(IEventPublishChannel<OrderEvent>));
-
+            // Act
             var provider = services.BuildServiceProvider();
             var options  = provider.GetRequiredService<IOptions<RabbitMqPublishOptions<OrderEvent>>>();
 
+            // Assert
+            Assert.Contains(services, d => d.ServiceType == typeof(IEventPublishChannel<OrderEvent>));
             Assert.Equal("orders-exchange", options.Value.ExchangeName);
             Assert.Equal("order.created",   options.Value.RoutingKey);
         }
+
+        // ── Helpers ───────────────────────────────────────────────────────────
 
         private class OrderEvent { }
 

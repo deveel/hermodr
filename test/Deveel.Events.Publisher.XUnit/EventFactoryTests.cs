@@ -1,4 +1,7 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿// Copyright (c) Antonello Provenzano and other contributors. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for details.
+
+using Microsoft.Extensions.DependencyInjection;
 
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
@@ -6,38 +9,44 @@ using System.Text.Json.Serialization;
 
 namespace Deveel.Events
 {
+    [Trait("Category", "Unit")]
+    [Trait("Layer", "Application")]
+    [Trait("Feature", "EventFactory")]
     public class EventFactoryTests
     {
+        // ── Fields ────────────────────────────────────────────────────────────
+
+        private readonly IEventFactory _eventFactory;
+
+        // ── Constructor ───────────────────────────────────────────────────────
+
         public EventFactoryTests()
         {
             var services = new ServiceCollection();
             services.AddEventPublisher();
-
-            var provider = services.BuildServiceProvider();
-
-            EventFactory = provider.GetRequiredService<IEventFactory>();
+            _eventFactory = services.BuildServiceProvider().GetRequiredService<IEventFactory>();
         }
 
-        private IEventFactory EventFactory { get; }
+        // ── CreateEventFromData ───────────────────────────────────────────────
+
+        #region CreateEventFromData
 
         [Fact]
-        public void CreateFromData()
+        public void Should_CreateCloudEvent_When_AnnotatedTypeIsProvided()
         {
-            var @event = EventFactory.CreateEventFromData(new PersonCreated
-            {
-                FirstName = "John",
-                LastName = "Doe",
-                Id = "12345",
-                Age = 30
-            });
+            // Arrange
+            var data = new PersonCreated { FirstName = "John", LastName = "Doe", Id = "12345", Age = 30 };
 
+            // Act
+            var @event = _eventFactory.CreateEventFromData(data);
+
+            // Assert
             Assert.Equal("person.created", @event.Type);
-            Assert.Equal("https://deveel.com/events/person/schema/1.0", @event.DataSchema.ToString());
+            Assert.Equal("https://deveel.com/events/person/schema/1.0", @event.DataSchema!.ToString());
             Assert.Null(@event.Id);
             Assert.Null(@event.Source);
 
             var attributes = @event.GetPopulatedAttributes()?.ToDictionary(x => x.Key.Name, y => y.Value);
-
             Assert.NotNull(attributes);
             Assert.NotEmpty(attributes);
             Assert.Contains("streamtype", attributes.Keys);
@@ -45,28 +54,25 @@ namespace Deveel.Events
             Assert.Equal("application/cloudevents+json", @event.DataContentType);
 
             var json = Assert.IsType<string>(@event.Data);
-
-            Assert.NotNull(json);
-
             var personCreated = JsonSerializer.Deserialize<PersonCreated>(json);
-
             Assert.NotNull(personCreated);
-            Assert.Equal("John", personCreated.FirstName);
-            Assert.Equal("Doe", personCreated.LastName);
-            Assert.Equal("12345", personCreated.Id);
-            Assert.Equal(30, personCreated.Age);
+            Assert.Equal(data.FirstName, personCreated.FirstName);
+            Assert.Equal(data.LastName, personCreated.LastName);
+            Assert.Equal(data.Id, personCreated.Id);
+            Assert.Equal(data.Age, personCreated.Age);
         }
 
         [Fact]
-        public void CreateFromDataWithoutEventAttribute()
+        public void Should_ThrowArgumentException_When_TypeHasNoEventAttribute()
         {
-            Assert.Throws<ArgumentException>(() => EventFactory.CreateEventFromData(new { Name = "John" }));
+            // Act & Assert
+            Assert.Throws<ArgumentException>(() => _eventFactory.CreateEventFromData(new { Name = "John" }));
         }
 
         [Fact]
-        public void CreateFromData_WithVersion_AndDataSchemaBaseUri()
+        public void Should_SetDataSchema_When_VersionAndDataSchemaBaseUriAreConfigured()
         {
-            // PersonCreatedByVersion uses a version string, not a schema URI
+            // Arrange
             var services = new ServiceCollection();
             services.AddEventPublisher(options =>
             {
@@ -74,27 +80,29 @@ namespace Deveel.Events
             });
             var creator = services.BuildServiceProvider().GetRequiredService<IEventFactory>();
 
+            // Act
             var @event = creator.CreateEventFromData(typeof(PersonCreatedByVersion), new PersonCreatedByVersion
             {
                 FirstName = "Jane",
-                LastName = "Doe"
+                LastName  = "Doe"
             });
 
+            // Assert
             Assert.Equal("person.created.versioned", @event.Type);
-            // DataSchema should be based on the base URI + event type + version
             Assert.NotNull(@event.DataSchema);
             Assert.Contains("person.created.versioned", @event.DataSchema!.ToString());
             Assert.Contains("2.0", @event.DataSchema!.ToString());
         }
 
         [Fact]
-        public void CreateFromData_WithVersion_WithoutDataSchemaBaseUri_Throws()
+        public void Should_ThrowInvalidOperationException_When_VersionedTypeHasNoDataSchemaBaseUri()
         {
-            // No DataSchemaBaseUri set → should throw when event has DataVersion only
+            // Arrange
             var services = new ServiceCollection();
             services.AddEventPublisher();  // DataSchemaBaseUri not set
             var creator = services.BuildServiceProvider().GetRequiredService<IEventFactory>();
 
+            // Act & Assert
             var ex = Assert.Throws<InvalidOperationException>(() =>
                 creator.CreateEventFromData(typeof(PersonCreatedByVersion), new PersonCreatedByVersion()));
 
@@ -103,47 +111,47 @@ namespace Deveel.Events
         }
 
         [Fact]
-        public void CreateFromData_NullDataType_Throws()
+        public void Should_ThrowArgumentNullException_When_NullDataTypeIsProvided()
         {
+            // Act & Assert
             Assert.Throws<ArgumentNullException>(() =>
-                EventFactory.CreateEventFromData(null!, new object()));
+                _eventFactory.CreateEventFromData(null!, new object()));
         }
 
         [Fact]
-        public void CreateFromData_NullContentType_WithNullDefaultContentType_Throws()
+        public void Should_ThrowInvalidOperationException_When_ContentTypeIsNullAndDefaultContentTypeIsNull()
         {
-            // When the [Event] attribute has no ContentType AND DefaultContentType is null,
-            // the factory must throw InvalidOperationException.
+            // Arrange
             var services = new ServiceCollection();
-            services.AddEventPublisher(options =>
-            {
-                options.DefaultContentType = null;
-            });
+            services.AddEventPublisher(options => options.DefaultContentType = null);
             var creator = services.BuildServiceProvider().GetRequiredService<IEventFactory>();
 
+            // Act & Assert
             var ex = Assert.Throws<InvalidOperationException>(() =>
                 creator.CreateEventFromData(typeof(EventWithNoContentType), new EventWithNoContentType()));
 
             Assert.Contains("content type", ex.Message, StringComparison.OrdinalIgnoreCase);
         }
 
-        // Event type with no ContentType set in the attribute (uses DataVersion form)
+        #endregion
+
+        // ── Domain types ──────────────────────────────────────────────────────
+
         [Event("no.content.type", "1.0")]
-        class EventWithNoContentType { }
+        private class EventWithNoContentType { }
 
         [Event("person.created", "https://deveel.com/events/person/schema/1.0")]
         [EventAttributes("streamtype", "person")]
-        class PersonCreated
+        private class PersonCreated
         {
             [JsonPropertyName("first_name"), Required]
-            public string FirstName { get; set; }
+            public string FirstName { get; set; } = string.Empty;
 
             [JsonPropertyName("last_name"), Required]
-
-            public string LastName { get; set; }
+            public string LastName { get; set; } = string.Empty;
 
             [JsonPropertyName("id"), Required]
-            public string Id { get; set; }
+            public string Id { get; set; } = string.Empty;
 
             [JsonPropertyName("age")]
             public int? Age { get; set; }
@@ -153,7 +161,7 @@ namespace Deveel.Events
         }
 
         [Event("person.created.versioned", "2.0")]
-        class PersonCreatedByVersion
+        private class PersonCreatedByVersion
         {
             [JsonPropertyName("first_name")]
             public string? FirstName { get; set; }
@@ -162,13 +170,13 @@ namespace Deveel.Events
             public string? LastName { get; set; }
         }
 
-        class Email
+        private class Email
         {
             [JsonPropertyName("display_name")]
             public string? DisplayName { get; set; }
 
             [JsonPropertyName("address"), Required]
-            public string Address { get; set; }
+            public string Address { get; set; } = string.Empty;
 
             [JsonPropertyName("type")]
             public string? Type { get; set; }

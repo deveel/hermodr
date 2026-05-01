@@ -1,17 +1,26 @@
-﻿namespace Deveel.Events
+﻿// Copyright (c) Antonello Provenzano and other contributors. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for details.
+
+namespace Deveel.Events
 {
+    [Trait("Category", "Unit")]
+    [Trait("Layer", "Domain")]
+    [Trait("Feature", "EventSchema")]
     public static class EventSchemaTests
     {
-		// ─── existing tests (unchanged) ───────────────────────────────────────
+        // ── Versioned schema properties ───────────────────────────────────────
 
         [Fact]
-        public static void VersionedSchema_PropertiesWithoutVersion_Success()
+        public static void Should_InheritSchemaVersion_When_PropertiesAddedWithoutVersion()
         {
+            // Arrange
             var schema = new EventSchema("test", "1.0", "application/json");
 
+            // Act
             schema.Properties.Add("name", "string");
             schema.Properties.Add(new EventProperty("age", "int"));
 
+            // Assert
             var name = schema.Properties["name"];
             Assert.NotNull(name);
             Assert.Equal("1.0", name.Version.ToString());
@@ -22,13 +31,16 @@
         }
 
         [Fact]
-        public static void VersionedSchema_PropertiesWithVersionLowerThanEvent_Success()
+        public static void Should_PreservePropertyVersion_When_VersionIsLowerThanSchemaVersion()
         {
+            // Arrange
             var schema = new EventSchema("test", "2.0", "application/json");
 
+            // Act
             schema.Properties.Add("name", "string", "1.0");
             schema.Properties.Add(new EventProperty("age", "int", "1.2"));
 
+            // Assert
             var name = schema.Properties["name"];
             Assert.NotNull(name);
             Assert.Equal("1.0", name.Version.ToString());
@@ -39,202 +51,245 @@
         }
 
         [Fact]
-        public static void VersionedSchema_PropertiesWithVersionHigherThanEvent_Fail()
+        public static void Should_ThrowArgumentException_When_PropertyVersionIsHigherThanSchemaVersion()
         {
+            // Arrange
             var schema = new EventSchema("test", "1.0", "application/json");
 
+            // Act & Assert
             Assert.Throws<ArgumentException>(() => schema.Properties.Add("name", "string", "2.0"));
             Assert.Throws<ArgumentException>(() => schema.Properties.Add(new EventProperty("age", "int", "2.0")));
         }
 
         [Fact]
-        public static void VersionedSchema_PropertiesWithSameName_Fail()
+        public static void Should_ThrowArgumentException_When_PropertyWithSameNameIsAdded()
         {
+            // Arrange
             var schema = new EventSchema("test", "1.0", "application/json");
-
             schema.Properties.Add("name", "string");
 
+            // Act & Assert
             Assert.Throws<ArgumentException>(() => schema.Properties.Add("name", "int"));
         }
 
         [Fact]
-        public static void VersionedSchema_SetNewProperty_Fail()
+        public static void Should_ThrowKeyNotFoundException_When_SettingNewPropertyViaIndexer()
         {
+            // Arrange
             var schema = new EventSchema("test", "1.0", "application/json");
-
             schema.Properties.Add("name", "string");
 
-            var name = schema.Properties["name"];
-            Assert.NotNull(name);
-            Assert.Equal("1.0", name.Version.ToString());
-
+            // Act & Assert
             Assert.Throws<KeyNotFoundException>(() => schema.Properties["age"] = new EventProperty("age", "int", "1.0"));
-
-            var age = schema.Properties["age"];
-            Assert.Null(age);
+            Assert.Null(schema.Properties["age"]);
         }
 
         [Fact]
-        public static void VersionedSchema_SetExistingProperty_Success()
+        public static void Should_UpdateProperty_When_ExistingPropertyIsReplacedViaIndexer()
         {
+            // Arrange
             var schema = new EventSchema("test", "2.0", "application/json");
-
             schema.Properties.Add("name", "string", "1.0");
-
-            var name = schema.Properties["name"];
-            Assert.NotNull(name);
-            Assert.Equal("1.0", name.Version.ToString());
 
             var newName = new EventProperty("name", "string", "1.1");
             newName.Constraints.Add(new EnumMemberConstraint<string>(new[] { "John", "Jane" }));
 
+            // Act
             schema.Properties["name"] = newName;
 
-            name = schema.Properties["name"];
+            // Assert
+            var name = schema.Properties["name"];
             Assert.NotNull(name);
             Assert.Equal("1.1", name.Version.ToString());
         }
 
-		// ─── IEventProperty interface contract ───────────────────────────────
+        // ── IEventProperty interface contract ─────────────────────────────────
 
-		[Fact]
-		public static void Property_IsRequired_TrueWhenConstraintPresent()
-		{
-			var property = new EventProperty("name", "string");
-			property.Constraints.Add(new PropertyRequiredConstraint());
+        [Fact]
+        public static void Should_ReturnIsRequiredTrue_When_RequiredConstraintIsPresent()
+        {
+            // Arrange
+            var property = new EventProperty("name", "string");
+            property.Constraints.Add(new PropertyRequiredConstraint());
 
-			Assert.True(property.IsRequired);
-		}
+            // Act & Assert
+            Assert.True(property.IsRequired);
+        }
 
-		[Fact]
-		public static void Property_IsRequired_FalseWhenNoConstraint()
-		{
-			var property = new EventProperty("name", "string");
-			Assert.False(property.IsRequired);
-		}
+        [Fact]
+        public static void Should_ReturnIsRequiredFalse_When_NoRequiredConstraintIsPresent()
+        {
+            // Arrange
+            var property = new EventProperty("name", "string");
 
-		[Fact]
-		public static void Property_IsRequired_TrueViaInterfaceProjection()
-		{
-			IEventProperty property = new EventProperty("name", "string") {
-				Constraints = { new PropertyRequiredConstraint() }
-			};
+            // Assert
+            Assert.False(property.IsRequired);
+        }
 
-			Assert.True(property.IsRequired);
-		}
+        [Fact]
+        public static void Should_ReturnIsRequiredTrue_When_AccessedViaInterface()
+        {
+            // Arrange
+            IEventProperty property = new EventProperty("name", "string")
+            {
+                Constraints = { new PropertyRequiredConstraint() }
+            };
 
-		[Fact]
-		public static void Property_IsNullable_DefaultFalse()
-		{
-			var property = new EventProperty("name", "string");
-			Assert.False(property.IsNullable);
-		}
+            // Assert
+            Assert.True(property.IsRequired);
+        }
 
-		[Fact]
-		public static void Property_IsNullable_SetTrue()
-		{
-			var property = new EventProperty("name", "string") { IsNullable = true };
-			Assert.True(property.IsNullable);
-		}
+        [Fact]
+        public static void Should_ReturnIsNullableFalse_When_PropertyIsNotMarkedNullable()
+        {
+            // Arrange
+            var property = new EventProperty("name", "string");
 
-		[Fact]
-		public static void Property_Version_NullWhenNotSpecified()
-		{
-			var property = new EventProperty("name", "string");
-			// before being added to a schema, the version is null
-			IEventProperty iface = property;
-			Assert.Null(iface.Version);
-		}
+            // Assert
+            Assert.False(property.IsNullable);
+        }
 
-		[Fact]
-		public static void Property_VersionInherited_FromSchema()
-		{
-			var schema = new EventSchema("test", "3.0", "application/json");
-			schema.Properties.Add(new EventProperty("name", "string"));
+        [Fact]
+        public static void Should_ReturnIsNullableTrue_When_PropertyIsMarkedNullable()
+        {
+            // Arrange & Act
+            var property = new EventProperty("name", "string") { IsNullable = true };
 
-			IEventProperty iface = schema.Properties["name"]!;
-			Assert.Equal("3.0", iface.Version);
-		}
+            // Assert
+            Assert.True(property.IsNullable);
+        }
 
-		[Fact]
-		public static void Property_Constraints_ExposedAsReadOnlyList()
-		{
-			var property = new EventProperty("x", "int");
-			property.Constraints.Add(new RangeConstraint<int>(0, 100));
+        [Fact]
+        public static void Should_ReturnNullVersion_When_PropertyNotAddedToSchema()
+        {
+            // Arrange
+            var property = new EventProperty("name", "string");
 
-			IEventProperty iface = property;
-			Assert.IsAssignableFrom<IReadOnlyList<IEventPropertyConstraint>>(iface.Constraints);
-			Assert.Single(iface.Constraints);
-		}
+            // Assert (before being added to a schema the version is null via interface)
+            IEventProperty iface = property;
+            Assert.Null(iface.Version);
+        }
 
-		[Fact]
-		public static void Property_Properties_ExposedAsReadOnlyList()
-		{
-			var parent = new EventProperty("address", "object");
-			parent.Properties.Add(new EventProperty("city", "string"));
+        [Fact]
+        public static void Should_InheritVersionFromSchema_When_PropertyIsAddedToSchema()
+        {
+            // Arrange
+            var schema = new EventSchema("test", "3.0", "application/json");
+            schema.Properties.Add(new EventProperty("name", "string"));
 
-			IEventProperty iface = parent;
-			Assert.IsAssignableFrom<IReadOnlyList<IEventProperty>>(iface.Properties);
-			Assert.Single(iface.Properties);
-		}
+            // Act
+            IEventProperty iface = schema.Properties["name"]!;
 
-		// ─── IEventSchema interface contract ─────────────────────────────────
+            // Assert
+            Assert.Equal("3.0", iface.Version);
+        }
 
-		[Fact]
-		public static void Schema_Properties_ExposedAsReadOnlyList()
-		{
-			var schema = new EventSchema("test", "1.0", "application/json");
-			schema.Properties.Add("name", "string");
+        [Fact]
+        public static void Should_ExposeConstraintsAsReadOnlyList_When_AccessedViaInterface()
+        {
+            // Arrange
+            var property = new EventProperty("x", "int");
+            property.Constraints.Add(new RangeConstraint<int>(0, 100));
 
-			IEventSchema iface = schema;
-			Assert.IsAssignableFrom<IReadOnlyList<IEventProperty>>(iface.Properties);
-			Assert.Single(iface.Properties);
-		}
+            // Act
+            IEventProperty iface = property;
 
-		[Fact]
-		public static void Schema_Version_ExposedAsStringViaInterface()
-		{
-			var schema = new EventSchema("test", "2.5", "application/json");
-			IEventSchema iface = schema;
-			Assert.Equal("2.5", iface.Version);
-		}
+            // Assert
+            Assert.IsAssignableFrom<IReadOnlyList<IEventPropertyConstraint>>(iface.Constraints);
+            Assert.Single(iface.Constraints);
+        }
 
-		// ─── EventPropertyExtensions ──────────────────────────────────────────
+        [Fact]
+        public static void Should_ExposeNestedPropertiesAsReadOnlyList_When_AccessedViaInterface()
+        {
+            // Arrange
+            var parent = new EventProperty("address", "object");
+            parent.Properties.Add(new EventProperty("city", "string"));
 
-		[Fact]
-		public static void Extension_IsRequired_DelegatesToInterface()
-		{
-			IEventProperty property = new EventProperty("x", "string") {
-				Constraints = { new PropertyRequiredConstraint() }
-			};
-			Assert.True(property.IsRequired());
-		}
+            // Act
+            IEventProperty iface = parent;
 
-		[Fact]
-		public static void Extension_IsNullable_DelegatesToInterface()
-		{
-			IEventProperty property = new EventProperty("x", "string") { IsNullable = true };
-			Assert.True(property.IsNullable());
-		}
+            // Assert
+            Assert.IsAssignableFrom<IReadOnlyList<IEventProperty>>(iface.Properties);
+            Assert.Single(iface.Properties);
+        }
 
-		// ─── EventProperty invalid construction ───────────────────────────────
+        // ── IEventSchema interface contract ───────────────────────────────────
 
-		[Fact]
-		public static void Property_InvalidVersion_Throws()
-		{
-			Assert.Throws<ArgumentException>(() => new EventProperty("x", "string", "not-a-version"));
-		}
+        [Fact]
+        public static void Should_ExposePropertiesAsReadOnlyList_When_SchemaAccessedViaInterface()
+        {
+            // Arrange
+            var schema = new EventSchema("test", "1.0", "application/json");
+            schema.Properties.Add("name", "string");
 
-		[Fact]
-		public static void Property_NullName_Throws()
-		{
-			Assert.Throws<ArgumentNullException>(() => new EventProperty(null!, "string"));
-		}
+            // Act
+            IEventSchema iface = schema;
 
-		[Fact]
-		public static void Property_NullDataType_Throws()
-		{
-			Assert.Throws<ArgumentNullException>(() => new EventProperty("x", null!));
-		}
+            // Assert
+            Assert.IsAssignableFrom<IReadOnlyList<IEventProperty>>(iface.Properties);
+            Assert.Single(iface.Properties);
+        }
+
+        [Fact]
+        public static void Should_ExposeVersionAsString_When_SchemaAccessedViaInterface()
+        {
+            // Arrange
+            var schema = new EventSchema("test", "2.5", "application/json");
+
+            // Act
+            IEventSchema iface = schema;
+
+            // Assert
+            Assert.Equal("2.5", iface.Version);
+        }
+
+        // ── EventPropertyExtensions ───────────────────────────────────────────
+
+        [Fact]
+        public static void Should_DelegateIsRequired_When_ExtensionMethodIsCalled()
+        {
+            // Arrange
+            IEventProperty property = new EventProperty("x", "string")
+            {
+                Constraints = { new PropertyRequiredConstraint() }
+            };
+
+            // Assert
+            Assert.True(property.IsRequired());
+        }
+
+        [Fact]
+        public static void Should_DelegateIsNullable_When_ExtensionMethodIsCalled()
+        {
+            // Arrange
+            IEventProperty property = new EventProperty("x", "string") { IsNullable = true };
+
+            // Assert
+            Assert.True(property.IsNullable());
+        }
+
+        // ── EventProperty invalid construction ────────────────────────────────
+
+        [Fact]
+        public static void Should_ThrowArgumentException_When_VersionIsInvalid()
+        {
+            // Act & Assert
+            Assert.Throws<ArgumentException>(() => new EventProperty("x", "string", "not-a-version"));
+        }
+
+        [Fact]
+        public static void Should_ThrowArgumentNullException_When_NameIsNull()
+        {
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() => new EventProperty(null!, "string"));
+        }
+
+        [Fact]
+        public static void Should_ThrowArgumentNullException_When_DataTypeIsNull()
+        {
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() => new EventProperty("x", null!));
+        }
     }
 }

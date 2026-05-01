@@ -1,5 +1,10 @@
-﻿using System.Text.Json;
+﻿// Copyright (c) Antonello Provenzano and other contributors. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for details.
+
+using System.Text.Json;
 using System.Text.Json.Serialization;
+
+using Bogus;
 
 using CloudNative.CloudEvents;
 
@@ -7,426 +12,464 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace Deveel.Events {
-	public class PublisherTests
+namespace Deveel.Events
+{
+    [Trait("Category", "Unit")]
+    [Trait("Layer", "Application")]
+    [Trait("Feature", "EventPublisher")]
+    public class PublisherTests
     {
-		public PublisherTests(ITestOutputHelper outputHelper) {
-			var services = new ServiceCollection()
-				.AddLogging(logging => logging.AddXUnit(outputHelper).SetMinimumLevel(LogLevel.Debug));
+        // ── Fields ────────────────────────────────────────────────────────────
 
-			var builder = services
-				.AddEventPublisher(options => {
-					options.Source = new Uri("https://api.svc.deveel.com/test-service");
-					options.Attributes.Add("env", "test");
-				})
-				.AddTestChannel(@event => Events.Add(@event));
+        private static readonly Faker Faker = new("en");
 
-			var provider = services.BuildServiceProvider();
-			Publisher = provider.GetRequiredService<EventPublisher>();
-		}
+        private readonly IList<CloudEvent> _published = new List<CloudEvent>();
+        private readonly EventPublisher _publisher;
 
-		private IList<CloudEvent> Events { get; } = new List<CloudEvent>();
+        // ── Constructor ───────────────────────────────────────────────────────
 
-		private EventPublisher Publisher { get; }
+        public PublisherTests(ITestOutputHelper outputHelper)
+        {
+            var services = new ServiceCollection()
+                .AddLogging(logging => logging.AddXUnit(outputHelper).SetMinimumLevel(LogLevel.Debug));
 
-		[Fact]
-    public async Task PublishEvent_NullCloudEvent_Throws()
-    {
-      await Assert.ThrowsAsync<ArgumentNullException>(() =>
-        Publisher.PublishEventAsync((CloudEvent)null!, cancellationToken: TestContext.Current.CancellationToken));
-    }
+            services
+                .AddEventPublisher(options =>
+                {
+                    options.Source = new Uri("https://api.svc.deveel.com/test-service");
+                    options.Attributes.Add("env", "test");
+                })
+                .AddTestChannel(@event => _published.Add(@event));
 
-    [Fact]
-		public async Task PublishSimpleEvent() {
-			var @event = new CloudEvent {
-				Type = "person.created",
-				DataSchema = new Uri("http://example.com/schema/1.0"),
-				Source = new Uri("https://api.svc.deveel.com/test-service"),
-				Time = DateTime.UtcNow,
-				Id = Guid.NewGuid().ToString("N"),
-				DataContentType = "application/json",
-				Data = JsonSerializer.Serialize(new {
-					FirstName = "John",
-					LastName = "Doe"
-				}),
-			};
+            var provider = services.BuildServiceProvider();
+            _publisher = provider.GetRequiredService<EventPublisher>();
+        }
 
-			@event[CloudEventAttribute.CreateExtension("env", CloudEventAttributeType.String)] = "test";
+        // ── PublishEventAsync ─────────────────────────────────────────────────
 
-			await Publisher.PublishEventAsync(@event, cancellationToken: TestContext.Current.CancellationToken);
+        #region PublishEventAsync
 
-			Assert.Single(Events);
-			Assert.Equal("person.created", Events[0].Type);
-			Assert.NotNull(Events[0].DataSchema);
-			Assert.Equal("http://example.com/schema/1.0", Events[0].DataSchema!.ToString());
+        [Fact]
+        public async Task Should_ThrowArgumentNullException_When_NullCloudEventIsPublished()
+        {
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
 
-			Assert.NotNull(Events[0].Id);
-			Assert.NotNull(Events[0].Source);
-			Assert.Equal("https://api.svc.deveel.com/test-service", Events[0].Source!.ToString());
-			Assert.Equal("test", Events[0]["env"]);
-		}
-
-		[Fact]
-		public async Task PublishEventData() {
-			await Publisher.PublishAsync(new PersonCreated {
-				Id = "123",
-				FirstName = "John",
-				LastName = "Doe"
-			},  cancellationToken: TestContext.Current.CancellationToken);
-
-			Assert.Single(Events);
-			Assert.Equal("person.created", Events[0].Type);
-			Assert.Equal("https://example.com/events/person.created/1.0", Events[0].DataSchema!.ToString());
-			Assert.NotNull(Events[0].Id);
-			Assert.Equal("https://api.svc.deveel.com/test-service", Events[0].Source!.ToString());
-			Assert.Equal("test", Events[0]["env"]);
-
-			Assert.Equal("application/cloudevents+json", Events[0].DataContentType);
-			var json = Assert.IsType<string>(Events[0].Data);
-
-            var data = JsonSerializer.Deserialize<PersonCreated>(json);
-
-            Assert.NotNull(data);
-            Assert.Equal("123", data.Id);
-            Assert.Equal("John", data.FirstName);
-            Assert.Equal("Doe", data.LastName);
+            // Act & Assert
+            await Assert.ThrowsAsync<ArgumentNullException>(() =>
+                _publisher.PublishEventAsync((CloudEvent)null!, cancellationToken: cancellationToken));
         }
 
         [Fact]
-        public async Task PublishEventFactory()
+        public async Task Should_PublishCloudEvent_When_AllFieldsAreSet()
         {
-            var personDeleted = new PersonDeleted
-            {
-                Id = "123",
-                FirstName = "John",
-                LastName = "Doe"
-            };
-
-            await Publisher.PublishAsync(personDeleted, cancellationToken: TestContext.Current.CancellationToken);
-
-            Assert.Single(Events);
-            Assert.Equal("person.deleted", Events[0].Type);
-            Assert.Equal("https://example.com/events/person.deleted/1.0", Events[0].DataSchema!.ToString());
-            Assert.NotNull(Events[0].Id);
-            Assert.Equal("https://api.svc.deveel.com/test-service", Events[0].Source!.ToString());
-            Assert.Equal("test", Events[0]["env"]);
-
-            Assert.Equal("application/json", Events[0].DataContentType);
-            var json = Assert.IsType<string>(Events[0].Data);
-
-            var data = JsonSerializer.Deserialize<PersonDeleted>(json);
-
-            Assert.NotNull(data);
-            Assert.Equal("123", data.Id);
-            Assert.Equal("John", data.FirstName);
-            Assert.Equal("Doe", data.LastName);
-        }
-
-        [Fact]
-        public async Task PublishEvent_IdAlreadySet_IsNotOverridden()
-        {
-            var existingId = "fixed-id-12345";
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             var @event = new CloudEvent
             {
-                Type = "test.event",
-                Id = existingId,
+                Type            = "person.created",
+                DataSchema      = new Uri("http://example.com/schema/1.0"),
+                Source          = new Uri("https://api.svc.deveel.com/test-service"),
+                Time            = DateTime.UtcNow,
+                Id              = Faker.Random.Guid().ToString("N"),
+                DataContentType = "application/json",
+                Data            = JsonSerializer.Serialize(new { FirstName = Faker.Name.FirstName(), LastName = Faker.Name.LastName() }),
+            };
+            @event[CloudEventAttribute.CreateExtension("env", CloudEventAttributeType.String)] = "test";
+
+            // Act
+            await _publisher.PublishEventAsync(@event, cancellationToken: cancellationToken);
+
+            // Assert
+            Assert.Single(_published);
+            Assert.Equal("person.created", _published[0].Type);
+            Assert.NotNull(_published[0].DataSchema);
+            Assert.Equal("http://example.com/schema/1.0", _published[0].DataSchema!.ToString());
+            Assert.NotNull(_published[0].Id);
+            Assert.NotNull(_published[0].Source);
+            Assert.Equal("https://api.svc.deveel.com/test-service", _published[0].Source!.ToString());
+            Assert.Equal("test", _published[0]["env"]);
+        }
+
+        [Fact]
+        public async Task Should_PublishAnnotatedEventData_When_EventAttributeIsPresent()
+        {
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
+            var personId = Faker.Random.AlphaNumeric(12);
+
+            // Act
+            await _publisher.PublishAsync(new PersonCreated
+            {
+                Id        = personId,
+                FirstName = Faker.Name.FirstName(),
+                LastName  = Faker.Name.LastName()
+            }, cancellationToken: cancellationToken);
+
+            // Assert
+            Assert.Single(_published);
+            Assert.Equal("person.created", _published[0].Type);
+            Assert.Equal("https://example.com/events/person.created/1.0", _published[0].DataSchema!.ToString());
+            Assert.NotNull(_published[0].Id);
+            Assert.Equal("https://api.svc.deveel.com/test-service", _published[0].Source!.ToString());
+            Assert.Equal("test", _published[0]["env"]);
+            Assert.Equal("application/cloudevents+json", _published[0].DataContentType);
+
+            var json = Assert.IsType<string>(_published[0].Data);
+            var data = JsonSerializer.Deserialize<PersonCreated>(json);
+            Assert.NotNull(data);
+            Assert.Equal(personId, data.Id);
+        }
+
+        [Fact]
+        public async Task Should_PublishEventFromConvertible_When_IEventConvertibleIsProvided()
+        {
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
+            var personDeleted = new PersonDeleted
+            {
+                Id        = Faker.Random.AlphaNumeric(8),
+                FirstName = Faker.Name.FirstName(),
+                LastName  = Faker.Name.LastName()
+            };
+
+            // Act
+            await _publisher.PublishAsync(personDeleted, cancellationToken: cancellationToken);
+
+            // Assert
+            Assert.Single(_published);
+            Assert.Equal("person.deleted", _published[0].Type);
+            Assert.Equal("https://example.com/events/person.deleted/1.0", _published[0].DataSchema!.ToString());
+            Assert.NotNull(_published[0].Id);
+            Assert.Equal("application/json", _published[0].DataContentType);
+
+            var json = Assert.IsType<string>(_published[0].Data);
+            var data = JsonSerializer.Deserialize<PersonDeleted>(json);
+            Assert.NotNull(data);
+            Assert.Equal(personDeleted.Id, data.Id);
+        }
+
+        [Fact]
+        public async Task Should_PreserveExistingId_When_IdIsAlreadySetOnCloudEvent()
+        {
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
+            var existingId = Faker.Random.Guid().ToString("N");
+            var @event = new CloudEvent
+            {
+                Type   = "test.event",
+                Id     = existingId,
                 Source = new Uri("https://api.svc.deveel.com/test-service"),
             };
 
-            await Publisher.PublishEventAsync(@event, cancellationToken: TestContext.Current.CancellationToken);
+            // Act
+            await _publisher.PublishEventAsync(@event, cancellationToken: cancellationToken);
 
-            Assert.Single(Events);
-            Assert.Equal(existingId, Events[0].Id);
+            // Assert
+            Assert.Single(_published);
+            Assert.Equal(existingId, _published[0].Id);
         }
 
         [Fact]
-        public async Task PublishEvent_SourceAlreadySet_IsNotOverridden()
+        public async Task Should_PreserveExistingSource_When_SourceIsAlreadySetOnCloudEvent()
         {
-            var customSource = new Uri("https://custom.source.example.com");
-            var @event = new CloudEvent
-            {
-                Type = "test.event",
-                Source = customSource,
-            };
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
+            var customSource = new Uri($"https://{Faker.Internet.DomainName()}/api");
+            var @event = new CloudEvent { Type = "test.event", Source = customSource };
 
-            await Publisher.PublishEventAsync(@event, cancellationToken: TestContext.Current.CancellationToken);
+            // Act
+            await _publisher.PublishEventAsync(@event, cancellationToken: cancellationToken);
 
-            Assert.Single(Events);
-            Assert.Equal(customSource, Events[0].Source);
+            // Assert
+            Assert.Single(_published);
+            Assert.Equal(customSource, _published[0].Source);
         }
 
         [Fact]
-        public async Task PublishEvent_TimeAlreadySet_IsNotOverridden()
+        public async Task Should_PreserveExistingTime_When_TimeIsAlreadySetOnCloudEvent()
         {
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             var fixedTime = new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero);
             var @event = new CloudEvent
             {
-                Type = "test.event",
+                Type   = "test.event",
                 Source = new Uri("https://api.svc.deveel.com/test-service"),
-                Time = fixedTime,
+                Time   = fixedTime,
             };
 
-            await Publisher.PublishEventAsync(@event, cancellationToken: TestContext.Current.CancellationToken);
+            // Act
+            await _publisher.PublishEventAsync(@event, cancellationToken: cancellationToken);
 
-            Assert.Single(Events);
-            Assert.Equal(fixedTime, Events[0].Time);
+            // Assert
+            Assert.Single(_published);
+            Assert.Equal(fixedTime, _published[0].Time);
         }
 
         [Fact]
-        public async Task PublishEvent_NoSource_GetsSourceFromOptions()
+        public async Task Should_UseSourceFromOptions_When_CloudEventHasNoSource()
         {
-            var @event = new CloudEvent
-            {
-                Type = "test.event",
-            };
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
+            var @event = new CloudEvent { Type = "test.event" };
 
-            await Publisher.PublishEventAsync(@event, cancellationToken: TestContext.Current.CancellationToken);
+            // Act
+            await _publisher.PublishEventAsync(@event, cancellationToken: cancellationToken);
 
-            Assert.Single(Events);
-            Assert.Equal(new Uri("https://api.svc.deveel.com/test-service"), Events[0].Source);
+            // Assert
+            Assert.Single(_published);
+            Assert.Equal(new Uri("https://api.svc.deveel.com/test-service"), _published[0].Source);
         }
 
         [Fact]
-        public async Task PublishEvent_NoTime_GetsTimeAutoSet()
+        public async Task Should_AutoSetTime_When_CloudEventHasNoTime()
         {
-            var @event = new CloudEvent
-            {
-                Type = "test.event",
-                Source = new Uri("https://api.svc.deveel.com"),
-            };
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
+            var @event = new CloudEvent { Type = "test.event", Source = new Uri("https://api.svc.deveel.com") };
 
-            await Publisher.PublishEventAsync(@event, cancellationToken: TestContext.Current.CancellationToken);
+            // Act
+            await _publisher.PublishEventAsync(@event, cancellationToken: cancellationToken);
 
-            Assert.Single(Events);
-            Assert.NotNull(Events[0].Time);
+            // Assert
+            Assert.Single(_published);
+            Assert.NotNull(_published[0].Time);
         }
 
         [Fact]
-        public async Task PublishEvent_NoId_GetsIdAutoSet()
+        public async Task Should_AutoSetId_When_CloudEventHasNoId()
         {
-            var @event = new CloudEvent
-            {
-                Type = "test.event",
-                Source = new Uri("https://api.svc.deveel.com"),
-            };
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
+            var @event = new CloudEvent { Type = "test.event", Source = new Uri("https://api.svc.deveel.com") };
 
-            await Publisher.PublishEventAsync(@event, cancellationToken: TestContext.Current.CancellationToken);
+            // Act
+            await _publisher.PublishEventAsync(@event, cancellationToken: cancellationToken);
 
-            Assert.Single(Events);
-            Assert.NotNull(Events[0].Id);
-            Assert.NotEmpty(Events[0].Id!);
+            // Assert
+            Assert.Single(_published);
+            Assert.NotNull(_published[0].Id);
+            Assert.NotEmpty(_published[0].Id!);
         }
 
         [Fact]
-        public async Task PublishEvent_Attributes_VariousTypes_AreSet()
+        public async Task Should_PublishSuccessfully_When_AttributesContainVariousValueTypes()
         {
-            // Build a publisher with various attribute types
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             var publishedEvents = new List<CloudEvent>();
             var services = new ServiceCollection();
             services.AddEventPublisher(options =>
             {
-                options.Attributes["strattr"] = "hello";
-                options.Attributes["intattr"] = 42;
+                options.Attributes["strattr"]  = Faker.Lorem.Word();
+                options.Attributes["intattr"]  = Faker.Random.Int(1, 100);
                 options.Attributes["boolattr"] = true;
-                options.Attributes["uriattr"] = new Uri("https://example.com");
-                options.Attributes["tsattr"] = DateTimeOffset.UtcNow;
+                options.Attributes["uriattr"]  = new Uri($"https://{Faker.Internet.DomainName()}");
+                options.Attributes["tsattr"]   = DateTimeOffset.UtcNow;
             }).AddTestChannel(e => publishedEvents.Add(e));
-
             var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
+
+            // Act
             await publisher.PublishEventAsync(new CloudEvent
             {
-                Type = "test.event",
+                Type   = "test.event",
                 Source = new Uri("https://api.example.com"),
-            }, cancellationToken: TestContext.Current.CancellationToken);
+            }, cancellationToken: cancellationToken);
 
+            // Assert
             Assert.Single(publishedEvents);
-            // Just verify the event was published successfully with all attribute types
         }
 
         [Fact]
-        public async Task PublishEvent_ChannelThrows_ThrowOnErrorsFalse_Swallows()
+        public async Task Should_NotThrow_When_ChannelFailsAndThrowOnErrorsIsFalse()
         {
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             var services = new ServiceCollection();
-            services.AddEventPublisher(options =>
-            {
-                options.ThrowOnErrors = false;
-            })
-            .AddChannel(new ThrowingChannel());
+            services.AddEventPublisher(options => options.ThrowOnErrors = false)
+                    .AddChannel(new ThrowingChannel());
+            var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
 
-            var provider = services.BuildServiceProvider();
-            var publisher = provider.GetRequiredService<EventPublisher>();
-
-            // Should not throw
+            // Act & Assert (should not throw)
             await publisher.PublishEventAsync(new CloudEvent
             {
-                Type = "test.event",
+                Type   = "test.event",
                 Source = new Uri("https://api.example.com"),
-            }, cancellationToken: TestContext.Current.CancellationToken);
+            }, cancellationToken: cancellationToken);
         }
 
         [Fact]
-        public async Task PublishEvent_ChannelThrows_ThrowOnErrorsTrue_Throws()
+        public async Task Should_ThrowEventPublishException_When_ChannelFailsAndThrowOnErrorsIsTrue()
         {
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             var services = new ServiceCollection();
-            services.AddEventPublisher(options =>
-            {
-                options.ThrowOnErrors = true;
-            })
-            .AddChannel(new ThrowingChannel());
+            services.AddEventPublisher(options => options.ThrowOnErrors = true)
+                    .AddChannel(new ThrowingChannel());
+            var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
 
-            var provider = services.BuildServiceProvider();
-            var publisher = provider.GetRequiredService<EventPublisher>();
-
+            // Act & Assert
             await Assert.ThrowsAsync<EventPublishException>(() =>
                 publisher.PublishEventAsync(new CloudEvent
                 {
-                    Type = "test.event",
+                    Type   = "test.event",
                     Source = new Uri("https://api.example.com"),
-                }, cancellationToken: TestContext.Current.CancellationToken));
+                }, cancellationToken: cancellationToken));
         }
 
         [Fact]
-        public async Task PublishEventData_ThrowOnErrorsFalse_WhenNoEventCreator_Swallows()
+        public async Task Should_SwallowError_When_NoEventFactoryAndThrowOnErrorsIsFalse()
         {
-            // Publisher without EventFactory - CreateEventFromData throws NotSupportedException
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             var services = new ServiceCollection();
             services.AddOptions<EventPublisherOptions>();
-
             var provider = services.BuildServiceProvider();
             var publisher = new EventPublisher(
                 provider.GetRequiredService<IOptions<EventPublisherOptions>>(),
                 [new ThrowingChannel()],
-                provider
-            );
+                provider);
 
-            // ThrowOnErrors = false by default, should swallow
-            await publisher.PublishAsync(typeof(PersonCreated), new PersonCreated { Id = "1" },  null, TestContext.Current.CancellationToken);
+            // Act & Assert (ThrowOnErrors defaults to false — should swallow)
+            await publisher.PublishAsync(typeof(PersonCreated), new PersonCreated { Id = "1" }, null, cancellationToken);
         }
 
         [Fact]
-        public async Task PublishEventData_ThrowOnErrorsTrue_WhenNoEventCreator_Throws()
+        public async Task Should_ThrowEventPublishException_When_NoEventFactoryAndThrowOnErrorsIsTrue()
         {
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             var services = new ServiceCollection();
-            services.AddOptions<EventPublisherOptions>()
-                .Configure(o => o.ThrowOnErrors = true);
-
+            services.AddOptions<EventPublisherOptions>().Configure(o => o.ThrowOnErrors = true);
             var provider = services.BuildServiceProvider();
             var publisher = new EventPublisher(
                 provider.GetRequiredService<IOptions<EventPublisherOptions>>(),
                 [new ThrowingChannel()],
-                provider
-            );
+                provider);
 
+            // Act & Assert
             await Assert.ThrowsAsync<EventPublishException>(() =>
-                publisher.PublishAsync(typeof(PersonCreated), new PersonCreated { Id = "1" },  null, TestContext.Current.CancellationToken));
+                publisher.PublishAsync(typeof(PersonCreated), new PersonCreated { Id = "1" }, null, cancellationToken));
         }
 
         [Fact]
-        public async Task PublishEventFactory_ThrowOnErrorsFalse_WhenFactoryThrows_Swallows()
+        public async Task Should_SwallowError_When_ConvertibleFactoryThrowsAndThrowOnErrorsIsFalse()
         {
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             var services = new ServiceCollection();
-            services.AddEventPublisher(options =>
-            {
-                options.ThrowOnErrors = false;
-            }).AddTestChannel(_ => { });
-
+            services.AddEventPublisher(options => options.ThrowOnErrors = false)
+                    .AddTestChannel(_ => { });
             var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
 
-            // Should not throw
-            await publisher.PublishAsync(new BrokenConvertible(), cancellationToken: TestContext.Current.CancellationToken);
+            // Act & Assert (should not throw)
+            await publisher.PublishAsync(new BrokenConvertible(), cancellationToken: cancellationToken);
         }
 
         [Fact]
-        public async Task PublishEventFactory_ThrowOnErrorsTrue_WhenFactoryThrows_Throws()
+        public async Task Should_ThrowEventPublishException_When_ConvertibleFactoryThrowsAndThrowOnErrorsIsTrue()
         {
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             var services = new ServiceCollection();
-            services.AddEventPublisher(options =>
-            {
-                options.ThrowOnErrors = true;
-            }).AddTestChannel(_ => { });
-
+            services.AddEventPublisher(options => options.ThrowOnErrors = true)
+                    .AddTestChannel(_ => { });
             var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
 
+            // Act & Assert
             await Assert.ThrowsAsync<EventPublishException>(() =>
-                publisher.PublishAsync(new BrokenConvertible(), cancellationToken: TestContext.Current.CancellationToken));
+                publisher.PublishAsync(new BrokenConvertible(), cancellationToken: cancellationToken));
         }
 
         [Fact]
-        public async Task PublishAsync_Generic_UsesDataType()
+        public async Task Should_PublishUsingGenericType_When_GenericPublishAsyncIsCalled()
         {
-            await Publisher.PublishAsync(new PersonCreated
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
+
+            // Act
+            await _publisher.PublishAsync(new PersonCreated
             {
-                Id = "generic-test",
-                FirstName = "Generic",
-                LastName = "Test"
-            }, cancellationToken: TestContext.Current.CancellationToken);
+                Id        = Faker.Random.AlphaNumeric(8),
+                FirstName = Faker.Name.FirstName(),
+                LastName  = Faker.Name.LastName()
+            }, cancellationToken: cancellationToken);
 
-            Assert.Single(Events);
-            Assert.Equal("person.created", Events[0].Type);
+            // Assert
+            Assert.Single(_published);
+            Assert.Equal("person.created", _published[0].Type);
         }
 
         [Fact]
-        public async Task PublishEvent_BinaryAttribute_IsSetCorrectly()
+        public async Task Should_SetBinaryAttribute_When_ByteArrayAttributeIsConfigured()
         {
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
+            var binData = Faker.Random.Bytes(16);
             var publishedEvents = new List<CloudEvent>();
             var services = new ServiceCollection();
-            services.AddEventPublisher(options =>
-            {
-                options.Attributes["binattr"] = new byte[] { 0x01, 0x02, 0x03 };
-            }).AddTestChannel(e => publishedEvents.Add(e));
-
+            services.AddEventPublisher(options => options.Attributes["binattr"] = binData)
+                    .AddTestChannel(e => publishedEvents.Add(e));
             var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
+
+            // Act
             await publisher.PublishEventAsync(new CloudEvent
             {
-                Type = "test.event",
+                Type   = "test.event",
                 Source = new Uri("https://api.example.com"),
-            }, cancellationToken: TestContext.Current.CancellationToken);
+            }, cancellationToken: cancellationToken);
 
+            // Assert
             Assert.Single(publishedEvents);
             Assert.NotNull(publishedEvents[0]["binattr"]);
         }
 
         [Fact]
-        public async Task PublishEventFactory_NullFactory_Throws()
+        public async Task Should_ThrowArgumentNullException_When_NullConvertibleIsPassedToPublishAsync()
         {
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
+
+            // Act & Assert
             await Assert.ThrowsAsync<ArgumentNullException>(() =>
-                Publisher.PublishAsync<PersonDeleted>(null!, cancellationToken: TestContext.Current.CancellationToken));
+                _publisher.PublishAsync<PersonDeleted>(null!, cancellationToken: cancellationToken));
         }
 
+        #endregion
+
+        // ── Domain types ──────────────────────────────────────────────────────
+
         [Event("person.created", "https://example.com/events/person.created/1.0")]
-		class PersonCreated {
-			[JsonPropertyName("id")]
-			public string Id { get; set; }
+        private class PersonCreated
+        {
+            [JsonPropertyName("id")]
+            public string Id { get; set; } = string.Empty;
 
-			[JsonPropertyName("first_name")]
-			public string FirstName { get; set; }
+            [JsonPropertyName("first_name")]
+            public string FirstName { get; set; } = string.Empty;
 
-			[JsonPropertyName("last_name")]
-			public string LastName { get; set; }
-		}
+            [JsonPropertyName("last_name")]
+            public string LastName { get; set; } = string.Empty;
+        }
 
-		class PersonDeleted : IEventConvertible
-		{
-			public string Id { get; set; }
+        private class PersonDeleted : IEventConvertible
+        {
+            public string Id { get; set; } = string.Empty;
+            public string FirstName { get; set; } = string.Empty;
+            public string LastName { get; set; } = string.Empty;
 
-			public string FirstName { get; set; }
-
-            public string LastName { get; set; }
-
-            public CloudEvent ToCloudEvent()
-			{
-                return new CloudEvent
-                {
-                    Type = "person.deleted",
-                    DataSchema = new Uri("https://example.com/events/person.deleted/1.0"),
-                    Source = new Uri("https://api.svc.deveel.com/test-service"),
-                    Time = DateTime.UtcNow,
-                    Id = Guid.NewGuid().ToString("N"),
-                    DataContentType = "application/json",
-                    Data = JsonSerializer.Serialize(this),
-                };
-            }
-		}
+            public CloudEvent ToCloudEvent() => new()
+            {
+                Type            = "person.deleted",
+                DataSchema      = new Uri("https://example.com/events/person.deleted/1.0"),
+                Source          = new Uri("https://api.svc.deveel.com/test-service"),
+                Time            = DateTime.UtcNow,
+                Id              = Guid.NewGuid().ToString("N"),
+                DataContentType = "application/json",
+                Data            = JsonSerializer.Serialize(this),
+            };
+        }
 
         private class ThrowingChannel : IEventPublishChannel
         {

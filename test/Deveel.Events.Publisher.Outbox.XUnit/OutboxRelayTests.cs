@@ -16,7 +16,9 @@ namespace Deveel.Events
     /// Tests that verify the outbox relay processor and hosted service correctly
     /// dequeue pending messages and forward them to transport channels.
     /// </summary>
-    [Trait("Component", "OutboxRelay")]
+    [Trait("Category", "Unit")]
+    [Trait("Layer", "Infrastructure")]
+    [Trait("Feature", "Outbox")]
     public class OutboxRelayTests
     {
         // ── Helpers ──────────────────────────────────────────────────────────

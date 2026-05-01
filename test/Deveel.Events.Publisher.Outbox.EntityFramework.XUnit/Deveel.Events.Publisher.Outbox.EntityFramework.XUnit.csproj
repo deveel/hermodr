@@ -26,8 +26,6 @@
     <!-- Testcontainers MySQL module – spins up a real MySQL container -->
     <PackageReference Include="Testcontainers.MySql" Version="4.11.0" />
 
-    <!-- Randomized test data generation -->
-    <PackageReference Include="Bogus" Version="35.6.1" />
 
     <!-- DI / Logging wiring used by the repository under test -->
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1"  Condition="$(TargetFramework) == 'net8.0'" />

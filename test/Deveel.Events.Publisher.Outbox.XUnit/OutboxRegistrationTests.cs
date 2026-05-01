@@ -15,7 +15,9 @@ namespace Deveel.Events
     /// Tests that verify the DI registration helpers — <see cref="EventPublisherBuilderExtensions"/>
     /// and <see cref="OutboxChannelBuilder{TMessage}"/> — wire all required services correctly.
     /// </summary>
-    [Trait("Component", "OutboxRegistration")]
+    [Trait("Category", "Unit")]
+    [Trait("Layer", "Infrastructure")]
+    [Trait("Feature", "Outbox")]
     public static class OutboxRegistrationTests
     {
         // ── AddOutbox<TMessage>() — base overload ─────────────────────────────

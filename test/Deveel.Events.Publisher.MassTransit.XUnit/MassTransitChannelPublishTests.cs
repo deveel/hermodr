@@ -18,8 +18,9 @@ using System.Text.Json.Serialization;
 
 namespace Deveel.Events
 {
-    [Trait("Channel", "MassTransit")]
-    [Trait("Function", "Publish")]
+    [Trait("Category", "Unit")]
+    [Trait("Layer", "Infrastructure")]
+    [Trait("Feature", "MassTransit")]
     public class MassTransitChannelPublishTests
     {
         private readonly IServiceProvider _services;

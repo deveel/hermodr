@@ -10,17 +10,22 @@ using Microsoft.Extensions.Options;
 
 namespace Deveel.Events
 {
-    [Trait("Function", "Registration")]
+    [Trait("Category", "Unit")]
+    [Trait("Layer", "Application")]
+    [Trait("Feature", "EventPublisher")]
     public static class ServiceRegistrationTests
     {
         [Fact]
-        public static void AddEventPublisher_RegistersDefaultServices()
+        public static void Should_RegisterDefaultServices_When_AddEventPublisherIsCalled()
         {
+            // Arrange
             var services = new ServiceCollection();
             services.AddEventPublisher();
 
+            // Act
             var provider = services.BuildServiceProvider();
 
+            // Assert
             Assert.NotNull(provider.GetService<EventPublisher>());
             Assert.NotNull(provider.GetService<IEventFactory>());
             Assert.NotNull(provider.GetService<IEventIdGenerator>());
@@ -28,8 +33,9 @@ namespace Deveel.Events
         }
 
         [Fact]
-        public static void AddEventPublisher_WithConfigureAction_ConfiguresOptions()
+        public static void Should_ConfigureOptions_When_ConfigureActionIsProvided()
         {
+            // Arrange
             var services = new ServiceCollection();
             services.AddEventPublisher(options =>
             {
@@ -39,11 +45,12 @@ namespace Deveel.Events
                 options.Attributes["env"] = "test";
             });
 
+            // Act
             var provider = services.BuildServiceProvider();
-
-            Assert.NotNull(provider.GetService<EventPublisher>());
-
             var options = provider.GetRequiredService<IOptions<EventPublisherOptions>>();
+
+            // Assert
+            Assert.NotNull(provider.GetService<EventPublisher>());
             Assert.NotNull(options.Value);
             Assert.Equal(new Uri("https://api.example.com/my-service"), options.Value.Source);
             Assert.True(options.Value.ThrowOnErrors);
@@ -53,8 +60,9 @@ namespace Deveel.Events
         }
 
         [Fact]
-        public static void AddEventPublisher_WithSectionPath_BindsOptionsFromConfiguration()
+        public static void Should_BindOptionsFromConfiguration_When_SectionPathIsProvided()
         {
+            // Arrange
             var configuration = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
                 {
@@ -68,11 +76,12 @@ namespace Deveel.Events
             services.AddSingleton<IConfiguration>(configuration);
             services.AddEventPublisher("Events");
 
+            // Act
             var provider = services.BuildServiceProvider();
-
-            Assert.NotNull(provider.GetService<EventPublisher>());
-
             var options = provider.GetRequiredService<IOptions<EventPublisherOptions>>();
+
+            // Assert
+            Assert.NotNull(provider.GetService<EventPublisher>());
             Assert.NotNull(options.Value);
             Assert.Equal(new Uri("https://api.example.com/my-service"), options.Value.Source);
             Assert.True(options.Value.ThrowOnErrors);
@@ -80,71 +89,83 @@ namespace Deveel.Events
         }
 
         [Fact]
-        public static void UseGuid_ReplacesDefaultIdGenerator()
+        public static void Should_ReplaceDefaultIdGenerator_When_UseGuidIsCalled()
         {
+            // Arrange
             var services = new ServiceCollection();
             services.AddEventPublisher()
                 .UseGuid("N");
 
+            // Act
             var provider = services.BuildServiceProvider();
-
             var idGenerator = provider.GetRequiredService<IEventIdGenerator>();
-            Assert.IsType<EventGuidGenerator>(idGenerator);
-
             var options = provider.GetRequiredService<IOptions<EventGuidGeneratorOptions>>();
+
+            // Assert
+            Assert.IsType<EventGuidGenerator>(idGenerator);
             Assert.Equal("N", options.Value.Format);
         }
 
         [Fact]
-        public static void UsePublisher_ReplacesDefaultPublisher()
+        public static void Should_ReplaceDefaultPublisher_When_UsePublisherIsCalled()
         {
+            // Arrange
             var services = new ServiceCollection();
             services.AddEventPublisher()
                 .UsePublisher<CustomEventPublisher>();
 
+            // Act
             var provider = services.BuildServiceProvider();
 
+            // Assert
             Assert.NotNull(provider.GetService<EventPublisher>());
             Assert.IsType<CustomEventPublisher>(provider.GetService<EventPublisher>());
         }
 
         [Fact]
-        public static void UseSystemTime_ReplacesDefaultSystemTime()
+        public static void Should_ReplaceDefaultSystemTime_When_UseSystemTimeIsCalled()
         {
+            // Arrange
             var services = new ServiceCollection();
             services.AddEventPublisher()
                 .UseSystemTime<CustomSystemTime>();
 
+            // Act
             var provider = services.BuildServiceProvider();
-
             var systemTime = provider.GetRequiredService<IEventSystemTime>();
+
+            // Assert
             Assert.IsType<CustomSystemTime>(systemTime);
         }
 
         [Fact]
-        public static void AddEventPublisher_WithConfigureAction_NoAttributes_DefaultsToEmpty()
+        public static void Should_DefaultToEmptyAttributes_When_NoAttributesAreConfigured()
         {
+            // Arrange
             var services = new ServiceCollection();
             services.AddEventPublisher(options =>
             {
                 options.Source = new Uri("https://api.example.com/svc");
             });
 
+            // Act
             var provider = services.BuildServiceProvider();
-
             var options = provider.GetRequiredService<IOptions<EventPublisherOptions>>();
+
+            // Assert
             Assert.Empty(options.Value.Attributes);
         }
 
         [Fact]
-        public static void AddEventPublisher_WithVersionedRegisteredEventType_WithoutDataSchemaBaseUri_FailsValidation()
+        public static void Should_FailValidation_When_VersionedEventTypeHasNoDataSchemaBaseUri()
         {
+            // Arrange
             var services = new ServiceCollection();
             services.AddSingleton<VersionedRegisteredEventData>();
             services.AddEventPublisher();
-
             var provider = services.BuildServiceProvider();
 
+            // Act & Assert
             var ex = Assert.Throws<OptionsValidationException>(() =>
                 _ = provider.GetRequiredService<IOptions<EventPublisherOptions>>().Value);
 
@@ -153,8 +174,9 @@ namespace Deveel.Events
         }
 
         [Fact]
-        public static void AddEventPublisher_WithVersionedRegisteredEventType_AndDataSchemaBaseUri_PassesValidation()
+        public static void Should_PassValidation_When_VersionedEventTypeHasDataSchemaBaseUri()
         {
+            // Arrange
             var services = new ServiceCollection();
             services.AddSingleton<VersionedRegisteredEventData>();
             services.AddEventPublisher(options =>
@@ -162,12 +184,16 @@ namespace Deveel.Events
                 options.DataSchemaBaseUri = new Uri("https://schemas.example.com/events");
             });
 
+            // Act
             var provider = services.BuildServiceProvider();
             var options = provider.GetRequiredService<IOptions<EventPublisherOptions>>();
 
+            // Assert
             Assert.NotNull(options.Value);
             Assert.Equal(new Uri("https://schemas.example.com/events"), options.Value.DataSchemaBaseUri);
         }
+
+        // ── Helpers ───────────────────────────────────────────────────────────
 
         private class CustomEventPublisher : EventPublisher
         {
@@ -175,9 +201,7 @@ namespace Deveel.Events
                 IOptions<EventPublisherOptions> options,
                 IEnumerable<IEventPublishChannel> channels,
                 IServiceProvider serviceProvider)
-                : base(options, channels, serviceProvider)
-            {
-            }
+                : base(options, channels, serviceProvider) { }
         }
 
         private class CustomSystemTime : IEventSystemTime
@@ -186,10 +210,7 @@ namespace Deveel.Events
         }
 
         [Event("publisher.registration.versioned", "1.0")]
-        private class VersionedRegisteredEventData
-        {
-        }
+        private class VersionedRegisteredEventData { }
     }
 }
-
 

@@ -1,27 +1,52 @@
 <Project>
+
+  <!-- ============================================================
+       Defaults applied to ALL projects under test/
+  ============================================================ -->
   <PropertyGroup>
     <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>Deveel</RootNamespace>
-    
+
     <OutputType>Exe</OutputType>
 
     <IsPackable>false</IsPackable>
-    <IsTestProject>true</IsTestProject>
+    <!-- IsTestProject defaults to true; shared support libraries opt out explicitly -->
+    <IsTestProject Condition="'$(IsTestProject)' == ''">true</IsTestProject>
 
     <NoWarn>$(NoWarn);CS8618</NoWarn>
-    
-    <UseMicrosoftTestingPlatformRunner>True</UseMicrosoftTestingPlatformRunner>
-    <TestingPlatformDotnetTestSupport>True</TestingPlatformDotnetTestSupport>
-    <TestingPlatformShowTestsFailure>true</TestingPlatformShowTestsFailure>
   </PropertyGroup>
 
+  <!-- ============================================================
+       Packages injected into ALL projects under test/
+  ============================================================ -->
   <ItemGroup>
-    <PackageReference Include="xunit.v3" Version="3.2.2" />
-    <PackageReference Include="MartinCostello.Logging.XUnit.v3" Version="0.7.1"/>
-    <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" Version="17.14.2"/>
+    <PackageReference Include="Bogus" Version="35.*" />
   </ItemGroup>
+
+  <!-- ============================================================
+       Packages injected ONLY into executable test projects
+  ============================================================ -->
+  <ItemGroup Condition="'$(IsTestProject)' == 'true'">
+    <PackageReference Include="xunit.v3" Version="3.*" />
+    <PackageReference Include="MartinCostello.Logging.XUnit.v3" Version="0.7.*" />
+    <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" Version="17.*" />
+    <PackageReference Include="coverlet.collector" Version="6.*">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <!-- MTP properties for test projects -->
+  <PropertyGroup Condition="'$(IsTestProject)' == 'true'">
+    <!-- Activate xunit.v3's Microsoft Testing Platform runner -->
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+    <!-- Enable 'dotnet test' / IDE integration over MTP -->
+    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+    <TestingPlatformCaptureOutput>false</TestingPlatformCaptureOutput>
+    <TestingPlatformShowTestsFailure>true</TestingPlatformShowTestsFailure>
+  </PropertyGroup>
 
   <ItemGroup>
     <AssemblyAttribute Include="System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage" />
@@ -30,4 +55,5 @@
   <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
+
 </Project>
