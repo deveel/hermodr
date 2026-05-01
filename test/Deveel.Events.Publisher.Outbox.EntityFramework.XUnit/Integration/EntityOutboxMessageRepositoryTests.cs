@@ -20,6 +20,7 @@ namespace Deveel.Events.Integration;
 [Trait("Category",  "Integration")]
 [Trait("Layer",     "Infrastructure")]
 [Trait("Feature",   "OutboxEntityFramework")]
+[Trait("DisableCICD", "Windows")]
 public class EntityOutboxMessageRepositoryTests
 {
     // ── Fields ────────────────────────────────────────────────────────────────

@@ -31,7 +31,6 @@ public sealed class MySqlDatabaseFixture : IAsyncLifetime
     {
         _container = new MySqlBuilder()
             .WithImage("mysql:8.0")
-            .WithResourceMapping(Array.Empty<byte>(), "/var/lib/mysql-files/gh-issue-1142")
             .Build();
     }
 

@@ -14,6 +14,7 @@ namespace Deveel.Events
 {
     [Trait("Channel", "RabbitMQ")]
     [Trait("Function", "Publish")]
+    [Trait("DisableCICD", "Windows")]
     public class RabbitMqChannelPublishTests : IClassFixture<RabbitMqTestServer>, IAsyncLifetime
     {
         private IChannel? _channel;
