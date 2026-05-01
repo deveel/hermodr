@@ -17,7 +17,7 @@ namespace Deveel.Events
     [Trait("Channel", "ServiceBus")]
     [Trait("Function", "Publish")]
     [Trait("Kind", "Integration")]
-    [Trait("CICD","WindowsExclude")]
+    [Trait("DisableCICD","Windows")]
     public class ServiceBusChannelContainerTests : IClassFixture<ServiceBusTestServer>, IAsyncLifetime
     {
         private const string QueueName = "test-queue";

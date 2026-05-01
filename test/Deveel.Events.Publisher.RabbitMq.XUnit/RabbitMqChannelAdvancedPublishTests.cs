@@ -25,7 +25,7 @@ namespace Deveel.Events
     [Trait("Channel", "RabbitMQ")]
     [Trait("Function", "Publish")]
     [Trait("Kind", "Integration")]
-    [Trait("CICD", "WindowsExclude")]
+    [Trait("DisableCICD", "Windows")]
     public class RabbitMqChannelAdvancedPublishTests : IClassFixture<RabbitMqTestServer>, IAsyncLifetime
     {
         private const string ExchangeName = "advanced-test";
