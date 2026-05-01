@@ -187,18 +187,22 @@ namespace Deveel.Events
         }
 
         [Fact]
-        public void Resolve_WithoutRepository_ThrowsOnServiceResolution()
+        public async Task Resolve_WithoutRepository_ThrowsOnPublish()
         {
+            // The manager (and repository) are resolved lazily inside PublishCoreAsync, so
+            // service-resolution succeeds but the first publish call throws because no
+            // OutboxMessageManager<FakeOutboxMessage> is registered.
             var services = new ServiceCollection();
-            services.AddEventPublisher()
+            services.AddEventPublisher(o => o.ThrowOnErrors = true)
                     .AddOutbox<FakeOutboxMessage>()
                     .WithFactory<FakeOutboxMessageFactory>();
                     // repository deliberately omitted
 
             var provider = services.BuildServiceProvider();
+            var publisher = provider.GetRequiredService<EventPublisher>();
 
-            Assert.Throws<InvalidOperationException>(
-                () => provider.GetRequiredService<EventPublisher>());
+            await Assert.ThrowsAsync<EventPublishException>(
+                () => publisher.PublishEventAsync(MakeEvent(), cancellationToken: TestContext.Current.CancellationToken));
         }
 
         // ── Helpers ──────────────────────────────────────────────────────────
@@ -212,6 +216,8 @@ namespace Deveel.Events
         private sealed class ThrowingRepository : IOutboxMessageRepository<FakeOutboxMessage>
         {
             public string GetEntityKey(FakeOutboxMessage entity) => entity.Id;
+            public Task<OutboxMessageStatus> GetStatusAsync(FakeOutboxMessage message, CancellationToken ct = default)
+                => throw new NotImplementedException();
             public Task AddAsync(FakeOutboxMessage entity, CancellationToken ct = default)
                 => throw new InvalidOperationException("Repository is deliberately broken.");
             public Task AddRangeAsync(IEnumerable<FakeOutboxMessage> entities, CancellationToken ct = default)

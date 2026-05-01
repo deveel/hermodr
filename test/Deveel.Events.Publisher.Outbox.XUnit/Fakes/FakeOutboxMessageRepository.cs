@@ -61,6 +61,9 @@ internal sealed class FakeOutboxMessageRepository : IOutboxMessageRepository<Fak
 
     // ── IOutboxMessageRepository<FakeOutboxMessage> ──────────────────
 
+    public Task<OutboxMessageStatus> GetStatusAsync(FakeOutboxMessage message, CancellationToken cancellationToken = default)
+        => Task.FromResult(message.Status);
+
     public Task SetSendingAsync(FakeOutboxMessage message, CancellationToken cancellationToken = default)
     {
         message.Status = OutboxMessageStatus.Sending;

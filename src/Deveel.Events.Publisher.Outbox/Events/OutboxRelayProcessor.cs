@@ -5,6 +5,8 @@
 
 using CloudNative.CloudEvents;
 
+using Deveel;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -81,7 +83,7 @@ internal sealed class OutboxRelayProcessor<TMessage> : IOutboxRelayProcessor
         await using var scope = _scopeFactory.CreateAsyncScope();
         var sp = scope.ServiceProvider;
 
-        var repository = sp.GetRequiredService<IOutboxMessageRepository<TMessage>>();
+        var manager = sp.GetRequiredService<OutboxMessageManager<TMessage>>();
 
         // Resolve the publisher to use for forwarding dequeued messages to transport.
         // When a name is specified in the options, resolve the keyed pipeline; otherwise
@@ -90,7 +92,7 @@ internal sealed class OutboxRelayProcessor<TMessage> : IOutboxRelayProcessor
             ? sp.GetRequiredKeyedService<IEventPublisher>(_options.TransportPublisherName)
             : sp.GetRequiredService<IEventPublisher>();
 
-        var pending = await repository.GetPendingMessagesAsync(cancellationToken: cancellationToken);
+        var pending = await manager.GetPendingMessagesAsync();
 
         if (pending.Count == 0)
         {
@@ -107,14 +109,14 @@ internal sealed class OutboxRelayProcessor<TMessage> : IOutboxRelayProcessor
 
         foreach (var message in batch)
         {
-            await RelayMessageAsync(repository, publisher, message, cancellationToken);
+            await RelayMessageAsync(manager, publisher, message, cancellationToken);
         }
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private async Task RelayMessageAsync(
-        IOutboxMessageRepository<TMessage> repository,
+        OutboxMessageManager<TMessage> manager,
         IEventPublisher publisher,
         TMessage message,
         CancellationToken cancellationToken)
@@ -133,8 +135,11 @@ internal sealed class OutboxRelayProcessor<TMessage> : IOutboxRelayProcessor
                 EventPublishOptions.BypassPipeline(new OutboxRelayPublishOptions()),
                 cancellationToken);
 
-            await repository.SetDeliveredAsync(message, cancellationToken);
-            _logger.LogOutboxMessageDelivered(message.CloudEvent.Type);
+            var result = await manager.MarkDeliveredAsync(message);
+            if (!result.IsSuccess())
+                _logger.LogWarning("Could not mark outbox message as delivered: {Error}", result.Error);
+            else
+                _logger.LogOutboxMessageDelivered(message.CloudEvent.Type);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -146,7 +151,9 @@ internal sealed class OutboxRelayProcessor<TMessage> : IOutboxRelayProcessor
 
             try
             {
-                await repository.SetFailedAsync(message, ex.Message, cancellationToken);
+                var result = await manager.MarkFailedAsync(message, ex.Message);
+                if (!result.IsSuccess())
+                    _logger.LogWarning("Could not mark outbox message as failed: {Error}", result.Error);
             }
             catch (Exception repoEx)
             {

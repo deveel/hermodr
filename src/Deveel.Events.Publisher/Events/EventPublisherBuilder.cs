@@ -248,6 +248,41 @@ namespace Deveel.Events {
         }
 
         /// <summary>
+        /// Registers a publish channel whose concrete type is supplied at runtime.
+        /// </summary>
+        /// <param name="channelType">
+        /// The <see cref="Type"/> of the channel.  Must be a concrete class that implements
+        /// <see cref="IEventPublishChannel"/>.
+        /// </param>
+        /// <param name="lifetime">The service lifetime for the channel registration.</param>
+        /// <param name="channelName">
+        /// An optional logical name for the channel. When set the publisher will only route
+        /// events to this channel when the per-call options carry the same channel name.
+        /// </param>
+        /// <exception cref="ArgumentException">
+        /// Thrown when <paramref name="channelType"/> does not implement
+        /// <see cref="IEventPublishChannel"/>.
+        /// </exception>
+        public EventPublisherBuilder AddChannel(
+            Type channelType,
+            ServiceLifetime lifetime = ServiceLifetime.Singleton,
+            string? channelName = null)
+        {
+            ArgumentNullException.ThrowIfNull(channelType);
+
+            if (!typeof(IEventPublishChannel).IsAssignableFrom(channelType))
+                throw new ArgumentException(
+                    $"Type '{channelType.FullName}' does not implement {nameof(IEventPublishChannel)}.",
+                    nameof(channelType));
+
+            Services.TryAdd(new ServiceDescriptor(channelType, channelType, lifetime));
+            Services.Add(ServiceDescriptor.KeyedSingleton<IEventPublishChannel>(
+                Name, (sp, _) => ApplyChannelName((IEventPublishChannel)sp.GetRequiredService(channelType), channelName)));
+            _channelFactories.Add(sp => ApplyChannelName((IEventPublishChannel)sp.GetRequiredService(channelType), channelName));
+            return this;
+        }
+
+        /// <summary>
         /// Registers a pre-built channel instance for this publisher pipeline.
         /// </summary>
         /// <param name="channel">The channel instance to register.</param>

@@ -58,9 +58,23 @@ namespace Deveel.Events
                     .AddOutbox<FakeOutboxMessage>()
                     .WithRepository<FakeOutboxMessageRepository>();
 
-
             var provider = services.BuildServiceProvider();
             Assert.NotNull(provider.GetService<IOutboxMessageRepository<FakeOutboxMessage>>());
+        }
+
+        [Fact]
+        public static void AddOutbox_WithRepository_ManagerIsRegistered()
+        {
+            var services = new ServiceCollection();
+            services.AddEventPublisher()
+                    .AddOutbox<FakeOutboxMessage>()
+                    .WithRepository<FakeOutboxMessageRepository>();
+
+            var provider = services.BuildServiceProvider();
+
+            // OutboxPublishChannel depends on OutboxMessageManager, so the manager
+            // must be resolvable whenever the repository is registered.
+            Assert.NotNull(provider.GetService<OutboxMessageManager<FakeOutboxMessage>>());
         }
 
         // ── AddOutbox<TMessage>(configure) overload ───────────────────────────

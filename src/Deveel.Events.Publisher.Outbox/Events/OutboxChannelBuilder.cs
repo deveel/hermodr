@@ -7,6 +7,7 @@ using Deveel.Data;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 
 namespace Deveel.Events;
 
@@ -14,23 +15,33 @@ namespace Deveel.Events;
 /// A fluent builder that configures the outbox publish channel and its supporting
 /// services within an <see cref="EventPublisherBuilder"/> pipeline.
 /// </summary>
-/// <typeparam name="TMessage">
-/// The outbox message entity type managed by this channel.
-/// Must be a reference type and implement <see cref="IOutboxMessage"/>.
-/// </typeparam>
-public sealed class OutboxChannelBuilder<TMessage>
-    where TMessage : class, IOutboxMessage
+/// <remarks>
+/// The outbox message entity type is captured at construction time (via
+/// <see cref="MessageType"/>) and used to validate repository and factory registrations
+/// at runtime, removing the need for a generic type parameter on the builder itself.
+/// </remarks>
+public sealed class OutboxChannelBuilder
 {
     private readonly EventPublisherBuilder _publisherBuilder;
 
-    internal OutboxChannelBuilder(EventPublisherBuilder publisherBuilder)
+    internal OutboxChannelBuilder(EventPublisherBuilder publisherBuilder, Type messageType)
     {
+        if (!typeof(IOutboxMessage).IsAssignableFrom(messageType))
+            throw new ArgumentException($"Message type must implement {typeof(IOutboxMessage).FullName}", nameof(messageType));
+        
+        MessageType = messageType;
+        
         _publisherBuilder = publisherBuilder;
+        
+        var channelType = typeof(OutboxPublishChannel<>).MakeGenericType(messageType);
+        
         // Register options and the channel immediately so defaults exist even when
         // no explicit Configure call follows.
         _publisherBuilder.Services.AddOptions<OutboxPublishOptions>();
-        _publisherBuilder.AddChannel<OutboxPublishChannel<TMessage>>();
+        _publisherBuilder.AddChannel(channelType);
     }
+    
+    public Type MessageType { get; }
 
     /// <summary>
     /// Gets the underlying <see cref="IServiceCollection"/> so that callers can
@@ -50,7 +61,7 @@ public sealed class OutboxChannelBuilder<TMessage>
     /// A delegate that receives the options instance and applies the desired settings.
     /// </param>
     /// <returns>This builder instance for chaining.</returns>
-    public OutboxChannelBuilder<TMessage> Configure(Action<OutboxPublishOptions> configure)
+    public OutboxChannelBuilder Configure(Action<OutboxPublishOptions> configure)
     {
         _publisherBuilder.Services.Configure(configure);
         return this;
@@ -66,7 +77,7 @@ public sealed class OutboxChannelBuilder<TMessage>
     /// <see cref="OutboxPublishOptions"/>.
     /// </param>
     /// <returns>This builder instance for chaining.</returns>
-    public OutboxChannelBuilder<TMessage> Configure(string sectionPath)
+    public OutboxChannelBuilder Configure(string sectionPath)
     {
         _publisherBuilder.Services
             .AddOptions<OutboxPublishOptions>()
@@ -92,15 +103,24 @@ public sealed class OutboxChannelBuilder<TMessage>
     /// typically wrap a scoped database context.
     /// </param>
     /// <returns>This builder instance for chaining.</returns>
-    public OutboxChannelBuilder<TMessage> WithRepository<TRepository>(
+    public OutboxChannelBuilder WithRepository<TRepository>(
         ServiceLifetime lifetime = ServiceLifetime.Scoped)
-        where TRepository : class, IOutboxMessageRepository<TMessage>
     {
+        var repositoryType = typeof(IOutboxMessageRepository<>).MakeGenericType(MessageType);
+        if (!repositoryType.IsAssignableFrom(typeof(TRepository)))
+            throw new ArgumentException($"Repository type must implement {repositoryType.FullName}", nameof(TRepository));
+        
         Services.AddRepository(typeof(TRepository), lifetime);
         Services.TryAdd(ServiceDescriptor.Describe(
-            typeof(IOutboxMessageRepository<TMessage>),
+            repositoryType,
             sp => sp.GetRequiredService<TRepository>(),
             lifetime));
+
+        var managerType = typeof(OutboxMessageManager<>).MakeGenericType(MessageType);
+        Services.TryAdd(ServiceDescriptor.Describe(managerType, managerType, lifetime));
+
+        var validatorType = typeof(OutboxMessageValidator<>).MakeGenericType(MessageType);
+        Services.TryAdd(ServiceDescriptor.Describe(validatorType, validatorType, lifetime));
         
         return this;
     }
@@ -124,12 +144,15 @@ public sealed class OutboxChannelBuilder<TMessage>
     /// are typically stateless.
     /// </param>
     /// <returns>This builder instance for chaining.</returns>
-    public OutboxChannelBuilder<TMessage> WithFactory<TFactory>(
+    public OutboxChannelBuilder WithFactory<TFactory>(
         ServiceLifetime lifetime = ServiceLifetime.Singleton)
-        where TFactory : class, IOutboxMessageFactory<TMessage>
     {
+        var factoryType = typeof(IOutboxMessageFactory<>).MakeGenericType(MessageType);
+        if (!factoryType.IsAssignableFrom(typeof(TFactory)))
+            throw new ArgumentException($"Factory type must implement {factoryType.FullName}", nameof(TFactory));
+        
         Services.Add(new ServiceDescriptor(
-            typeof(IOutboxMessageFactory<TMessage>),
+            factoryType,
             typeof(TFactory),
             lifetime));
         return this;
@@ -167,7 +190,7 @@ public sealed class OutboxChannelBuilder<TMessage>
     /// the relay creates a fresh DI scope on every polling tick.
     /// </para>
     /// </remarks>
-    public OutboxChannelBuilder<TMessage> WithRelay(Action<OutboxRelayOptions>? configure = null)
+    public OutboxChannelBuilder WithRelay(Action<OutboxRelayOptions>? configure = null)
     {
         // Register relay options (may be called multiple times safely).
         Services.AddOptions<OutboxRelayOptions>();
@@ -185,13 +208,14 @@ public sealed class OutboxChannelBuilder<TMessage>
         // Register the processor as a singleton (it scopes internally per tick).
         // Also expose it via the public IOutboxRelayProcessor interface so callers
         // (e.g. tests) can resolve and invoke it without needing InternalsVisibleTo.
-        Services.TryAddSingleton<OutboxRelayProcessor<TMessage>>();
-        Services.TryAddSingleton<IOutboxRelayProcessor>(
-            sp => sp.GetRequiredService<OutboxRelayProcessor<TMessage>>());
+        Services.TryAddSingleton(typeof(OutboxRelayProcessor<>).MakeGenericType(MessageType));
+        Services.TryAddSingleton(typeof(IOutboxRelayProcessor), typeof(OutboxRelayProcessor<>).MakeGenericType(MessageType));
 
         // Register the hosted service.
-        Services.AddHostedService<OutboxRelayService<TMessage>>();
-
+        // AddHostedService<T> is sugar for AddSingleton<IHostedService, T>(); we replicate
+        // that here using the runtime-constructed closed generic type.
+        Services.AddSingleton(typeof(IHostedService), typeof(OutboxRelayService<>).MakeGenericType(MessageType));
+        
         return this;
     }
 
@@ -206,7 +230,7 @@ public sealed class OutboxChannelBuilder<TMessage>
     /// <see cref="OutboxRelayOptions"/>.
     /// </param>
     /// <returns>This builder instance for chaining.</returns>
-    public OutboxChannelBuilder<TMessage> WithRelay(string sectionPath)
+    public OutboxChannelBuilder WithRelay(string sectionPath)
     {
         Services.AddOptions<OutboxRelayOptions>()
             .BindConfiguration(sectionPath);

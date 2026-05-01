@@ -19,6 +19,8 @@ namespace Deveel.Events;
 public interface IOutboxMessageRepository<TMessage> : IRepository<TMessage, string>
      where TMessage : class, IOutboxMessage
 {
+    Task<OutboxMessageStatus> GetStatusAsync(TMessage message, CancellationToken cancellationToken = default);
+    
     /// <summary>
     /// Claims <paramref name="message"/> for in-flight delivery by updating its
     /// <see cref="IOutboxMessage.Status"/> to <see cref="OutboxMessageStatus.Sending"/>.

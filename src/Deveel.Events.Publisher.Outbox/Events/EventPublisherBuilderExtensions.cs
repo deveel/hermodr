@@ -14,7 +14,7 @@ public static class EventPublisherBuilderExtensions
     /// <summary>
     /// Adds an outbox publish channel for the given <typeparamref name="TMessage"/>
     /// entity type to the event publisher pipeline, returning a fluent
-    /// <see cref="OutboxChannelBuilder{TMessage}"/> to continue configuration.
+    /// <see cref="OutboxChannelBuilder"/> to continue configuration.
     /// </summary>
     /// <typeparam name="TMessage">
     /// The outbox message entity type that wraps a
@@ -25,7 +25,7 @@ public static class EventPublisherBuilderExtensions
     /// The <see cref="EventPublisherBuilder"/> to which the outbox channel is added.
     /// </param>
     /// <returns>
-    /// An <see cref="OutboxChannelBuilder{TMessage}"/> that exposes further fluent
+    /// An <see cref="OutboxChannelBuilder"/> that exposes further fluent
     /// methods for configuring options, the repository, and the message factory.
     /// </returns>
     /// <example>
@@ -37,11 +37,11 @@ public static class EventPublisherBuilderExtensions
     ///     .WithFactory&lt;MyOutboxMessageFactory&gt;();
     /// </code>
     /// </example>
-    public static OutboxChannelBuilder<TMessage> AddOutbox<TMessage>(
+    public static OutboxChannelBuilder AddOutbox<TMessage>(
         this EventPublisherBuilder builder)
         where TMessage : class, IOutboxMessage
     {
-        return new OutboxChannelBuilder<TMessage>(builder);
+        return new OutboxChannelBuilder(builder, typeof(TMessage));
     }
 
     /// <summary>
@@ -60,15 +60,15 @@ public static class EventPublisherBuilderExtensions
     /// A delegate that configures the <see cref="OutboxPublishOptions"/> for this channel.
     /// </param>
     /// <returns>
-    /// An <see cref="OutboxChannelBuilder{TMessage}"/> that exposes further fluent
+    /// An <see cref="OutboxChannelBuilder"/> that exposes further fluent
     /// methods for configuring the repository and the message factory.
     /// </returns>
-    public static OutboxChannelBuilder<TMessage> AddOutbox<TMessage>(
+    public static OutboxChannelBuilder AddOutbox<TMessage>(
         this EventPublisherBuilder builder,
         Action<OutboxPublishOptions> configure)
         where TMessage : class, IOutboxMessage
     {
-        return new OutboxChannelBuilder<TMessage>(builder).Configure(configure);
+        return new OutboxChannelBuilder(builder, typeof(TMessage)).Configure(configure);
     }
 
     /// <summary>
@@ -89,14 +89,14 @@ public static class EventPublisherBuilderExtensions
     /// whose values are bound to <see cref="OutboxPublishOptions"/>.
     /// </param>
     /// <returns>
-    /// An <see cref="OutboxChannelBuilder{TMessage}"/> that exposes further fluent
+    /// An <see cref="OutboxChannelBuilder"/> that exposes further fluent
     /// methods for configuring the repository and the message factory.
     /// </returns>
-    public static OutboxChannelBuilder<TMessage> AddOutbox<TMessage>(
+    public static OutboxChannelBuilder AddOutbox<TMessage>(
         this EventPublisherBuilder builder,
         string sectionPath)
         where TMessage : class, IOutboxMessage
     {
-        return new OutboxChannelBuilder<TMessage>(builder).Configure(sectionPath);
+        return new OutboxChannelBuilder(builder, typeof(TMessage)).Configure(sectionPath);
     }
 }

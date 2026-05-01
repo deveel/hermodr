@@ -11,7 +11,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Deveel.Repository.Core" Version="1.4.3" />
+      <PackageReference Include="Deveel.Repository.Manager" Version="1.4.3" />
     </ItemGroup>
 
     <ItemGroup Condition="$(TargetFramework) == 'net8.0'">

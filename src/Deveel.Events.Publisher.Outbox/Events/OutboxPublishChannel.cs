@@ -5,6 +5,9 @@
 
 using CloudNative.CloudEvents;
 
+using Deveel;
+
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -40,12 +43,20 @@ namespace Deveel.Events;
 ///   </item>
 /// </list>
 /// </para>
+/// <para>
+/// Because the channel is registered as a singleton (publisher channels are always
+/// singletons) and <see cref="OutboxMessageManager{TMessage}"/> may be scoped (e.g.
+/// when the underlying repository wraps a scoped EF Core <c>DbContext</c>), the channel
+/// resolves the manager from a fresh <see cref="IServiceScope"/> on every publish call
+/// rather than capturing it at construction time.  This is the same pattern used by
+/// <see cref="OutboxRelayProcessor{TMessage}"/>.
+/// </para>
 /// </remarks>
 internal sealed class OutboxPublishChannel<TMessage> : EventPublishChannel<OutboxPublishOptions>
     where TMessage : class, IOutboxMessage
 {
     private readonly IOutboxMessageFactory<TMessage> _messageFactory;
-    private readonly IOutboxMessageRepository<TMessage> _repository;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger _logger;
 
     /// <summary>
@@ -59,8 +70,10 @@ internal sealed class OutboxPublishChannel<TMessage> : EventPublishChannel<Outbo
     /// The factory that converts a <see cref="CloudEvent"/> into a
     /// <typeparamref name="TMessage"/> for persistence.
     /// </param>
-    /// <param name="repository">
-    /// The repository used to persist the outbox message.
+    /// <param name="scopeFactory">
+    /// Used to create a fresh DI scope on each publish call so that a scoped
+    /// <see cref="OutboxMessageManager{TMessage}"/> (and its underlying repository)
+    /// can be resolved without causing a scoped-in-singleton lifetime violation.
     /// </param>
     /// <param name="validators">
     /// An optional collection of <see cref="IValidateOptions{TOptions}"/> services.
@@ -72,16 +85,16 @@ internal sealed class OutboxPublishChannel<TMessage> : EventPublishChannel<Outbo
     public OutboxPublishChannel(
         IOptions<OutboxPublishOptions> options,
         IOutboxMessageFactory<TMessage> messageFactory,
-        IOutboxMessageRepository<TMessage> repository,
+        IServiceScopeFactory scopeFactory,
         IEnumerable<IValidateOptions<OutboxPublishOptions>>? validators = null,
         ILogger<OutboxPublishChannel<TMessage>>? logger = null)
         : base(options.Value, validators)
     {
         ArgumentNullException.ThrowIfNull(messageFactory);
-        ArgumentNullException.ThrowIfNull(repository);
+        ArgumentNullException.ThrowIfNull(scopeFactory);
 
         _messageFactory = messageFactory;
-        _repository = repository;
+        _scopeFactory   = scopeFactory;
         _logger = logger ?? NullLogger<OutboxPublishChannel<TMessage>>.Instance;
     }
 
@@ -104,8 +117,18 @@ internal sealed class OutboxPublishChannel<TMessage> : EventPublishChannel<Outbo
 
         try
         {
+            // Resolve the manager from a fresh scope so the channel (singleton) does not
+            // capture a scoped dependency.  Singleton repositories (in-memory fakes, etc.)
+            // are returned as-is by the DI container regardless of the scope lifetime.
+            await using var scope = _scopeFactory.CreateAsyncScope();
+            var manager = scope.ServiceProvider.GetRequiredService<OutboxMessageManager<TMessage>>();
+
             var message = _messageFactory.Create(@event, options);
-            await _repository.AddAsync(message, cancellationToken);
+            var result = await manager.AddAsync(message, cancellationToken);
+
+            if (!result.IsSuccess())
+                throw new InvalidOperationException(
+                    $"Failed to save event '{@event.Type}' to outbox: {result.Error}");
 
             _logger.LogEventSavedToOutbox(@event.Type);
         }
