@@ -60,7 +60,7 @@ public class DbOutboxMessageConfiguration : IEntityTypeConfiguration<DbOutboxMes
     public void Configure(EntityTypeBuilder<DbOutboxMessage> builder)
     {
         // ── Table ─────────────────────────────────────────────────────────────
-        builder.ToTable("OutboxMessages");
+        builder.ToTable("outbox_messages");
 
         // ── Primary key ───────────────────────────────────────────────────────
         builder.HasKey(m => m.Id);

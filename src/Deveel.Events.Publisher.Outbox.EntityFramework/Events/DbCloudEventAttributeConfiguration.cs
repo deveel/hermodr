@@ -30,7 +30,7 @@ public class DbCloudEventAttributeConfiguration : IEntityTypeConfiguration<DbClo
     public void Configure(EntityTypeBuilder<DbCloudEventAttribute> builder)
     {
         // ── Table ─────────────────────────────────────────────────────────────
-        builder.ToTable("OutboxMessageAttributes");
+        builder.ToTable("outbox_message_attributes");
 
         // ── Primary key ───────────────────────────────────────────────────────
         builder.HasKey(a => a.Id);

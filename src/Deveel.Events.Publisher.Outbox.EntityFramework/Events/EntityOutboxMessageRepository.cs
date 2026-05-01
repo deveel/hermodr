@@ -27,13 +27,13 @@ namespace Deveel.Events;
 /// <remarks>
 /// <para>
 /// Register this repository via
-/// <see cref="OutboxChannelBuilderExtensions.WithEntityFrameworkRepository{TMessage,TContext}"/>
+/// <see cref="OutboxChannelBuilderExtensions.WithEntityFramework"/>
 /// so that the DI container resolves the correct <see cref="DbContext"/> type:
 /// </para>
 /// <code language="csharp">
 /// services.AddEventPublisher()
 ///     .AddOutbox&lt;MyMessage&gt;()
-///     .WithEntityFrameworkRepository&lt;MyMessage, MyDbContext&gt;()
+///     .WithEntityFramework()
 ///     .WithFactory&lt;MyMessageFactory&gt;()
 ///     .WithRelay();
 /// </code>
@@ -51,10 +51,10 @@ public class EntityOutboxMessageRepository<TMessage>
 {
     /// <summary>
     /// Initialises a new instance of
-    /// <see cref="EntityOutboxMessageRepository{TMessage,TContext}"/>.
+    /// <see cref="EntityOutboxMessageRepository{TMessage}"/>.
     /// </summary>
     /// <param name="context">
-    /// The <typeparamref name="TContext"/> instance used to access the database.
+    /// The context instance used to access the database.
     /// </param>
     /// <param name="systemTime">
     /// An optional <see cref="ISystemTime"/> used to obtain the current UTC time when
@@ -70,8 +70,8 @@ public class EntityOutboxMessageRepository<TMessage>
     /// In production the DI container will typically supply an <see cref="ILoggerFactory"/>
     /// automatically.
     /// </param>
-    public EntityOutboxMessageRepository(OutboxDbContext context, ISystemTime? systemTime = null, ILoggerFactory? loggerFactory = null)
-        : base(context, CreateBaseLogger(loggerFactory))
+    public EntityOutboxMessageRepository(OutboxDbContext context, ISystemTime? systemTime = null, ILogger<EntityOutboxMessageRepository<TMessage>>? logger = null)
+        : base(context, logger)
     {
         _systemTime = systemTime ?? SystemTime.Default;
     }
@@ -79,16 +79,11 @@ public class EntityOutboxMessageRepository<TMessage>
     private readonly ISystemTime _systemTime;
 
     /// <summary>
-    /// Gets the strongly-typed <typeparamref name="TContext"/> instance.
+    /// Gets the strongly-typed <see cref="OutboxDbContext"/> instance.
     /// </summary>
     protected new OutboxDbContext Context => (OutboxDbContext)base.Context;
 
-    // ── Helpers ──────────────────────────────────────────────────────
-
-    private static ILogger<EntityRepository<TMessage, string>> CreateBaseLogger(ILoggerFactory? factory)
-        => factory?.CreateLogger<EntityRepository<TMessage, string>>()
-           ?? NullLogger<EntityRepository<TMessage, string>>.Instance;
-
+    
     // ── IOutboxMessageRepository<TMessage> ───────────────────────────
 
     public Task<OutboxMessageStatus> GetStatusAsync(TMessage message, CancellationToken cancellationToken = default)
