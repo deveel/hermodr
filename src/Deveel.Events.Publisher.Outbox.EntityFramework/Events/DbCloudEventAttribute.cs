@@ -111,7 +111,7 @@ public class DbCloudEventAttribute
     // ── Factory ───────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Creates a <see cref="DbCloudEventAttribute"/> from a populated CloudEvent
+    /// Creates a <see cref="DbCloudEventAttribute"/> from a populated Event
     /// extension attribute key/value pair.
     /// </summary>
     /// <param name="messageId">The foreign-key value linking this row to the parent message.</param>

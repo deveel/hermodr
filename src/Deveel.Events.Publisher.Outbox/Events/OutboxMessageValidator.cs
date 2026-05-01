@@ -6,7 +6,7 @@ namespace Deveel.Events;
 
 /// <summary>
 /// A default entity validator for <typeparamref name="TMessage"/> outbox entities that
-/// ensures the associated <see cref="IOutboxMessage.CloudEvent"/> is not <c>null</c>.
+/// ensures the associated <see cref="IOutboxMessage.Event"/> is not <c>null</c>.
 /// </summary>
 /// <typeparam name="TMessage">
 /// The outbox message entity type.  Must be a reference type and implement
@@ -33,9 +33,9 @@ public class OutboxMessageValidator<TMessage> : IEntityValidator<TMessage, strin
     /// </returns>
     public async virtual IAsyncEnumerable<ValidationResult> ValidateAsync(OutboxMessageManager<TMessage> manager, TMessage message, CancellationToken cancellationToken = new CancellationToken())
     {
-        var @event = message.CloudEvent;
+        var @event = message.Event;
         if (@event == null)
-            yield return new ValidationResult("CloudEvent cannot be null.", new[] { nameof(IOutboxMessage.CloudEvent) });
+            yield return new ValidationResult("CloudEvent cannot be null.", new[] { nameof(IOutboxMessage.Event) });
         
         // Additional validation rules can be added here as needed.
     }

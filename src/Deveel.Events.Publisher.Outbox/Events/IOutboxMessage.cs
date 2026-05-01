@@ -8,20 +8,20 @@ using CloudNative.CloudEvents;
 namespace Deveel.Events;
 
 /// <summary>
-/// Represents a message stored in the outbox table that wraps a <see cref="CloudEvent"/>
+/// Represents a message stored in the outbox table that wraps a <see cref="Event"/>
 /// and tracks its current delivery state.
 /// </summary>
 /// <remarks>
 /// Implementations must be concrete, persistable entities; they are created by an
-/// <see cref="IOutboxMessageFactory{TMessage}"/> from a <see cref="CloudEvent"/> and stored
+/// <see cref="IOutboxMessageFactory{TMessage}"/> from a <see cref="Event"/> and stored
 /// via an <see cref="IOutboxMessageRepository{TMessage}"/>.
 /// </remarks>
 public interface IOutboxMessage
 {
     /// <summary>
-    /// Gets the <see cref="CloudEvent"/> payload that this outbox message wraps.
+    /// Gets the <see cref="Event"/> payload that this outbox message wraps.
     /// </summary>
-    CloudEvent CloudEvent { get; }
+    CloudEvent Event { get; }
 
     /// <summary>
     /// Gets the current delivery status of this message.
@@ -47,18 +47,4 @@ public interface IOutboxMessage
     /// <c>null</c> means the message is eligible for immediate dispatch.
     /// </summary>
     DateTimeOffset? NextRetryAt { get; }
-
-    /// <summary>
-    /// Returns <c>true</c> when this message is ready to be relayed at
-    /// <paramref name="asOf"/>: its <see cref="Status"/> must be
-    /// <see cref="OutboxMessageStatus.Pending"/> and either
-    /// <see cref="NextRetryAt"/> is <c>null</c> (immediate dispatch) or the
-    /// scheduled retry point is in the past relative to <paramref name="asOf"/>.
-    /// </summary>
-    /// <param name="asOf">
-    /// The reference UTC timestamp to compare against <see cref="NextRetryAt"/>.
-    /// Pass the current wall-clock time in production; pass a frozen test clock
-    /// in tests to make assertions deterministic.
-    /// </param>
-    bool IsAvailableForDispatch(DateTimeOffset asOf);
 }

@@ -7,18 +7,13 @@ internal sealed class FakeOutboxMessage : IOutboxMessage
 {
     public FakeOutboxMessage(CloudEvent cloudEvent)
     {
-        CloudEvent = cloudEvent;
+        Event = cloudEvent;
         Status     = OutboxMessageStatus.Pending;
     }
     public string Id { get; } = Guid.NewGuid().ToString("N");
-    public CloudEvent CloudEvent { get; }
+    public CloudEvent Event { get; }
     public OutboxMessageStatus Status { get; internal set; }
     public string? ErrorMessage { get; internal set; }
     public int RetryCount { get; internal set; }
     public DateTimeOffset? NextRetryAt { get; internal set; }
-
-    /// <inheritdoc/>
-    public bool IsAvailableForDispatch(DateTimeOffset asOf)
-        => Status == OutboxMessageStatus.Pending &&
-           (NextRetryAt is null || NextRetryAt.Value <= asOf);
 }

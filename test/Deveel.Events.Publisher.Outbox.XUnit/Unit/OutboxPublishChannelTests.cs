@@ -67,7 +67,7 @@ namespace Deveel.Events
             await publisher.PublishEventAsync(evt, cancellationToken: TestContext.Current.CancellationToken);
 
             var created = Assert.Single(factory.Created);
-            Assert.Equal("order.placed", created.CloudEvent.Type);
+            Assert.Equal("order.placed", created.Event.Type);
         }
 
         [Fact]
@@ -111,9 +111,9 @@ namespace Deveel.Events
             await publisher.PublishEventAsync(MakeEvent("event.three"), cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Equal(3, repository.Store.Count);
-            Assert.Equal("event.one",   repository.Store[0].CloudEvent.Type);
-            Assert.Equal("event.two",   repository.Store[1].CloudEvent.Type);
-            Assert.Equal("event.three", repository.Store[2].CloudEvent.Type);
+            Assert.Equal("event.one",   repository.Store[0].Event.Type);
+            Assert.Equal("event.two",   repository.Store[1].Event.Type);
+            Assert.Equal("event.three", repository.Store[2].Event.Type);
         }
 
         // ── PublishAsync: factory error ──────────────────────────────────────

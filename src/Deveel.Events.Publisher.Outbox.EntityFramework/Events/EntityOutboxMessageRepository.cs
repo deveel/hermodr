@@ -152,26 +152,6 @@ public class EntityOutboxMessageRepository<TMessage>
     }
 
     /// <inheritdoc/>
-    /// <remarks>
-    /// <para>
-    /// The query is deliberately split into two phases to avoid provider-specific
-    /// <see cref="DateTimeOffset"/> translation failures.
-    /// </para>
-    /// <para>
-    /// <b>Phase 1 – SQL</b>: loads rows whose <c>Status</c> column equals
-    /// <see cref="OutboxMessageStatus.Pending"/> (integer 0).  An integer equality
-    /// is universally translatable by every EF Core provider (SQLite, MySQL,
-    /// PostgreSQL, SQL Server, …).
-    /// </para>
-    /// <para>
-    /// <b>Phase 2 – in-process</b>: calls
-    /// <see cref="IOutboxMessage.IsAvailableForDispatch"/> on each materialised
-    /// entity. The CLR performs the <see cref="DateTimeOffset"/> comparison, so
-    /// there is no risk of provider-specific translation errors.  The batch
-    /// <paramref name="limit"/> is applied here as well, after the time gate,
-    /// to guarantee that only truly eligible messages count towards the limit.
-    /// </para>
-    /// </remarks>
     public async Task<IReadOnlyList<TMessage>> GetPendingMessagesAsync(
         int? limit = null,
         CancellationToken cancellationToken = default)
@@ -185,7 +165,8 @@ public class EntityOutboxMessageRepository<TMessage>
 
         // Phase 2: apply the time-based gate in CLR memory, then the optional limit.
         var now = _systemTime.UtcNow;
-        IEnumerable<TMessage> eligible = candidates.Where(m => m.IsAvailableForDispatch(now));
+        IEnumerable<TMessage> eligible = candidates
+            .Where(m => m.NextRetryAt is null || m.NextRetryAt <= now);
 
         if (limit.HasValue)
             eligible = eligible.Take(limit.Value);

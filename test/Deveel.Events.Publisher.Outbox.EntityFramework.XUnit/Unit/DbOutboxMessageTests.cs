@@ -12,7 +12,7 @@ namespace Deveel.Events.Unit;
 /// <summary>
 /// Pure unit tests for <see cref="DbOutboxMessage"/> — no database required.
 /// Covers <see cref="DbOutboxMessage.PopulateFromCloudEvent"/> and the
-/// <see cref="IOutboxMessage.CloudEvent"/> reconstruction path (BuildCloudEvent).
+/// <see cref="IOutboxMessage.Event"/> reconstruction path (BuildCloudEvent).
 /// </summary>
 [Trait("Category", "Unit")]
 [Trait("Layer",    "Infrastructure")]
@@ -265,7 +265,7 @@ public class DbOutboxMessageTests
         message.PopulateFromCloudEvent(original);
 
         // Act
-        var rebuilt = ((IOutboxMessage)message).CloudEvent;
+        var rebuilt = ((IOutboxMessage)message).Event;
 
         // Assert
         Assert.Equal(original.Id,              rebuilt.Id);
@@ -285,7 +285,7 @@ public class DbOutboxMessageTests
         message.PopulateFromCloudEvent(original);
 
         // Act
-        var rebuilt = ((IOutboxMessage)message).CloudEvent;
+        var rebuilt = ((IOutboxMessage)message).Event;
 
         // Assert
         Assert.Equal(schema, rebuilt.DataSchema);
@@ -301,7 +301,7 @@ public class DbOutboxMessageTests
         message.PopulateFromCloudEvent(original);
 
         // Act
-        var rebuilt = ((IOutboxMessage)message).CloudEvent;
+        var rebuilt = ((IOutboxMessage)message).Event;
 
         // Assert
         Assert.Equal(payload, rebuilt.Data);
@@ -321,7 +321,7 @@ public class DbOutboxMessageTests
         message.PopulateFromCloudEvent(original);
 
         // Act
-        var rebuilt = ((IOutboxMessage)message).CloudEvent;
+        var rebuilt = ((IOutboxMessage)message).Event;
 
         // Assert
         Assert.Equal(bytes, rebuilt.Data);
@@ -338,7 +338,7 @@ public class DbOutboxMessageTests
         message.PopulateFromCloudEvent(original);
 
         // Act
-        var rebuilt = ((IOutboxMessage)message).CloudEvent;
+        var rebuilt = ((IOutboxMessage)message).Event;
 
         // Assert
         var envAttr = CloudEventAttribute.CreateExtension("env", CloudEventAttributeType.String);

@@ -121,7 +121,7 @@ internal sealed class OutboxRelayProcessor<TMessage> : IOutboxRelayProcessor
         TMessage message,
         CancellationToken cancellationToken)
     {
-        _logger.LogRelayingOutboxMessage(message.CloudEvent.Type);
+        _logger.LogRelayingOutboxMessage(message.Event.Type);
 
         try
         {
@@ -131,7 +131,7 @@ internal sealed class OutboxRelayProcessor<TMessage> : IOutboxRelayProcessor
             // OutboxPublishChannel present in the same pipeline can recognise the relay
             // signal and short-circuit without re-persisting the event.
             await publisher.PublishEventAsync(
-                message.CloudEvent,
+                message.Event,
                 EventPublishOptions.BypassPipeline(new OutboxRelayPublishOptions()),
                 cancellationToken);
 
@@ -139,7 +139,7 @@ internal sealed class OutboxRelayProcessor<TMessage> : IOutboxRelayProcessor
             if (!result.IsSuccess())
                 _logger.LogWarning("Could not mark outbox message as delivered: {Error}", result.Error);
             else
-                _logger.LogOutboxMessageDelivered(message.CloudEvent.Type);
+                _logger.LogOutboxMessageDelivered(message.Event.Type);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -147,7 +147,7 @@ internal sealed class OutboxRelayProcessor<TMessage> : IOutboxRelayProcessor
         }
         catch (Exception ex)
         {
-            _logger.LogErrorRelayingOutboxMessage(ex, message.CloudEvent.Type);
+            _logger.LogErrorRelayingOutboxMessage(ex, message.Event.Type);
 
             try
             {
@@ -157,7 +157,7 @@ internal sealed class OutboxRelayProcessor<TMessage> : IOutboxRelayProcessor
             }
             catch (Exception repoEx)
             {
-                _logger.LogErrorMarkingOutboxMessageFailed(repoEx, message.CloudEvent.Type);
+                _logger.LogErrorMarkingOutboxMessageFailed(repoEx, message.Event.Type);
             }
         }
     }

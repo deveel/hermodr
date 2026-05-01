@@ -317,7 +317,7 @@ public abstract class EntityOutboxMessageRepositoryTestsBase
             .Include(m => m.Attributes)
             .SingleAsync(m => m.Id == message.Id, ct);
 
-        var rebuilt = ((IOutboxMessage)loaded).CloudEvent;
+        var rebuilt = ((IOutboxMessage)loaded).Event;
 
         // Assert
         Assert.Equal(original.Id,              rebuilt.Id);
@@ -347,7 +347,7 @@ public abstract class EntityOutboxMessageRepositoryTestsBase
         var loaded  = await readCtx.OutboxMessages
             .Include(m => m.Attributes)
             .SingleAsync(m => m.Id == message.Id, ct);
-        var rebuilt = ((IOutboxMessage)loaded).CloudEvent;
+        var rebuilt = ((IOutboxMessage)loaded).Event;
 
         // Assert
         var envAttr = CloudEventAttribute.CreateExtension("env", CloudEventAttributeType.String);

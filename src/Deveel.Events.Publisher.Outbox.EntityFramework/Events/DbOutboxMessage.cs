@@ -152,20 +152,7 @@ public class DbOutboxMessage : IOutboxMessage
     // ── IOutboxMessage ────────────────────────────────────────────────────────
 
     /// <inheritdoc/>
-    CloudEvent IOutboxMessage.CloudEvent => BuildCloudEvent();
-
-    /// <inheritdoc/>
-    /// <remarks>
-    /// This check is intentionally performed in CLR memory (not translated to SQL)
-    /// to avoid provider-specific <see cref="DateTimeOffset"/> comparison issues.
-    /// <see cref="EntityOutboxMessageRepository{TMessage}.GetPendingMessagesAsync"/>
-    /// first loads all <see cref="OutboxMessageStatus.Pending"/> rows using a
-    /// simple integer predicate, then calls this method in-process to apply the
-    /// time-based gate.
-    /// </remarks>
-    public bool IsAvailableForDispatch(DateTimeOffset asOf)
-        => Status == OutboxMessageStatus.Pending &&
-           (NextRetryAt is null || NextRetryAt.Value <= asOf);
+    CloudEvent IOutboxMessage.Event => BuildCloudEvent();
 
     // ── CloudEvent reconstruction ─────────────────────────────────────────────
 
