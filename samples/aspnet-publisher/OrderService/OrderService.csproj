@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>OrderService</RootNamespace>
+    <AssemblyName>OrderService</AssemblyName>
+    <Description>
+      Sample ASP.NET Minimal API microservice that manages the lifecycle of Orders
+      and publishes domain events to a RabbitMQ exchange using Deveel.Events.
+    </Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Deveel.Events: core publisher + RabbitMQ channel + AMQP annotations -->
+    <ProjectReference Include="..\..\..\src\Deveel.Events.Publisher.RabbitMq\Deveel.Events.Publisher.RabbitMq.csproj" />
+  </ItemGroup>
+
+</Project>
+
+

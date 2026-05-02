@@ -54,6 +54,11 @@
 
 * [Test Publisher](testing/README.md)
 
+## Samples
+
+* [Overview](samples/README.md)
+* [OrderService — Minimal API + RabbitMQ](samples/aspnet-publisher-rabbitmq.md)
+
 ## Contributing
 
 * [Contributing](contributing.md)
