@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="../../src/Deveel.Events.Amqp.Annotations/Deveel.Events.Amqp.Annotations.csproj" />
+  <Project Path="../../src/Deveel.Events.Annotations/Deveel.Events.Annotations.csproj" />
+  <Project Path="../../src/Deveel.Events.Publisher.RabbitMq/Deveel.Events.Publisher.RabbitMq.csproj" />
+  <Project Path="../../src/Deveel.Events.Publisher/Deveel.Events.Publisher.csproj" />
+  <Project Path="OrderService.SimplePublisher/OrderService.SimplePublisher.csproj" />
+</Solution>
