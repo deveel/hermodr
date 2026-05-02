@@ -15,6 +15,9 @@ namespace Deveel.Events
         /// where every non-<c>null</c> property in <paramref name="typedOptions"/>
         /// overrides the corresponding property from <paramref name="baseOptions"/>.
         /// </summary>
+        /// <param name="baseOptions">The base (channel-level) options to merge from.</param>
+        /// <param name="typedOptions">The typed per-event overrides to apply.</param>
+        /// <returns>A new <see cref="MassTransitPublishOptions"/> with the merged values.</returns>
         public static MassTransitPublishOptions Merge(
             MassTransitPublishOptions baseOptions,
             MassTransitPublishOptions typedOptions)

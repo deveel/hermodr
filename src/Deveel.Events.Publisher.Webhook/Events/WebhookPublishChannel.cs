@@ -41,11 +41,21 @@ namespace Deveel.Events
         EventPublishChannel<WebhookPublishOptions>,
         IBatchEventPublishChannel
     {
+        // Key used to flow the per-delivery ID through the ResilienceContext
+        // so that OnRetry callbacks can log it without capturing it in a closure.
+        private static readonly ResiliencePropertyKey<string> DeliveryIdKey =
+            new("webhook.deliveryId");
+
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger _logger;
 
         private readonly IDictionary<WebhookSignatureAlgorithm, IWebhookSignatureProvider> _signatureProviders;
         private readonly IDictionary<string, IEventSerializer> _serializers;
+
+        // Cached pipeline built from the channel-level default retry options.
+        // Avoids rebuilding the Polly pipeline on every delivery when per-call
+        // options don't change the retry behaviour.
+        private readonly Lazy<ResiliencePipeline<HttpResponseMessage>> _defaultPipeline;
 
         /// <summary>Initializes the channel.</summary>
         /// <param name="options">
@@ -87,6 +97,17 @@ namespace Deveel.Events
         {
             _httpClientFactory = httpClientFactory;
             _logger            = logger ?? NullLogger<WebhookPublishChannel>.Instance;
+
+            // Build the default pipeline lazily from the channel-level options.
+            // LazyThreadSafetyMode.ExecutionAndPublication guarantees exactly-once
+            // construction even under concurrent first-use.
+            _defaultPipeline = new Lazy<ResiliencePipeline<HttpResponseMessage>>(
+                () => BuildRetryPipeline(
+                    options.Value.MaxRetryCount          ?? 3,
+                    options.Value.RetryDelay             ?? TimeSpan.FromSeconds(1),
+                    options.Value.RetryBackoffMultiplier ?? 2.0,
+                    options.Value.RetryableStatusCodes),
+                LazyThreadSafetyMode.ExecutionAndPublication);
 
             // Signature providers
             _signatureProviders = new Dictionary<WebhookSignatureAlgorithm, IWebhookSignatureProvider>
@@ -235,62 +256,36 @@ namespace Deveel.Events
             else
                 _logger.LogDeliveringBatch(deliveryId, eventCount, format, algorithm, endpointUrl);
 
-            var pipeline = new ResiliencePipelineBuilder<HttpResponseMessage>()
-                .AddRetry(new RetryStrategyOptions<HttpResponseMessage>
-                {
-                    MaxRetryAttempts = maxRetryCount,
-                    UseJitter        = false,
-                    DelayGenerator   = args => ValueTask.FromResult<TimeSpan?>(
-                        TimeSpan.FromMilliseconds(
-                            retryDelay.TotalMilliseconds *
-                            Math.Pow(retryBackoffMultiplier, args.AttemptNumber))),
-                    ShouldHandle = args =>
-                    {
-                        if (args.Outcome.Exception != null)
-                            return ValueTask.FromResult(
-                                args.Outcome.Exception is HttpRequestException ||
-                                ((args.Outcome.Exception is TaskCanceledException
-                                  or OperationCanceledException)
-                                 && !cancellationToken.IsCancellationRequested));
+            // Use the channel-default cached pipeline when the effective retry parameters
+            // match the channel defaults; build a fresh one only for per-call overrides.
+            var defaultOpts = DefaultOptions;
+            var matchesDefault =
+                maxRetryCount          == (defaultOpts.MaxRetryCount          ?? 3)          &&
+                retryDelay             == (defaultOpts.RetryDelay             ?? TimeSpan.FromSeconds(1)) &&
+                retryBackoffMultiplier == (defaultOpts.RetryBackoffMultiplier ?? 2.0)        &&
+                ReferenceEquals(retryableStatusCodes, defaultOpts.RetryableStatusCodes);
 
-                        if (args.Outcome.Result != null)
-                        {
-                            var code = (int)args.Outcome.Result.StatusCode;
-                            return ValueTask.FromResult(
-                                code is >= 500 or 408 ||
-                                retryableStatusCodes.Contains(code));
-                        }
+            var pipeline = matchesDefault
+                ? _defaultPipeline.Value
+                : BuildRetryPipeline(maxRetryCount, retryDelay, retryBackoffMultiplier, retryableStatusCodes);
 
-                        return ValueTask.FromResult(false);
-                    },
-                    OnRetry = args =>
-                    {
-                        if (args.Outcome.Exception != null)
-                            _logger.LogRetryOnException(
-                                deliveryId, args.AttemptNumber + 1,
-                                args.Outcome.Exception.Message, args.RetryDelay.TotalMilliseconds);
-                        else
-                            _logger.LogRetryOnStatusCode(
-                                deliveryId, args.AttemptNumber + 1,
-                                (int)args.Outcome.Result!.StatusCode, args.RetryDelay.TotalMilliseconds);
-
-                        return ValueTask.CompletedTask;
-                    }
-                })
-                .Build();
+            // Flow the delivery ID into the pipeline via ResilienceContext so that OnRetry
+            // can log it without capturing a per-call closure variable.
+            var resilienceContext = ResilienceContextPool.Shared.Get(cancellationToken);
+            resilienceContext.Properties.Set(DeliveryIdKey, deliveryId);
 
             HttpResponseMessage response;
             try
             {
-                response = await pipeline.ExecuteAsync(async ct =>
+                response = await pipeline.ExecuteAsync(async ctx =>
                 {
                     using var request = BuildRequest(
                         payload, contentType, eventType, deliveryId, timestamp, provider,
                         endpointUrl, options.SigningSecret, additionalHeaders, options);
-                    using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                    using var cts = CancellationTokenSource.CreateLinkedTokenSource(ctx.CancellationToken);
                     cts.CancelAfter(requestTimeout);
                     return await CreateHttpClient(httpClientName).SendAsync(request, cts.Token);
-                }, cancellationToken);
+                }, resilienceContext);
             }
             catch (Exception ex)
                 when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException
@@ -299,6 +294,10 @@ namespace Deveel.Events
                 _logger.LogDeliveryFailed(deliveryId, maxRetryCount + 1);
                 throw new WebhookDeliveryException(
                     $"Webhook delivery {deliveryId} failed after {maxRetryCount + 1} attempt(s).", ex);
+            }
+            finally
+            {
+                ResilienceContextPool.Shared.Return(resilienceContext);
             }
 
             if (response.IsSuccessStatusCode)
@@ -319,6 +318,67 @@ namespace Deveel.Events
             _logger.LogDeliveryExhausted(deliveryId, maxRetryCount + 1);
             throw new WebhookDeliveryException(
                 $"Webhook delivery {deliveryId} failed after {maxRetryCount + 1} attempt(s).", statusCode);
+        }
+
+        /// <summary>
+        /// Builds a <see cref="ResiliencePipeline{T}"/> from explicit retry parameters.
+        /// The pipeline does not capture any per-call state; per-delivery information
+        /// (e.g. delivery ID) is read from <see cref="ResilienceContext.Properties"/>
+        /// at runtime via <see cref="DeliveryIdKey"/>.
+        /// </summary>
+        private ResiliencePipeline<HttpResponseMessage> BuildRetryPipeline(
+            int maxRetryCount,
+            TimeSpan retryDelay,
+            double retryBackoffMultiplier,
+            ISet<int> retryableStatusCodes)
+        {
+            return new ResiliencePipelineBuilder<HttpResponseMessage>()
+                .AddRetry(new RetryStrategyOptions<HttpResponseMessage>
+                {
+                    MaxRetryAttempts = maxRetryCount,
+                    UseJitter        = false,
+                    DelayGenerator   = args => ValueTask.FromResult<TimeSpan?>(
+                        TimeSpan.FromMilliseconds(
+                            retryDelay.TotalMilliseconds *
+                            Math.Pow(retryBackoffMultiplier, args.AttemptNumber))),
+                    // External cancellation is handled by Polly respecting the
+                    // CancellationToken in the ResilienceContext; only transport
+                    // errors and server-side transient failures are retried here.
+                    ShouldHandle = args =>
+                    {
+                        if (args.Outcome.Exception != null)
+                            return ValueTask.FromResult(
+                                args.Outcome.Exception is HttpRequestException ||
+                                args.Outcome.Exception is TaskCanceledException or OperationCanceledException);
+
+                        if (args.Outcome.Result != null)
+                        {
+                            var code = (int)args.Outcome.Result.StatusCode;
+                            return ValueTask.FromResult(
+                                code is >= 500 or 408 ||
+                                retryableStatusCodes.Contains(code));
+                        }
+
+                        return ValueTask.FromResult(false);
+                    },
+                    OnRetry = args =>
+                    {
+                        // Read the delivery ID from the context properties to avoid
+                        // closing over per-call variables in a cached pipeline.
+                        args.Context.Properties.TryGetValue(DeliveryIdKey, out var id);
+                        if (args.Outcome.Exception != null)
+                            _logger.LogRetryOnException(
+                                id ?? "unknown", args.AttemptNumber + 1,
+                                args.Outcome.Exception.Message, args.RetryDelay.TotalMilliseconds);
+                        else
+                            _logger.LogRetryOnStatusCode(
+                                id ?? "unknown", args.AttemptNumber + 1,
+                                (int)args.Outcome.Result!.StatusCode, args.RetryDelay.TotalMilliseconds);
+
+                        return ValueTask.CompletedTask;
+                    }
+                })
+                .Build();
         }
 
         // ── Helpers ─────────────────────────────────────────────────────────

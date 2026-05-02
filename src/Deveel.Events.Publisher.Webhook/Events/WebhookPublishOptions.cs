@@ -30,6 +30,9 @@ namespace Deveel.Events
         /// Additional headers are merged (typed entries win on key collision).
         /// Channel-structural fields are always taken from <paramref name="baseOptions"/>.
         /// </summary>
+        /// <param name="baseOptions">The base (channel-level) options to merge from.</param>
+        /// <param name="typedOptions">The typed per-event overrides to apply.</param>
+        /// <returns>A new <see cref="WebhookPublishOptions"/> with the merged values.</returns>
         public static WebhookPublishOptions Merge(
             WebhookPublishOptions baseOptions,
             WebhookPublishOptions typedOptions)

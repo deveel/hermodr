@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <Title>Deveel Events Outbox Publisher - Entity Framework</Title>
+        <Description>Provides an Entity Framework implementation of the IOutboxMessageRepository for the Deveel Events Outbox Publisher.</Description>
+        <PackageTags>deveel;events;publisher;outbox;pattern;entityframework;efcore</PackageTags>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Deveel.Events.Publisher.Outbox\Deveel.Events.Publisher.Outbox.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Deveel.Repository.EntityFramework" Version="1.4.3" />
+    </ItemGroup>
+
+    <ItemGroup Condition="$(TargetFramework) == 'net8.0'">
+        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.16" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.16" />
+    </ItemGroup>
+    <ItemGroup Condition="$(TargetFramework) == 'net9.0'">
+        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.15" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.15" />
+    </ItemGroup>
+    <ItemGroup Condition="$(TargetFramework) == 'net10.0'">
+        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.7" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.7" />
+    </ItemGroup>
+
+</Project>
+

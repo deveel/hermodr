@@ -1,5 +1,9 @@
 namespace Deveel.Events;
 
+/// <summary>
+/// Holds the registration metadata for a single <see cref="IEventMiddleware"/> entry
+/// in the <see cref="EventPublisherBuilder"/> pipeline.
+/// </summary>
 public sealed class MiddlewareRegistration
 {
     internal MiddlewareRegistration(Type middlewareType, object[] activationArguments, Func<EventContext, bool>? predicate = null)
@@ -9,9 +13,16 @@ public sealed class MiddlewareRegistration
         ActivationArguments = activationArguments;
         Predicate = predicate;
     }
-            
+
+    /// <summary>
+    /// Gets the <see cref="Type"/> of the middleware class to activate.
+    /// </summary>
     public Type MiddlewareType { get; }
 
+    /// <summary>
+    /// Gets the additional constructor arguments (beyond those resolved from DI)
+    /// passed to <see cref="ActivatorUtilities"/> when the middleware is instantiated.
+    /// </summary>
     public object[] ActivationArguments { get; }
 
     /// <summary>

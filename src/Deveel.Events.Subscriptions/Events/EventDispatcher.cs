@@ -37,12 +37,6 @@ namespace Deveel.Events
     /// </remarks>
     internal class EventDispatcher : IEventMiddleware
     {
-        // Tracks how deep into a routing chain the current async execution context is.
-        // AsyncLocal is used so that each top-level publish call starts at 0 and
-        // recursive re-publishes (from RoutingEventSubscription) increment their own
-        // slot without affecting sibling or parent publish calls.
-        private static readonly AsyncLocal<int> _routingDepth = new();
-
         private readonly IReadOnlyList<IEventSubscriptionResolver> _resolvers;
         private readonly EventDispatcherOptions _options;
         private readonly ILogger _logger;
@@ -118,31 +112,8 @@ namespace Deveel.Events
             ArgumentNullException.ThrowIfNull(context);
             ArgumentNullException.ThrowIfNull(next);
 
-            // Routing-loop guard: AsyncLocal tracks depth across recursive publish
-            // calls within the same async execution context (e.g. RoutingEventSubscription
-            // calling publisher.PublishEventAsync again). Each top-level publish call
-            // starts at 0; re-entrant calls inherit the incremented value.
-            var depth = _routingDepth.Value;
-            if (depth >= _options.MaxRoutingDepth)
-            {
-                _logger.LogWarning(
-                    "Routing depth limit ({MaxRoutingDepth}) reached for event type '{EventType}'. Aborting re-dispatch to prevent an infinite loop.",
-                    _options.MaxRoutingDepth, context.Event.Type);
-                await next(context);
-                return;
-            }
-
-            _routingDepth.Value = depth + 1;
-            try
-            {
-                await DispatchWithServicesAsync(context.Event, context.Services, context.CancellationToken);
-                await next(context);
-            }
-            finally
-            {
-                _routingDepth.Value = depth;
-            }
+            await DispatchWithServicesAsync(context.Event, context.Services, context.CancellationToken);
+            await next(context);
         }
     }
 }
-

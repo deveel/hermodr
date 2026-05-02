@@ -10,6 +10,7 @@ Deveel Events ships ready-made channel implementations for the most common messa
 | [RabbitMQ](rabbitmq.md) | `Deveel.Events.Publisher.RabbitMq` | On-premise or self-hosted AMQP broker, fine-grained routing |
 | [MassTransit](masstransit.md) | `Deveel.Events.Publisher.MassTransit` | Projects already using MassTransit; broker-agnostic |
 | [Webhook](webhook.md) | `Deveel.Events.Publisher.Webhook` | Delivering events to external HTTP endpoints with HMAC signing |
+| [Transactional Outbox](outbox.md) | `Deveel.Events.Publisher.Outbox` | Guaranteed at-least-once delivery via a transactional outbox table |
 | [Test (in-memory)](../testing/README.md) | `Deveel.Events.TestPublisher` | Unit and integration tests |
 
 ## Multiple channels

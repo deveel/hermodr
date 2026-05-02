@@ -16,14 +16,5 @@ namespace Deveel.Events
         /// When <c>false</c> (the default) the exception is only logged and dispatching continues.
         /// </summary>
         public bool ThrowOnHandlerError { get; set; } = false;
-
-        /// <summary>
-        /// The maximum number of times a <see cref="RoutingEventSubscription"/> may
-        /// recursively re-publish through the same pipeline before the dispatcher throws
-        /// an <see cref="EventPublishException"/> to break the loop.
-        /// Defaults to <c>5</c>.
-        /// </summary>
-        public int MaxRoutingDepth { get; set; } = 5;
     }
 }
-

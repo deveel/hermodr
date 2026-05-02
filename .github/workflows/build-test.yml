@@ -71,7 +71,7 @@ jobs:
         run: >
           dotnet test -c Release --no-build --verbosity normal
           --framework ${{ env.DOTNET_TFM }}
-          -- --filter-not-trait "CICD=WindowsExclude"
+          -- --filter-not-trait "DisableCICD=Windows"
           ${{ inputs.collect-coverage && '--coverage --coverage-output-format cobertura' || '' }}
 
       - name: Upload coverage to Codecov

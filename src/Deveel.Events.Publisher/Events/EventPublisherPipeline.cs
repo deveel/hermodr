@@ -131,10 +131,22 @@ namespace Deveel.Events
                             return;
                         }
 
-                        var mw = (IEventMiddleware)ActivatorUtilities.CreateInstance(
-                            ctx.Services,
-                            registration.MiddlewareType,
-                            registration.ActivationArguments);
+                        // When no extra activation arguments are supplied prefer resolving
+                        // the middleware from the DI container so that its registered lifetime
+                        // (singleton / scoped / transient) is honoured and no unnecessary DI
+                        // object-graph construction happens on every event publish.
+                        // If the middleware type has NOT been registered in the container
+                        // (e.g. ad-hoc types added via Use<T>() without a DI registration)
+                        // fall back to ActivatorUtilities.CreateInstance — same behaviour as
+                        // before this optimisation.
+                        var mw = registration.ActivationArguments.Length == 0
+                            ? (IEventMiddleware)(
+                                ctx.Services.GetService(registration.MiddlewareType) ??
+                                ActivatorUtilities.CreateInstance(ctx.Services, registration.MiddlewareType))
+                            : (IEventMiddleware)ActivatorUtilities.CreateInstance(
+                                ctx.Services,
+                                registration.MiddlewareType,
+                                registration.ActivationArguments);
                         _logger.TraceMiddlewareInvoking(registration.MiddlewareType);
                         try
                         {
