@@ -2,7 +2,6 @@ using Deveel;
 using Deveel.Events;
 
 using OrderService.Endpoints;
-using OrderService.Events;
 using OrderService.Services;
 
 // ── Builder ────────────────────────────────────────────────────────────────
@@ -32,14 +31,10 @@ builder.Services
         // The source identifies this microservice in every CloudEvent envelope.
         options.Source = new Uri("https://example.com/services/order-service");
     })
-    // Register a shared RabbitMQ channel that connects using appsettings options.
-    .AddRabbitMq("Events:RabbitMq")
-    // Typed channels: each event type is routed independently by its annotations.
-    .AddRabbitMq<OrderCreated>("Events:RabbitMq")
-    .AddRabbitMq<OrderConfirmed>("Events:RabbitMq")
-    .AddRabbitMq<OrderShipped>("Events:RabbitMq")
-    .AddRabbitMq<OrderDelivered>("Events:RabbitMq")
-    .AddRabbitMq<OrderCancelled>("Events:RabbitMq");
+    // A single default RabbitMQ channel handles all event types.
+    // Per-event routing (exchange, routing key) is driven by [AmqpExchange] and
+    // [AmqpRoutingKey] annotations on each event class — no per-type registration needed.
+    .AddRabbitMq("Events:RabbitMq");
 
 // ── Application ────────────────────────────────────────────────────────────
 

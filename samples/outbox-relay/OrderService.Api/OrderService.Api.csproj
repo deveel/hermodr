@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>OrderService</RootNamespace>
+    <AssemblyName>OrderService.Api</AssemblyName>
+    <Description>
+      Sample ASP.NET Minimal API that demonstrates the first half of the split Transactional Outbox
+      pattern using Deveel.Events: order domain events are persisted to a SQLite outbox (via EF Core)
+      and then left for the external OrderService.RelayWorker process to pick up and forward to
+      RabbitMQ via MassTransit.
+    </Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.5" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Only the outbox persistence channel is needed here — no transport dependency. -->
+    <ProjectReference Include="..\..\..\src\Deveel.Events.Publisher.Outbox.EntityFramework\Deveel.Events.Publisher.Outbox.EntityFramework.csproj" />
+  </ItemGroup>
+
+</Project>
+

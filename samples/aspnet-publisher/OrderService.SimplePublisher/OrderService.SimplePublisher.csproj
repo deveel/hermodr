@@ -5,11 +5,11 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>OrderService</RootNamespace>
-    <AssemblyName>OrderService</AssemblyName>
     <Description>
       Sample ASP.NET Minimal API microservice that manages the lifecycle of Orders
       and publishes domain events to a RabbitMQ exchange using Deveel.Events.
     </Description>
+    <PackageId>OrderService.SimplePublisher</PackageId>
   </PropertyGroup>
 
   <ItemGroup>
