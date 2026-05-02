@@ -592,21 +592,86 @@ Each adapter package:
 
 ---
 
+## Framework Integrations
+
+### 30. MediatR Integration
+
+> *Bridge MediatR notifications to the Deveel Events publishing pipeline, and optionally surface incoming CloudEvents as MediatR notifications — so MediatR-native applications can adopt CloudEvents without restructuring existing handler code.*
+
+**The problem today:** Applications that already use MediatR as their in-process messaging bus must maintain two separate dispatch paths: one for MediatR `INotification` / `IRequest` handling and one for Deveel Events CloudEvent publishing. There is no standard hook that automatically intercepts a dispatched MediatR notification and routes it through the Deveel Events enrichment, middleware, and channel pipeline, nor any facility to surface an inbound CloudEvent as a MediatR notification so that existing `INotificationHandler<T>` implementations can react to it without change.
+
+**What we will build:** A `Deveel.Events.Publisher.MediatR` package providing:
+- A MediatR `INotificationHandler<TNotification>` base implementation — and an opt-in `IPipelineBehavior<TRequest, TResponse>` for request-side interception — that detects notifications annotated with `[Event]` (or implementing a configurable marker interface) and forwards them to `IEventPublisher` as CloudEvents, applying the full enrichment, middleware, and channel dispatch pipeline.
+- A `CloudEventNotificationMapper` that translates between `INotification` and `CloudEvent`, deriving the CloudEvents `type`, `source`, and `subject` from annotation metadata (compatible with the existing `[Event]` and `[EventProperty]` attribute model) or from a configurable mapping delegate.
+- An inbound bridge: an `IEventSubscription` handler (item 1) that receives CloudEvents from the subscription registry and re-publishes them as MediatR `INotification` objects through the `IMediator` pipeline, so that existing `INotificationHandler<T>` implementations react to external events with no code changes.
+- `AddMediatREventPublisher()` and `AddMediatREventConsumer()` DI registration extensions, fully compatible with the standard `MediatR.Extensions.Microsoft.DependencyInjection` / `MediatR` v12+ registration pattern.
+- A test helper that captures CloudEvents emitted by MediatR notifications, compatible with the `Deveel.Events.TestPublisher` infrastructure.
+
+**Benefits:**
+- MediatR-native applications can adopt Deveel Events incrementally: annotate an existing `INotification` and it begins flowing through the full CloudEvents pipeline — enrichment, schema validation, middleware, dead-letter — without restructuring any handler or command code.
+- The pipeline-behavior and notification-handler interception points mean cross-cutting concerns (logging, tracing, schema validation) are applied consistently whether the CloudEvent originates from a MediatR notification or from a direct `IEventPublisher` call.
+- The inbound bridge allows consumer-side handlers to remain written as standard `INotificationHandler<T>`, fully independent of the broker transport that delivered the event (RabbitMQ, Azure Service Bus, webhook, etc.).
+- No lock-in: the integration is purely additive — removing the package leaves both the MediatR handler tree and the Deveel Events pipeline fully functional and independently operable.
+- Works seamlessly with the middleware pipeline (item 2), schema validation (item 8), OpenTelemetry tracing (item 6), and the dead-letter channel (item 3), inheriting all cross-cutting capabilities with zero additional configuration.
+
+### 31. Wolverine Integration
+
+> *Expose Deveel Events publishing as a Wolverine message side-effect, and route inbound CloudEvents through the Wolverine runtime — so Wolverine-native applications gain CloudEvents interoperability without leaving their existing handler model.*
+
+**The problem today:** Wolverine (JasperFx) has become a popular dual-mode messaging framework: it handles both in-process command/event dispatch and out-of-process transport (RabbitMQ, Azure Service Bus, Amazon SQS) through a single `IMessageBus`. Applications built on Wolverine have no standard way to emit CloudEvents from a Wolverine message handler or to receive CloudEvents and route them into the Wolverine runtime for handler discovery and execution.
+
+**What we will build:** A `Deveel.Events.Publisher.Wolverine` package providing:
+- A Wolverine `IMessageMiddleware` (or side-effect policy) that intercepts outgoing messages annotated with `[Event]` and publishes them through `IEventPublisher` as CloudEvents, running the full enrichment, middleware, and channel pipeline.
+- A `CloudEventWolverineHandler` base that receives CloudEvents from the Deveel Events subscription registry (item 1) and re-dispatches them into the Wolverine runtime via `IMessageBus.PublishAsync`, enabling existing Wolverine handlers to react to externally sourced CloudEvents.
+- A `CloudEventMessageMapper` that maps between Wolverine `Envelope` metadata (correlation ID, conversation ID, tenant ID) and the equivalent CloudEvents extension attributes.
+- `AddWolverineEventPublisher()` and `AddWolverineEventConsumer()` DI registration extensions compatible with Wolverine's `WolverineOptions` fluent configuration API.
+
+**Benefits:**
+- Wolverine applications can emit standards-compliant CloudEvents to any Deveel Events channel (RabbitMQ, Azure Service Bus, Kafka, HTTP) without bypassing the existing Wolverine handler model or Wolverine's built-in transactional outbox.
+- The `Envelope` ↔ CloudEvent attribute mapping preserves Wolverine's native correlation and tenant context across service boundaries.
+- Inbound routing through the Wolverine runtime means CloudEvent-triggered flows benefit from Wolverine's retry, error-handling, and local-queue features — no duplicate infrastructure required.
+- Works side-by-side with Wolverine's own transport integrations: teams can use Wolverine for internal messaging and Deveel Events CloudEvents channels for external, spec-compliant event publishing.
+
+---
+
+### 32. Brighter Integration
+
+> *Integrate Deveel Events into the Paramore Brighter command-processor pipeline — publish CloudEvents as a side-effect of dispatched commands, and route inbound CloudEvents as Brighter `IEvent` objects.*
+
+**The problem today:** Paramore Brighter (`Paramore.Brighter`) implements the Command Processor pattern with `IAmACommandProcessor` offering `Send`, `Publish`, and `Post` semantics. Applications built around Brighter have no standard way to emit a CloudEvent as a side-effect of a dispatched command or event, nor any facility to bridge inbound CloudEvents into the Brighter handler pipeline.
+
+**What we will build:** A `Deveel.Events.Publisher.Brighter` package providing:
+- A Brighter `IHandleRequests<T>` pipeline step (using Brighter's `IAmAPipelineStep<T>` attribute-driven decorator model) that intercepts dispatched `ICommand` and `IEvent` types annotated with `[Event]` and publishes them through `IEventPublisher` as CloudEvents after the primary handler succeeds.
+- A `CloudEventBrighterMapper` that derives CloudEvents `type`, `source`, `subject`, and `id` from the Brighter message's `Id`, `Header`, and annotation metadata.
+- An inbound bridge: an `IAmAMessageMapper<CloudEvent>` implementation and a companion `IHandleRequestsAsync<CloudEventMessage>` handler that accept CloudEvents delivered by the Deveel Events subscription registry (item 1) and dispatch them into the Brighter runtime via `IAmACommandProcessor.PublishAsync`.
+- `AddBrighterEventPublisher()` and `AddBrighterEventConsumer()` DI registration extensions compatible with `ServiceCollectionExtensions.AddBrighter()`.
+- Optional support for Brighter's built-in outbox (`IAmAnOutbox<T>`) as an alternative to the Deveel Events Outbox channel (item 4), surfaced as a configuration option rather than a forced dependency.
+
+**Benefits:**
+- Command-processor teams can adopt CloudEvents as their external event contract incrementally: decorate an existing `IEvent` with `[Event]` and it begins flowing to the configured channels with no handler changes.
+- Brighter's pipeline-step model ensures CloudEvent publishing is transactionally safe: the step only fires after the primary handler succeeds, preventing phantom events from failed operations.
+- The inbound bridge preserves Brighter's strongly-typed handler discovery — a CloudEvent received from any transport arrives as a concrete `IEvent` type, selected by the `type` attribute.
+- Optional outbox integration avoids duplicating outbox infrastructure when a team is already using Brighter's own outbox support.
+
+---
+
+
 ## Version Strategy & Milestones
 
 The table below maps each roadmap item to the release milestone in which it is planned to ship. Version numbers follow [Semantic Versioning](https://semver.org/): a **minor** bump (`x.Y.0`) delivers new, backward-compatible capabilities; a **major** bump (`X.0.0`) signals a significant architectural expansion.
 
-| Milestone | Version | Theme | Items |
-|-----------|---------|-------|-------|
-| **Stable Publisher** | **v1.0.0** | Harden the publishing and schema packages, freeze public APIs, and ship production-ready documentation. | — (current publisher + schema feature set) |
-| **Routing & Middleware** | **v1.1.0** | Introduce the foundational subscription & routing abstraction and the event middleware pipeline, enabling all later consumer-side and observability work. | 1 · 2 |
-| **Reliability** | **v1.2.0** | Add dead-letter capture and replay, the outbox pattern, and the event scheduler to make publishing robust to transient failures and deferred delivery requirements. | 3 · 4 · 5 |
-| **Observability** | **v1.3.0** | End-to-end distributed tracing via OpenTelemetry, schema validation at publish time, the append-only event store / audit log channel, and the publish delivery log for operational delivery telemetry. | 6 · 7 · 8 · 9 |
-| **Schema Governance** | **v1.4.0** | Formal schema versioning, compatibility checking, upcasting, and AsyncAPI / schema export tooling improvements. | 10 · 11 |
-| **New Transports** | **v1.5.0** | CloudEvents HTTP binding compliance for the Webhook publisher, a new lightweight HTTP CloudEvents channel, plus new channel adapters for gRPC streaming, Apache Kafka, Amazon SQS, Amazon SNS, Google Cloud Pub/Sub, and NATS/JetStream. | 12 · 13 · 14 · 15 · 16 · 17 · 18 · 19 |
+| Milestone | Version | Theme                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Items |
+|-----------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------|
+| **Stable Publisher** | **v1.0.0** | Harden the publishing and schema packages, freeze public APIs, and ship production-ready documentation.                                                                                                                                                                                                                                                                                                                                                                               | — (current publisher + schema feature set) |
+| **Routing & Middleware** | **v1.1.0** | Introduce the foundational subscription & routing abstraction and the event middleware pipeline, enabling all later consumer-side and observability work.                                                                                                                                                                                                                                                                                                                             | 1 · 2 |
+| **Reliability** | **v1.2.0** | Add dead-letter capture and replay, the outbox pattern, and the event scheduler to make publishing robust to transient failures and deferred delivery requirements.                                                                                                                                                                                                                                                                                                                   | 3 · 4 · 5 |
+| **Observability** | **v1.3.0** | End-to-end distributed tracing via OpenTelemetry, schema validation at publish time, the append-only event store / audit log channel, and the publish delivery log for operational delivery telemetry.                                                                                                                                                                                                                                                                                | 6 · 7 · 8 · 9 |
+| **Schema Governance** | **v1.4.0** | Formal schema versioning, compatibility checking, upcasting, and AsyncAPI / schema export tooling improvements.                                                                                                                                                                                                                                                                                                                                                                       | 10 · 11 |
+| **New Transports** | **v1.5.0** | CloudEvents HTTP binding compliance for the Webhook publisher, a new lightweight HTTP CloudEvents channel, plus new channel adapters for gRPC streaming, Apache Kafka, Amazon SQS, Amazon SNS, Google Cloud Pub/Sub, and NATS/JetStream.                                                                                                                                                                                                                                              | 12 · 13 · 14 · 15 · 16 · 17 · 18 · 19 |
 | **Event Consumers** | **v2.0.0** | First-class consumer adapters — ASP.NET Core Webhook framework, pre-built SaaS platform adapters (Facebook, SendGrid, Twilio, Stripe, GitHub, Shopify), RabbitMQ, Azure Service Bus, and MassTransit — completing the publish / consume lifecycle. This is a **major** release because it introduces a new, independently versioned surface area (`Deveel.Events.Consumer.*` packages) and changes the framing of the framework from a pure publisher to a full event-driven toolkit. | 20 · 21 · 22 · 23 · 24 |
-| **Testing & DX** | **v2.1.0** | Expanded testing utilities with fluent publish assertions, an in-memory event bus, and consumer-side test helpers. | 25 |
-| **Subscription Management** | **v2.2.0** | Provider-agnostic subscription management framework, EF Core and MongoDB registry providers, and a secured REST management API with OpenAPI metadata and change-notification webhooks. | 26 · 27 · 28 · 29 |
+| **Testing & DX** | **v2.1.0** | Expanded testing utilities with fluent publish assertions, an in-memory event bus, and consumer-side test helpers.                                                                                                                                                                                                                                                                                                                                                                    | 25 |
+| **Subscription Management** | **v2.2.0** | Provider-agnostic subscription management framework, EF Core and MongoDB registry providers, and a secured REST management API with OpenAPI metadata and change-notification webhooks.                                                                                                                                                                                                                                                                                                | 26 · 27 · 28 · 29 |
+| **Framework Integrations** | **v2.3.0** | Bridges between Deveel Events and the four major .NET in-process mediator / command-bus frameworks — MediatR, Wolverine, Brighter — so teams can emit CloudEvents as a natural side-effect of existing handler dispatch and route inbound CloudEvents back into each framework's handler pipeline.                                                                                                                                                                                    | 30 · 31 · 32 · 33 |
 
 ### Version increment rationale
 
