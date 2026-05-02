@@ -33,9 +33,19 @@ The Transactional Outbox pattern closes that window in three steps:
 
 ## Installation
 
+### Core outbox package
+
 ```bash
 dotnet add package Deveel.Events.Publisher.Outbox
 ```
+
+### Entity Framework Core integration (recommended)
+
+```bash
+dotnet add package Deveel.Events.Publisher.Outbox.EntityFramework
+```
+
+The EF Core package provides ready-made base classes and a pre-built repository so you do not have to write EF Core persistence code yourself.  See [Entity Framework Core integration](#entity-framework-core-integration) below.
 
 ## How it works
 
@@ -53,13 +63,15 @@ The relay service wakes up on a configurable interval and queries the repository
 
 To use the outbox channel you provide three components that adapt the library to your persistence technology.  The library defines the contracts; you supply the implementations.
 
+> **Entity Framework Core users:** if you are using the `Deveel.Events.Publisher.Outbox.EntityFramework` package your message entity **must** derive from `DbOutboxMessage` — implementing `IOutboxMessage` directly is not sufficient.  `WithEntityFramework()` validates this at registration time and throws `InvalidOperationException` if the constraint is not met.  Skip to the [Entity Framework Core integration](#entity-framework-core-integration) section for the recommended approach.
+
 ### Outbox message entity
 
 Your entity class must implement `IOutboxMessage`.  It acts as the database row that the relay service reads and the channel writes.  The interface requires the following properties:
 
 | Property | Type | Purpose |
 |----------|------|---------|
-| `CloudEvent` | `CloudEvent` | The event payload to deliver |
+| `Event` | `CloudEvent` | The event payload to deliver |
 | `Status` | `OutboxMessageStatus` | Tracks where the record is in the delivery lifecycle |
 | `ErrorMessage` | `string?` | The last failure reason, populated when the relay encounters an error |
 | `RetryCount` | `int` | How many delivery attempts have been made |
@@ -73,7 +85,10 @@ A minimal entity looks like:
 public class OrderOutboxMessage : IOutboxMessage
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
-    public CloudEvent CloudEvent { get; set; } = default!;
+
+    // IOutboxMessage — the CloudEvent payload
+    public CloudEvent Event { get; set; } = default!;
+
     public OutboxMessageStatus Status { get; set; } = OutboxMessageStatus.Pending;
     public string? ErrorMessage { get; set; }
     public int RetryCount { get; set; }
@@ -81,17 +96,19 @@ public class OrderOutboxMessage : IOutboxMessage
 }
 ```
 
+> **Important:** the direct `IOutboxMessage` implementation is only suited for custom persistence strategies (non-EF backends such as MongoDB, Dapper, etc.).
+
 ### Message factory
 
 `IOutboxMessageFactory<TMessage>` has a single method, `Create`, that converts a `CloudEvent` into a new instance of your entity.  The framework calls it once per `PublishAsync` invocation.
 
-The factory should be **stateless** and **allocation-light** — it only needs to wrap the provided event and set `Status = Pending`.  
+The factory should be **stateless** and **allocation-light** — it only needs to wrap the provided event and set `Status = Pending`.
 
 ```csharp
 public class OrderOutboxMessageFactory : IOutboxMessageFactory<OrderOutboxMessage>
 {
     public OrderOutboxMessage Create(CloudEvent cloudEvent, OutboxPublishOptions? options = null)
-        => new() { CloudEvent = cloudEvent };
+        => new() { Event = cloudEvent };
 }
 ```
 
@@ -105,6 +122,7 @@ The outbox-specific methods handle the delivery lifecycle:
 
 | Method | When called | What to do |
 |--------|-------------|------------|
+| `GetStatusAsync(msg, ct)` | On-demand status check | Return the current `OutboxMessageStatus` of the message as stored |
 | `GetPendingMessagesAsync(limit?, ct)` | Every relay tick | Return `Pending` records whose `NextRetryAt` is `null` or in the past; apply `limit` if provided |
 | `SetSendingAsync(msg, ct)` | Before each delivery attempt | Set `Status = Sending` so concurrent relay instances skip this record |
 | `SetDeliveredAsync(msg, ct)` | After successful delivery | Set `Status = Delivered`; the record may now be archived or deleted |
@@ -113,55 +131,168 @@ The outbox-specific methods handle the delivery lifecycle:
 
 > **Atomicity tip:** the `AddAsync` method is called from within the same `DbContext` scope as the domain entity write, so for EF Core you should **not** call `SaveChangesAsync` inside it — let the caller flush the unit of work.  The state-transition methods (`SetSendingAsync`, etc.) are called by the relay service outside of a business transaction, so they should persist immediately.
 
-For Entity Framework Core the outbox-specific methods typically query the `DbSet` with a `Where` clause on `Status` and `NextRetryAt`, update the entity's properties, then call `SaveChangesAsync`:
+## Entity Framework Core integration
+
+The `Deveel.Events.Publisher.Outbox.EntityFramework` package eliminates most of the boilerplate by providing:
+
+| Type | Role |
+|------|------|
+| `DbOutboxMessage` | A **complete, ready-to-use** `IOutboxMessage` implementation and EF entity — use it directly or subclass it to add columns |
+| `EntityOutboxMessageRepository<TMessage>` | A ready-made `IOutboxMessageRepository<TMessage>` backed by EF Core |
+| `OutboxDbContext` | A minimal `DbContext` that exposes `DbSet<DbOutboxMessage>` and `DbSet<DbCloudEventAttribute>` |
+| `WithEntityFramework()` | An `OutboxChannelBuilder` extension that wires all of the above in one call |
+
+> **Constraint:** `WithEntityFramework()` requires that the message entity type derives from `DbOutboxMessage`.  It checks this at registration time and throws `InvalidOperationException` if the constraint is not satisfied.  Direct implementors of `IOutboxMessage` that do not extend `DbOutboxMessage` cannot be used with `WithEntityFramework()`.
+
+### `DbOutboxMessage`
+
+`DbOutboxMessage` is a **complete, concrete implementation of `IOutboxMessage`** — it can be used directly as your outbox entity without writing any additional code.  It maps well-known CloudEvents context attributes as scalar columns (`Id`, `EventType`, `Source`, `Subject`, `EventTime`, `DataContentType`, `DataSchema`) and stores the data payload in `DataText` (string/JSON) or `DataBytes` (binary).  Extension attributes are stored as child rows in a separate `CloudEventAttributes` table via `DbCloudEventAttribute`.
+
+#### Using `DbOutboxMessage` directly
+
+When you do not need any application-specific columns, register `DbOutboxMessage` itself as the type parameter:
 
 ```csharp
-public class EfOrderOutboxRepository : IOutboxMessageRepository<OrderOutboxMessage>
+builder.Services
+    .AddEventPublisher()
+    .AddOutbox<DbOutboxMessage>()   // no subclass needed
+    .WithEntityFramework(opts => opts.UseSqlServer(connectionString))
+    .WithFactory<DbOutboxMessageFactory>()
+    .WithRelay();
+```
+
+An method .AddEntityFrameworkOutbox is provided for convenience, which combines the outbox and EF registration in one call:
+
+```csharp
+builder.Services
+    .AddEventPublisher()
+    .AddEntityFrameworkOutbox(opts => opts.UseSqlServer(connectionString))
+    .WithRelay();
+```
+
+> **Note:** When you call the .WithEntityFramework() method, the framework automatically registers the `EntityOutboxMessageRepository<DbOutboxMessage>` implementation for you, so you do not need to call `.WithRepository<…>()` separately. It also registers the IOutboxMessageFactory implementation that constructs `DbOutboxMessage` instances.
+
+#### Subclassing for application-specific columns
+
+Derive from `DbOutboxMessage` only when you need to add columns beyond those already provided:
+
+```csharp
+// Subclass is required by WithEntityFramework() only if you add extra columns
+public class OrderOutboxMessage : DbOutboxMessage
 {
-    private readonly AppDbContext _db;
-    public EfOrderOutboxRepository(AppDbContext db) => _db = db;
-
-    // --- IRepository<OrderOutboxMessage, string> members ---
-    // Implement AddAsync, UpdateAsync, RemoveAsync, FindAsync,
-    // AddRangeAsync, and RemoveRangeAsync using _db.OutboxMessages.
-
-    // --- Outbox-specific members ---
-
-    public Task<IReadOnlyList<OrderOutboxMessage>> GetPendingMessagesAsync(
-        int? limit = null, CancellationToken ct = default)
-    {
-        IQueryable<OrderOutboxMessage> q = _db.OutboxMessages
-            .Where(m => m.Status == OutboxMessageStatus.Pending
-                     && (m.NextRetryAt == null || m.NextRetryAt <= DateTimeOffset.UtcNow));
-        if (limit.HasValue) q = q.Take(limit.Value);
-        return Task.FromResult<IReadOnlyList<OrderOutboxMessage>>(q.ToList());
-    }
-
-    public Task SetSendingAsync(OrderOutboxMessage m, CancellationToken ct = default)
-    { m.Status = OutboxMessageStatus.Sending; return _db.SaveChangesAsync(ct); }
-
-    public Task SetDeliveredAsync(OrderOutboxMessage m, CancellationToken ct = default)
-    { m.Status = OutboxMessageStatus.Delivered; return _db.SaveChangesAsync(ct); }
-
-    public Task SetRetryAsync(OrderOutboxMessage m, string err, DateTimeOffset next, CancellationToken ct = default)
-    { m.Status = OutboxMessageStatus.Pending; m.ErrorMessage = err; m.RetryCount++; m.NextRetryAt = next; return _db.SaveChangesAsync(ct); }
-
-    public Task SetFailedAsync(OrderOutboxMessage m, string err, CancellationToken ct = default)
-    { m.Status = OutboxMessageStatus.Failed; m.ErrorMessage = err; return _db.SaveChangesAsync(ct); }
+    public string? TenantId { get; set; }
 }
 ```
 
+Whether you use `DbOutboxMessage` directly or through a subclass, you do **not** re-implement the `IOutboxMessage` properties — they are already provided by the base class.
+
+### Message factory with `DbOutboxMessage`
+
+Use the `PopulateFromCloudEvent` helper inside your factory regardless of whether you use `DbOutboxMessage` directly or through a subclass.
+
+**Factory for `DbOutboxMessage` (no subclass):**
+
+```csharp
+public class DbOutboxMessageFactory : IOutboxMessageFactory<DbOutboxMessage>
+{
+    public DbOutboxMessage Create(CloudEvent cloudEvent, OutboxPublishOptions? options = null)
+    {
+        var message = new DbOutboxMessage();
+        message.PopulateFromCloudEvent(cloudEvent);
+        return message;
+    }
+}
+```
+
+**Factory for a subclass with extra columns:**
+
+```csharp
+public class OrderOutboxMessageFactory : IOutboxMessageFactory<OrderOutboxMessage>
+{
+    public OrderOutboxMessage Create(CloudEvent cloudEvent, OutboxPublishOptions? options = null)
+    {
+        var message = new OrderOutboxMessage();
+        message.PopulateFromCloudEvent(cloudEvent);  // populates all standard CloudEvent columns
+        message.TenantId = /* resolve from context */;
+        return message;
+    }
+}
+```
+
+`PopulateFromCloudEvent` maps all standard attributes and extension attributes from the live `CloudEvent` to the entity columns and child rows.  Override `BuildCloudEvent` in a subclass if you need custom reconstruction logic (e.g. decrypting the payload).
+
+### `OutboxDbContext`
+
+`OutboxDbContext` is a minimal `DbContext` that applies the built-in EF model configuration (`DbOutboxMessageConfiguration`, `DbCloudEventAttributeConfiguration`) automatically.  You can use it directly or derive from it to add your own `DbSet` properties:
+
+```csharp
+public class AppDbContext : OutboxDbContext
+{
+    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+
+    public DbSet<Order> Orders { get; set; } = null!;
+}
+```
+
+When using a derived context, pass its own `DbContextOptions<AppDbContext>` through the constructor chain to the protected `OutboxDbContext(DbContextOptions)` overload.
+
+### Registration with `WithEntityFramework`
+
+The `.WithEntityFramework()` extension on `OutboxChannelBuilder` registers `OutboxDbContext`, `EntityOutboxMessageRepository<TMessage>`, and supporting services in one call, replacing the need for a separate `.WithRepository<T>()` call:
+
+```csharp
+builder.Services
+    .AddEventPublisher()
+    .AddOutbox<OrderOutboxMessage>()
+    .WithEntityFramework(opts => opts.UseSqlServer(connectionString))
+    .WithFactory<OrderOutboxMessageFactory>()
+    .WithRelay(relay =>
+    {
+        relay.Interval     = TimeSpan.FromSeconds(15);
+        relay.MaxBatchSize = 100;
+    })
+    .AddRabbitMq(opts =>
+    {
+        opts.ConnectionString = "amqp://guest:guest@localhost:5672";
+        opts.ExchangeName     = "events";
+    });
+```
+
+> **Shared `DbContext`:** If your application already has a `DbContext` that extends `OutboxDbContext`, change the `DbContextOptions<…>` type accordingly when calling `AddDbContext<AppDbContext>(…)` and ensure `OutboxDbContext(DbContextOptions)` is in the constructor chain.
+
 ## Registration
 
-Once your three components are ready, wire them up in `Program.cs` using the fluent `EventPublisherBuilder` chain.  The `.AddOutbox<TMessage>()` call registers the `OutboxPublishChannel`, and the subsequent `.WithRepository<T>()` and `.WithFactory<T>()` calls bind your implementations.
+Once your components are ready, wire them up in `Program.cs` using the fluent `EventPublisherBuilder` chain.  The `.AddOutbox<TMessage>()` call registers the `OutboxPublishChannel`, and the subsequent calls bind your implementations.
 
-### Minimal setup
+### Minimal setup (custom repository)
 
 ```csharp
 builder.Services
     .AddEventPublisher()
     .AddOutbox<OrderOutboxMessage>()
     .WithRepository<EfOrderOutboxRepository>()
+    .WithFactory<OrderOutboxMessageFactory>();
+```
+
+### Minimal setup (EF Core integration)
+
+Use `DbOutboxMessage` directly when no extra columns are needed:
+
+```csharp
+builder.Services
+    .AddEventPublisher()
+    .AddOutbox<DbOutboxMessage>()   // use the built-in entity as-is
+    .WithEntityFramework()
+    .WithFactory<DbOutboxMessageFactory>();
+```
+
+Or with a subclass when you need application-specific columns:
+
+```csharp
+builder.Services
+    .AddEventPublisher()
+    .AddOutbox<OrderOutboxMessage>()  // OrderOutboxMessage : DbOutboxMessage
+    .WithEntityFramework()
     .WithFactory<OrderOutboxMessageFactory>();
 ```
 
@@ -211,16 +342,18 @@ Controls the background relay service.
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | `Interval` | `TimeSpan` | `00:00:30` | How often the relay polls the repository for pending messages |
-| `MaxBatchSize` | `int` | `0` | Maximum number of messages the relay processes per poll cycle; `0` means no limit |
+| `MaxBatchSize` | `int` | `0` | Maximum number of messages the relay processes per poll cycle; `0` or negative means no limit |
 | `TransportPublisherName` | `string` | `""` | Name of the downstream publisher pipeline used to forward messages. Leave empty to target the default pipeline |
 
 ## The relay service
 
 The relay is an `IHostedService` that the framework registers automatically when you call `.WithRelay(…)`.  It runs in the background on the configured `Interval`, fetches a batch of `Pending` messages, and publishes each one's `CloudEvent` to the transport channel.
 
+> **Important:** calling `.WithRelay(…)` automatically sets `EventPublisherOptions.ThrowOnErrors = true` via a post-configuration callback.  This ensures transport errors surface to the relay service so it can correctly mark messages as `Failed` rather than silently swallowing them.
+
 ### Same-process deployment
 
-The simplest topology runs the relay inside the same application host as the publisher.  The relay detects that it is running in the same process and automatically skips the outbox channel during forwarding, so events are not re-persisted in an infinite loop.
+The simplest topology runs the relay inside the same application host as the publisher.  When the relay forwards an event, it attaches an `OutboxRelayPublishOptions` marker so that any `OutboxPublishChannel<TMessage>` in the same pipeline detects the signal and skips persistence, preventing circular re-persistence.
 
 Add `.WithRelay()` to the builder chain and then register the target transport:
 
@@ -228,7 +361,7 @@ Add `.WithRelay()` to the builder chain and then register the target transport:
 builder.Services
     .AddEventPublisher()
     .AddOutbox<OrderOutboxMessage>()
-    .WithRepository<EfOrderOutboxRepository>()
+    .WithEntityFramework(opts => opts.UseSqlServer(connectionString))
     .WithFactory<OrderOutboxMessageFactory>()
     .WithRelay(relay =>
     {
@@ -248,7 +381,7 @@ Configuration-bound equivalent:
 builder.Services
     .AddEventPublisher()
     .AddOutbox<OrderOutboxMessage>("Events:Outbox")
-    .WithRepository<EfOrderOutboxRepository>()
+    .WithEntityFramework(opts => opts.UseSqlServer(connectionString))
     .WithFactory<OrderOutboxMessageFactory>()
     .WithRelay("Events:OutboxRelay")
     .AddRabbitMq("Events:RabbitMq");
@@ -277,7 +410,8 @@ In this topology:
 builder.Services
     .AddEventPublisher()
     .AddOutbox<OrderOutboxMessage>()
-    .WithRepository<EfOrderOutboxRepository>()  // points at the shared database
+    .WithEntityFramework(opts =>
+        opts.UseSqlServer(builder.Configuration.GetConnectionString("Shared")))
     .WithFactory<OrderOutboxMessageFactory>()
     .WithRelay(relay =>
     {
@@ -326,7 +460,7 @@ Each outbox record moves through a well-defined set of states that reflect its p
 
 ## End-to-end example
 
-The following walkthrough shows a minimal order service that atomically writes an order row and an outbox record, then relies on the in-process relay to forward the event to RabbitMQ.
+The following walkthrough shows a minimal order service that atomically writes an order row and an outbox record, then relies on the in-process relay to forward the event to RabbitMQ.  It uses the ready-made EF Core integration package.
 
 ### Event data class
 
@@ -342,6 +476,46 @@ public class OrderPlaced
 }
 ```
 
+### Outbox message entity
+
+`DbOutboxMessage` can be used **directly** — no subclass is required unless you need extra columns.  The base class already provides the full `IOutboxMessage` implementation and EF column mapping.
+
+For this example we add a `TenantId` routing column, so we derive:
+
+```csharp
+// Subclass only needed because we add an extra column.
+// Without TenantId we could use DbOutboxMessage directly.
+public class OrderOutboxMessage : DbOutboxMessage
+{
+    public string? TenantId { get; set; }
+}
+```
+
+### Message factory
+
+```csharp
+public class OrderOutboxMessageFactory : IOutboxMessageFactory<OrderOutboxMessage>
+{
+    public OrderOutboxMessage Create(CloudEvent cloudEvent, OutboxPublishOptions? options = null)
+    {
+        var message = new OrderOutboxMessage();
+        message.PopulateFromCloudEvent(cloudEvent);
+        return message;
+    }
+}
+```
+
+### Application `DbContext`
+
+```csharp
+public class AppDbContext : OutboxDbContext
+{
+    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+
+    public DbSet<Order> Orders { get; set; } = null!;
+}
+```
+
 ### Host registration
 
 Wire all components in `Program.cs`:
@@ -353,7 +527,7 @@ builder.Services.AddDbContext<AppDbContext>(opts =>
 builder.Services
     .AddEventPublisher(opts => opts.Source = new Uri("https://orders.example.com"))
     .AddOutbox<OrderOutboxMessage>()
-    .WithRepository<EfOrderOutboxRepository>()
+    .WithEntityFramework()          // uses the AppDbContext registered above
     .WithFactory<OrderOutboxMessageFactory>()
     .WithRelay(relay =>
     {
@@ -413,7 +587,7 @@ Use [Named Channels](named-channels.md) to route specific event types to specifi
 builder.Services
     .AddEventPublisher()
     .AddOutbox<OrderOutboxMessage>()           // guaranteed, async delivery for all events
-        .WithRepository<EfOrderOutboxRepository>()
+        .WithEntityFramework(opts => opts.UseSqlServer(connectionString))
         .WithFactory<OrderOutboxMessageFactory>()
         .WithRelay(r => r.Interval = TimeSpan.FromSeconds(20))
     .AddWebhooks(opts =>                       // direct delivery for high-priority events
