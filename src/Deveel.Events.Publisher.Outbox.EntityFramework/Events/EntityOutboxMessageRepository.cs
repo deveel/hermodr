@@ -94,7 +94,7 @@ public class EntityOutboxMessageRepository<TMessage>
     /// <inheritdoc/>
     public Task SetSendingAsync(TMessage message, CancellationToken cancellationToken = default)
     {
-        Logger.LogDebug("Marking outbox message as {Status}", OutboxMessageStatus.Sending);
+        Logger.LogMarkingOutboxMessageAsSending();
 
         message.Status = OutboxMessageStatus.Sending;
         message.LastStatusAt = SystemTime.Default.UtcNow;
@@ -104,7 +104,7 @@ public class EntityOutboxMessageRepository<TMessage>
     /// <inheritdoc/>
     public Task SetDeliveredAsync(TMessage message, CancellationToken cancellationToken = default)
     {
-        Logger.LogDebug("Marking outbox message as {Status}", OutboxMessageStatus.Delivered);
+        Logger.LogMarkingOutboxMessageAsDelivered();
 
         message.Status = OutboxMessageStatus.Delivered;
         message.LastStatusAt = SystemTime.Default.UtcNow;
@@ -118,10 +118,7 @@ public class EntityOutboxMessageRepository<TMessage>
         DateTimeOffset nextRetryAt,
         CancellationToken cancellationToken = default)
     {
-        Logger.LogDebug(
-            "Scheduling outbox message retry at {NextRetryAt} (attempt {RetryCount})",
-            nextRetryAt,
-            message.RetryCount + 1);
+        Logger.LogSchedulingOutboxMessageRetry(nextRetryAt, message.RetryCount + 1);
 
         message.Status = OutboxMessageStatus.Pending;
         message.ErrorMessage = errorMessage;
@@ -137,8 +134,7 @@ public class EntityOutboxMessageRepository<TMessage>
         string errorMessage,
         CancellationToken cancellationToken = default)
     {
-        Logger.LogDebug("Marking outbox message as {Status}: {ErrorMessage}",
-            OutboxMessageStatus.Failed, errorMessage);
+        Logger.LogMarkingOutboxMessageAsFailed(errorMessage);
 
         message.Status = OutboxMessageStatus.Failed;
         message.ErrorMessage = errorMessage;
@@ -168,7 +164,7 @@ public class EntityOutboxMessageRepository<TMessage>
 
         var result = eligible.ToList();
 
-        Logger.LogDebug("Retrieved {Count} pending outbox message(s)", result.Count);
+        Logger.LogRetrievedPendingOutboxMessages(result.Count);
 
         return result.AsReadOnly();
     }

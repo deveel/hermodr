@@ -137,7 +137,7 @@ internal sealed class OutboxRelayProcessor<TMessage> : IOutboxRelayProcessor
 
             var result = await manager.MarkDeliveredAsync(message);
             if (!result.IsSuccess())
-                _logger.LogWarning("Could not mark outbox message as delivered: {Error}", result.Error);
+                _logger.LogCouldNotMarkOutboxMessageDelivered(result.Error);
             else
                 _logger.LogOutboxMessageDelivered(message.Event.Type);
         }
@@ -153,7 +153,7 @@ internal sealed class OutboxRelayProcessor<TMessage> : IOutboxRelayProcessor
             {
                 var result = await manager.MarkFailedAsync(message, ex.Message);
                 if (!result.IsSuccess())
-                    _logger.LogWarning("Could not mark outbox message as failed: {Error}", result.Error);
+                    _logger.LogCouldNotMarkOutboxMessageFailed(result.Error);
             }
             catch (Exception repoEx)
             {

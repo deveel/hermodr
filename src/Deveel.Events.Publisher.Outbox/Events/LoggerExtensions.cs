@@ -56,5 +56,11 @@ static partial class LoggerExtensions
 
     [LoggerMessage(31025, LogLevel.Error, "Error while marking outbox message of type '{EventType}' as failed")]
     public static partial void LogErrorMarkingOutboxMessageFailed(this ILogger logger, Exception ex, string? eventType);
+
+    [LoggerMessage(31026, LogLevel.Warning, "Could not mark outbox message as delivered: {Error}")]
+    public static partial void LogCouldNotMarkOutboxMessageDelivered(this ILogger logger, object? error);
+
+    [LoggerMessage(31027, LogLevel.Warning, "Could not mark outbox message as failed: {Error}")]
+    public static partial void LogCouldNotMarkOutboxMessageFailed(this ILogger logger, object? error);
 }
 
