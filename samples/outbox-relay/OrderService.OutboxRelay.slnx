@@ -1,0 +1,11 @@
+<Solution>
+  <Project Path="../../src/Deveel.Events.Amqp.Annotations/Deveel.Events.Amqp.Annotations.csproj" />
+  <Project Path="../../src/Deveel.Events.Annotations/Deveel.Events.Annotations.csproj" />
+  <Project Path="../../src/Deveel.Events.Publisher.Outbox.EntityFramework/Deveel.Events.Publisher.Outbox.EntityFramework.csproj" />
+  <Project Path="../../src/Deveel.Events.Publisher.Outbox/Deveel.Events.Publisher.Outbox.csproj" />
+  <Project Path="../../src/Deveel.Events.Publisher.MassTransit/Deveel.Events.Publisher.MassTransit.csproj" />
+  <Project Path="../../src/Deveel.Events.Publisher/Deveel.Events.Publisher.csproj" />
+  <Project Path="OrderService.Api/OrderService.Api.csproj" />
+  <Project Path="OrderService.RelayWorker/OrderService.RelayWorker.csproj" />
+</Solution>
+

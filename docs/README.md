@@ -124,6 +124,7 @@ All events are modelled as [`CloudEvent`](https://github.com/cloudevents/spec) o
 | [Publisher Channels](publishers/README.md) | Configure a specific transport |
 | [Event Schema](schema/README.md) | Schema definition, export, and validation |
 | [Testing](testing/README.md) | Unit-test event publishing |
+| [Samples](samples/README.md) | Runnable end-to-end example projects |
 
 ## License
 

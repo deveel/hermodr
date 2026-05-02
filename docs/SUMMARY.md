@@ -54,6 +54,13 @@
 
 * [Test Publisher](testing/README.md)
 
+## Samples
+
+* [Overview](samples/README.md)
+* [OrderService — Minimal API + RabbitMQ](samples/aspnet-publisher-rabbitmq.md)
+* [OrderService — In-Process Outbox + RabbitMQ](samples/outbox-inapp-rabbitmq.md)
+* [OrderService — Split Outbox + MassTransit RabbitMQ](samples/outbox-relay-masstransit.md)
+
 ## Contributing
 
 * [Contributing](contributing.md)
