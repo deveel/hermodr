@@ -13,7 +13,7 @@
     <RepositoryUrl>https://github.com/deveel/deveel.events</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <IncludeSymbols>true</IncludeSymbols>
     <DeterministicBuilds>true</DeterministicBuilds>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
