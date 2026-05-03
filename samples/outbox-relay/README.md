@@ -55,6 +55,45 @@ RabbitMQ broker  (localhost:5672)
 
 ---
 
+## Building dependencies
+
+Before running the sample, you need to build the Deveel.Events library dependencies and output them to a `libs` folder. This approach allows you to reference compiled binaries instead of project references.
+
+### Build dependencies
+
+Choose the build script appropriate for your operating system:
+
+**macOS / Linux:**
+```bash
+./build-libs.sh
+```
+
+**Windows (PowerShell):**
+```powershell
+.\build-libs.ps1
+```
+
+**Windows (Command Prompt):**
+```cmd
+build-libs.bat
+```
+
+The build scripts will:
+1. Compile all required Deveel.Events library dependencies
+2. Copy the compiled binaries to a `libs` folder at the sample root
+3. Display the location of the compiled binaries
+4. Delegate build/copy logic to shared core scripts in `samples/build-libs-core.sh`, `samples/build-libs-core.ps1`, and `samples/build-libs-core.bat`
+
+### Referencing the binaries
+
+After running the build script, update both project files to reference the binaries from the `libs` folder instead of the project references:
+- `OrderService.Api/OrderService.Api.csproj`
+- `OrderService.RelayWorker/OrderService.RelayWorker.csproj`
+
+Replace the `<ProjectReference>` items with `<Reference>` items pointing to the `libs` folder.
+
+---
+
 ## Running the sample
 
 **1. Start RabbitMQ**

@@ -13,6 +13,7 @@ Each sample is self-contained and ships with its own infrastructure (via `docker
 | [OrderService — Minimal API + RabbitMQ](aspnet-publisher-rabbitmq.md) | RabbitMQ | Annotated event classes, typed channels, `IEventPublisher` in a service |
 | [OrderService — In-Process Outbox + RabbitMQ](outbox-inapp-rabbitmq.md) | RabbitMQ | Transactional Outbox with in-process relay; EF Core SQLite; `[AmqpExchange]` / `[AmqpRoutingKey]` annotations |
 | [OrderService — Split Outbox + MassTransit RabbitMQ](outbox-relay-masstransit.md) | MassTransit / RabbitMQ | Split outbox across two processes; API has no transport dependency; external relay worker; MassTransit publish channel |
+| [Event generation + MassTransit (console)](event-genration-masstransit.md) | MassTransit | Console sample showing source-generated `IEventConvertible` from `[Event]` and publish via `.AddMassTransit()` |
 
 ---
 

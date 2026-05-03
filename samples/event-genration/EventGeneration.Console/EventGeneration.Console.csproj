@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>EventGeneration.ConsoleSample</RootNamespace>
+    <AssemblyName>EventGeneration.Console</AssemblyName>
+    <Description>
+      Console sample that shows source-generated IEventConvertible from [Event] attributes
+      and publishes the resulting CloudEvent through the Deveel.Events MassTransit channel.
+    </Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CloudNative.CloudEvents" Version="2.8.0" />
+    <PackageReference Include="CloudNative.CloudEvents.SystemTextJson" Version="2.8.0" />
+    <PackageReference Include="MassTransit" Version="9.1.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.15" />
+    <PackageReference Include="NSubstitute" Version="5.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Deveel.Events.Annotations">
+      <HintPath>..\libs\Deveel.Events.Annotations.dll</HintPath>
+    </Reference>
+    <Reference Include="Deveel.Events.Publisher">
+      <HintPath>..\libs\Deveel.Events.Publisher.dll</HintPath>
+    </Reference>
+    <Reference Include="Deveel.Events.Publisher.MassTransit">
+      <HintPath>..\libs\Deveel.Events.Publisher.MassTransit.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Analyzer Include="..\libs\Deveel.Events.Generators.dll" />
+  </ItemGroup>
+</Project>
+
+
+

@@ -10,6 +10,20 @@ Each sample is self-contained: it has its own project file, configuration, and (
 | Sample | Transport | Description |
 |--------|-----------|-------------|
 | [aspnet-publisher/OrderService](aspnet-publisher/OrderService/README.md) | RabbitMQ | ASP.NET Core Minimal API microservice that publishes Order lifecycle events to a RabbitMQ exchange |
+| [event-genration](event-genration/README.md) | MassTransit (mocked endpoints) | Console app showing `[Event]` source-generation to `IEventConvertible` and publish through a MassTransit channel |
+
+---
+
+## Shared build scripts
+
+Sample-level dependency scripts (`build-libs.sh`, `build-libs.ps1`, `build-libs.bat`) are thin wrappers.
+They forward the project list and output folder to shared core scripts in this folder:
+
+- `build-libs-core.sh`
+- `build-libs-core.ps1`
+- `build-libs-core.bat`
+
+This keeps build/copy logic centralized and avoids duplication across samples.
 
 ---
 

@@ -60,6 +60,7 @@
 * [OrderService — Minimal API + RabbitMQ](samples/aspnet-publisher-rabbitmq.md)
 * [OrderService — In-Process Outbox + RabbitMQ](samples/outbox-inapp-rabbitmq.md)
 * [OrderService — Split Outbox + MassTransit RabbitMQ](samples/outbox-relay-masstransit.md)
+* [Event generation + MassTransit (console)](samples/event-genration-masstransit.md)
 
 ## Contributing
 
