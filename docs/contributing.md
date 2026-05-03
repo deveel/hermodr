@@ -58,7 +58,7 @@ Feature branches are **not** merged into `main` immediately upon completion.  A 
 | `v1.x.0`          | `main` is on the `v1` release train |
 | `v2.x.0`          | `main` is on the `v2` release train |
 
-This keeps `main` releasable at all times and prevents half-finished features from blocking a release.
+This keeps `main` releasable at all times and prevents half-finished features from blocking a release.  Every merge to `main` automatically produces a pre-release package; a git tag produces a stable release.  See the [Versioning Strategy](versioning.md) for the full details.
 
 ### 5. Pull Request
 
@@ -106,7 +106,7 @@ When a branch is ready to be merged:
 |-------|-------------|
 | Bug fix merged into `main` | **Patch** — `x.y.Z` |
 
-A new patch release is published **immediately** after a bug-fix merge.  There is no batching of bug fixes into a future scheduled release.
+A new patch release is published **immediately** after a bug-fix merge.  There is no batching of bug fixes into a future scheduled release.  See the [Versioning Strategy](versioning.md) for the full release lifecycle.
 
 ## Project Structure
 
