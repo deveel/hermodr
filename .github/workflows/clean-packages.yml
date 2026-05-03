@@ -3,9 +3,6 @@ name: Clean Events Packages
 on:
   workflow_call:
 
-permissions:
-  packages: write
-
 jobs:
   clean:
     runs-on: ubuntu-latest
