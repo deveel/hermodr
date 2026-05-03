@@ -56,12 +56,12 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore
 
-      - name: Build (framework-restricted)
-        if: inputs.restrict-build-to-tfm
-        run: dotnet build -c Release --no-restore --framework ${{ env.DOTNET_TFM }}
+#      - name: Build (framework-restricted)
+#        if: inputs.restrict-build-to-tfm
+#        run: dotnet build -c Release --no-restore --framework ${{ env.DOTNET_TFM }}
 
       - name: Build
-        if: ${{ !inputs.restrict-build-to-tfm }}
+#        if: ${{ !inputs.restrict-build-to-tfm }}
         run: dotnet build -c Release --no-restore
 
       - name: Test (Ubuntu)
