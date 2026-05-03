@@ -48,11 +48,6 @@ jobs:
         with:
           dotnet-version: ${{ matrix.dotnet-version }}
 
-      - name: Setup .NET Standard 2.0
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: netstandard2.0
-
       - name: Restore dependencies
         run: dotnet restore
 

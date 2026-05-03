@@ -13,6 +13,8 @@
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <!-- Suppress release-tracking noise until the first shipped release -->
     <NoWarn>$(NoWarn);RS2000;RS2007;RS2008</NoWarn>
+    
+    <IsMultiTargeting>false</IsMultiTargeting>
 
     <Title>Deveel Events Source Generators</Title>
     <Description>
