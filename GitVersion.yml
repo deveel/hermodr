@@ -39,7 +39,7 @@ branches:
     # Matches GitHub auto-generated branch names: <issue-number>-<slug>
     # e.g. 123-add-dead-letter-channel
     regex: ^\d+[-]
-    mode: ContinuousDeployment
+    mode: ContinuousDelivery
     label: 'alpha'
     increment: Minor
     is-release-branch: false
@@ -53,7 +53,7 @@ branches:
     # When creating the branch from the GitHub issue page, edit the auto-generated
     # name to add the `bugfix/` prefix before clicking "Create branch".
     regex: ^bugfix[/\\]
-    mode: ContinuousDeployment
+    mode: ContinuousDelivery
     label: 'bugfix'
     increment: Patch
     is-release-branch: false
@@ -62,7 +62,7 @@ branches:
     source-branches: ['main']
 
   pull-request:
-    mode: ContinuousDeployment
+    mode: ContinuousDelivery
     label: 'pr'
     increment: Inherit
 
