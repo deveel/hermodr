@@ -4,6 +4,8 @@
 using Microsoft.Extensions.DependencyInjection;
 
 using System.ComponentModel.DataAnnotations;
+using System.Reflection;
+using System.Reflection.Emit;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -111,6 +113,55 @@ namespace Deveel.Events
         }
 
         [Fact]
+        public void Should_SetDataSchema_When_VersionedTypeHasAssemblyDataSchemaUriAttribute()
+        {
+            // Arrange
+            var services = new ServiceCollection();
+            services.AddEventPublisher();
+            var creator = services.BuildServiceProvider().GetRequiredService<IEventFactory>();
+
+            var eventType = CreateDynamicEventType(
+                eventTypeName: "person.created.dynamic",
+                dataVersion: "1.2",
+                assemblyDataSchemaBaseUri: "https://schemas.dynamic.example/events");
+
+            var instance = Activator.CreateInstance(eventType);
+
+            // Act
+            var @event = creator.CreateEventFromData(eventType, instance);
+
+            // Assert
+            Assert.NotNull(@event.DataSchema);
+            Assert.Equal("https://schemas.dynamic.example/events/person.created.dynamic/1.2", @event.DataSchema!.ToString());
+        }
+
+        [Fact]
+        public void Should_PreferOptionsDataSchemaBaseUri_OverAssemblyDataSchemaUriAttribute()
+        {
+            // Arrange
+            var services = new ServiceCollection();
+            services.AddEventPublisher(options =>
+            {
+                options.DataSchemaBaseUri = new Uri("https://options.example/events");
+            });
+            var creator = services.BuildServiceProvider().GetRequiredService<IEventFactory>();
+
+            var eventType = CreateDynamicEventType(
+                eventTypeName: "person.created.precedence",
+                dataVersion: "9.0",
+                assemblyDataSchemaBaseUri: "https://assembly.example/events");
+
+            var instance = Activator.CreateInstance(eventType);
+
+            // Act
+            var @event = creator.CreateEventFromData(eventType, instance);
+
+            // Assert
+            Assert.NotNull(@event.DataSchema);
+            Assert.Equal("https://options.example/events/person.created.precedence/9.0", @event.DataSchema!.ToString());
+        }
+
+        [Fact]
         public void Should_ThrowArgumentNullException_When_NullDataTypeIsProvided()
         {
             // Act & Assert
@@ -180,6 +231,32 @@ namespace Deveel.Events
 
             [JsonPropertyName("type")]
             public string? Type { get; set; }
+        }
+
+        private static Type CreateDynamicEventType(string eventTypeName, string dataVersion, string? assemblyDataSchemaBaseUri)
+        {
+            var assemblyName = new AssemblyName($"Deveel.Events.DynamicTests.{Guid.NewGuid():N}");
+            var assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.Run);
+
+            if (!String.IsNullOrWhiteSpace(assemblyDataSchemaBaseUri))
+            {
+                var assemblyAttributeCtor = typeof(EventDataSchemaUriAttribute)
+                    .GetConstructor(new[] { typeof(string) })!;
+                var assemblyAttribute = new CustomAttributeBuilder(assemblyAttributeCtor, new object[] { assemblyDataSchemaBaseUri! });
+                assemblyBuilder.SetCustomAttribute(assemblyAttribute);
+            }
+
+            var moduleBuilder = assemblyBuilder.DefineDynamicModule($"{assemblyName.Name}.dll");
+            var typeBuilder = moduleBuilder.DefineType(
+                $"Dynamic.{Guid.NewGuid():N}.EventData",
+                TypeAttributes.Class | TypeAttributes.Public);
+
+            var eventAttributeCtor = typeof(EventAttribute)
+                .GetConstructor(new[] { typeof(string), typeof(string) })!;
+            var eventAttribute = new CustomAttributeBuilder(eventAttributeCtor, new object[] { eventTypeName, dataVersion });
+            typeBuilder.SetCustomAttribute(eventAttribute);
+
+            return typeBuilder.CreateType()!;
         }
     }
 }
