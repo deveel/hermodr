@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <!-- Roslyn generators must target netstandard2.0 -->
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFrameworks>netstandard2.0</TargetFrameworks>
     <LangVersion>latest</LangVersion>
     <!-- Override multi-target from Directory.Build.props -->
     <ImplicitUsings>disable</ImplicitUsings>
@@ -14,8 +14,6 @@
     <!-- Suppress release-tracking noise until the first shipped release -->
     <NoWarn>$(NoWarn);RS2000;RS2007;RS2008</NoWarn>
     
-    <IsMultiTargeting>false</IsMultiTargeting>
-
     <Title>Deveel Events Source Generators</Title>
     <Description>
       Roslyn incremental source generators that emit compile-time IEventConvertible
