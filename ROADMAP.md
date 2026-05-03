@@ -16,10 +16,11 @@ The table below maps each roadmap item to the release milestone in which it is p
 | **Observability** | **v1.3.0** | End-to-end distributed tracing via OpenTelemetry, schema validation at publish time, the append-only event store / audit log channel, and the publish delivery log for operational delivery telemetry.                                                                                                                                                                                                                                                                                | 6 · 7 · 8 · 9 |
 | **Schema Governance** | **v1.4.0** | Formal schema versioning, compatibility checking, upcasting, and AsyncAPI / schema export tooling improvements.                                                                                                                                                                                                                                                                                                                                                                       | 10 · 11 |
 | **New Transports** | **v1.5.0** | CloudEvents HTTP binding compliance for the Webhook publisher, a new lightweight HTTP CloudEvents channel, plus new channel adapters for gRPC streaming, Apache Kafka, Amazon SQS, Amazon SNS, Google Cloud Pub/Sub, and NATS/JetStream.                                                                                                                                                                                                                                              | 12 · 13 · 14 · 15 · 16 · 17 · 18 · 19 |
-| **Event Consumers** | **v2.0.0** | First-class consumer adapters — ASP.NET Core Webhook framework, pre-built SaaS platform adapters (Facebook, SendGrid, Twilio, Stripe, GitHub, Shopify), RabbitMQ, Azure Service Bus, and MassTransit — completing the publish / consume lifecycle. This is a **major** release because it introduces a new, independently versioned surface area (`Deveel.Events.Consumer.*` packages) and changes the framing of the framework from a pure publisher to a full event-driven toolkit. | 20 · 21 · 22 · 23 · 24 |
-| **Testing & DX** | **v2.1.0** | Expanded testing utilities with fluent publish assertions, an in-memory event bus, and consumer-side test helpers.                                                                                                                                                                                                                                                                                                                                                                    | 25 |
-| **Subscription Management** | **v2.2.0** | Provider-agnostic subscription management framework, EF Core and MongoDB registry providers, and a secured REST management API with OpenAPI metadata and change-notification webhooks.                                                                                                                                                                                                                                                                                                | 26 · 27 · 28 · 29 |
-| **Framework Integrations** | **v2.3.0** | Bridges between Deveel Events and the four major .NET in-process mediator / command-bus frameworks — MediatR, Wolverine, Brighter — so teams can emit CloudEvents as a natural side-effect of existing handler dispatch and route inbound CloudEvents back into each framework's handler pipeline.                                                                                                                                                                                    | 30 · 31 · 32 · 33 |
+| **Code Generation** | **v1.6.0** | Roslyn incremental source generators that read `[Event]` / `[EventProperty]` annotations at compile time to emit zero-reflection `IEventConvertible` implementations, pre-built schema DI registration helpers, and strongly-typed domain publisher interfaces — shifting annotation errors left to the build and eliminating startup reflection overhead.                                                                                                                              | 20 · 21 · 22 |
+| **Event Consumers** | **v2.0.0** | First-class consumer adapters — ASP.NET Core Webhook framework, pre-built SaaS platform adapters (Facebook, SendGrid, Twilio, Stripe, GitHub, Shopify), RabbitMQ, Azure Service Bus, and MassTransit — completing the publish / consume lifecycle. This is a **major** release because it introduces a new, independently versioned surface area (`Deveel.Events.Consumer.*` packages) and changes the framing of the framework from a pure publisher to a full event-driven toolkit. | 23 · 24 · 25 · 26 · 27 |
+| **Testing & DX** | **v2.1.0** | Expanded testing utilities with fluent publish assertions and an in-memory event bus, a local development console sink, .NET Aspire integration, and a `dotnet event` CLI tool with a companion standalone executable — completing the developer inner-loop and tooling story.                                                                                                                                                                                                          | 28 · 29 · 30 · 31 · 32 |
+| **Subscription Management** | **v2.2.0** | Provider-agnostic subscription management framework, EF Core and MongoDB registry providers, and a secured REST management API with OpenAPI metadata and change-notification webhooks.                                                                                                                                                                                                                                                                                                | 33 · 34 · 35 · 36 |
+| **Framework Integrations** | **v2.3.0** | Bridges between Deveel Events and the four major .NET in-process mediator / command-bus frameworks — MediatR, Wolverine, Brighter — so teams can emit CloudEvents as a natural side-effect of existing handler dispatch and route inbound CloudEvents back into each framework's handler pipeline.                                                                                                                                                                                    | 37 · 38 · 39 · 40 |
 
 ---
 
@@ -391,9 +392,78 @@ The table below maps each roadmap item to the release milestone in which it is p
 
 ---
 
+## Code Generation
+
+### 20. CloudEvent Factory Source Generator
+
+> *Emit compile-time `IEventConvertible` implementations from `[Event]`-annotated classes, eliminating the runtime reflection path in `EventFactory` and shifting annotation errors left to the build.*
+
+**The problem today:** `EventFactory.CreateEventFromData()` resolves `[Event]` metadata via `Type.GetCustomAttribute<>()` on every publish call, allocating attribute objects and walking type metadata at runtime even in high-throughput paths. The `IEventConvertible` escape hatch already exists — the benchmarks show it is measurably faster — but it requires repetitive, hand-written `ToCloudEvent()` boilerplate on every event class. Annotation mistakes (missing `DataVersion`, non-public class) surface as `ArgumentException` at runtime rather than at build time.
+
+**What we will build:** A `Deveel.Events.Generators` package — a Roslyn **incremental source generator** (targeting `netstandard2.0` as required by the analyzer SDK) that:
+- Detects every `partial` class decorated with `[Event]` in the current compilation.
+- Emits a generated partial class body that implements `IEventConvertible.ToCloudEvent()`: all CloudEvents envelope values (`Type`, `DataSchema`, `DataContentType`) are sourced from annotation values captured at compile time; the `Data` field is populated via `System.Text.Json` serialisation — zero reflection at call time.
+- Emits compile-time **diagnostics**:
+  - `DLEVT001` — `[Event]` is applied to a non-`partial` class (generator cannot act; reflection path is used as a silent fallback).
+  - `DLEVT002` — `[Event]` specifies neither a `DataVersion` nor an absolute `DataSchema` URI.
+  - `DLEVT003` — `[Event]`-annotated class is not `public`.
+
+**Benefits:**
+- Zero reflection on the publish hot-path — all attribute lookup is resolved at build time, matching the performance of hand-coded `IEventConvertible` implementations as measured in the existing benchmarks.
+- `DLEVT001` / `DLEVT002` / `DLEVT003` shift errors that today manifest as `ArgumentException` at runtime into compile-time build failures, giving developers immediate feedback.
+- No breaking change — classes not declared `partial` continue to work via the existing reflection path; adopting the generator is a purely opt-in, incremental migration.
+- Works correctly in trimmed and ahead-of-time (AOT) compiled deployments where `GetCustomAttribute` calls on user types may be stripped.
+
+---
+
+### 21. Schema Registration Source Generator
+
+> *Scan `[Event]`-annotated types at compile time and emit a DI extension that pre-constructs all `EventSchema` instances — eliminating startup reflection and enabling schema auto-discovery without runtime assembly scanning.*
+
+**The problem today:** `EventSchemaFactory.CreateFromType()` walks every property of an event class via reflection at application startup (`GetMembers()`, `GetCustomAttribute<>()`, `NullabilityInfoContext`). The existing benchmarks confirm that reflection-based schema construction is meaningfully slower than its manual equivalent. Roadmap item 11 (AsyncAPI export tooling) also requires runtime assembly scanning to auto-discover `[Event]`-annotated types — an approach that is brittle in trimmed / AOT-compiled deployments and cannot run inside a `dotnet` CLI tool without instantiating the application host.
+
+**What we will build:** An additional generator within `Deveel.Events.Generators` that:
+- Scans every `[Event]`-annotated type in the current compilation.
+- Emits a `static partial class GeneratedEventSchemas` containing a pre-constructed `EventSchema` instance per type, building the complete property tree — names, data types, required / range constraints — purely from annotation metadata resolved at compile time.
+- Emits an `AddGeneratedEventSchemas(this IServiceCollection services)` extension method that registers each pre-computed schema in the DI container as part of the `IEventSchemaFactory` resolution chain, replacing startup-time reflection with direct object construction.
+- Provides the compile-time schema metadata consumed by the `dotnet` global-tool export path planned in item 11, enabling AsyncAPI / YAML export without a running application host.
+- Emits compile-time **diagnostics**:
+  - `DLEVT004` — `[EventProperty]`'s `schemaOrVersion` argument is neither a valid absolute URI nor a parseable version string (mirrors the `ArgumentException` thrown at runtime today).
+  - `DLEVT005` — two members of the same class carry conflicting `[EventProperty]` names.
+
+**Benefits:**
+- Schema construction is effectively O(1) at application startup — all reflection-equivalent work is performed at build time, regardless of the number or complexity of event types registered.
+- Directly unblocks roadmap item 11: the compile-time metadata provides an assembly-scan surrogate that works in trimmed, AOT-compiled, and tool-invoked contexts without a live host.
+- Invalid annotation configurations surface as build errors rather than startup exceptions, improving CI feedback loops.
+- Works alongside the runtime `EventSchemaFactory` — the generator supplements rather than replaces it for dynamically-loaded types that cannot be analysed at compile time.
+
+---
+
+### 22. Typed Domain Publisher Generator
+
+> *Generate a strongly-typed, domain-scoped publisher interface and its implementation for each logical group of `[Event]`-annotated classes, so services can depend on a focused contract rather than the catch-all `IEventPublisher`.*
+
+**The problem today:** Every service that publishes events depends directly on `IEventPublisher` and calls `PublishAsync<TEvent>()` with the concrete event type. In larger codebases this means any service can accidentally publish any event, there are no compile-time boundaries between publishing domains, and mocking in tests requires either a full `IEventPublisher` mock or the `TestPublisher` package. There is also no IDE auto-complete surface that lists which events a particular domain is responsible for.
+
+**What we will build:** An additional generator within `Deveel.Events.Generators` — activated by a new `[EventPublisher]` assembly-level or class-level attribute — that:
+- Groups `[Event]`-annotated classes by a configurable domain name (derived from a namespace prefix, an explicit `[EventPublisher("OrderDomain")]` marker, or a shared base class).
+- Emits a `public interface IOrderDomainEventPublisher` (name derived from the group) containing one `Task PublishXxxAsync(XxxEvent @event, EventPublishOptions? options = null, CancellationToken cancellationToken = default)` method per event class in the group.
+- Emits a `public sealed class OrderDomainEventPublisher : IOrderDomainEventPublisher` implementation that delegates each method to the injected `IEventPublisher`, removing all boilerplate from user code.
+- Emits `AddOrderDomainEventPublisher(this IServiceCollection)` DI registration extensions that register the interface and implementation as scoped services.
+- Integrates with the factory generator (item 20): when both generators are active, the generated publisher methods call the compile-time `ToCloudEvent()` path instead of the reflection-based factory.
+
+**Benefits:**
+- Domain services declare a precise dependency (`IOrderDomainEventPublisher`) rather than the broad `IEventPublisher`, making the publishing contract explicit and auditable.
+- Testing becomes trivial — mock only the three or four methods relevant to a given domain rather than the full `IEventPublisher` surface.
+- IDE auto-complete surfaces exactly the events a domain is authorised to publish, reducing the risk of cross-domain event leakage.
+- When combined with items 20 and 21, the entire publish path from typed interface through CloudEvent creation to schema registration involves zero runtime reflection.
+- Consistent with the framework-integration pattern (items 37–40), where the goal is to let teams adopt CloudEvents as a natural extension of their existing programming model rather than a separate concern.
+
+---
+
 ## Event Consumers
 
-### 20. Webhook Consumer Framework for ASP.NET Core
+### 23. Webhook Consumer Framework for ASP.NET Core
 
 > *A transport-agnostic foundation for receiving and dispatching inbound webhook events inside an ASP.NET Core application.*
 
@@ -403,7 +473,7 @@ The table below maps each roadmap item to the release milestone in which it is p
 - An ASP.NET Core middleware and a minimal-API endpoint registration (`MapCloudEventWebhook(...)`) that accepts HTTP POST requests carrying CloudEvents in structured or binary content mode.
 - An `IWebhookSignatureVerifier` abstraction for pluggable signature verification, with a built-in HMAC-SHA256/384/512 implementation.
 - Deserialisation of the payload into a typed `CloudEvent` and routing through the `IEventSubscription` registry (item 1).
-- An `IWebhookPayloadMapper` extensibility point that translates arbitrary third-party JSON payloads into `CloudEvent` objects before dispatch — the foundation that service-specific adapters (item 21) build on.
+- An `IWebhookPayloadMapper` extensibility point that translates arbitrary third-party JSON payloads into `CloudEvent` objects before dispatch — the foundation that service-specific adapters (item 24) build on.
 - Appropriate HTTP status codes and problem-detail responses on validation or deserialization failure.
 
 **Benefits:**
@@ -414,11 +484,11 @@ The table below maps each roadmap item to the release milestone in which it is p
 
 ---
 
-### 21. Pre-built Webhook Consumer Adapters
+### 24. Pre-built Webhook Consumer Adapters
 
 > *Ready-made adapters that translate the proprietary webhook payloads of major SaaS platforms into `CloudEvent` objects and verify their signatures automatically.*
 
-**The problem today:** Even with the generic webhook consumer framework in place (item 20), teams integrating with popular SaaS platforms must still write the platform-specific payload mapping and signature verification themselves. Each platform uses a different JSON schema, a different signing mechanism (HMAC, RSA, Ed25519, shared token), and a different delivery header convention, resulting in repeated boilerplate across projects.
+**The problem today:** Even with the generic webhook consumer framework in place (item 23), teams integrating with popular SaaS platforms must still write the platform-specific payload mapping and signature verification themselves. Each platform uses a different JSON schema, a different signing mechanism (HMAC, RSA, Ed25519, shared token), and a different delivery header convention, resulting in repeated boilerplate across projects.
 
 **What we will build:** A suite of thin adapter packages — each implementing `IWebhookPayloadMapper` and `IWebhookSignatureVerifier` from item 20 — for the most widely used webhook-emitting platforms:
 
@@ -446,7 +516,7 @@ Each adapter package:
 
 ---
 
-### 22. RabbitMQ Consumer
+### 25. RabbitMQ Consumer
 
 > *Consume CloudEvents from RabbitMQ queues and exchanges and route them through the subscription registry.*
 
@@ -467,7 +537,7 @@ Each adapter package:
 
 ---
 
-### 23. Azure Service Bus Consumer
+### 26. Azure Service Bus Consumer
 
 > *Consume CloudEvents from Azure Service Bus queues and topics/subscriptions and route them through the subscription registry.*
 
@@ -486,7 +556,7 @@ Each adapter package:
 
 ---
 
-### 24. MassTransit Consumer Bridge
+### 27. MassTransit Consumer Bridge
 
 > *Expose Deveel Events subscriptions as MassTransit consumers, and vice versa, to unify both programming models.*
 
@@ -503,7 +573,7 @@ Each adapter package:
 
 ## Developer Experience
 
-### 25. Expanded Testing Utilities
+### 28. Expanded Testing Utilities
 
 > *First-class test helpers for asserting which events were published, with what attributes, and in what order.*
 
@@ -519,9 +589,94 @@ Each adapter package:
 
 ---
 
+### 29. Local Development Console Sink
+
+> *A zero-configuration channel that pretty-prints every published CloudEvent to the console (or an `ILogger` sink) during local development, removing the need to run a real broker in the developer inner loop.*
+
+**The problem today:** To observe published events locally, developers must run a broker (RabbitMQ, Azure Service Bus emulator, etc.), configure credentials, and inspect broker-specific management UIs — a significant setup burden that slows down the development inner loop. There is no built-in way to simply print events to the terminal while iterating on domain logic.
+
+**What we will build:** A `Deveel.Events.Publisher.Development` package providing:
+- A `ConsoleSinkChannel` that writes a colour-coded, human-readable representation of each `CloudEvent` to `stdout` or to any `ILogger` target, including the full envelope attributes and a syntax-highlighted JSON or YAML rendering of the `data` payload.
+- An `AddDevelopmentConsoleSink()` extension on `EventPublisherBuilder` that registers the channel only when `IHostEnvironment.IsDevelopment()` is `true` (or an explicit opt-in flag is set), so the channel is automatically excluded from staging and production builds without code changes.
+- A `UseStructuredOutput()` option to emit events as NDJSON lines instead of human-readable text, for use with tools like `jq` or log aggregators in local Compose setups.
+- Integration with `IEventMiddleware` (item 2): the sink respects the full middleware pipeline, so enriched attributes (correlation ID, trace context, custom extensions) are visible in the output.
+
+**Benefits:**
+- Developers can see exactly which events their domain logic emits — including all enriched attributes — without leaving the terminal or launching a broker management UI.
+- The environment guard prevents accidental activation in production; opting in explicitly in staging is still possible via a configuration flag.
+- Structured NDJSON output makes it easy to pipe events to `jq` for ad-hoc filtering and inspection during debugging sessions.
+- Zero extra infrastructure — the channel has no external dependencies, making it usable in CI pipelines to audit the events emitted by an integration test suite.
+
+---
+
+### 30. .NET Aspire Integration
+
+> *Surface Deveel Events publish channels as .NET Aspire resources, enabling dashboard visibility, structured telemetry, and one-line broker provisioning in the Aspire AppHost for the local development inner loop.*
+
+**The problem today:** Teams using .NET Aspire as their local orchestration platform must configure Deveel Events channels manually and separately from their Aspire resource graph. There is no Aspire component for the framework, so published events do not appear in the Aspire dashboard, channel health is not surfaced as a resource status, and developers must provision broker containers (RabbitMQ, Azure Service Bus emulator) without the convenience of Aspire's built-in resource integrations.
+
+**What we will build:** A `Deveel.Events.Publisher.Aspire` package split into two assemblies following the standard Aspire pattern:
+- **AppHost component** (`Deveel.Events.Publisher.Aspire.Hosting`): Provides `AddEventPublisher()` and `WithRabbitMqChannel()` / `WithAzureServiceBusChannel()` / etc. extension methods on `IDistributedApplicationBuilder` that wire the framework's channel resources into the Aspire resource graph, configure connection strings, and automatically provision the matching Aspire container resources (e.g., `AddRabbitMQ()`, `AddAzureServiceBus()`) when running locally.
+- **Service component** (`Deveel.Events.Publisher.Aspire.Client`): Provides `AddEventPublisherFromAspire()` on `IServiceCollection` / `IHostApplicationBuilder` that resolves channel connection strings from Aspire's service-discovery mechanism (`IConfiguration["ConnectionStrings:..."]`) and registers channel statuses with names that match the Aspire dashboard's resource identifiers.
+- OpenTelemetry integration: activity spans emitted by the publisher (item 6) are automatically exported to the Aspire dashboard's trace viewer using the Aspire-configured OTLP exporter, with no manual configuration required.
+
+**Benefits:**
+- The Aspire dashboard shows each publish channel as a named resource with real-time health status, eliminating the need to open separate broker management UIs during development.
+- Broker containers (RabbitMQ, Kafka, etc.) are provisioned and torn down automatically by Aspire for each developer's local session, removing the static `docker-compose.yml` that every team maintains today.
+- Trace spans from published events appear in the Aspire dashboard's distributed-trace view alongside HTTP request spans, giving a complete picture of a domain operation in a single tool.
+- Follows the standard Aspire component split (`*.Hosting` + `*.Client`) so the integration works correctly with all Aspire deployment targets (local, Azure Container Apps, Kubernetes via Aspire manifest) without any changes to application code.
+
+---
+
+### 31. `dotnet event` CLI Extension
+
+> *A `dotnet` global tool that adds a first-class `event` command group to the .NET CLI — covering event scaffolding, schema export, schema validation, and breaking-change detection — so all event tooling is reachable from the same terminal session as the rest of the .NET toolchain.*
+
+**The problem today:** Tasks like scaffolding a new annotated event class, exporting schemas to AsyncAPI or OpenAPI, or checking whether a schema change is backwards-compatible have no standard CLI surface inside the `dotnet` ecosystem. Developers must hand-write boilerplate, invoke the application host to export schemas, and rely on ad-hoc scripts for validation — all outside the familiar `dotnet` workflow.
+
+**What we will build:** A `Deveel.Events.Tools` NuGet package distributable as a `dotnet` global or local tool (`dotnet tool install -g Deveel.Events.Tools`), adding the top-level command group `dotnet event` with the following sub-commands:
+
+- **`dotnet event new <EventName> [--namespace <ns>] [--version <ver>] [--output <path>]`** — scaffolds a new `partial` C# class pre-annotated with `[Event]`, `[EventProperty]` stubs derived from optional property definitions passed on the command line or from an interactive prompt; emits the file ready for the code generators (item 20/21) to act on.
+- **`dotnet event list [--assembly <path>] [--project <path>]`** — discovers all `[Event]`-annotated types in a compiled assembly or by building the target project, and prints a structured table of event type names, versions, property counts, and content types.
+- **`dotnet event schema export [--assembly <path>] [--format asyncapi|openapi|json-schema] [--output <file>]`** — loads the `GeneratedEventSchemas` metadata emitted by the schema generator (item 21) from the target assembly and serialises it to the requested schema format without starting the application host.
+- **`dotnet event schema validate <payload-file> --event-type <type> [--assembly <path>]`** — deserialises a JSON file and validates it against the schema of the named event type, reporting constraint violations in a structured, CI-friendly format (exit code 1 on failure).
+- **`dotnet event schema diff <before-assembly> <after-assembly> [--fail-on-breaking]`** — compares the event schemas exported from two compiled assemblies, classifying each change as backward-compatible or breaking, and optionally returning a non-zero exit code when breaking changes are detected (suitable for a CI quality gate, complementing item 10).
+- **`dotnet event channel add <transport> [--name <name>]`** — scaffolds the DI registration boilerplate for a named channel of the given transport type (e.g., `dotnet event channel add rabbitmq --name OrderEvents`) into the project's `Program.cs` or a nominated partial class.
+
+**Benefits:**
+- All event-related tasks are reachable via the single `dotnet event` entry point, consistent with the rest of the .NET CLI toolchain and discoverable via `dotnet event --help`.
+- `schema export` and `schema diff` can run as zero-dependency CI steps against a pre-built assembly, with no running application host required — a direct consequence of the compile-time metadata emitted by item 21.
+- `dotnet event schema diff --fail-on-breaking` provides an automated breaking-change gate that complements the compatibility checker planned in item 10, requiring no custom scripting.
+- `dotnet event new` bootstraps correctly-annotated event classes in seconds, reducing friction for teams onboarding to the framework.
+- Local and global tool modes allow teams to pin the tool version alongside the project (via `dotnet-tools.json`) for reproducible CI builds.
+
+---
+
+### 32. Standalone `deveel-events` CLI
+
+> *A self-contained, cross-platform command-line executable that exposes the same `event` command surface as the `dotnet` tool — but without requiring the .NET SDK, making it usable in CI images, Docker pipelines, and non-.NET environments.*
+
+**The problem today:** The `dotnet event` tool (item 31) requires the .NET SDK to be installed, which is unavailable in many CI runner images, Docker build stages, and polyglot toolchains. Teams working in Python, Go, JavaScript, or shell-only environments that consume events from a .NET service — and need to validate schemas or generate AsyncAPI documents — cannot use a `dotnet`-dependent tool. There is also no Docker-native entry point for event tooling.
+
+**What we will build:** A `deveel-events` (or `dce`) single-file, self-contained executable published for `linux-x64`, `linux-arm64`, `osx-arm64`, `win-x64`, and as a Docker image (`deveel/deveel-events:latest`) that implements the same command surface as item 41:
+- `deveel-events new`, `deveel-events list`, `deveel-events schema export|validate|diff`, `deveel-events channel add` — identical semantics to their `dotnet event` counterparts.
+- **Additional input modes** not available in the dotnet tool: `schema export --from-asyncapi <file|url>` loads an existing AsyncAPI document and re-exports it in another format; `schema validate --schema-file <json-schema>` validates a payload against an externally-supplied JSON Schema file rather than a compiled assembly.
+- **GitHub Actions action** (`deveel/events-action`) wrapping `schema diff` and `schema validate` for zero-configuration use in GitHub CI workflows.
+- Installers for common package managers: `brew install deveel/tap/deveel-events` (macOS/Linux), WinGet manifest for Windows.
+- Machine-readable output mode (`--output json` / `--output sarif`) for integration with CI dashboards, GitHub Code Scanning (SARIF schema-violation reports), and external schema registries.
+
+**Benefits:**
+- Schema export, validation, and breaking-change detection are available in any CI environment with a single binary download, regardless of the runtime stack.
+- The Docker image enables `docker run --rm -v $(pwd):/work deveel/deveel-events schema export --assembly /work/MyApp.dll --format asyncapi` pipelines in Dockerfile multi-stage builds or Compose-based CI setups.
+- The GitHub Actions action makes schema governance a one-line addition to any workflow with no manual tool installation or script authoring.
+- Machine-readable SARIF output lets `schema validate` failures appear as inline code annotations in GitHub pull requests, surfacing contract violations at review time.
+- Shares its core logic with the `dotnet event` tool via a common library, ensuring feature parity is maintained without duplicating implementation.
+
+---
+
 ## Subscription Management
 
-### 26. Subscription Management Framework
+### 33. Subscription Management Framework
 
 > *A provider-agnostic framework for persisting, querying, and lifecycle-managing event subscriptions at runtime.*
 
@@ -543,7 +698,7 @@ Each adapter package:
 
 ---
 
-### 27. Relational Registry Provider (Entity Framework Core)
+### 34. Relational Registry Provider (Entity Framework Core)
 
 > *Persist subscription state in any EF Core-compatible relational database — SQL Server, PostgreSQL, or SQLite — with ready-made migrations and polling-based synchronisation.*
 
@@ -563,7 +718,7 @@ Each adapter package:
 
 ---
 
-### 28. Document Registry Provider (MongoDB)
+### 35. Document Registry Provider (MongoDB)
 
 > *Persist subscription state as MongoDB documents with change-stream-based synchronisation for real-time, cluster-wide routing updates.*
 
@@ -583,7 +738,7 @@ Each adapter package:
 
 ---
 
-### 29. Subscription Management REST API
+### 36. Subscription Management REST API
 
 > *Expose subscription lifecycle operations as secured HTTP endpoints, providing an admin surface for operations tooling and self-service tenant portals.*
 
@@ -613,7 +768,7 @@ Each adapter package:
 
 ## Framework Integrations
 
-### 30. MediatR Integration
+### 37. MediatR Integration
 
 > *Bridge MediatR notifications to the Deveel Events publishing pipeline, and optionally surface incoming CloudEvents as MediatR notifications — so MediatR-native applications can adopt CloudEvents without restructuring existing handler code.*
 
@@ -633,7 +788,7 @@ Each adapter package:
 - No lock-in: the integration is purely additive — removing the package leaves both the MediatR handler tree and the Deveel Events pipeline fully functional and independently operable.
 - Works seamlessly with the middleware pipeline (item 2), schema validation (item 8), OpenTelemetry tracing (item 6), and the dead-letter channel (item 3), inheriting all cross-cutting capabilities with zero additional configuration.
 
-### 31. Wolverine Integration
+### 38. Wolverine Integration
 
 > *Expose Deveel Events publishing as a Wolverine message side-effect, and route inbound CloudEvents through the Wolverine runtime — so Wolverine-native applications gain CloudEvents interoperability without leaving their existing handler model.*
 
@@ -653,7 +808,7 @@ Each adapter package:
 
 ---
 
-### 32. Brighter Integration
+### 39. Brighter Integration
 
 > *Integrate Deveel Events into the Paramore Brighter command-processor pipeline — publish CloudEvents as a side-effect of dispatched commands, and route inbound CloudEvents as Brighter `IEvent` objects.*
 

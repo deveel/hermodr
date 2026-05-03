@@ -230,4 +230,3 @@ Choose the in-process topology when you want the simplest setup for small-to-med
 - [RabbitMQ Channel](../publishers/rabbitmq.md)
 - [Typed Channels](../publishers/typed-channels.md)
 - [Event Annotations](../concepts/event-annotations.md)
-

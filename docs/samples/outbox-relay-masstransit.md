@@ -267,4 +267,3 @@ Choose the external-relay topology when fault isolation, independent scaling, or
 - [MassTransit Channel](../publishers/masstransit.md)
 - [Typed Channels](../publishers/typed-channels.md)
 - [Event Publisher](../concepts/event-publisher.md)
-

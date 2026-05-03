@@ -125,11 +125,11 @@ The framework is still evolving. See the [ROADMAP](ROADMAP.md) for the full desc
 - [x] **Event Subscription & Routing** — subscribe to event types with attribute-based filtering and in-process routing
 - [x] **Event Middleware Pipeline** — composable cross-cutting hooks (logging, validation, correlation, tracing)
 
-### v1.2 — Reliability
+### v1.2 — Reliability ✅
 
-- [ ] **Event Replay & Dead-Letter Handling** — capture and resubmit failed events with configurable retry and back-off
-- [ ] **Outbox Pattern Integration** — guaranteed exactly-once publishing via a transactional outbox channel
-- [ ] **Event Scheduler & Deferred Publishing** — defer event publishing to a future point in time or after a delay
+- [x] **Event Replay & Dead-Letter Handling** — capture and resubmit failed events with configurable retry and back-off
+- [x] **Outbox Pattern Integration** — guaranteed exactly-once publishing via a transactional outbox channel
+- [x] **Event Scheduler & Deferred Publishing** — defer event publishing to a future point in time or after a delay
 
 ### v1.3 — Observability
 
@@ -141,7 +141,7 @@ The framework is still evolving. See the [ROADMAP](ROADMAP.md) for the full desc
 ### v1.4 — Schema Governance
 
 - [ ] **Event Versioning & Compatibility** — breaking-change detection, upcasting pipeline, and version-aware routing
-- [ ] **AsyncAPI & Schema Export Improvements** — assembly scanning, dotnet CLI tool, OpenAPI 3.1 webhook export
+- [ ] **AsyncAPI & Schema Export Improvements** — compile-time auto-discovery, dotnet CLI tool, OpenAPI 3.1 webhook export
 
 ### v1.5 — New Transports
 
@@ -154,9 +154,16 @@ The framework is still evolving. See the [ROADMAP](ROADMAP.md) for the full desc
 - [ ] **Google Cloud Pub/Sub Publisher Channel** — ordered delivery to GCP Pub/Sub topics with Workload Identity support
 - [ ] **NATS / JetStream Publisher Channel** — ultra-low-latency delivery to NATS subjects or durable JetStream streams
 
+### v1.6 — Code Generation
+
+- [ ] **CloudEvent Factory Source Generator** — Roslyn incremental generator that emits zero-reflection `IEventConvertible.ToCloudEvent()` implementations from `[Event]`-annotated `partial` classes, with compile-time diagnostics for annotation mistakes
+- [ ] **Schema Registration Source Generator** — generator that pre-constructs all `EventSchema` instances at build time and emits an `AddGeneratedEventSchemas(IServiceCollection)` DI extension, eliminating startup reflection and enabling schema export without a running host
+- [ ] **Typed Domain Publisher Generator** — generator that produces a strongly-typed `IXxxEventPublisher` interface and implementation per domain group, so services depend on a focused, mockable contract rather than the catch-all `IEventPublisher`
+
 ### v2.0 — Event Consumers
 
 - [ ] **Webhook Consumer for ASP.NET Core** — receive inbound CloudEvents over HTTP with HMAC signature verification and automatic routing
+- [ ] **Pre-built Webhook Consumer Adapters** — ready-made payload mappers and signature verifiers for Facebook, SendGrid, Twilio, Stripe, GitHub, and Shopify
 - [ ] **RabbitMQ Consumer** — consume CloudEvents from RabbitMQ queues and route them through the subscription registry
 - [ ] **Azure Service Bus Consumer** — consume CloudEvents from Service Bus queues and topic subscriptions
 - [ ] **MassTransit Consumer Bridge** — expose Deveel Events subscriptions as MassTransit consumers and vice versa
@@ -164,6 +171,10 @@ The framework is still evolving. See the [ROADMAP](ROADMAP.md) for the full desc
 ### v2.1 — Testing & DX
 
 - [ ] **Expanded Testing Utilities** — fluent publish assertions (`AssertPublished`, `AssertNotPublished`), in-memory event bus, and consumer-side test helpers
+- [ ] **Local Development Console Sink** — zero-configuration channel that pretty-prints CloudEvents to the console during local development, with automatic exclusion in non-development environments
+- [ ] **.NET Aspire Integration** — surface publish channels as Aspire resources for dashboard visibility, automatic broker provisioning, and OTLP trace export out of the box
+- [ ] **`dotnet event` CLI Extension** — `dotnet` global tool adding `dotnet event new`, `schema export`, `schema validate`, `schema diff`, and `channel add` sub-commands for event scaffolding and schema governance
+- [ ] **Standalone `deveel-events` CLI** — self-contained cross-platform executable and Docker image exposing the same command surface without requiring the .NET SDK, with GitHub Actions action and machine-readable SARIF output
 
 ### v2.2 — Subscription Management
 
@@ -171,6 +182,12 @@ The framework is still evolving. See the [ROADMAP](ROADMAP.md) for the full desc
 - [ ] **Relational Registry Provider (Entity Framework Core)** — persist subscriptions in SQL Server, PostgreSQL, or SQLite with bundled migrations
 - [ ] **Document Registry Provider (MongoDB)** — persist subscriptions as MongoDB documents with real-time change-stream synchronisation
 - [ ] **Subscription Management REST API** — secured minimal-API endpoint group with OpenAPI metadata and change-notification webhooks
+
+### v2.3 — Framework Integrations
+
+- [ ] **MediatR Integration** — bridge `[Event]`-annotated `INotification` types to the CloudEvents publish pipeline and route inbound CloudEvents back as MediatR notifications
+- [ ] **Wolverine Integration** — emit CloudEvents as a Wolverine message side-effect and route inbound CloudEvents into the Wolverine runtime via `IMessageBus`
+- [ ] **Brighter Integration** — publish CloudEvents as a post-handler pipeline step for Brighter `ICommand` / `IEvent` types and bridge inbound CloudEvents into the Brighter command processor
 
 Monitor the [open issues](https://github.com/deveel/deveel.events/issues) to see what is being actively worked on.
 
