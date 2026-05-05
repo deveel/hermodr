@@ -115,6 +115,19 @@ services.AddEventPublisher()
 
 Each named test channel fires only for events whose per-call options carry the matching `ChannelName`.  A test channel registered without a name (or with `channelName: null`) is treated as anonymous and receives every event, just like any unnamed production channel.
 
+## Typed test channels
+
+Use `AddTestChannel<TEvent>(...)` when you want the callback to run only for one annotated event type:
+
+```csharp
+var orders = new List<CloudEvent>();
+
+services.AddEventPublisher()
+        .AddTestChannel<OrderPlacedData>(@event => orders.Add(@event));
+```
+
+Typed test channels behave like any other typed channel in the framework: when typed channels are registered for an event type, the publisher routes that event to the typed channels for that type.
+
 ## `IEventPublishCallback`
 
 ```csharp
@@ -147,4 +160,3 @@ public class FrozenSystemTime : IEventSystemTime
 
 - [Event Publisher](../concepts/event-publisher.md)
 - [Publish Channels](../concepts/publish-channels.md)
-

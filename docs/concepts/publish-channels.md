@@ -80,7 +80,7 @@ The Webhook channel implements both `IEventPublishChannel` and `IBatchEventPubli
 | RabbitMQ | `Deveel.Events.Publisher.RabbitMq` | `.AddRabbitMq(...)` | `.AddRabbitMq<TEvent>(...)` |
 | MassTransit | `Deveel.Events.Publisher.MassTransit` | `.AddMassTransit(...)` | `.AddMassTransit<TEvent>(...)` |
 | Webhook (HTTP) | `Deveel.Events.Publisher.Webhook` | `.AddWebhooks(...)` | `.AddWebhooks<TEvent>(...)` |
-| Test (in-memory) | `Deveel.Events.TestPublisher` | `.AddTestChannel(...)` | — |
+| Test (in-memory) | `Deveel.Events.TestPublisher` | `.AddTestChannel(...)` | `.AddTestChannel<TEvent>(...)` |
 
 Multiple channels can be registered simultaneously — the publisher will deliver to all of them.  When a typed channel exists for `TEvent`, **only typed channels** receive that event.
 
@@ -177,5 +177,4 @@ Channels that extend `EventPublishChannel<TOptions>` with options that implement
 - [MassTransit](../publishers/masstransit.md)
 - [Webhook](../publishers/webhook.md)
 - [Test Publisher](../testing/README.md)
-
 

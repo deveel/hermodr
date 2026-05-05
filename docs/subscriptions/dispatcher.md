@@ -4,24 +4,26 @@
 
 ## Registration and Pipeline Activation
 
-Subscription support now has two distinct steps:
+Subscription support is configured entirely at startup:
 
-1. **Register subscription services** at startup with `AddSubscriptions()`.
-2. **Enable dispatch middleware** on the runtime publisher with one of the `UseDispatcher(...)` extensions.
+1. **Register subscription services** with `AddSubscriptions()`.
+2. **Configure dispatcher options** through the `AddSubscriptions(...)` overload or `EventSubscriptionsBuilder.ConfigureOptions(...)`.
+3. **Publish events normally** — the dispatcher middleware is already part of the pipeline.
 
 ```csharp
 // Startup / DI registration
 services.AddEventPublisher()
-    .AddSubscriptions()
-    .Subscribe("com.example.order.*", async (e, ct) =>
+    .AddSubscriptions(subs =>
     {
-        Console.WriteLine($"Received: {e.Type}");
-        await Task.CompletedTask;
-    }, name: "log-orders");
+        subs.ConfigureOptions(options => options.ThrowOnHandlerError = true);
+        subs.Subscribe("com.example.order.*", async (e, ct) =>
+        {
+            Console.WriteLine($"Received: {e.Type}");
+            await Task.CompletedTask;
+        }, name: "log-orders");
+    });
 
-// Runtime activation (once per publisher instance)
-var publisher = serviceProvider.GetRequiredService<EventPublisher>()
-    .UseDispatcher();
+var publisher = serviceProvider.GetRequiredService<IEventPublisher>();
 ```
 
 `AddSubscriptions()` registers:
@@ -32,35 +34,26 @@ var publisher = serviceProvider.GetRequiredService<EventPublisher>()
 | `IEventSubscriptionRegistry` | Singleton | Write interface for runtime registration |
 | `IEventSubscriptionResolver` | Singleton | Read interface resolved from the same registry instance |
 
-> **Tip:** register `AddSubscriptions()` during startup before the first `UseDispatcher()`/publish call so the resolver services are available when middleware runs.
+It also appends `EventDispatcher` to the publisher pipeline immediately. No runtime activation call is required.
 
 ---
 
-## Runtime Pipeline Functions
+## Compatibility `UseDispatcher()` extensions
 
-Use one of these extension methods on `EventPublisher`:
+The `UseDispatcher()` extensions on `EventPublisher` are retained only for source compatibility with older code. They **return the publisher unchanged** and do not modify the pipeline.
 
-> `EventDispatcher` is an internal implementation detail; enable it through `UseDispatcher(...)` rather than instantiating it directly.
+| Function | Current behavior |
+|----------|------------------|
+| `UseDispatcher()` | No-op; dispatcher is already wired by `AddSubscriptions()` |
+| `UseDispatcher(EventDispatcherOptions options)` | No-op; `options` are ignored |
 
-| Function | Description |
-|----------|-------------|
-| `UseDispatcher()` | Adds dispatcher middleware with default options |
-| `UseDispatcher(EventDispatcherOptions options)` | Adds dispatcher middleware with explicit runtime options |
-
-### `UseDispatcher()`
+Configure dispatcher behavior during DI registration instead:
 
 ```csharp
-var publisher = serviceProvider.GetRequiredService<EventPublisher>()
-    .UseDispatcher();
-```
-
-### `UseDispatcher(EventDispatcherOptions)`
-
-```csharp
-var publisher = serviceProvider.GetRequiredService<EventPublisher>()
-    .UseDispatcher(new EventDispatcherOptions
+services.AddEventPublisher()
+    .AddSubscriptions(subs =>
     {
-        ThrowOnHandlerError = true
+        subs.ConfigureOptions(options => options.ThrowOnHandlerError = true);
     });
 ```
 
@@ -176,4 +169,3 @@ When a `data.*` filter is evaluated, `EventFilterEvaluator` calls `EventSubscrip
 ```csharp
 services.AddSingleton<IEventDataDeserializer, MyCustomDeserializer>();
 ```
-

@@ -87,7 +87,7 @@ var data = new OrderPlacedData
     Currency = "USD"
 };
 
-// The IEventCreator service reads [Event] and builds the CloudEvent automatically.
+// The IEventFactory service reads [Event] and builds the CloudEvent automatically.
 await publisher.PublishAsync(data);
 ```
 
@@ -126,5 +126,4 @@ public class OrderPlacedData
 - [Event Publisher](event-publisher.md)
 - [RabbitMQ Channel — AMQP Annotations](../publishers/rabbitmq.md#amqp-annotations)
 - [Schema from Annotations](../schema/from-annotations.md)
-
 

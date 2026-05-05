@@ -68,10 +68,13 @@ Every package requires the **Microsoft Dependency Injection** infrastructure (`M
 | `Deveel.Events.Publisher.RabbitMq` | `RabbitMQ.Client` ≥ 7.2 · `Deveel.Events.Amqp.Annotations` |
 | `Deveel.Events.Publisher.MassTransit` | `MassTransit` ≥ 9.1 |
 | `Deveel.Events.Publisher.Webhook` | `Microsoft.Extensions.Http.Resilience` ≥ 9.6 |
+| `Deveel.Events.Publisher.Outbox` | `Deveel.Repository.Manager` · `Microsoft.Extensions.Hosting.Abstractions` |
+| `Deveel.Events.Publisher.Outbox.EntityFramework` | `Deveel.Events.Publisher.Outbox` · `Deveel.Repository.EntityFramework` · `Microsoft.EntityFrameworkCore.Relational` |
 | `Deveel.Events.Subscriptions` | `Deveel.Events.Publisher` · `Deveel.Filters` · `Microsoft.Extensions.Logging.Abstractions` |
 | `Deveel.Events.Schema` | `CloudNative.CloudEvents` |
 | `Deveel.Events.Schema.Yaml` | `YamlDotNet` ≥ 16.3 |
 | `Deveel.Events.Schema.AsyncApi` | `Saunter` ≥ 0.13 · `YamlDotNet` ≥ 16.3 · ASP.NET Core shared framework |
+| `Deveel.Events.TestPublisher` | `Deveel.Events.Publisher` |
 
 ## Packages
 
@@ -86,6 +89,8 @@ Every package requires the **Microsoft Dependency Injection** infrastructure (`M
 | `Deveel.Events.Publisher.RabbitMq` | Publish events to a RabbitMQ exchange | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.RabbitMq.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.RabbitMq) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Publisher.RabbitMq.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Publisher.RabbitMq)               | [![NuGet Downloads](https://img.shields.io/nuget/dt/Deveel.Events.Publisher.RabbitMq.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.RabbitMq) |
 | `Deveel.Events.Publisher.MassTransit` | Publish events through a MassTransit bus | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.MassTransit.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.MassTransit) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Publisher.MassTransit.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Publisher.MassTransit)         | [![NuGet Downloads](https://img.shields.io/nuget/dt/Deveel.Events.Publisher.MassTransit.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.MassTransit) |
 | `Deveel.Events.Publisher.Webhook` | Deliver events to HTTP webhook endpoints | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.Webhook.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.Webhook) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Publisher.Webhook.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Publisher.Webhook)                 | [![NuGet Downloads](https://img.shields.io/nuget/dt/Deveel.Events.Publisher.Webhook.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.Webhook) |
+| `Deveel.Events.Publisher.Outbox` | Persist events in a transactional outbox for later relay | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.Outbox.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.Outbox) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Publisher.Outbox.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Publisher.Outbox)                   | [![NuGet Downloads](https://img.shields.io/nuget/dt/Deveel.Events.Publisher.Outbox.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.Outbox) |
+| `Deveel.Events.Publisher.Outbox.EntityFramework` | Entity Framework Core repository and helpers for the outbox channel | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.Outbox.EntityFramework.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.Outbox.EntityFramework) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Publisher.Outbox.EntityFramework.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Publisher.Outbox.EntityFramework) | [![NuGet Downloads](https://img.shields.io/nuget/dt/Deveel.Events.Publisher.Outbox.EntityFramework.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.Outbox.EntityFramework) |
 
 ### Subscriptions
 
@@ -101,17 +106,23 @@ Every package requires the **Microsoft Dependency Injection** infrastructure (`M
 | `Deveel.Events.Schema.Yaml` | Export an event schema as YAML | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Schema.Yaml.svg)](https://www.nuget.org/packages/Deveel.Events.Schema.Yaml) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Schema.Yaml.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Schema.Yaml)         | [![NuGet Downloads](https://img.shields.io/nuget/dt/Deveel.Events.Schema.Yaml.svg)](https://www.nuget.org/packages/Deveel.Events.Schema.Yaml) |
 | `Deveel.Events.Schema.AsyncApi` | Export schemas as an AsyncAPI 2.x document | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Schema.AsyncApi.svg)](https://www.nuget.org/packages/Deveel.Events.Schema.AsyncApi) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Schema.AsyncApi.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Schema.AsyncApi) | [![NuGet Downloads](https://img.shields.io/nuget/dt/Deveel.Events.Schema.AsyncApi.svg)](https://www.nuget.org/packages/Deveel.Events.Schema.AsyncApi) |
 
+### Testing
+
+| Package | Description | NuGet (Stable) | GitHub (Unstable) | Downloads |
+|---------|-------------|---------------|-------------------|-----------|
+| `Deveel.Events.TestPublisher` | In-memory test channel for unit and integration tests | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.TestPublisher.svg)](https://www.nuget.org/packages/Deveel.Events.TestPublisher) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.TestPublisher.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.TestPublisher) | [![NuGet Downloads](https://img.shields.io/nuget/dt/Deveel.Events.TestPublisher.svg)](https://www.nuget.org/packages/Deveel.Events.TestPublisher) |
+
 ## Documentation
 
 The full documentation is published at **[events.deveel.org](https://events.deveel.org)** — including installation guides, concept references, channel adapters, schema export, and testing utilities.
 
-The source of the documentation is also available in the [`docs/`](docs/README.md) folder of this repository (published via GitBook).
+The source of the documentation is also available in the [`docs/`](docs/README.md) folder of this repository.
 
 | Section | Description |
 |---------|-------------|
 | [Getting Started](https://events.deveel.org/getting-started/installation) | Installation and quick-start guide |
 | [Core Concepts](https://events.deveel.org/concepts/) | Publisher, channels, and event annotations |
-| [Publisher Channels](https://events.deveel.org/publishers/) | Azure Service Bus, RabbitMQ, MassTransit, Webhook |
+| [Publisher Channels](https://events.deveel.org/publishers/) | Azure Service Bus, RabbitMQ, MassTransit, Webhook, and transactional outbox |
 | [Event Subscriptions](https://events.deveel.org/subscriptions/) | Event dispatcher, filters, routing, and custom resolvers |
 | [Event Schema](https://events.deveel.org/schema/) | Schema definition, export (JSON / YAML / AsyncAPI), and validation |
 | [Testing](https://events.deveel.org/testing/) | Unit-testing event publishing |

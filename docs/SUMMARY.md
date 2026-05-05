@@ -15,6 +15,7 @@
 * [Overview](concepts/README.md)
 * [CloudEvents Standard](concepts/cloudevents.md)
 * [Event Publisher](concepts/event-publisher.md)
+* [Event Creation](concepts/event-creation.md)
 * [Publish Pipeline & Middleware](concepts/publish-pipeline.md)
 * [Publish Channels](concepts/publish-channels.md)
 * [Event Annotations](concepts/event-annotations.md)
@@ -61,9 +62,13 @@
 * [OrderService — In-Process Outbox + RabbitMQ](samples/outbox-inapp-rabbitmq.md)
 * [OrderService — Split Outbox + MassTransit RabbitMQ](samples/outbox-relay-masstransit.md)
 
+## Project
+
+* [Versioning](versioning.md)
+* [AMQP Annotations (moved)](amqp/README.md)
+
 ## Contributing
 
 * [Contributing](contributing.md)
-
 
 

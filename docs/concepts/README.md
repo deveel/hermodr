@@ -38,13 +38,13 @@ This section explains the fundamental building blocks of the Deveel Events frame
 | `IEventFactory` | Converts an annotated data object into a `CloudEvent` |
 | `IEventIdGenerator` | Generates unique identifiers for events (default: GUID) |
 | `IEventSystemTime` | Supplies the event timestamp (replaceable for testing) |
-| `IEventPublisherFactory` | Resolves a named publisher pipeline by name at runtime |
+| Keyed `IEventPublisher` | Resolves a named publisher pipeline by name at runtime |
 
 ## Pages in this section
 
 - [CloudEvents Standard](cloudevents.md)
 - [Event Publisher](event-publisher.md)
+- [Event Creation](event-creation.md)
 - [Publish Pipeline & Middleware](publish-pipeline.md)
 - [Publish Channels](publish-channels.md)
 - [Event Annotations](event-annotations.md)
-
