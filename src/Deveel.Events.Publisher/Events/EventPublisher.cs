@@ -314,7 +314,7 @@ namespace Deveel.Events
         {
             _logger.LogEventPublishError(ex, eventType, channelType);
             if (!PublisherOptions.ThrowOnErrors) return;
-            throw new EventPublishException(
+            throw new EventPublishChannelException(
                 $"An error occurred while publishing an event of type {eventType} to the channel '{channelType.Name}'",
                 ex);
         }
@@ -344,7 +344,7 @@ namespace Deveel.Events
                 catch (Exception handlerException)
                 {
                     _logger.LogPublishErrorHandlerError(handlerException, context.Stage, context.Event?.Type, context.ChannelType);
-                    throw new EventPublishException(
+                    throw new EventPublishErrorHandlerException(
                         $"An error occurred while handling a publish error at stage {context.Stage}",
                         new AggregateException(context.Exception, handlerException));
                 }
@@ -428,7 +428,7 @@ namespace Deveel.Events
                     dataType: eventType,
                     data: @event));
                 if (PublisherOptions.ThrowOnErrors)
-                    throw new EventPublishException(
+                    throw new EventCreationException(
                         $"An error occurred while creating an event of type {eventType.FullName} from the provided event",
                         ex);
                 return null;
@@ -523,7 +523,7 @@ namespace Deveel.Events
                     dataType: dataType,
                     data: data));
                 if (PublisherOptions.ThrowOnErrors)
-                    throw new EventPublishException("An error occurred while converting data", ex);
+                    throw new EventConversionException("An error occurred while converting data", ex);
                 return null;
             }
         }

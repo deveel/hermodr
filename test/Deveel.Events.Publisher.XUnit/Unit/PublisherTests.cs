@@ -300,7 +300,7 @@ namespace Deveel.Events
         }
 
         [Fact]
-        public async Task Should_ThrowEventPublishException_When_ChannelFailsAndThrowOnErrorsIsTrue()
+        public async Task Should_ThrowEventPublishChannelException_When_ChannelFailsAndThrowOnErrorsIsTrue()
         {
             // Arrange
             var cancellationToken = TestContext.Current.CancellationToken;
@@ -310,7 +310,7 @@ namespace Deveel.Events
             var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
 
             // Act & Assert
-            await Assert.ThrowsAsync<EventPublishException>(() =>
+            await Assert.ThrowsAsync<EventPublishChannelException>(() =>
                 publisher.PublishEventAsync(new CloudEvent
                 {
                     Type   = "test.event",
@@ -336,7 +336,7 @@ namespace Deveel.Events
         }
 
         [Fact]
-        public async Task Should_ThrowEventPublishException_When_NoEventFactoryAndThrowOnErrorsIsTrue()
+        public async Task Should_ThrowEventCreationException_When_NoEventFactoryAndThrowOnErrorsIsTrue()
         {
             // Arrange
             var cancellationToken = TestContext.Current.CancellationToken;
@@ -349,7 +349,7 @@ namespace Deveel.Events
                 provider);
 
             // Act & Assert
-            await Assert.ThrowsAsync<EventPublishException>(() =>
+            await Assert.ThrowsAsync<EventCreationException>(() =>
                 publisher.PublishAsync(typeof(PersonCreated), new PersonCreated { Id = "1" }, null, cancellationToken));
         }
 
@@ -368,7 +368,7 @@ namespace Deveel.Events
         }
 
         [Fact]
-        public async Task Should_ThrowEventPublishException_When_ConvertibleFactoryThrowsAndThrowOnErrorsIsTrue()
+        public async Task Should_ThrowEventConversionException_When_ConvertibleFactoryThrowsAndThrowOnErrorsIsTrue()
         {
             // Arrange
             var cancellationToken = TestContext.Current.CancellationToken;
@@ -378,7 +378,7 @@ namespace Deveel.Events
             var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
 
             // Act & Assert
-            await Assert.ThrowsAsync<EventPublishException>(() =>
+            await Assert.ThrowsAsync<EventConversionException>(() =>
                 publisher.PublishAsync(new BrokenConvertible(), cancellationToken: cancellationToken));
         }
 

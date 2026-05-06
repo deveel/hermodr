@@ -117,7 +117,7 @@ namespace Deveel.Events
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 _logger.LogErrorPublishingEvent(ex, @event.Type);
-                throw new EventPublishException("An error occurred while publishing the event via MassTransit", ex);
+                throw new MassTransitPublishException("An error occurred while publishing the event via MassTransit", ex);
             }
         }
 

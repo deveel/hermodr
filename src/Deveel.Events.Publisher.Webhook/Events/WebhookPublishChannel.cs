@@ -297,7 +297,7 @@ namespace Deveel.Events
                       && !cancellationToken.IsCancellationRequested)
             {
                 _logger.LogDeliveryFailed(deliveryId, maxRetryCount + 1);
-                throw new WebhookDeliveryException(
+                throw new WebhookTransportException(
                     $"Webhook delivery {deliveryId} failed after {maxRetryCount + 1} attempt(s).", ex);
             }
             finally
@@ -316,12 +316,12 @@ namespace Deveel.Events
             if (!retryableStatusCodes.Contains(statusCode))
             {
                 _logger.LogNonRetryableFailure(deliveryId, statusCode);
-                throw new WebhookDeliveryException(
+                throw new WebhookStatusCodeException(
                     $"Webhook delivery {deliveryId} failed with non-retryable status {statusCode}.", statusCode);
             }
 
             _logger.LogDeliveryExhausted(deliveryId, maxRetryCount + 1);
-            throw new WebhookDeliveryException(
+            throw new WebhookStatusCodeException(
                 $"Webhook delivery {deliveryId} failed after {maxRetryCount + 1} attempt(s).", statusCode);
         }
 

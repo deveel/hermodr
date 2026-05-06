@@ -53,13 +53,14 @@ namespace Deveel.Events
         [Fact]
         public async Task PublishAsync_NoDestination_UsesPublishEndpoint()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var publishEndpoint = Substitute.For<IPublishEndpoint>();
             var sendProvider = Substitute.For<ISendEndpointProvider>();
 
             var options = new MassTransitPublishOptions();
             var channel = BuildChannel(options, publishEndpoint, sendProvider);
 
-            await channel.PublishAsync(MakeSampleEvent());
+            await channel.PublishAsync(MakeSampleEvent(), cancellationToken: cancellationToken);
 
             // The Action<> overload is an extension method; NSubstitute intercepts the
             // underlying interface method that takes IPipe<PublishContext<T>>.
@@ -80,6 +81,7 @@ namespace Deveel.Events
         [Fact]
         public async Task PublishAsync_WithDestination_UsesSendEndpoint()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var destination = new Uri("queue:my-events");
             var publishEndpoint = Substitute.For<IPublishEndpoint>();
             var sendProvider = Substitute.For<ISendEndpointProvider>();
@@ -93,7 +95,7 @@ namespace Deveel.Events
             };
             var channel = BuildChannel(options, publishEndpoint, sendProvider);
 
-            await channel.PublishAsync(MakeSampleEvent());
+            await channel.PublishAsync(MakeSampleEvent(), cancellationToken: cancellationToken);
 
             await sendProvider.Received(1).GetSendEndpoint(destination);
             await sendEndpoint.Received(1)
@@ -116,6 +118,7 @@ namespace Deveel.Events
         [Fact]
         public async Task PublishAsync_MapAttributesToHeaders_HeadersAreSet()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var publishEndpoint = Substitute.For<IPublishEndpoint>();
             var sendProvider = Substitute.For<ISendEndpointProvider>();
 
@@ -132,7 +135,7 @@ namespace Deveel.Events
             var cloudEvent = MakeSampleEvent();
             cloudEvent.Subject = "test-subject";
 
-            await channel.PublishAsync(cloudEvent);
+            await channel.PublishAsync(cloudEvent, cancellationToken: cancellationToken);
 
             Assert.NotNull(capturedPipe);
 
@@ -156,6 +159,7 @@ namespace Deveel.Events
         [Fact]
         public async Task PublishAsync_MapAttributesToHeaders_False_NoHeadersSet()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var publishEndpoint = Substitute.For<IPublishEndpoint>();
             var sendProvider = Substitute.For<ISendEndpointProvider>();
 
@@ -169,7 +173,7 @@ namespace Deveel.Events
             var options = new MassTransitPublishOptions { MapAttributesToHeaders = false };
             var channel = BuildChannel(options, publishEndpoint, sendProvider);
 
-            await channel.PublishAsync(MakeSampleEvent());
+            await channel.PublishAsync(MakeSampleEvent(), cancellationToken: cancellationToken);
 
             Assert.NotNull(capturedPipe);
 
@@ -190,8 +194,9 @@ namespace Deveel.Events
         // -------------------------------------------------------------------------
 
         [Fact]
-        public async Task PublishAsync_PublishEndpointThrows_WrapsInEventPublishException()
+        public async Task PublishAsync_PublishEndpointThrows_WrapsInMassTransitPublishException()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var publishEndpoint = Substitute.For<IPublishEndpoint>();
             var sendProvider = Substitute.For<ISendEndpointProvider>();
 
@@ -205,19 +210,21 @@ namespace Deveel.Events
             var options = new MassTransitPublishOptions();
             var channel = BuildChannel(options, publishEndpoint, sendProvider);
 
-            await Assert.ThrowsAsync<EventPublishException>(() => channel.PublishAsync(MakeSampleEvent()));
+            await Assert.ThrowsAsync<MassTransitPublishException>(() =>
+                channel.PublishAsync(MakeSampleEvent(), cancellationToken: cancellationToken));
         }
 
         [Fact]
         public async Task PublishAsync_NullEvent_ThrowsArgumentNullException()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var publishEndpoint = Substitute.For<IPublishEndpoint>();
             var sendProvider = Substitute.For<ISendEndpointProvider>();
             var options = new MassTransitPublishOptions();
             var channel = BuildChannel(options, publishEndpoint, sendProvider);
 
             await Assert.ThrowsAsync<ArgumentNullException>(() =>
-                channel.PublishAsync(null!));
+                channel.PublishAsync(null!, cancellationToken: cancellationToken));
         }
 
         [Fact]

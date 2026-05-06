@@ -74,7 +74,7 @@ public class PublishErrorHandlingTests
     }
 
     [Fact]
-    public async Task Should_ThrowEventPublishException_When_PublishErrorHandlerFails()
+    public async Task Should_ThrowEventPublishErrorHandlerException_When_PublishErrorHandlerFails()
     {
         var services = new ServiceCollection().AddLogging();
         services.AddEventPublisher(options =>
@@ -87,7 +87,7 @@ public class PublishErrorHandlingTests
 
         await using var provider = services.BuildServiceProvider();
 
-        var exception = await Assert.ThrowsAsync<EventPublishException>(() =>
+        var exception = await Assert.ThrowsAsync<EventPublishErrorHandlerException>(() =>
             provider.GetRequiredService<EventPublisher>()
                 .PublishEventAsync(MakeEvent(), cancellationToken: TestContext.Current.CancellationToken));
 
