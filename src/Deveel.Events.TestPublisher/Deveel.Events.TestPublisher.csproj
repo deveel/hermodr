@@ -2,4 +2,10 @@
   <ItemGroup>
     <ProjectReference Include="..\Deveel.Events.Publisher\Deveel.Events.Publisher.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <None Remove="docs\api\Deveel.Events.TestPublisher\IEventPublishCallback.OnEventPublishedAsync.7V0SE1DVRDNBJ02NLCMQN5DWE.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="docs\api\Deveel.Events.TestPublisher\" />
+  </ItemGroup>
 </Project>

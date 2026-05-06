@@ -25,38 +25,5 @@
   <ItemGroup>
     <ProjectReference Include="..\Deveel.Events.Annotations\Deveel.Events.Annotations.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <None Remove="docs\api\Deveel.Events.BypassPipelinePublishOptions.BypassPipelinePublishOptions(Deveel.Events.EventPublishOptions).md" />
-    <None Remove="docs\api\Deveel.Events.BypassPipelinePublishOptions.InnerOptions.md" />
-    <None Remove="docs\api\Deveel.Events.BypassPipelinePublishOptions.Unwrap().md" />
-    <None Remove="docs\api\Deveel.Events.BypassPipelinePublishOptions.md" />
-    <None Remove="docs\api\Deveel.Events.CloudEventsJsonSerializer.BatchContentType.md" />
-    <None Remove="docs\api\Deveel.Events.CloudEventsJsonSerializer.ContentType.md" />
-    <None Remove="docs\api\Deveel.Events.CloudEventsJsonSerializer.Default.md" />
-    <None Remove="docs\api\Deveel.Events.CloudEventsJsonSerializer.Format.md" />
-    <None Remove="docs\api\Deveel.Events.CloudEventsJsonSerializer.Serialize(CloudNative.CloudEvents.CloudEvent).md" />
-    <None Remove="docs\api\Deveel.Events.CloudEventsJsonSerializer.md" />
-    <None Remove="docs\api\Deveel.Events.CloudEventsXmlSerializer.ContentType.md" />
-    <None Remove="docs\api\Deveel.Events.CloudEventsXmlSerializer.SerializeBatch(System.Collections.Generic.IReadOnlyList_CloudNative.CloudEvents.CloudEvent_).md" />
-    <None Remove="docs\api\Deveel.Events.CloudEventsXmlSerializer.md" />
-    <None Remove="docs\api\Deveel.Events.CombinedPublishOptions.Options.md" />
-    <None Remove="docs\api\Deveel.Events.EventContext.Event.md" />
-    <None Remove="docs\api\Deveel.Events.EventContext.EventContext(CloudNative.CloudEvents.CloudEvent,System.IServiceProvider,System.Threading.CancellationToken,Deveel.Events.EventPublishOptions,Deveel.Events.EventPublishOptions).md" />
-    <None Remove="docs\api\Deveel.Events.EventContext.Options.md" />
-    <None Remove="docs\api\Deveel.Events.EventContext.RawOptions.md" />
-    <None Remove="docs\api\Deveel.Events.EventGuidGenerator.Default.md" />
-    <None Remove="docs\api\Deveel.Events.EventGuidGenerator.EventGuidGenerator(Microsoft.Extensions.Options.IOptions_Deveel.Events.EventGuidGeneratorOptions_).md" />
-    <None Remove="docs\api\Deveel.Events.EventGuidGenerator.GenerateId().md" />
-    <None Remove="docs\api\Deveel.Events.EventMessageFormat.CloudEventsJson.md" />
-    <None Remove="docs\api\Deveel.Events.EventMessageFormat.md" />
-    <None Remove="docs\api\Deveel.Events.EventPublishChannel_TOptions_.Deveel.Events.IEventPublishChannel.PublishAsync(CloudNative.CloudEvents.CloudEvent,Deveel.Events.EventPublishOptions,System.Threading.CancellationToken).md" />
-    <None Remove="docs\api\Deveel.Events.EventPublishChannel_TOptions_.MergeOptions(TOptions,TOptions).md" />
-    <None Remove="docs\api\Deveel.Events.EventPublishChannel_TOptions_.PublishAsync(CloudNative.CloudEvents.CloudEvent,TOptions,System.Threading.CancellationToken).md" />
-    <None Remove="docs\api\Deveel.Events.EventPublishChannel_TOptions_.ValidateOptions(TOptions).md" />
-    <None Remove="docs\api\Deveel.Events.EventPublishChannel_TOptions_.md" />
-    <None Remove="docs\api\Deveel.Events.EventPublisher.IdGenerator.md" />
-    <None Remove="docs\api\Deveel.Events.EventPublisher.PublishEventAsync.md" />
-    <None Remove="docs\api\Deveel.Events.EventPublisher.SystemTime.md" />
-    <None Remove="docs\api\Deveel.md" />
-  </ItemGroup>
+
 </Project>

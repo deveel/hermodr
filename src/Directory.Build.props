@@ -7,8 +7,6 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <DefaultDocumentationFolder>$(SolutionDir)docs/api/$(MSBuildProjectName)</DefaultDocumentationFolder>
     <DefaultDocumentationFileNameFactory>NameAndMd5Mix</DefaultDocumentationFileNameFactory>
-    <!-- Only document public members -->
-    <DefaultDocumentationGeneratedAccessModifiers>Public</DefaultDocumentationGeneratedAccessModifiers>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -35,7 +33,6 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" Condition="$(TargetFramework) == 'net8.0'" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.203" PrivateAssets="All" Condition="$(TargetFramework) != 'net8.0'" />
-    <PackageReference Include="DefaultDocumentation" Version="1.2.4"/>
   </ItemGroup>
 
   <ItemGroup>

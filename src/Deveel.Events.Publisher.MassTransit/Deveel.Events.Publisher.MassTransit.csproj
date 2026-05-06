@@ -11,5 +11,14 @@
   <ItemGroup>
     <ProjectReference Include="..\Deveel.Events.Publisher\Deveel.Events.Publisher.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <None Remove="docs\api\Deveel.Events.Publisher.MassTransit\EventPublisherBuilderExtensions.md" />
+    <None Remove="docs\api\Deveel.Events.Publisher.MassTransit\ICloudEventMessage.md" />
+    <None Remove="docs\api\Deveel.Events.Publisher.MassTransit\MassTransitPublishException..ctor.DPCPH4QGCVFKN3QI1BVUOK3Z.md" />
+    <None Remove="docs\api\Deveel.Events.Publisher.MassTransit\MassTransitPublishException.md" />
+    <None Remove="docs\api\Deveel.Events.Publisher.MassTransit\MassTransitPublishOptions.DestinationAddress.md" />
+    <None Remove="docs\api\Deveel.Events.Publisher.MassTransit\MassTransitPublishOptions.MapAttributesToHeaders.md" />
+    <None Remove="docs\api\Deveel.Events.Publisher.MassTransit\MassTransitPublishOptions.Merge.15VIS8L3JTJEFMAKDI41NIUOB.md" />
+  </ItemGroup>
 </Project>
 
