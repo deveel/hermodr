@@ -146,7 +146,7 @@ public class BypassPipelinePublishOptionsTests
 
         public async Task InvokeAsync(EventContext context, EventPublishDelegate next)
         {
-            _count++;
+            Interlocked.Increment(ref _count);
             await next(context);
         }
     }

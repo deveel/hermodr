@@ -447,8 +447,8 @@ public class InMemoryDeadLetterMessageStoreTests
     /// </summary>
     private sealed class ForeignDeadLetterMessage : IDeadLetterMessage
     {
-        public string Id { get; }           = Guid.NewGuid().ToString("N");
-        public CloudEvent Event { get; }    = new() { Type = "foreign.event", Source = new Uri("https://foreign.example.com"), Id = Guid.NewGuid().ToString("N") };
+        public string Id { get; } = Guid.NewGuid().ToString("N");
+        public CloudEvent Event { get; } = new() { Type = "foreign.event", Source = new Uri("https://foreign.example.com"), Id = Guid.NewGuid().ToString("N") };
         public string PublisherName { get; } = string.Empty;
         public string? ChannelName { get; }
         public string? ChannelType { get; }
