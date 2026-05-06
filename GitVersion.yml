@@ -1,34 +1,21 @@
 mode: ContinuousDeployment
 tag-prefix: '[vV]?'
 
-# Conventional Commits-based semantic version bumping.
-# PR titles are used as squash-merge commit messages on `main`, so they drive
-# the version increment without any manual tagging or branch-name guessing.
+# Version increments are driven by tags only.
+# Commit messages (Conventional Commits) are kept for changelog/readability
+# but do NOT influence the version number.
 #
-#   fix(<scope>): <description>  →  patch bump  (x.y.Z)
-#   feat(<scope>): <description>  →  minor bump  (x.Y.0)
-#   feat!: / BREAKING CHANGE:    →  major bump  (X.0.0)
-#   docs / chore / ci / test …   →  no bump
-commit-message-incrementing: Enabled
-major-version-bump-message: '^(feat|fix|refactor|perf)(\([^)]+\))?!:|BREAKING[ -]CHANGE:'
-minor-version-bump-message: '^feat(\([^)]+\))?:'
-patch-version-bump-message: '^fix(\([^)]+\))?:'
-no-bump-message: '^(docs|style|test|chore|ci|build)(\([^)]+\))?:'
+# Patch bumps automatically on every merge to main.
+# Minor/major bumps only when a maintainer pushes a vX.Y.0 tag.
+#
+commit-message-incrementing: Disabled
 
 branches:
   main:
-    # Matches both `main` and legacy `master`.
     regex: ^main$|^master$
-    #
-    # ContinuousDelivery mode:
-    #   - Every merge produces a pre-release:  1.3.1-pre1, 1.3.1-pre2, …
-    #     The number is the commit count since the last stable tag.
-    #     The CI workflow publishes these to the GitHub package registry.
-    #   - Pushing a git tag (e.g. v1.3.1) yields the clean stable version: 1.3.1
-    #     That tag triggers the public NuGet release workflow.
     mode: ContinuousDelivery
     label: 'pre'
-    increment: Patch            # safe default; commit-message-incrementing overrides per merge
+    increment: Patch
     is-release-branch: true
     prevent-increment:
       of-merged-branch: false
@@ -36,26 +23,20 @@ branches:
     tracks-release-branches: false
 
   feature:
-    # Matches GitHub auto-generated branch names: <issue-number>-<slug>
-    # e.g. 123-add-dead-letter-channel
     regex: ^\d+[-]
     mode: ContinuousDelivery
     label: 'alpha'
-    increment: Minor
+    increment: Inherit
     is-release-branch: false
     prevent-increment:
       of-merged-branch: true
     source-branches: ['main']
 
   bugfix:
-    # Bug-fix branches must be named bugfix/<issue-number>-<slug>
-    # e.g. bugfix/123-fix-null-reference
-    # When creating the branch from the GitHub issue page, edit the auto-generated
-    # name to add the `bugfix/` prefix before clicking "Create branch".
     regex: ^bugfix[/\\]
     mode: ContinuousDelivery
     label: 'bugfix'
-    increment: Patch
+    increment: Inherit
     is-release-branch: false
     prevent-increment:
       of-merged-branch: true
