@@ -24,6 +24,11 @@ They forward the project list and output folder to shared core scripts in this f
 - `build-libs-core.bat`
 
 This keeps build/copy logic centralized and avoids duplication across samples.
+| [aspnet-publisher/OrderService.SimplePublisher](aspnet-publisher/OrderService.SimplePublisher/README.md) | RabbitMQ | ASP.NET Core Minimal API microservice that publishes Order lifecycle events to a RabbitMQ exchange |
+| [outbox-inapp/OrderService.InAppOutbox](outbox-inapp/OrderService.InAppOutbox/README.md) | RabbitMQ | Single-process transactional outbox with EF Core SQLite storage and an in-process relay |
+| [outbox-relay](outbox-relay/README.md) | MassTransit / RabbitMQ | Split transactional outbox with a separate relay worker consuming the shared SQLite outbox |
+| [deadletter-inproc/OrderService.InProcDeadLetter](deadletter-inproc/OrderService.InProcDeadLetter/README.md) | In-memory sample channels | Immediate in-process dead-letter interception and replay through the same publisher pipeline |
+| [deadletter-relay](deadletter-relay/README.md) | EF Core SQLite + in-memory recovery channel | Split dead-letter sample with a publisher app and a background worker sharing the replay repository |
 
 ---
 
@@ -66,7 +71,48 @@ curl -s -X POST http://localhost:5000/orders \
   }' | jq
 ```
 
-See the [sample README](aspnet-publisher/OrderService/README.md) for the full walkthrough.
+See the [sample README](aspnet-publisher/OrderService.SimplePublisher/README.md) for the full walkthrough.
+
+---
+
+## deadletter-inproc / OrderService.InProcDeadLetter
+
+**Path:** `deadletter-inproc/OrderService.InProcDeadLetter/`  
+**Framework:** .NET 9 console app  
+**Transport:** Sample in-memory channels
+
+This sample shows the lightest dead-letter integration: one channel fails, an `AddDeadLetter(...).UseHandler(...)` callback captures the failed `CloudEvent`, and the same process immediately replays it through the publisher pipeline to a recovery channel.
+
+Quick start:
+
+```bash
+cd deadletter-inproc/OrderService.InProcDeadLetter
+dotnet run
+```
+
+See the [sample README](deadletter-inproc/OrderService.InProcDeadLetter/README.md) for the full walkthrough.
+
+---
+
+## deadletter-relay
+
+**Path:** `deadletter-relay/`  
+**Framework:** .NET 9 console app + worker  
+**Transport:** EF Core SQLite dead-letter store with an in-memory recovery channel
+
+This sample splits dead-letter handling across two applications. `OrderService.Publisher` writes failed deliveries into a shared SQLite repository, and `OrderService.DeadLetterWorker` polls that store and replays pending messages in the background.
+
+Quick start:
+
+```bash
+cd deadletter-relay/OrderService.DeadLetterWorker
+dotnet run
+
+cd ../OrderService.Publisher
+dotnet run
+```
+
+See the [sample README](deadletter-relay/README.md) for the full walkthrough.
 
 ---
 

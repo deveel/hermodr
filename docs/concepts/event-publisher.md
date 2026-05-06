@@ -150,12 +150,13 @@ builder.Services.AddEventPublisher("notifications", b =>
 ```
 
 Named publishers are registered as **keyed singletons** under their name and are NOT exposed as
-the unkeyed `IEventPublisher`.  Resolve a named publisher through `IEventPublisherFactory`:
+the unkeyed `IEventPublisher`.  Resolve a named publisher through keyed DI:
 
 ```csharp
-public class NotificationService(IEventPublisherFactory factory)
+public class NotificationService(IServiceProvider services)
 {
-    private readonly IEventPublisher _publisher = factory.GetPublisher("notifications");
+    private readonly IEventPublisher _publisher =
+        services.GetRequiredKeyedService<IEventPublisher>("notifications");
 
     public async Task SendAsync(NotificationSent notification, CancellationToken ct)
         => await _publisher.PublishAsync(notification, cancellationToken: ct);
@@ -169,11 +170,7 @@ public class NotificationService(
     [FromKeyedServices("notifications")] IEventPublisher publisher) { /* … */ }
 ```
 
-#### `IEventPublisherFactory`
-
-| Member | Description |
-|--------|-------------|
-| `GetPublisher(string name = "")` | Returns the `IEventPublisher` registered under `name`. Use `""` (or omit the argument) for the default pipeline. |
+There is no separate publisher-factory abstraction in the current API surface; keyed DI is the supported resolution mechanism for named pipelines.
 
 ---
 
@@ -287,15 +284,15 @@ See [Named Channels](../publishers/named-channels.md) for the full guide.
 
 ### Using a named publisher pipeline
 
-When you have registered multiple named pipelines, resolve the correct one from
-`IEventPublisherFactory` and publish through it:
+When you have registered multiple named pipelines, resolve the correct keyed publisher
+and publish through it:
 
 ```csharp
-public class NotificationService(IEventPublisherFactory factory)
+public class NotificationService(IServiceProvider services)
 {
     public Task SendAsync(NotificationSent @event, CancellationToken ct)
     {
-        var publisher = factory.GetPublisher("notifications");
+        var publisher = services.GetRequiredKeyedService<IEventPublisher>("notifications");
         return publisher.PublishAsync(@event, cancellationToken: ct);
     }
 }
@@ -612,4 +609,3 @@ public class FrozenSystemTime : IEventSystemTime
 - [Typed Channels](../publishers/typed-channels.md)
 - [Subscriptions Dispatcher](../subscriptions/dispatcher.md)
 - [Event Annotations](event-annotations.md)
-

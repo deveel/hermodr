@@ -17,6 +17,8 @@ The framework is split into focused NuGet packages so you only take what you nee
 | [`Deveel.Events.Publisher.RabbitMq`](#deveeleventsublisherrabbitmq) | Publish events to a RabbitMQ exchange |
 | [`Deveel.Events.Publisher.MassTransit`](#deveeleventsublishermasstransit) | Publish events through a MassTransit bus |
 | [`Deveel.Events.Publisher.Webhook`](#deveeleventsublisherwebhook) | Deliver events to HTTP webhook endpoints |
+| [`Deveel.Events.Publisher.Outbox`](#deveeleventspublisheroutbox) | Persist events to a transactional outbox for later relay |
+| [`Deveel.Events.Publisher.Outbox.EntityFramework`](#deveeleventspublisheroutboxentityframework) | Entity Framework Core repository and helpers for the outbox channel |
 | [`Deveel.Events.Amqp.Annotations`](#deveeleventsampqannotations) | AMQP-specific attributes (exchange name, routing key) |
 
 ## Subscriptions package
@@ -66,8 +68,9 @@ The heart of the framework.  Provides:
 - `EventPublisher`
 - `IEventPublishChannel` and `IBatchEventPublishChannel`
 - `EventPublisherBuilder` for fluent DI registration
-- `IEventCreator` and `IEventIdGenerator` extensibility points
+- `IEventFactory`, `IEventIdGenerator`, and `IEventSystemTime` extensibility points
 - `EventPublisherOptions` for global defaults
+- named publisher pipelines resolved through keyed DI
 
 ```bash
 dotnet add package Deveel.Events.Publisher
@@ -123,6 +126,32 @@ Delivers events over HTTP to a webhook endpoint.  Features HMAC signing (SHA-256
 
 ```bash
 dotnet add package Deveel.Events.Publisher.Webhook
+```
+
+---
+
+### `Deveel.Events.Publisher.Outbox`
+
+[![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.Outbox.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.Outbox)
+[![GitHub pre-release](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/deveel.events/pkgs/nuget/Deveel.Events.Publisher.Outbox)
+
+Implements the transactional outbox pattern for event publishing.  It adds the `AddOutbox<TMessage>()` builder entry point, outbox relay services, repository abstractions, and message-factory hooks for persisting events before relaying them to a transport-specific publisher pipeline.
+
+```bash
+dotnet add package Deveel.Events.Publisher.Outbox
+```
+
+---
+
+### `Deveel.Events.Publisher.Outbox.EntityFramework`
+
+[![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.Outbox.EntityFramework.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.Outbox.EntityFramework)
+[![GitHub pre-release](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/deveel.events/pkgs/nuget/Deveel.Events.Publisher.Outbox.EntityFramework)
+
+Adds Entity Framework Core integration for the outbox channel, including `DbOutboxMessage`, `OutboxDbContext`, and the `WithEntityFramework()` registration helper that wires an `IOutboxMessageRepository<TMessage>` backed by EF Core.
+
+```bash
+dotnet add package Deveel.Events.Publisher.Outbox.EntityFramework
 ```
 
 ---
@@ -207,5 +236,4 @@ An in-memory publish channel for use in unit and integration tests.  Invokes a u
 ```bash
 dotnet add package Deveel.Events.TestPublisher
 ```
-
 
