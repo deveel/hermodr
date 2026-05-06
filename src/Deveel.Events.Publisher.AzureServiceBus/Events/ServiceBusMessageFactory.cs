@@ -155,8 +155,9 @@ namespace Deveel.Events {
 				// TODO: extract the partition key from the event
 			};
 
-            if (options?.ScheduleDeliveryAt.HasValue == true)
-                message.ScheduledEnqueueTime = options.ScheduleDeliveryAt.Value;
+            var scheduleDeliveryAt = options?.ScheduleDeliveryAt;
+            if (scheduleDeliveryAt.HasValue)
+                message.ScheduledEnqueueTime = scheduleDeliveryAt.Value;
 
 			AddProperties(message.ApplicationProperties, @event);
 
