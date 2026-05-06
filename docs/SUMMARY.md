@@ -27,7 +27,9 @@
   * [AMQP Annotations](publishers/rabbitmq.md#amqp-annotations)
 * [MassTransit](publishers/masstransit.md)
 * [Webhook](publishers/webhook.md)
+* [Publish Error Handling](publishers/error-handling.md)
 * [Transactional Outbox](publishers/outbox.md)
+* [Dead-Letter Handling and Replay](publishers/dead-letter.md)
 * [Typed Channels](publishers/typed-channels.md)
 * [Named Channels](publishers/named-channels.md)
 
@@ -60,10 +62,9 @@
 * [OrderService — Minimal API + RabbitMQ](samples/aspnet-publisher-rabbitmq.md)
 * [OrderService — In-Process Outbox + RabbitMQ](samples/outbox-inapp-rabbitmq.md)
 * [OrderService — Split Outbox + MassTransit RabbitMQ](samples/outbox-relay-masstransit.md)
+* [OrderService — In-Process Dead-Letter Replay](samples/deadletter-inproc.md)
+* [OrderService — Split Dead-Letter Replay with Entity Framework](samples/deadletter-relay-entityframework.md)
 
 ## Contributing
 
 * [Contributing](contributing.md)
-
-
-

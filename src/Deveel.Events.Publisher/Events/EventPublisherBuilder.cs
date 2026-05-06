@@ -61,7 +61,9 @@ namespace Deveel.Events {
                 var publisherType = builder._publisherType;
 
                 var optionsMonitor = sp.GetRequiredService<IOptionsMonitor<EventPublisherOptions>>();
-                var options = Microsoft.Extensions.Options.Options.Create(optionsMonitor.Get(builder.Name));
+                var optionsValue = optionsMonitor.Get(builder.Name);
+                optionsValue.PublisherName = builder.Name;
+                var options = Microsoft.Extensions.Options.Options.Create(optionsValue);
 
                 // Read channels from this builder's own isolated list, not from keyed DI.
                 // This guarantees that a second AddEventPublisher() call for the same name

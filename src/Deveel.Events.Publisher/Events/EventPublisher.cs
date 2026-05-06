@@ -284,6 +284,17 @@ namespace Deveel.Events
                 }
                 catch (Exception ex)
                 {
+                    await HandlePublishErrorAsync(new EventPublishErrorContext(
+                        PublisherOptions.PublisherName,
+                        EventPublishStage.ChannelPublish,
+                        ex,
+                        context.Services,
+                        context.CancellationToken,
+                        context.Event,
+                        context.Options,
+                        context.RawOptions,
+                        channel.GetType(),
+                        (channel as INamedEventPublishChannel)?.Name));
                     HandleChannelPublishError(ex, context.Event.Type!, channel.GetType());
                 }
             }
@@ -298,6 +309,38 @@ namespace Deveel.Events
                 ex);
         }
 
+        private IEnumerable<IEventPublishErrorHandler> GetPublishErrorHandlers(IServiceProvider services)
+        {
+            var publisherName = PublisherOptions.PublisherName ?? String.Empty;
+            return services.GetKeyedServices<IEventPublishErrorHandler>(publisherName);
+        }
+
+        private async Task HandlePublishErrorAsync(EventPublishErrorContext context)
+        {
+            var handlers = GetPublishErrorHandlers(context.Services).ToList();
+            if (handlers.Count == 0)
+                return;
+
+            foreach (var handler in handlers)
+            {
+                try
+                {
+                    await handler.HandleAsync(context);
+                }
+                catch (OperationCanceledException) when (context.CancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception handlerException)
+                {
+                    _logger.LogPublishErrorHandlerError(handlerException, context.Stage, context.Event?.Type, context.ChannelType);
+                    throw new EventPublishException(
+                        $"An error occurred while handling a publish error at stage {context.Stage}",
+                        new AggregateException(context.Exception, handlerException));
+                }
+            }
+        }
+
         private async Task PublishEventToChannelsAsync(IEnumerable<IEventPublishChannel> channels, CloudEvent @event,
             EventPublishOptions? options = null, CancellationToken cancellationToken = default)
         {
@@ -309,7 +352,7 @@ namespace Deveel.Events
             var bypassPipeline = options is BypassPipelinePublishOptions;
             var effectiveOptions = options?.Unwrap();
 
-            var context = new EventContext(@event, scope.ServiceProvider, cancellationToken, effectiveOptions);
+            var context = new EventContext(@event, scope.ServiceProvider, cancellationToken, effectiveOptions, options);
             EventPublishDelegate terminal = ctx =>
             {
                 ctx.Event = EnsureEvent(ctx.Event);
@@ -333,35 +376,52 @@ namespace Deveel.Events
             => PublishEventToChannelsAsync(_channels, @event, options, cancellationToken);
 
         /// <inheritdoc/>
-        public Task PublishAsync(Type eventType, object? @event, EventPublishOptions? options = null,
+        public async Task PublishAsync(Type eventType, object? @event, EventPublishOptions? options = null,
             CancellationToken cancellationToken = default)
         {
-            if (!TryCreateCloudEvent(eventType, @event, out var cloudEvent))
-                return Task.CompletedTask;
+            var cloudEvent = await TryCreateCloudEventAsync(eventType, @event, options, cancellationToken);
+            if (cloudEvent == null)
+                return;
 
             var typedChannels = GetTypedChannels(eventType);
             if (typedChannels.Count > 0)
-                return PublishEventToChannelsAsync(typedChannels, cloudEvent, options, cancellationToken);
+            {
+                await PublishEventToChannelsAsync(typedChannels, cloudEvent, options, cancellationToken);
+                return;
+            }
 
-            return PublishEventAsync(cloudEvent, options, cancellationToken);
+            await PublishEventAsync(cloudEvent, options, cancellationToken);
         }
 
-        private bool TryCreateCloudEvent(Type eventType, object? @event, out CloudEvent cloudEvent)
+        private async Task<CloudEvent?> TryCreateCloudEventAsync(
+            Type eventType,
+            object? @event,
+            EventPublishOptions? options,
+            CancellationToken cancellationToken)
         {
             try
             {
-                cloudEvent = CreateEventFromData(eventType, @event);
-                return true;
+                return CreateEventFromData(eventType, @event);
             }
             catch (Exception ex)
             {
                 _logger.LogEventCreateError(ex, eventType);
+                await using var scope = _serviceProvider.CreateAsyncScope();
+                await HandlePublishErrorAsync(new EventPublishErrorContext(
+                    PublisherOptions.PublisherName,
+                    EventPublishStage.EventCreation,
+                    ex,
+                    scope.ServiceProvider,
+                    cancellationToken,
+                    options: options?.Unwrap(),
+                    rawOptions: options,
+                    dataType: eventType,
+                    data: @event));
                 if (PublisherOptions.ThrowOnErrors)
                     throw new EventPublishException(
                         $"An error occurred while creating an event of type {eventType.FullName} from the provided event",
                         ex);
-                cloudEvent = null!;
-                return false;
+                return null;
             }
         }
 
@@ -392,46 +452,70 @@ namespace Deveel.Events
         /// <param name="event">The event data or <see cref="CloudEvent"/> to publish.</param>
         /// <param name="options">Optional per-call options forwarded to the channel(s).</param>
         /// <param name="cancellationToken">A token to cancel the operation.</param>
-        public Task PublishAsync<TEvent>(TEvent @event, EventPublishOptions? options = null,
+        public async Task PublishAsync<TEvent>(TEvent @event, EventPublishOptions? options = null,
             CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(@event);
 
             if (@event is IEventConvertible eventConvertible)
             {
-                if (!TryConvertToCloudEvent(eventConvertible, typeof(TEvent), out var convertedEvent))
-                    return Task.CompletedTask;
-                return PublishEventAsync(convertedEvent, options, cancellationToken);
+                var convertedEvent = await TryConvertToCloudEventAsync(
+                    eventConvertible,
+                    typeof(TEvent),
+                    @event,
+                    options,
+                    cancellationToken);
+                if (convertedEvent == null)
+                    return;
+
+                await PublishEventAsync(convertedEvent, options, cancellationToken);
+                return;
             }
 
             if (@event is CloudEvent cloudEvent)
-                return PublishEventAsync(cloudEvent, options, cancellationToken);
+            {
+                await PublishEventAsync(cloudEvent, options, cancellationToken);
+                return;
+            }
 
-            return PublishAsync(typeof(TEvent), @event, options, cancellationToken);
+            await PublishAsync(typeof(TEvent), @event, options, cancellationToken);
         }
 
-        private bool TryConvertToCloudEvent(IEventConvertible convertible, Type dataType, out CloudEvent cloudEvent)
+        private async Task<CloudEvent?> TryConvertToCloudEventAsync(
+            IEventConvertible convertible,
+            Type dataType,
+            object? data,
+            EventPublishOptions? options,
+            CancellationToken cancellationToken)
         {
             try
             {
                 var converted = convertible.ToCloudEvent();
                 if (converted == null)
                 {
-                    cloudEvent = null!;
-                    return false;
+                    return null;
                 }
-                cloudEvent = converted;
-                return true;
+
+                return converted;
             }
             catch (Exception ex)
             {
                 _logger.LogEventCreateError(ex, dataType);
+                await using var scope = _serviceProvider.CreateAsyncScope();
+                await HandlePublishErrorAsync(new EventPublishErrorContext(
+                    PublisherOptions.PublisherName,
+                    EventPublishStage.EventConversion,
+                    ex,
+                    scope.ServiceProvider,
+                    cancellationToken,
+                    options: options?.Unwrap(),
+                    rawOptions: options,
+                    dataType: dataType,
+                    data: data));
                 if (PublisherOptions.ThrowOnErrors)
                     throw new EventPublishException("An error occurred while converting data", ex);
-                cloudEvent = null!;
-                return false;
+                return null;
             }
         }
     }
 }
-
