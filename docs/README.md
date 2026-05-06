@@ -100,6 +100,7 @@ Treat your event schemas the same way you treat public API contracts:
 - A **unified `EventPublisher` service** that fans out events to one or more registered channels.
 - **Channel implementations** for Azure Service Bus, RabbitMQ, MassTransit, HTTP Webhooks, and a transactional outbox — each installable as a separate NuGet package.
 - **In-process subscriptions and routing** via `AddSubscriptions()`, filters, and resolver extensibility.
+- **Channel implementations** for Azure Service Bus, RabbitMQ, MassTransit, and HTTP Webhooks — each installable as a separate NuGet package.
 - **Annotation attributes** (`[Event]`, `[EventProperty]`) to describe event metadata directly on your data classes, in the ubiquitous language of the domain.
 - **Schema support** — derive, build, and export event schemas to JSON, YAML, and AsyncAPI documents.
 - **Validation** — validate `CloudEvent` instances against a schema before publishing.
@@ -124,6 +125,7 @@ All events are modelled as [`CloudEvent`](https://github.com/cloudevents/spec) o
 | [Core Concepts](concepts/README.md) | Understand the building blocks |
 | [Publisher Channels](publishers/README.md) | Configure a specific transport |
 | [Event Subscriptions](subscriptions/README.md) | In-process dispatch, filters, routing, and resolvers |
+| [Publisher Channels](publishers/README.md) | Configure a specific transport |
 | [Event Schema](schema/README.md) | Schema definition, export, and validation |
 | [Testing](testing/README.md) | Unit-test event publishing |
 | [Samples](samples/README.md) | Runnable end-to-end example projects |

@@ -65,6 +65,8 @@ Every package requires the **Microsoft Dependency Injection** infrastructure (`M
 | `Deveel.Events.Amqp.Annotations` | *(none — pure attribute library)* |
 | `Deveel.Events.Publisher` | `CloudNative.CloudEvents` · `Microsoft.Extensions.Options` · `Microsoft.Extensions.Logging.Abstractions` |
 | `Deveel.Events.Publisher.AzureServiceBus` | `Azure.Messaging.ServiceBus` ≥ 7.20 |
+| `Deveel.Events.Publisher.DeadLetter` | `Deveel.Events.Publisher` · `Microsoft.Extensions.Hosting.Abstractions` |
+| `Deveel.Events.Publisher.DeadLetter.EntityFramework` | `Deveel.Events.Publisher.DeadLetter` · `Microsoft.EntityFrameworkCore` |
 | `Deveel.Events.Publisher.RabbitMq` | `RabbitMQ.Client` ≥ 7.2 · `Deveel.Events.Amqp.Annotations` |
 | `Deveel.Events.Publisher.MassTransit` | `MassTransit` ≥ 9.1 |
 | `Deveel.Events.Publisher.Webhook` | `Microsoft.Extensions.Http.Resilience` ≥ 9.6 |
@@ -85,6 +87,8 @@ Every package requires the **Microsoft Dependency Injection** infrastructure (`M
 | `Deveel.Events.Annotations` | Attributes for describing event metadata on data classes | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Annotations.svg)](https://www.nuget.org/packages/Deveel.Events.Annotations) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Annotations.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Annotations)                             | [![NuGet Downloads](https://img.shields.io/nuget/dt/Deveel.Events.Annotations.svg)](https://www.nuget.org/packages/Deveel.Events.Annotations) |
 | `Deveel.Events.Publisher` | Core publisher infrastructure (`EventPublisher`, DI helpers) | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Publisher.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Publisher)                                 | [![NuGet Downloads](https://img.shields.io/nuget/dt/Deveel.Events.Publisher.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher) |
 | `Deveel.Events.Publisher.AzureServiceBus` | Publish events to Azure Service Bus | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.AzureServiceBus.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.AzureServiceBus) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Publisher.AzureServiceBus.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Publisher.AzureServiceBus) | [![NuGet Downloads](https://img.shields.io/nuget/dt/Deveel.Events.Publisher.AzureServiceBus.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.AzureServiceBus) |
+| `Deveel.Events.Publisher.DeadLetter` | Dead-letter handling, persistent replay abstractions, and replay workers | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.DeadLetter.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.DeadLetter) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Publisher.DeadLetter.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Publisher.DeadLetter) | [![NuGet Downloads](https://img.shields.io/nuget/dt/Deveel.Events.Publisher.DeadLetter.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.DeadLetter) |
+| `Deveel.Events.Publisher.DeadLetter.EntityFramework` | Entity Framework Core persistence for dead-letter messages | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.DeadLetter.EntityFramework.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.DeadLetter.EntityFramework) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Publisher.DeadLetter.EntityFramework.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Publisher.DeadLetter.EntityFramework) | [![NuGet Downloads](https://img.shields.io/nuget/dt/Deveel.Events.Publisher.DeadLetter.EntityFramework.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.DeadLetter.EntityFramework) |
 | `Deveel.Events.Amqp.Annotations` | AMQP-specific routing attributes (exchange, routing key) | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Amqp.Annotations.svg)](https://www.nuget.org/packages/Deveel.Events.Amqp.Annotations) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Amqp.Annotations.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Amqp.Annotations)                   | [![NuGet Downloads](https://img.shields.io/nuget/dt/Deveel.Events.Amqp.Annotations.svg)](https://www.nuget.org/packages/Deveel.Events.Amqp.Annotations) |
 | `Deveel.Events.Publisher.RabbitMq` | Publish events to a RabbitMQ exchange | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.RabbitMq.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.RabbitMq) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Publisher.RabbitMq.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Publisher.RabbitMq)               | [![NuGet Downloads](https://img.shields.io/nuget/dt/Deveel.Events.Publisher.RabbitMq.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.RabbitMq) |
 | `Deveel.Events.Publisher.MassTransit` | Publish events through a MassTransit bus | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.MassTransit.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.MassTransit) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Publisher.MassTransit.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Publisher.MassTransit)         | [![NuGet Downloads](https://img.shields.io/nuget/dt/Deveel.Events.Publisher.MassTransit.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.MassTransit) |
@@ -116,8 +120,7 @@ Every package requires the **Microsoft Dependency Injection** infrastructure (`M
 
 The full documentation is published at **[events.deveel.org](https://events.deveel.org)** — including installation guides, concept references, channel adapters, schema export, and testing utilities.
 
-The source of the documentation is also available in the [`docs/`](docs/README.md) folder of this repository.
-
+The source of the documentation is also available in the [`docs/`](docs/README.md) folder of this repository
 | Section | Description |
 |---------|-------------|
 | [Getting Started](https://events.deveel.org/getting-started/installation) | Installation and quick-start guide |
@@ -138,7 +141,7 @@ The framework is still evolving. See the [ROADMAP](ROADMAP.md) for the full desc
 
 ### v1.2 — Reliability
 
-- [x] **Event Replay & Dead-Letter Handling** — capture and resubmit failed events with configurable retry and back-off
+- [ ] **Event Replay & Dead-Letter Handling** — capture and resubmit failed events with configurable retry and back-off
 - [x] **Outbox Pattern Integration** — guaranteed exactly-once publishing via a transactional outbox channel
 - [ ] **Event Scheduler & Deferred Publishing** — defer event publishing to a future point in time or after a delay
 

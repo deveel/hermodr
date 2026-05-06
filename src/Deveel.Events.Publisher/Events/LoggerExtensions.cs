@@ -43,10 +43,7 @@ namespace Deveel.Events {
 		[LoggerMessage(400020, LogLevel.Trace, "Executing event-publish pipeline for event of type '{EventType}'")]
 		public static partial void TracePipelineExecuting(this ILogger logger, string? eventType);
 
- 		[LoggerMessage(400021, LogLevel.Trace, "Event-publish pipeline completed for event of type '{EventType}'")]
- 		public static partial void TracePipelineCompleted(this ILogger logger, string? eventType);
-
-        [LoggerMessage(-30004, LogLevel.Error, "Could not handle the publish error at stage '{Stage}' for the event of type '{EventType}' through the channel of type '{ChannelType}'")]
-        public static partial void LogPublishErrorHandlerError(this ILogger logger, Exception ex, EventPublishStage stage, string? eventType, Type? channelType);
- 	}
+		[LoggerMessage(400021, LogLevel.Trace, "Event-publish pipeline completed for event of type '{EventType}'")]
+		public static partial void TracePipelineCompleted(this ILogger logger, string? eventType);
+	}
 }

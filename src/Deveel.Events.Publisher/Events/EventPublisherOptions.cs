@@ -11,15 +11,6 @@ namespace Deveel.Events {
     /// </summary>
     public class EventPublisherOptions {
         /// <summary>
-        /// Gets the logical name of the publisher pipeline that owns these options.
-        /// </summary>
-        /// <remarks>
-        /// This value is assigned by the builder at runtime and is primarily used by
-        /// infrastructure features that resolve keyed services per publisher slot.
-        /// </remarks>
-        public string PublisherName { get; internal set; } = String.Empty;
-
-        /// <summary>
         /// The default source of the events, used when the 
         /// source is not specified in the event.
         /// </summary>

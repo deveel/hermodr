@@ -45,21 +45,16 @@ namespace Deveel.Events
         /// <param name="options">
         /// Optional per-call options that override the channel-level defaults.
         /// </param>
-        /// <param name="rawOptions">
-        /// The original per-call options object before any transport wrappers are unwrapped.
-        /// </param>
         internal EventContext(
             CloudEvent @event,
             IServiceProvider services,
             CancellationToken cancellationToken = default,
-            EventPublishOptions? options = null,
-            EventPublishOptions? rawOptions = null)
+            EventPublishOptions? options = null)
         {
             Event = @event ?? throw new ArgumentNullException(nameof(@event));
             Services = services ?? throw new ArgumentNullException(nameof(services));
             CancellationToken = cancellationToken;
             Options = options;
-            RawOptions = rawOptions;
         }
 
         /// <summary>
@@ -100,11 +95,6 @@ namespace Deveel.Events
         public EventPublishOptions? Options { get; set; }
 
         /// <summary>
-        /// Gets the original per-call publish options before transport wrappers were unwrapped.
-        /// </summary>
-        public EventPublishOptions? RawOptions { get; }
-
-        /// <summary>
         /// Gets a free-form dictionary for passing arbitrary data between middleware
         /// components within the same pipeline invocation (e.g. correlation IDs,
         /// intermediate results).
@@ -112,4 +102,5 @@ namespace Deveel.Events
         public Dictionary<string, object?> Items { get; } = new Dictionary<string, object?>();
     }
 }
+
 
