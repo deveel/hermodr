@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Deveel.Events.Publisher.DeadLetter\Deveel.Events.Publisher.DeadLetter.csproj" />
+  </ItemGroup>
+
+</Project>
