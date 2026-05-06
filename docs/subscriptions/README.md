@@ -42,7 +42,7 @@ Subscriptions are evaluated by one or more `IEventSubscriptionResolver` implemen
 ```
 
 1. You register resolver/registry services with `AddSubscriptions()`.
-2. You enable dispatcher middleware at runtime with `UseDispatcher()` (or `UseDispatcher(EventDispatcherOptions)`).
+2. `AddSubscriptions()` also wires `EventDispatcher` into the publisher pipeline during DI registration.
 3. For each event, the dispatcher queries **all** `IEventSubscriptionResolver` instances and aggregates matches.
 4. Every matched subscription's `HandleAsync` is invoked sequentially.
 
@@ -66,20 +66,16 @@ services.AddEventPublisher()
     }, name: "log-orders");
 ```
 
-### 3. Enable dispatcher middleware and publish
+### 3. Publish
 
 ```csharp
-var publisher = serviceProvider.GetRequiredService<EventPublisher>()
-    .UseDispatcher(new EventDispatcherOptions
-    {
-        ThrowOnHandlerError = false // default; set true to fail-fast on handler errors
-    });
+var publisher = serviceProvider.GetRequiredService<IEventPublisher>();
 
 await publisher.PublishAsync(new OrderPlaced { OrderId = "42" });
 // ↑ "log-orders" subscription fires because "com.example.order.placed" matches "com.example.order.*"
 ```
 
-Use `UseDispatcher()` when you want default behavior without explicitly creating options.
+Configure `EventDispatcherOptions` during registration through `AddSubscriptions(options => ...)` or `subs.ConfigureOptions(...)`.  The legacy `UseDispatcher()` extension remains for source compatibility but is a no-op.
 
 ## Pages in This Section
 

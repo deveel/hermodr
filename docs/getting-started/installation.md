@@ -41,10 +41,13 @@ The table below lists the key NuGet packages that each library brings in as tran
 | `Deveel.Events.Publisher.RabbitMq` | `RabbitMQ.Client` ≥ 7.2 · `Deveel.Events.Amqp.Annotations` |
 | `Deveel.Events.Publisher.MassTransit` | `MassTransit` ≥ 9.1 |
 | `Deveel.Events.Publisher.Webhook` | `Microsoft.Extensions.Http.Resilience` ≥ 9.6 |
+| `Deveel.Events.Publisher.Outbox` | `Deveel.Repository.Manager` · `Microsoft.Extensions.Hosting.Abstractions` |
+| `Deveel.Events.Publisher.Outbox.EntityFramework` | `Deveel.Events.Publisher.Outbox` · `Deveel.Repository.EntityFramework` · `Microsoft.EntityFrameworkCore.Relational` |
 | `Deveel.Events.Subscriptions` | `Deveel.Events.Publisher` · `Deveel.Filters` · `Microsoft.Extensions.Logging.Abstractions` |
 | `Deveel.Events.Schema` | `CloudNative.CloudEvents` |
 | `Deveel.Events.Schema.Yaml` | `YamlDotNet` ≥ 16.3 |
 | `Deveel.Events.Schema.AsyncApi` | `Saunter` ≥ 0.13 · `YamlDotNet` ≥ 16.3 · ASP.NET Core shared framework |
+| `Deveel.Events.TestPublisher` | `Deveel.Events.Publisher` |
 
 ## Core package
 
@@ -70,6 +73,12 @@ dotnet add package Deveel.Events.Publisher.MassTransit
 
 # HTTP Webhooks
 dotnet add package Deveel.Events.Publisher.Webhook
+
+# Transactional Outbox
+dotnet add package Deveel.Events.Publisher.Outbox
+
+# Transactional Outbox + Entity Framework Core
+dotnet add package Deveel.Events.Publisher.Outbox.EntityFramework
 ```
 
 ## Subscriptions package
@@ -131,4 +140,3 @@ You will also need a GitHub Personal Access Token (PAT) with `read:packages` sco
 ## What's next?
 
 → [Quick Start](quick-start.md) — publish your first event in minutes.
-

@@ -23,7 +23,7 @@ EventPublisher.PublishAsync(event)
 
 Use the `RouteToChannel` extension methods on `EventPublisherBuilder`:
 
-> Routing subscriptions run only when dispatcher middleware is enabled on the runtime publisher (`publisher.UseDispatcher()` or `publisher.UseDispatcher(options)`).
+> Routing subscriptions run when the publisher has been configured with `AddSubscriptions()`, which wires dispatcher middleware at DI-registration time. The legacy `UseDispatcher()` methods are no-ops kept only for source compatibility.
 
 ### By Type Pattern
 

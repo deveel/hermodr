@@ -26,7 +26,7 @@ A `CloudEvent` consists of a set of **required** and **optional** attributes:
 
 ## How Deveel Events Populates the Envelope
 
-When you call `publisher.PublishAsync(data)` with an annotated data object, the `IEventCreator` service reads the `[Event]` attribute and populates the envelope as follows:
+When you call `publisher.PublishAsync(data)` with an annotated data object, the `IEventFactory` service reads the `[Event]` attribute and populates the envelope as follows:
 
 | CloudEvent attribute | Source |
 |----------------------|--------|
@@ -75,4 +75,3 @@ await publisher.PublishEventAsync(@event);
 
 - [CloudEvents Specification v1.0](https://github.com/cloudevents/spec/blob/v1.0.2/cloudevents/spec.md)
 - [CloudNative.CloudEvents SDK for .NET](https://github.com/cloudevents/sdk-csharp)
-

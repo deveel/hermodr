@@ -15,6 +15,7 @@
 * [Overview](concepts/README.md)
 * [CloudEvents Standard](concepts/cloudevents.md)
 * [Event Publisher](concepts/event-publisher.md)
+* [Event Creation](concepts/event-creation.md)
 * [Publish Pipeline & Middleware](concepts/publish-pipeline.md)
 * [Publish Channels](concepts/publish-channels.md)
 * [Event Annotations](concepts/event-annotations.md)
@@ -27,9 +28,7 @@
   * [AMQP Annotations](publishers/rabbitmq.md#amqp-annotations)
 * [MassTransit](publishers/masstransit.md)
 * [Webhook](publishers/webhook.md)
-* [Publish Error Handling](publishers/error-handling.md)
 * [Transactional Outbox](publishers/outbox.md)
-* [Dead-Letter Handling and Replay](publishers/dead-letter.md)
 * [Typed Channels](publishers/typed-channels.md)
 * [Named Channels](publishers/named-channels.md)
 
@@ -62,9 +61,14 @@
 * [OrderService — Minimal API + RabbitMQ](samples/aspnet-publisher-rabbitmq.md)
 * [OrderService — In-Process Outbox + RabbitMQ](samples/outbox-inapp-rabbitmq.md)
 * [OrderService — Split Outbox + MassTransit RabbitMQ](samples/outbox-relay-masstransit.md)
-* [OrderService — In-Process Dead-Letter Replay](samples/deadletter-inproc.md)
-* [OrderService — Split Dead-Letter Replay with Entity Framework](samples/deadletter-relay-entityframework.md)
+
+## Project
+
+* [Versioning](versioning.md)
+* [AMQP Annotations (moved)](amqp/README.md)
 
 ## Contributing
 
 * [Contributing](contributing.md)
+
+
