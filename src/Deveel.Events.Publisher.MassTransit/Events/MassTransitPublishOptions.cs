@@ -27,6 +27,7 @@ namespace Deveel.Events
                 ChannelName            = typedOptions.ChannelName            ?? baseOptions.ChannelName,
                 DestinationAddress     = typedOptions.DestinationAddress     ?? baseOptions.DestinationAddress,
                 MapAttributesToHeaders = typedOptions.MapAttributesToHeaders ?? baseOptions.MapAttributesToHeaders,
+                ScheduleDeliveryAt     = typedOptions.ScheduleDeliveryAt     ?? baseOptions.ScheduleDeliveryAt,
             };
         }
 

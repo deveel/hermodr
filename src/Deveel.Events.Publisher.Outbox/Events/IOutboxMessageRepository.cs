@@ -51,6 +51,22 @@ public interface IOutboxMessageRepository<TMessage> : IRepository<TMessage, stri
     Task SetDeliveredAsync(TMessage message, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Schedules the first delivery of <paramref name="message"/> by keeping it in
+    /// <see cref="OutboxMessageStatus.Pending"/> and setting
+    /// <see cref="IOutboxMessage.NextRetryAt"/> to <paramref name="scheduledAt"/>.
+    /// This operation does not increment <see cref="IOutboxMessage.RetryCount"/>.
+    /// </summary>
+    /// <param name="message">The message to defer.</param>
+    /// <param name="scheduledAt">
+    /// The UTC time when the relay should make the first delivery attempt.
+    /// </param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    Task SetDeferredAsync(
+        TMessage message,
+        DateTimeOffset scheduledAt,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Records a transient delivery failure and schedules the next retry attempt,
     /// updating <see cref="IOutboxMessage.Status"/> back to
     /// <see cref="OutboxMessageStatus.Pending"/> with an incremented

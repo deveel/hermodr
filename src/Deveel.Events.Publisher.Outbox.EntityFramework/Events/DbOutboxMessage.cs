@@ -140,7 +140,7 @@ public class DbOutboxMessage : IOutboxMessage
     /// Gets or sets the UTC timestamp at which this message was first created
     /// and inserted into the outbox table.
     /// </summary>
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset CreatedAt { get; set; } = EventSystemTime.Instance.UtcNow;
 
     /// <summary>
     /// Gets or sets the UTC timestamp of the most recent status transition,

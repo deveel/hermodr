@@ -15,7 +15,20 @@ namespace Deveel.Events;
 public sealed class InMemoryDeadLetterMessageStore : IDeadLetterMessageStore
 {
     private readonly ConcurrentDictionary<string, DeadLetterMessage> _messages = new(StringComparer.Ordinal);
+    private readonly IEventSystemTime _systemTime;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="InMemoryDeadLetterMessageStore"/> class.
+    /// </summary>
+    /// <param name="systemTime">
+    /// Optional clock abstraction used to evaluate replay eligibility for pending messages.
+    /// </param>
+    public InMemoryDeadLetterMessageStore(IEventSystemTime? systemTime = null)
+    {
+        _systemTime = systemTime ?? EventSystemTime.Instance;
+    }
+
+    /// <inheritdoc />
     public Task AddAsync(DeadLetterMessage entity, CancellationToken cancellationToken = default)
     {
         _messages[entity.Id] = entity;
@@ -62,7 +75,7 @@ public sealed class InMemoryDeadLetterMessageStore : IDeadLetterMessageStore
     /// <inheritdoc />
     public Task<IReadOnlyList<DeadLetterMessage>> GetPendingMessagesAsync(int? limit = null, CancellationToken cancellationToken = default)
     {
-        var now = DateTimeOffset.UtcNow;
+        var now = _systemTime.UtcNow;
         IEnumerable<DeadLetterMessage> query = _messages.Values
             .Where(message => message.Status == DeadLetterMessageStatus.Pending)
             .Where(message => message.NextReplayAt is null || message.NextReplayAt <= now)

@@ -15,13 +15,34 @@ namespace Deveel.Events
 {
     /// <summary>
     /// An <see cref="EventPublishChannel{TOptions}"/> implementation that
-    /// publishes events to a RabbitMQ exchange.
+    /// publishes <see cref="CloudEvent"/> instances to a RabbitMQ exchange.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The exchange name and routing key are resolved in precedence order: a
+    /// <c>amqp-exchange</c> / <c>amqp-routingkey</c> CloudEvent attribute on the
+    /// event itself overrides the channel-level defaults set in
+    /// <see cref="RabbitMqPublishOptions"/>.
+    /// </para>
+    /// <para>
+    /// A single <see cref="RabbitMQ.Client.IChannel"/> is created lazily on the first
+    /// publish and reused across calls. If the broker closes the channel it is
+    /// automatically recreated on the next publish. A <see cref="SemaphoreSlim"/> ensures
+    /// channel creation and publishing are never interleaved across concurrent callers.
+    /// </para>
+    /// <para>
+    /// When <see cref="RabbitMqPublishOptions.PublisherConfirms"/> is <c>true</c> (the
+    /// default) the publish call blocks until the broker acknowledges the message or the
+    /// <see cref="RabbitMqPublishOptions.ConfirmTimeout"/> elapses, at which point a
+    /// <see cref="TimeoutException"/> is thrown.
+    /// </para>
+    /// </remarks>
     class RabbitMqPublishChannel :
         EventPublishChannel<RabbitMqPublishOptions>,
         IAsyncDisposable, IDisposable
     {
         private readonly IRabbitMqMessageFactory _messageFactory;
+        private readonly IEventSystemTime _systemTime;
         private readonly ILogger _logger;
         private readonly IConnection _connection;
 
@@ -46,6 +67,12 @@ namespace Deveel.Events
         /// The factory used to convert a <see cref="CloudNative.CloudEvents.CloudEvent"/>
         /// into a <see cref="RabbitMqMessage"/> ready for publishing.
         /// </param>
+        /// <param name="systemTime">
+        /// Optional provider of the current UTC time; used to stamp
+        /// <see cref="RabbitMQ.Client.AmqpTimestamp"/> on messages whose
+        /// <see cref="CloudNative.CloudEvents.CloudEvent.Time"/> is <c>null</c>.
+        /// Defaults to <see cref="EventSystemTime.Instance"/> when <c>null</c>.
+        /// </param>
         /// <param name="validators">
         /// Optional collection of <see cref="IValidateOptions{RabbitMqPublishOptions}"/>
         /// services registered in the DI container. When the collection is empty or <c>null</c>
@@ -58,12 +85,14 @@ namespace Deveel.Events
             IOptions<RabbitMqPublishOptions> options,
             IConnection connection,
             IRabbitMqMessageFactory messageFactory,
+            IEventSystemTime? systemTime = null,
             IEnumerable<IValidateOptions<RabbitMqPublishOptions>>? validators = null,
             ILogger<RabbitMqPublishChannel>? logger = null)
             : base(options.Value, validators)
         {
             _connection = connection;
             _messageFactory = messageFactory;
+            _systemTime = systemTime ?? EventSystemTime.Instance;
             _logger = logger ?? new NullLogger<RabbitMqPublishChannel>();
         }
 
@@ -75,10 +104,10 @@ namespace Deveel.Events
 
         /// <inheritdoc/>
         /// <remarks>
-        /// Performs a property-level merge: each nullable property in
-        /// <paramref name="perCallOptions"/> that is non-<c>null</c> overrides the
-        /// corresponding property from <paramref name="defaults"/>; a <c>null</c>
-        /// value signals "use the channel-level default" for that property.
+        /// Overrides the base coarse merge with a property-level merge: each nullable
+        /// property in <paramref name="perCallOptions"/> that is non-<c>null</c> overrides
+        /// the corresponding property from <paramref name="defaults"/>; a <c>null</c> value
+        /// signals "use the channel-level default" for that property.
         /// </remarks>
         protected override RabbitMqPublishOptions MergeOptions(
             RabbitMqPublishOptions defaults,
@@ -101,6 +130,7 @@ namespace Deveel.Events
                 PublisherConfirms     = perCallOptions.PublisherConfirms     ?? defaults.PublisherConfirms,
                 ConfirmTimeout        = perCallOptions.ConfirmTimeout        ?? defaults.ConfirmTimeout,
                 Mandatory             = perCallOptions.Mandatory             ?? defaults.Mandatory,
+                ScheduleDeliveryAt    = perCallOptions.ScheduleDeliveryAt    ?? defaults.ScheduleDeliveryAt,
             };
         }
 
@@ -167,7 +197,7 @@ namespace Deveel.Events
                 Type = @event.Type,
                 MessageId = @event.Id,
                 Timestamp = new AmqpTimestamp(
-                    (@event.Time ?? DateTimeOffset.UtcNow).ToUnixTimeSeconds()),
+                    (@event.Time ?? _systemTime.UtcNow).ToUnixTimeSeconds()),
                 DeliveryMode = (options.PersistentMessages ?? DefaultPersistentMessages)
                     ? DeliveryModes.Persistent
                     : DeliveryModes.Transient,

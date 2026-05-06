@@ -9,4 +9,14 @@
   <ItemGroup>
     <ProjectReference Include="..\Deveel.Events.Schema\Deveel.Events.Schema.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <None Remove="docs\api\Deveel.Events.AsyncApiSerializer.md" />
+    <None Remove="docs\api\Deveel.Events.EventSchemaAsyncApiExtensions.ToJsonSchema(thisDeveel.Events.IEventSchema).md" />
+    <None Remove="docs\api\Deveel.Events.EventSchemaAsyncApiExtensions.md" />
+    <None Remove="docs\api\Deveel.Events.EventSchemaAsyncApiWriter.Title.md" />
+    <None Remove="docs\api\Deveel.Events.EventSchemaAsyncApiWriter.md" />
+    <None Remove="docs\api\Deveel.Events.EventSchemasAsyncApiWriter.EventSchemasAsyncApiWriter(string,string,Deveel.Events.AsyncApiFormat).md" />
+    <None Remove="docs\api\Deveel.Events.EventSchemasAsyncApiWriter.Title.md" />
+    <None Remove="docs\api\Deveel.Events.EventSchemasAsyncApiWriter.Version.md" />
+  </ItemGroup>
 </Project>

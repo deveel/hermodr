@@ -97,7 +97,7 @@ public class EntityOutboxMessageRepository<TMessage>
         Logger.LogMarkingOutboxMessageAsSending();
 
         message.Status = OutboxMessageStatus.Sending;
-        message.LastStatusAt = SystemTime.Default.UtcNow;
+        message.LastStatusAt = _systemTime.UtcNow;
         return Task.CompletedTask;
     }
 
@@ -107,7 +107,20 @@ public class EntityOutboxMessageRepository<TMessage>
         Logger.LogMarkingOutboxMessageAsDelivered();
 
         message.Status = OutboxMessageStatus.Delivered;
-        message.LastStatusAt = SystemTime.Default.UtcNow;
+        message.LastStatusAt = _systemTime.UtcNow;
+        return Task.CompletedTask;
+    }
+
+    /// <inheritdoc/>
+    public Task SetDeferredAsync(
+        TMessage message,
+        DateTimeOffset scheduledAt,
+        CancellationToken cancellationToken = default)
+    {
+        message.Status = OutboxMessageStatus.Pending;
+        message.ErrorMessage = null;
+        message.NextRetryAt = scheduledAt;
+        message.LastStatusAt = _systemTime.UtcNow;
         return Task.CompletedTask;
     }
 
@@ -124,7 +137,7 @@ public class EntityOutboxMessageRepository<TMessage>
         message.ErrorMessage = errorMessage;
         message.RetryCount += 1;
         message.NextRetryAt = nextRetryAt;
-        message.LastStatusAt = SystemTime.Default.UtcNow;
+        message.LastStatusAt = _systemTime.UtcNow;
         return Task.CompletedTask;
     }
 
@@ -138,7 +151,7 @@ public class EntityOutboxMessageRepository<TMessage>
 
         message.Status = OutboxMessageStatus.Failed;
         message.ErrorMessage = errorMessage;
-        message.LastStatusAt = SystemTime.Default.UtcNow;
+        message.LastStatusAt = _systemTime.UtcNow;
         return Task.CompletedTask;
     }
 

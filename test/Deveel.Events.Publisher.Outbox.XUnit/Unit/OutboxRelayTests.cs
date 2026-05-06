@@ -118,6 +118,24 @@ namespace Deveel.Events
         }
 
         [Fact]
+        public async Task Processor_MessageDeferredInFuture_IsNotPublished()
+        {
+            var (provider, repository, relayChannel) = BuildProviderWithRelay();
+
+            var msg = new FakeOutboxMessage(MakeEvent("event.deferred"))
+            {
+                NextRetryAt = DateTimeOffset.UtcNow.AddMinutes(2)
+            };
+            repository.SeedAsync(msg);
+
+            var processor = provider.GetRequiredService<IOutboxRelayProcessor>();
+            await processor.ProcessPendingMessagesAsync(TestContext.Current.CancellationToken);
+
+            Assert.Empty(relayChannel.Published);
+            Assert.Equal(OutboxMessageStatus.Pending, msg.Status);
+        }
+
+        [Fact]
         public async Task Processor_MultiplePendingMessages_PublishesAllToRelayChannel()
         {
             var (provider, repository, relayChannel) = BuildProviderWithRelay();

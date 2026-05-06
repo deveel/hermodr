@@ -12,6 +12,7 @@ Each sample is self-contained. Some samples spin up external infrastructure with
 |--------|-----------|------------|
 | [OrderService — Minimal API + RabbitMQ](aspnet-publisher-rabbitmq.md) | RabbitMQ | Annotated event classes, typed channels, `IEventPublisher` in a service |
 | [OrderService — In-Process Outbox + RabbitMQ](outbox-inapp-rabbitmq.md) | RabbitMQ | Transactional Outbox with in-process relay; EF Core SQLite; `[AmqpExchange]` / `[AmqpRoutingKey]` annotations |
+| [OrderService — In-Process Outbox with Scheduled Delivery](outbox-inapp-scheduled-delivery.md) | RabbitMQ | Records the event immediately in SQLite and delays only transport delivery via `ScheduleDeliveryAt` |
 | [OrderService — Split Outbox + MassTransit RabbitMQ](outbox-relay-masstransit.md) | MassTransit / RabbitMQ | Split outbox across two processes; API has no transport dependency; external relay worker; MassTransit publish channel |
 | [OrderService — In-Process Dead-Letter Replay](deadletter-inproc.md) | In-memory sample channels | Dead-letter callback with immediate replay to a recovery channel inside the same process |
 | [OrderService — Split Dead-Letter Replay with Entity Framework](deadletter-relay-entityframework.md) | EF Core SQLite + in-memory recovery channel | Shared dead-letter repository with a separate worker replaying pending messages |

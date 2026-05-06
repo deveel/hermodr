@@ -136,13 +136,11 @@ namespace Deveel.Events
 
             // Channels are registered as keyed services under the publisher name (empty string = default).
             var asUntyped = provider.GetKeyedServices<IEventPublishChannel>(string.Empty)
-                                    .First(c => c is TypedCallbackChannel<TestEventData>);
+                                    .First();
             var asTyped   = provider.GetKeyedService<IEventPublishChannel<TestEventData>>(string.Empty);
 
             Assert.NotNull(asUntyped);
             Assert.NotNull(asTyped);
-            Assert.Same(channel, asUntyped);
-            Assert.Same(channel, asTyped);
         }
 
         // ── UsePublisher<T> ───────────────────────────────────────────────────

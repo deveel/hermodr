@@ -68,6 +68,9 @@ builder.Services
 
 > **Nullable value-type properties** (`MessageFormat`, `MessageContent`, `PersistentMessages`, `PublisherConfirms`, `ConfirmTimeout`, `Mandatory`) use `null` as the sentinel meaning *"inherit from the channel-level default"*.  Set them in the channel registration to establish the baseline; set them in a per-call override only when you need to deviate from that baseline for a specific delivery.
 
+The channel sets AMQP `BasicProperties.Timestamp` from `CloudEvent.time` when available.
+If `CloudEvent.time` is missing, it falls back to `IEventSystemTime.UtcNow`, so tests can freeze the publish clock via `UseSystemTime<TClock>()`.
+
 ## Per-delivery options
 
 Pass a `RabbitMqPublishOptions` instance as the second argument to `PublishAsync` to override individual properties for a single publish call.  Only the properties you set (non-`null`) replace the channel default — all others fall back to the values configured at registration time.

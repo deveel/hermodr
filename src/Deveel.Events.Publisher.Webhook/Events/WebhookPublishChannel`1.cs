@@ -48,6 +48,7 @@ namespace Deveel.Events
             IOptions<WebhookPublishOptions<TEvent>> typedOptions,
             IOptions<WebhookPublishOptions> baseOptions,
             IHttpClientFactory httpClientFactory,
+            IEventSystemTime? systemTime = null,
             IEnumerable<IWebhookSignatureProvider>? signatureProviders = null,
             IEnumerable<IEventSerializer>? serializers = null,
             IEnumerable<IValidateOptions<WebhookPublishOptions>>? validators = null,
@@ -55,6 +56,7 @@ namespace Deveel.Events
             : base(
                 Options.Create(WebhookPublishOptions.Merge(baseOptions.Value, typedOptions.Value)),
                 httpClientFactory,
+                systemTime,
                 signatureProviders,
                 serializers,
                 validators,

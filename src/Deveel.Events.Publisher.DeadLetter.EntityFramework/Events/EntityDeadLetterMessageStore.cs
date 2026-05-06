@@ -18,14 +18,18 @@ public class EntityDeadLetterMessageStore<TMessage>
     : EntityRepository<TMessage, string>, IDeadLetterMessageStore
     where TMessage : DbDeadLetterMessage
 {
+    private readonly IEventSystemTime _systemTime;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="EntityDeadLetterMessageStore{TMessage}"/> class.
     /// </summary>
     public EntityDeadLetterMessageStore(
         DeadLetterDbContext context,
+        IEventSystemTime? systemTime = null,
         ILogger<EntityDeadLetterMessageStore<TMessage>>? logger = null)
         : base(context, logger)
     {
+        _systemTime = systemTime ?? EventSystemTime.Instance;
     }
 
     protected new DeadLetterDbContext Context => (DeadLetterDbContext)base.Context;
@@ -33,14 +37,14 @@ public class EntityDeadLetterMessageStore<TMessage>
     public Task SetReplayingAsync(TMessage message, CancellationToken cancellationToken = default)
     {
         message.Status = DeadLetterMessageStatus.Replaying;
-        message.LastStatusAt = DateTimeOffset.UtcNow;
+        message.LastStatusAt = _systemTime.UtcNow;
         return SaveAsync(message, cancellationToken);
     }
 
     public Task SetReplayedAsync(TMessage message, CancellationToken cancellationToken = default)
     {
         message.Status = DeadLetterMessageStatus.Replayed;
-        message.LastStatusAt = DateTimeOffset.UtcNow;
+        message.LastStatusAt = _systemTime.UtcNow;
         message.NextReplayAt = null;
         return SaveAsync(message, cancellationToken);
     }
@@ -55,7 +59,7 @@ public class EntityDeadLetterMessageStore<TMessage>
         message.ErrorMessage = errorMessage;
         message.ReplayCount += 1;
         message.NextReplayAt = nextReplayAt;
-        message.LastStatusAt = DateTimeOffset.UtcNow;
+        message.LastStatusAt = _systemTime.UtcNow;
         return SaveAsync(message, cancellationToken);
     }
 
@@ -63,7 +67,7 @@ public class EntityDeadLetterMessageStore<TMessage>
     {
         message.Status = DeadLetterMessageStatus.Failed;
         message.ErrorMessage = errorMessage;
-        message.LastStatusAt = DateTimeOffset.UtcNow;
+        message.LastStatusAt = _systemTime.UtcNow;
         return SaveAsync(message, cancellationToken);
     }
 
@@ -74,7 +78,7 @@ public class EntityDeadLetterMessageStore<TMessage>
             .Where(message => message.Status == DeadLetterMessageStatus.Pending);
 
         var candidates = await query.ToListAsync(cancellationToken);
-        var now = DateTimeOffset.UtcNow;
+        var now = _systemTime.UtcNow;
 
         IEnumerable<TMessage> eligible = candidates
             .Where(message => message.NextReplayAt is null || message.NextReplayAt <= now)

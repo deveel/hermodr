@@ -5,4 +5,65 @@
   <ItemGroup>
     <ProjectReference Include="..\Deveel.Events.Annotations\Deveel.Events.Annotations.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <None Remove="docs\api\Deveel.Events.EventProperty.Constraints.md" />
+    <None Remove="docs\api\Deveel.Events.EventProperty.DataType.md" />
+    <None Remove="docs\api\Deveel.Events.EventProperty.Description.md" />
+    <None Remove="docs\api\Deveel.Events.EventProperty.EventProperty(string,string,string).md" />
+    <None Remove="docs\api\Deveel.Events.EventProperty.IsNullable.md" />
+    <None Remove="docs\api\Deveel.Events.EventProperty.Name.md" />
+    <None Remove="docs\api\Deveel.Events.EventProperty.Properties.md" />
+    <None Remove="docs\api\Deveel.Events.EventPropertyBuilder.AddProperty(string,System.Action_Deveel.Events.EventPropertyBuilder_).md" />
+    <None Remove="docs\api\Deveel.Events.EventPropertyBuilder.EventPropertyBuilder(string).md" />
+    <None Remove="docs\api\Deveel.Events.EventPropertyBuilder.Nullable().md" />
+    <None Remove="docs\api\Deveel.Events.EventPropertyBuilder.OfType(string).md" />
+    <None Remove="docs\api\Deveel.Events.EventPropertyBuilder.Required().md" />
+    <None Remove="docs\api\Deveel.Events.EventPropertyBuilder.WithConstraint(Deveel.Events.IEventPropertyConstraint).md" />
+    <None Remove="docs\api\Deveel.Events.EventPropertyBuilder.WithDescription(string).md" />
+    <None Remove="docs\api\Deveel.Events.EventPropertyCollection.Contains(string).md" />
+    <None Remove="docs\api\Deveel.Events.EventPropertyConstraintCollection.md" />
+    <None Remove="docs\api\Deveel.Events.EventPropertyExtensions.IsNullable(thisDeveel.Events.IEventProperty).md" />
+    <None Remove="docs\api\Deveel.Events.EventSchema.Build(string).md" />
+    <None Remove="docs\api\Deveel.Events.EventSchema.EventSchema(string,string,string).md" />
+    <None Remove="docs\api\Deveel.Events.EventSchema.FromDataType.md" />
+    <None Remove="docs\api\Deveel.Events.EventSchema.Properties.md" />
+    <None Remove="docs\api\Deveel.Events.EventSchema.Version.md" />
+    <None Remove="docs\api\Deveel.Events.EventSchemaBuilder.AddProperty.md" />
+    <None Remove="docs\api\Deveel.Events.EventSchemaBuilder.Build().md" />
+    <None Remove="docs\api\Deveel.Events.EventSchemaBuilder.EventSchemaBuilder(string).md" />
+    <None Remove="docs\api\Deveel.Events.EventSchemaCreator.md" />
+    <None Remove="docs\api\Deveel.Events.EventSchemaFactory.Default.md" />
+    <None Remove="docs\api\Deveel.Events.EventSchemaFactory.md" />
+    <None Remove="docs\api\Deveel.Events.EventSchemaJsonWriter.EventSchemaJsonWriter(System.Nullable_System.Text.Json.JsonWriterOptions_).md" />
+    <None Remove="docs\api\Deveel.Events.EventSchemaJsonWriter.JsonWriterOptions.md" />
+    <None Remove="docs\api\Deveel.Events.EventSchemaJsonWriter.WriteToAsync(System.IO.Stream,Deveel.Events.IEventSchema,System.Threading.CancellationToken).md" />
+    <None Remove="docs\api\Deveel.Events.EventSchemaJsonWriter.md" />
+    <None Remove="docs\api\Deveel.Events.IEnumMemberConstraint.AllowedValueObjects.md" />
+    <None Remove="docs\api\Deveel.Events.IEnumMemberConstraint.md" />
+    <None Remove="docs\api\Deveel.Events.IEventProperty.Constraints.md" />
+    <None Remove="docs\api\Deveel.Events.IEventProperty.DataType.md" />
+    <None Remove="docs\api\Deveel.Events.IEventProperty.Description.md" />
+    <None Remove="docs\api\Deveel.Events.IEventProperty.IsNullable.md" />
+    <None Remove="docs\api\Deveel.Events.IEventProperty.IsRequired.md" />
+    <None Remove="docs\api\Deveel.Events.IEventProperty.Name.md" />
+    <None Remove="docs\api\Deveel.Events.IEventProperty.Properties.md" />
+    <None Remove="docs\api\Deveel.Events.IEventProperty.Version.md" />
+    <None Remove="docs\api\Deveel.Events.IEventPropertyConstraint.md" />
+    <None Remove="docs\api\Deveel.Events.IEventSchema.ContentType.md" />
+    <None Remove="docs\api\Deveel.Events.IEventSchema.Description.md" />
+    <None Remove="docs\api\Deveel.Events.IEventSchema.Properties.md" />
+    <None Remove="docs\api\Deveel.Events.IEventSchemaFactory.md" />
+    <None Remove="docs\api\Deveel.Events.IEventSchemaValidator.ValidateEventAsync(Deveel.Events.IEventSchema,CloudNative.CloudEvents.CloudEvent,System.Threading.CancellationToken).md" />
+    <None Remove="docs\api\Deveel.Events.IEventSchemaWriter.WriteToAsync(System.IO.Stream,Deveel.Events.IEventSchema,System.Threading.CancellationToken).md" />
+    <None Remove="docs\api\Deveel.Events.IRangeConstraint.Max.md" />
+    <None Remove="docs\api\Deveel.Events.IRangeConstraint.ValueType.md" />
+    <None Remove="docs\api\Deveel.Events.IVersionedElement.Version.md" />
+    <None Remove="docs\api\Deveel.Events.IVersionedElement.md" />
+    <None Remove="docs\api\Deveel.Events.PropertyRequiredConstraint.ConstraintType.md" />
+    <None Remove="docs\api\Deveel.Events.PropertyRequiredConstraint.IsValid(object).md" />
+    <None Remove="docs\api\Deveel.Events.RangeConstraint_TValue_.ConstraintType.md" />
+    <None Remove="docs\api\Deveel.Events.RangeConstraint_TValue_.Min.md" />
+    <None Remove="docs\api\Deveel.Events.RangeConstraint_TValue_.RangeConstraint(System.Nullable_TValue_,System.Nullable_TValue_).md" />
+    <None Remove="docs\api\Deveel.Events.RangeConstraint_TValue_.md" />
+  </ItemGroup>
 </Project>

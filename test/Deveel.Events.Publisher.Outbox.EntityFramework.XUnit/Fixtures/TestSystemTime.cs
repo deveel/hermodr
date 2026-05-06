@@ -15,6 +15,8 @@ namespace Deveel.Events;
 /// </summary>
 public sealed class TestSystemTime : ISystemTime
 {
+    private static readonly DateTimeOffset DefaultUtcNow = new(2026, 01, 15, 12, 00, 00, TimeSpan.Zero);
+
     /// <summary>
     /// Initialises a new instance with the supplied fixed instant as both
     /// <see cref="UtcNow"/> and <see cref="Now"/> (in local time).
@@ -23,7 +25,7 @@ public sealed class TestSystemTime : ISystemTime
     /// round second so that database round-trips do not alter the value.</param>
     public TestSystemTime(DateTimeOffset? utcNow = null)
     {
-        UtcNow = (utcNow ?? DateTimeOffset.UtcNow).ToUniversalTime();
+        UtcNow = (utcNow ?? DefaultUtcNow).ToUniversalTime();
         // Truncate to whole seconds to survive MySQL DATETIME(0) storage.
         UtcNow = new DateTimeOffset(
             UtcNow.Year, UtcNow.Month, UtcNow.Day,

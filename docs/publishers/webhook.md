@@ -81,6 +81,10 @@ Channel-structural settings (always taken from the channel-level defaults; ignor
 | `RetryableStatusCodes` | `ISet<int>` | 429, 500, 502, 503, 504 | HTTP status codes that trigger a retry |
 | `HttpClientName` | `string?` | `null` | Named `HttpClient` resolved from `IHttpClientFactory`; defaults to the internal channel name |
 
+`TimestampHeaderName` carries the Unix timestamp used in signature computation.
+The channel uses `CloudEvent.time` when present; otherwise it falls back to `IEventSystemTime.UtcNow`.
+This keeps signatures deterministic in tests when you replace the clock with `UseSystemTime<TClock>()`.
+
 ## Typed channel
 
 Use `AddWebhooks<TEvent>()` to register a channel that receives **only** events whose data class is `TEvent`.  At construction time the typed channel (`WebhookPublishChannel<TEvent>`) merges the general `WebhookPublishOptions` with the type-specific `WebhookPublishOptions<TEvent>`: non-`null` typed values win; `null` values fall back to the base defaults.  `AdditionalHeaders` are merged at the dictionary level — typed entries win on key collision.  Channel-structural properties (`SignatureHeaderName`, `DeliveryIdHeaderName`, `RetryableStatusCodes`, …) are **always** taken from the base options and cannot be overridden per event type.

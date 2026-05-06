@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>OrderService</RootNamespace>
+    <AssemblyName>OrderService.InAppOutboxScheduling</AssemblyName>
+    <Description>
+      Sample ASP.NET Minimal API that demonstrates delayed event delivery with the
+      Transactional Outbox pattern using Deveel.Events: order domain events are
+      recorded immediately in a SQLite outbox and optionally scheduled for later
+      transport delivery to RabbitMQ by an in-process relay BackgroundService.
+    </Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.5" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Deveel.Events: outbox pattern (EF Core) + RabbitMQ transport channel -->
+    <ProjectReference Include="..\..\..\src\Deveel.Events.Publisher.Outbox.EntityFramework\Deveel.Events.Publisher.Outbox.EntityFramework.csproj" />
+    <ProjectReference Include="..\..\..\src\Deveel.Events.Publisher.RabbitMq\Deveel.Events.Publisher.RabbitMq.csproj" />
+  </ItemGroup>
+
+</Project>
+

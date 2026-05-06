@@ -47,6 +47,7 @@ namespace Deveel.Events
             new("webhook.deliveryId");
 
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IEventSystemTime _systemTime;
         private readonly ILogger _logger;
 
         private readonly IDictionary<WebhookSignatureAlgorithm, IWebhookSignatureProvider> _signatureProviders;
@@ -89,6 +90,7 @@ namespace Deveel.Events
         public WebhookPublishChannel(
             IOptions<WebhookPublishOptions> options,
             IHttpClientFactory httpClientFactory,
+            IEventSystemTime? systemTime = null,
             IEnumerable<IWebhookSignatureProvider>? signatureProviders = null,
             IEnumerable<IEventSerializer>? serializers = null,
             IEnumerable<IValidateOptions<WebhookPublishOptions>>? validators = null,
@@ -96,6 +98,7 @@ namespace Deveel.Events
             : base(options.Value, validators)
         {
             _httpClientFactory = httpClientFactory;
+            _systemTime        = systemTime ?? EventSystemTime.Instance;
             _logger            = logger ?? NullLogger<WebhookPublishChannel>.Instance;
 
             // Build the default pipeline lazily from the channel-level options.
@@ -172,6 +175,7 @@ namespace Deveel.Events
                 MessageFormat          = perCallOptions.MessageFormat          ?? defaults.MessageFormat,
                 SignatureAlgorithm     = perCallOptions.SignatureAlgorithm     ?? defaults.SignatureAlgorithm,
                 AdditionalHeaders      = mergedHeaders,
+                ScheduleDeliveryAt     = perCallOptions.ScheduleDeliveryAt     ?? defaults.ScheduleDeliveryAt,
                 SignatureHeaderName          = defaults.SignatureHeaderName,
                 DeliveryIdHeaderName         = defaults.DeliveryIdHeaderName,
                 EventTypeHeaderName          = defaults.EventTypeHeaderName,
@@ -193,7 +197,7 @@ namespace Deveel.Events
             var payload    = serializer.Serialize(@event);
             var contentType = serializer.ContentType;
 
-            return DeliverAsync(payload, contentType, eventType: @event.Type, eventCount: 1, options, cancellationToken);
+            return DeliverAsync(payload, contentType, eventType: @event.Type, eventCount: 1, @event.Time, options, cancellationToken);
         }
 
         // ── IBatchEventPublishChannel ────────────────
@@ -222,7 +226,7 @@ namespace Deveel.Events
             var payload     = serializer.SerializeBatch(events);
             var contentType = serializer.BatchContentType;
 
-            return DeliverAsync(payload, contentType, eventType: null, eventCount: events.Count, effective, cancellationToken);
+            return DeliverAsync(payload, contentType, eventType: null, eventCount: events.Count, eventTime: null, effective, cancellationToken);
         }
 
         // ── Core delivery ───────────────────────────────────────────────────
@@ -232,6 +236,7 @@ namespace Deveel.Events
             string contentType,
             string? eventType,
             int eventCount,
+            DateTimeOffset? eventTime,
             WebhookPublishOptions options,
             CancellationToken cancellationToken)
         {
@@ -248,7 +253,7 @@ namespace Deveel.Events
 
             var deliveryId = Guid.NewGuid().ToString("N");
             var provider   = GetSignatureProvider(signatureAlgorithm);
-            var timestamp  = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var timestamp  = (eventTime ?? _systemTime.UtcNow).ToUnixTimeSeconds();
             var algorithm  = signatureAlgorithm.ToString();
 
             if (eventType != null)

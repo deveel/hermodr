@@ -20,6 +20,8 @@ namespace Deveel.Events
     /// </summary>
     public class WebhookChannelAdditionalTests
     {
+        private static readonly DateTimeOffset FixedNow = new(2026, 01, 15, 12, 00, 00, TimeSpan.Zero);
+
         // ── Helpers ──────────────────────────────────────────────────────────
 
         private static CloudEvent MakeEvent(string type = "test.event") => new()
@@ -29,7 +31,7 @@ namespace Deveel.Events
             Id              = Guid.NewGuid().ToString("N"),
             DataContentType = "application/json",
             Data            = JsonSerializer.Serialize(new { name = "Test" }),
-            Time            = DateTimeOffset.UtcNow,
+            Time            = FixedNow,
         };
 
         private static IBatchEventPublishChannel BuildChannel(

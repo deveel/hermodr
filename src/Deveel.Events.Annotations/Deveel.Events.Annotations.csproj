@@ -6,4 +6,16 @@
     <PackageTags>event;events;model;abstractions;annotations;attribute</PackageTags>
   </PropertyGroup>
 
+  <ItemGroup>
+    <None Remove="docs\api\Deveel.Events.EventAttribute.EventType.md" />
+    <None Remove="docs\api\Deveel.Events.EventAttributesAttribute.md" />
+    <None Remove="docs\api\Deveel.Events.EventPropertyAttribute.Description.md" />
+    <None Remove="docs\api\Deveel.Events.EventPropertyAttribute.Name.md" />
+    <None Remove="docs\api\Deveel.Events.EventPropertyAttribute.md" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="docs\api\" />
+  </ItemGroup>
+
 </Project>

@@ -141,13 +141,22 @@ namespace Deveel.Events
             options = options?.Unwrap();
 
             if (options == null) return null;
-            var channelType = channel.GetType();
+            var effectiveChannel = UnwrapDecoratedChannel(channel);
+            var channelType = effectiveChannel.GetType();
             var expectedOptionsType = FindExpectedOptionsType(channelType);
             if (expectedOptionsType is null) return null;
             var channelEventType = FindChannelEventType(channelType);
             if (options is CombinedPublishOptions combined)
                 return ResolveCombinedOptions(channel, combined, expectedOptionsType, channelEventType);
             return ResolveSingleOptions(channel, options, expectedOptionsType, channelEventType);
+        }
+
+        private static IEventPublishChannel UnwrapDecoratedChannel(IEventPublishChannel channel)
+        {
+            while (channel is IEventPublishChannelDecorator decorator)
+                channel = decorator.InnerChannel;
+
+            return channel;
         }
 
         private static EventPublishOptions? ResolveCombinedOptions(
@@ -272,11 +281,12 @@ namespace Deveel.Events
             ValidateCloudEvent(context.Event);
             foreach (var channel in channels)
             {
-                _logger.TraceEventPublishing(context.Event.Type!, channel.GetType());
+                var effectiveChannel = UnwrapDecoratedChannel(channel);
+                _logger.TraceEventPublishing(context.Event.Type!, effectiveChannel.GetType());
                 try
                 {
                     await PublishEventAsync(channel, context.Event, context.Options, context.CancellationToken);
-                    _logger.TraceEventPublished(context.Event.Type!, channel.GetType());
+                    _logger.TraceEventPublished(context.Event.Type!, effectiveChannel.GetType());
                 }
                 catch (OperationCanceledException) when (context.CancellationToken.IsCancellationRequested)
                 {
@@ -293,9 +303,9 @@ namespace Deveel.Events
                         context.Event,
                         context.Options,
                         context.RawOptions,
-                        channel.GetType(),
+                        effectiveChannel.GetType(),
                         (channel as INamedEventPublishChannel)?.Name));
-                    HandleChannelPublishError(ex, context.Event.Type!, channel.GetType());
+                    HandleChannelPublishError(ex, context.Event.Type!, effectiveChannel.GetType());
                 }
             }
         }

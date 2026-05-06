@@ -55,7 +55,7 @@ public class DbDeadLetterMessage : IDeadLetterMessage
 
     public DateTimeOffset? NextReplayAt { get; set; }
 
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset CreatedAt { get; set; } = EventSystemTime.Instance.UtcNow;
 
     public DateTimeOffset? LastStatusAt { get; set; }
 
@@ -90,6 +90,9 @@ public class DbDeadLetterMessage : IDeadLetterMessage
     }
 
     public virtual void PopulateFromDeadLetterContext(DeadLetterContext context)
+        => PopulateFromDeadLetterContext(context, EventSystemTime.Instance.UtcNow);
+
+    public virtual void PopulateFromDeadLetterContext(DeadLetterContext context, DateTimeOffset createdAt)
     {
         ArgumentNullException.ThrowIfNull(context);
 
@@ -109,7 +112,7 @@ public class DbDeadLetterMessage : IDeadLetterMessage
         Status = DeadLetterMessageStatus.Pending;
         ReplayCount = 0;
         NextReplayAt = null;
-        CreatedAt = DateTimeOffset.UtcNow;
+        CreatedAt = createdAt;
         LastStatusAt = null;
 
         DataText = null;

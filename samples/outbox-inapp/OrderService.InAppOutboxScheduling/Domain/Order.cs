@@ -1,5 +1,3 @@
-using Deveel.Events;
-
 namespace OrderService.Domain;
 
 /// <summary>

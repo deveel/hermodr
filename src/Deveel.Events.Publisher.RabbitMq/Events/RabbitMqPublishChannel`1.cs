@@ -52,12 +52,14 @@ namespace Deveel.Events
             IOptions<RabbitMqPublishOptions> baseOptions,
             IConnection connection,
             IRabbitMqMessageFactory messageFactory,
+            IEventSystemTime? systemTime = null,
             IEnumerable<IValidateOptions<RabbitMqPublishOptions>>? validators = null,
             ILogger<RabbitMqPublishChannel>? logger = null)
             : base(
                 Options.Create(RabbitMqPublishOptions.Merge(baseOptions.Value, typedOptions.Value)),
                 connection,
                 messageFactory,
+                systemTime,
                 validators,
                 logger)
         {

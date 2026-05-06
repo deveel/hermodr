@@ -7,6 +7,10 @@ namespace OrderService.Services;
 /// </summary>
 public interface IOrderService
 {
+    /// <summary>
+    /// Creates an order and publishes the <c>order.created</c> event immediately or via
+    /// delayed transport delivery when requested.
+    /// </summary>
     Task<Order> CreateAsync(CreateOrderRequest request, CancellationToken ct = default);
     Task<Order> ConfirmAsync(Guid orderId, CancellationToken ct = default);
     Task<Order> ShipAsync(Guid orderId, ShipOrderRequest request, CancellationToken ct = default);

@@ -91,6 +91,20 @@ namespace Deveel.Events
             Assert.Null(message.Subject);
         }
 
+        [Fact]
+        public static void CreateMessage_ScheduleDeliveryAt_SetsScheduledEnqueueTime()
+        {
+            var @event = MakeJsonEvent();
+            var scheduledAt = DateTimeOffset.UtcNow.AddMinutes(5);
+
+            var message = Factory.CreateMessage(@event, new ServiceBusPublishOptions
+            {
+                ScheduleDeliveryAt = scheduledAt,
+            });
+
+            Assert.Equal(scheduledAt, message.ScheduledEnqueueTime);
+        }
+
         // ── Body ─────────────────────────────────────────────────────────────
 
         [Fact]

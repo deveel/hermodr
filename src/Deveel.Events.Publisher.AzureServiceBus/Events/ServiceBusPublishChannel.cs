@@ -19,6 +19,7 @@ namespace Deveel.Events {
     /// </summary>
     class ServiceBusPublishChannel :
         EventPublishChannel<ServiceBusPublishOptions>,
+						IScheduledEventPublishChannel,
         IAsyncDisposable, IDisposable {
 		private ServiceBusSender? sender;
 		private ServiceBusClient? client;
@@ -94,6 +95,7 @@ namespace Deveel.Events {
                     ? perCallOptions.QueueName
                     : defaults.QueueName,
                 ClientOptions = perCallOptions.ClientOptions ?? defaults.ClientOptions,
+				ScheduleDeliveryAt = perCallOptions.ScheduleDeliveryAt ?? defaults.ScheduleDeliveryAt,
             };
         }
 
@@ -108,7 +110,7 @@ namespace Deveel.Events {
             logger.TracePublishingEvent(@event.Type);
 
 			try {
-				await sender!.SendMessageAsync(messageCreator.CreateMessage(@event), cancellationToken);
+				await sender!.SendMessageAsync(messageCreator.CreateMessage(@event, options), cancellationToken);
 			} catch (ServiceBusException ex) {
 				logger.LogErrorPublishingEvent(ex, @event.Type);
 				throw new EventPublishException("The ServiceBus service caused an error", ex);

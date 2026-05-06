@@ -111,6 +111,31 @@ public class OutboxMessageManager<TMessage> : EntityManager<TMessage, string>
     }
 
     /// <summary>
+    /// Defers the first delivery attempt for <paramref name="message"/> until
+    /// <paramref name="scheduledAt"/>.
+    /// </summary>
+    /// <param name="message">The message to defer.</param>
+    /// <param name="scheduledAt">The UTC time when delivery becomes eligible.</param>
+    /// <returns>
+    /// An error result when the message is already failed or delivered;
+    /// otherwise the result of the update operation.
+    /// </returns>
+    public virtual async Task<OperationResult> ScheduleDeferredDeliveryAsync(TMessage message, DateTimeOffset scheduledAt) {
+        var status = await GetStatusAsync(message);
+        if (status == OutboxMessageStatus.Failed)
+            return OperationResult.Fail("OUT0038", "OUTBOX", "Cannot defer a failed message.");
+
+        if (status == OutboxMessageStatus.Delivered)
+            return OperationResult.Fail("OUT0039", "OUTBOX", "Cannot defer a delivered message.");
+
+        if (status != OutboxMessageStatus.Pending && status != OutboxMessageStatus.Sending)
+            return OperationResult.Fail("OUT0040", "OUTBOX", $"Cannot defer a message with status {status}.");
+
+        await MessageRepository.SetDeferredAsync(message, scheduledAt, CancellationToken);
+        return await UpdateAsync(message);
+    }
+
+    /// <summary>
     /// Schedules a retry for <paramref name="message"/> by recording the
     /// <paramref name="errorMessage"/> and the <paramref name="nextRetryAt"/> timestamp.
     /// </summary>

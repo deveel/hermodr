@@ -53,6 +53,7 @@ namespace Deveel.Events
                 RequestTimeout         = typedOptions.RequestTimeout         ?? baseOptions.RequestTimeout,
                 MessageFormat          = typedOptions.MessageFormat          ?? baseOptions.MessageFormat,
                 SignatureAlgorithm     = typedOptions.SignatureAlgorithm     ?? baseOptions.SignatureAlgorithm,
+                ScheduleDeliveryAt     = typedOptions.ScheduleDeliveryAt     ?? baseOptions.ScheduleDeliveryAt,
                 AdditionalHeaders      = mergedHeaders,
                 // Channel-structural — always from base
                 SignatureHeaderName         = baseOptions.SignatureHeaderName,

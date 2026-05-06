@@ -59,6 +59,23 @@ The relay service wakes up on a configurable interval and queries the repository
 4. On a transient error, schedules a retry and increments the retry counter.
 5. When retries are exhausted, marks the record `Failed`.
 
+## Timing model (event record vs delivery scheduling)
+
+Outbox persistence tracks multiple timestamps with different meanings:
+
+| Field | Meaning |
+|-------|---------|
+| `EventTime` / `CloudEvent.time` | When the business event occurred |
+| `CreatedAt` | When the outbox row was written |
+| `LastStatusAt` | When the outbox status last changed (`Sending`, `Delivered`, `Failed`, …) |
+| `NextRetryAt` | Earliest time the relay may attempt delivery again |
+
+Treat `EventTime` as immutable event history and `NextRetryAt`/`LastStatusAt` as transport workflow metadata.
+This separation is critical for reliable auditing, replay, and SLA analysis.
+
+All repository status transitions use the configured clock abstraction (`ISystemTime` in EF repositories / `IEventSystemTime` in publisher components) rather than direct `DateTimeOffset.UtcNow` calls.
+In tests, inject a frozen clock to assert exact timestamp values deterministically.
+
 ## Implementing the outbox contract
 
 To use the outbox channel you provide three components that adapt the library to your persistence technology.  The library defines the contracts; you supply the implementations.

@@ -212,6 +212,20 @@ The dead-letter handler converts `DeadLetterContext` into `TMessage` and saves i
 | `IDeadLetterMessageReplayer` | Replays a stored message through a publisher pipeline |
 | `IDeadLetterReplayProcessor` | Processes pending messages in batches |
 
+### Timing metadata in dead-letter records
+
+Dead-letter records intentionally separate event history from replay workflow timing:
+
+| Field | Meaning |
+|-------|---------|
+| `EventTime` / `CloudEvent.time` | When the original event occurred |
+| `CreatedAt` | When the dead-letter record was created |
+| `LastStatusAt` | When replay status last changed (`Replaying`, `Replayed`, `Failed`, …) |
+| `NextReplayAt` | Earliest time the next replay attempt is allowed |
+
+`NextReplayAt` and `LastStatusAt` are operational scheduling markers, not business timestamps.
+Replay components compute them through the configured system-time abstraction (`IEventSystemTime`) so tests can freeze time and assert exact values.
+
 ### `IDeadLetterMessage`
 
 Every persisted message exposes:

@@ -50,6 +50,7 @@ namespace Deveel.Events
                     ? typedOpts.QueueName!
                     : baseOpts.QueueName,
                 ClientOptions = typedOpts.ClientOptions ?? baseOpts.ClientOptions,
+                ScheduleDeliveryAt = typedOpts.ScheduleDeliveryAt ?? baseOpts.ScheduleDeliveryAt,
             };
         }
     }

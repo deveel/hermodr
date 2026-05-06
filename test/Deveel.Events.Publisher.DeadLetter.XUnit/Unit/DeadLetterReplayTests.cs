@@ -14,17 +14,20 @@ namespace Deveel.Events;
 [Trait("Feature", "DeadLetterReplay")]
 public class DeadLetterReplayTests
 {
+    private static readonly DateTimeOffset FixedNow = new(2026, 01, 15, 12, 00, 00, TimeSpan.Zero);
+
     private static CloudEvent MakeEvent(string type = "test.event") => new()
     {
         Type = type,
         Source = new Uri("https://example.com"),
         Id = Guid.NewGuid().ToString("N"),
-        Time = DateTimeOffset.UtcNow,
+        Time = MutableSystemTime.UtcNowValue,
     };
 
     [Fact]
     public async Task WithReplay_UsesDefaultInMemoryStore()
     {
+        MutableSystemTime.UtcNowValue = FixedNow;
         var services = new ServiceCollection().AddLogging();
 
         services.AddEventPublisher(options =>
@@ -32,6 +35,7 @@ public class DeadLetterReplayTests
                 options.Source = new Uri("https://example.com/publisher");
                 options.ThrowOnErrors = false;
             })
+            .UseSystemTime<MutableSystemTime>()
             .AddChannel(new ThrowingChannel())
             .AddDeadLetter()
             .WithReplay();
@@ -51,6 +55,7 @@ public class DeadLetterReplayTests
     [Fact]
     public async Task ReplayAsync_ReplaysStoredMessage_ThroughConfiguredPublisher()
     {
+        MutableSystemTime.UtcNowValue = FixedNow;
         var replayed = new List<CloudEvent>();
 
         var services = new ServiceCollection().AddLogging();
@@ -61,6 +66,7 @@ public class DeadLetterReplayTests
                 options.Source = new Uri("https://example.com/transport");
                 options.ThrowOnErrors = true;
             })
+            .UseSystemTime<MutableSystemTime>()
             .AddChannel(new CollectingChannel(replayed)));
 
         services.AddEventPublisher(options =>
@@ -68,6 +74,7 @@ public class DeadLetterReplayTests
                 options.Source = new Uri("https://example.com/publisher");
                 options.ThrowOnErrors = false;
             })
+            .UseSystemTime<MutableSystemTime>()
             .AddChannel(new ThrowingChannel())
             .AddDeadLetter()
             .UseRepository<FakeDeadLetterMessage, FakeDeadLetterStore>(ServiceLifetime.Singleton)
@@ -93,6 +100,7 @@ public class DeadLetterReplayTests
     [Fact]
     public async Task ReplayAsync_WhenReplayFails_DoesNotStoreDuplicateDeadLetter()
     {
+        MutableSystemTime.UtcNowValue = FixedNow;
         var services = new ServiceCollection().AddLogging();
 
         services.AddEventPublisher(options =>
@@ -100,11 +108,12 @@ public class DeadLetterReplayTests
                 options.Source = new Uri("https://example.com/publisher");
                 options.ThrowOnErrors = false;
             })
+            .UseSystemTime<MutableSystemTime>()
             .AddChannel(new ThrowingChannel())
             .AddDeadLetter()
             .UseRepository<FakeDeadLetterMessage, FakeDeadLetterStore>(ServiceLifetime.Singleton)
             .WithFactory<FakeDeadLetterMessage, FakeDeadLetterMessageFactory>()
-            .WithReplay();
+            .WithReplay(options => options.RetryInterval = TimeSpan.FromSeconds(30));
 
         await using var provider = services.BuildServiceProvider();
         var publisher = provider.GetRequiredService<EventPublisher>();
@@ -122,11 +131,13 @@ public class DeadLetterReplayTests
         Assert.Single(store.Messages);
         Assert.Equal(1, stored.ReplayCount);
         Assert.Equal(DeadLetterMessageStatus.Pending, stored.Status);
+        Assert.Equal(FixedNow.AddSeconds(30), stored.NextReplayAt);
     }
 
     [Fact]
     public async Task ReplayProcessor_ReplaysPendingMessages()
     {
+        MutableSystemTime.UtcNowValue = FixedNow;
         var replayed = new List<CloudEvent>();
 
         var services = new ServiceCollection().AddLogging();
@@ -137,6 +148,7 @@ public class DeadLetterReplayTests
                 options.Source = new Uri("https://example.com/transport");
                 options.ThrowOnErrors = true;
             })
+            .UseSystemTime<MutableSystemTime>()
             .AddChannel(new CollectingChannel(replayed)));
 
         services.AddEventPublisher(options =>
@@ -144,6 +156,7 @@ public class DeadLetterReplayTests
                 options.Source = new Uri("https://example.com/publisher");
                 options.ThrowOnErrors = false;
             })
+            .UseSystemTime<MutableSystemTime>()
             .AddChannel(new ThrowingChannel())
             .AddDeadLetter()
             .UseRepository<FakeDeadLetterMessage, FakeDeadLetterStore>(ServiceLifetime.Singleton)
@@ -249,7 +262,7 @@ public class DeadLetterReplayTests
         {
             IEnumerable<FakeDeadLetterMessage> pending = Messages
                 .Where(message => message.Status == DeadLetterMessageStatus.Pending)
-                .Where(message => message.NextReplayAt is null || message.NextReplayAt <= DateTimeOffset.UtcNow);
+                .Where(message => message.NextReplayAt is null || message.NextReplayAt <= MutableSystemTime.UtcNowValue);
 
             if (limit.HasValue)
                 pending = pending.Take(limit.Value);
@@ -304,5 +317,12 @@ public class DeadLetterReplayTests
             _events.Add(@event);
             return Task.CompletedTask;
         }
+    }
+
+    private sealed class MutableSystemTime : IEventSystemTime
+    {
+        public static DateTimeOffset UtcNowValue { get; set; }
+
+        public DateTimeOffset UtcNow => UtcNowValue;
     }
 }

@@ -1,3 +1,6 @@
+using Deveel.Events;
+
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 
 using OrderService.Domain;
@@ -12,8 +15,15 @@ public static class OrderEndpoints
 {
     public static WebApplication MapOrderEndpoints(this WebApplication app)
     {
+        var outbox = app.MapGroup("/outbox")
+                        .WithTags("Outbox");
+
         var orders = app.MapGroup("/orders")
                         .WithTags("Orders");
+
+        outbox.MapGet("/messages", ListOutboxMessages)
+              .WithName("ListOutboxMessages")
+              .WithSummary("Inspect recent outbox rows, including scheduled delivery timestamps");
 
         // GET /orders
         orders.MapGet("/", ListOrders)
@@ -28,27 +38,27 @@ public static class OrderEndpoints
         // POST /orders
         orders.MapPost("/", CreateOrder)
               .WithName("CreateOrder")
-              .WithSummary("Create a new order (publishes order.created)");
+              .WithSummary("Create a new order and optionally schedule the order.created event for later transport delivery");
 
         // PUT /orders/{id}/confirm
         orders.MapPut("/{id:guid}/confirm", ConfirmOrder)
               .WithName("ConfirmOrder")
-              .WithSummary("Confirm an order (publishes order.confirmed)");
+              .WithSummary("Confirm an order (writes order.confirmed to outbox)");
 
         // PUT /orders/{id}/ship
         orders.MapPut("/{id:guid}/ship", ShipOrder)
               .WithName("ShipOrder")
-              .WithSummary("Mark an order as shipped (publishes order.shipped)");
+              .WithSummary("Mark an order as shipped (writes order.shipped to outbox)");
 
         // PUT /orders/{id}/deliver
         orders.MapPut("/{id:guid}/deliver", DeliverOrder)
               .WithName("DeliverOrder")
-              .WithSummary("Mark an order as delivered (publishes order.delivered)");
+              .WithSummary("Mark an order as delivered (writes order.delivered to outbox)");
 
         // PUT /orders/{id}/cancel
         orders.MapPut("/{id:guid}/cancel", CancelOrder)
               .WithName("CancelOrder")
-              .WithSummary("Cancel an order (publishes order.cancelled)");
+              .WithSummary("Cancel an order (writes order.cancelled to outbox)");
 
         return app;
     }
@@ -87,6 +97,19 @@ public static class OrderEndpoints
 
         var order = await svc.CreateAsync(request, ct);
         return Results.CreatedAtRoute("GetOrder", new { id = order.Id }, OrderResponse.FromOrder(order));
+    }
+
+    private static async Task<IResult> ListOutboxMessages(
+        OutboxDbContext db,
+        CancellationToken ct)
+    {
+        var messages = await db.Set<DbOutboxMessage>()
+            .AsNoTracking()
+            .OrderByDescending(x => x.CreatedAt)
+            .Take(50)
+            .ToListAsync(ct);
+
+        return Results.Ok(messages.Select(OutboxMessageResponse.FromMessage));
     }
 
     private static async Task<IResult> ConfirmOrder(

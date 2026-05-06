@@ -57,6 +57,7 @@ internal sealed class OutboxPublishChannel<TMessage> : EventPublishChannel<Outbo
 {
     private readonly IOutboxMessageFactory<TMessage> _messageFactory;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IEventSystemTime _systemTime;
     private readonly ILogger _logger;
 
     /// <summary>
@@ -75,6 +76,10 @@ internal sealed class OutboxPublishChannel<TMessage> : EventPublishChannel<Outbo
     /// <see cref="OutboxMessageManager{TMessage}"/> (and its underlying repository)
     /// can be resolved without causing a scoped-in-singleton lifetime violation.
     /// </param>
+    /// <param name="systemTime">
+    /// The clock abstraction used to evaluate whether a scheduled publish time is
+    /// in the future and should be deferred in the outbox.
+    /// </param>
     /// <param name="validators">
     /// An optional collection of <see cref="IValidateOptions{TOptions}"/> services.
     /// When empty or <c>null</c> validation falls back to DataAnnotations.
@@ -86,15 +91,18 @@ internal sealed class OutboxPublishChannel<TMessage> : EventPublishChannel<Outbo
         IOptions<OutboxPublishOptions> options,
         IOutboxMessageFactory<TMessage> messageFactory,
         IServiceScopeFactory scopeFactory,
+        IEventSystemTime systemTime,
         IEnumerable<IValidateOptions<OutboxPublishOptions>>? validators = null,
         ILogger<OutboxPublishChannel<TMessage>>? logger = null)
         : base(options.Value, validators)
     {
         ArgumentNullException.ThrowIfNull(messageFactory);
         ArgumentNullException.ThrowIfNull(scopeFactory);
+        ArgumentNullException.ThrowIfNull(systemTime);
 
         _messageFactory = messageFactory;
         _scopeFactory   = scopeFactory;
+        _systemTime     = systemTime;
         _logger = logger ?? NullLogger<OutboxPublishChannel<TMessage>>.Instance;
     }
 
@@ -129,6 +137,14 @@ internal sealed class OutboxPublishChannel<TMessage> : EventPublishChannel<Outbo
             if (!result.IsSuccess())
                 throw new InvalidOperationException(
                     $"Failed to save event '{@event.Type}' to outbox: {result.Error}");
+
+            if (options.ScheduleDeliveryAt is { } scheduleDeliveryAt && scheduleDeliveryAt > _systemTime.UtcNow)
+            {
+                var deferred = await manager.ScheduleDeferredDeliveryAsync(message, scheduleDeliveryAt);
+                if (!deferred.IsSuccess())
+                    throw new InvalidOperationException(
+                        $"Failed to schedule event '{@event.Type}' in outbox: {deferred.Error}");
+            }
 
             _logger.LogEventSavedToOutbox(@event.Type);
         }

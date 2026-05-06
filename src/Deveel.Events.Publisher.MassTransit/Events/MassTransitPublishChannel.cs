@@ -79,6 +79,7 @@ namespace Deveel.Events
             {
                 DestinationAddress     = perCallOptions.DestinationAddress  ?? defaults.DestinationAddress,
                 MapAttributesToHeaders = perCallOptions.MapAttributesToHeaders ?? defaults.MapAttributesToHeaders,
+                ScheduleDeliveryAt     = perCallOptions.ScheduleDeliveryAt  ?? defaults.ScheduleDeliveryAt,
             };
         }
 

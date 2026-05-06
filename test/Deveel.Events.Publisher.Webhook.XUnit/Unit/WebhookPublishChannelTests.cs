@@ -18,6 +18,8 @@ namespace Deveel.Events
 {
     public class WebhookPublishChannelTests
     {
+        private static readonly DateTimeOffset FixedNow = new(2026, 01, 15, 12, 00, 00, TimeSpan.Zero);
+
         private static CloudEvent MakeEvent(string type = "person.created") => new()
         {
             Type    = type,
@@ -25,7 +27,7 @@ namespace Deveel.Events
             Id      = Guid.NewGuid().ToString("N"),
             DataContentType = "application/json",
             Data    = JsonSerializer.Serialize(new { name = "John Doe" }),
-            Time    = DateTimeOffset.UtcNow
+            Time    = FixedNow
         };
 
         private static IBatchEventPublishChannel BuildChannel(
@@ -34,6 +36,7 @@ namespace Deveel.Events
         {
             var services = new ServiceCollection();
             services.AddEventPublisher()
+                    .UseSystemTime<MutableSystemTime>()
                     .AddWebhooks(o =>
                     {
                         o.EndpointUrl            = "https://webhook.example.com/receive";
@@ -45,6 +48,8 @@ namespace Deveel.Events
                         o.SignatureAlgorithm     = WebhookSignatureAlgorithm.HmacSha256;
                         configure?.Invoke(o);
                     });
+
+            MutableSystemTime.UtcNowValue = FixedNow;
 
             // Override the default HTTP message handler with the fake one
             services.AddHttpClient(WebhookDefaults.HttpClientName)
@@ -116,6 +121,21 @@ namespace Deveel.Events
 
             var ts = captured!.Headers.GetValues(WebhookDefaults.TimestampHeaderName).First();
             Assert.True(long.TryParse(ts, out var v) && v > 0);
+        }
+
+        [Fact]
+        public async Task PublishAsync_EventWithoutTime_UsesSystemTimeForTimestampHeader()
+        {
+            HttpRequestMessage? captured = null;
+            var handler = new FakeHandler(req => { captured = req; return OK(); });
+
+            var @event = MakeEvent();
+            @event.Time = null;
+
+            await BuildChannel(handler).PublishAsync(@event);
+
+            var ts = captured!.Headers.GetValues(WebhookDefaults.TimestampHeaderName).First();
+            Assert.Equal(FixedNow.ToUnixTimeSeconds().ToString(), ts);
         }
 
         [Fact]
@@ -739,6 +759,13 @@ namespace Deveel.Events
             protected override Task<HttpResponseMessage> SendAsync(
                 HttpRequestMessage request, CancellationToken cancellationToken)
                 => Task.FromResult(_handler(request));
+        }
+
+        private sealed class MutableSystemTime : IEventSystemTime
+        {
+            public static DateTimeOffset UtcNowValue { get; set; }
+
+            public DateTimeOffset UtcNow => UtcNowValue;
         }
     }
 }
