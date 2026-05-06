@@ -62,12 +62,13 @@ namespace Deveel.Events
                 schemaUri = dataSchema;
             } else if (!String.IsNullOrWhiteSpace(dataVersion))
             {
-                if (PublisherOptions.DataSchemaBaseUri == null)
+                var dataSchemaBaseUri = ResolveDataSchemaBaseUri(dataType);
+                if (dataSchemaBaseUri == null)
                     throw new InvalidOperationException(
-                        $"The event type '{eventType}' uses [Event] DataVersion '{dataVersion}', but EventPublisherOptions.DataSchemaBaseUri is not configured. " +
+                        $"The event type '{eventType}' uses [Event] DataVersion '{dataVersion}', but neither EventPublisherOptions.DataSchemaBaseUri nor [assembly: EventDataSchemaUri(...)] is configured. " +
                         "Configure it via services.AddEventPublisher(options => options.DataSchemaBaseUri = new Uri(\"https://schemas.example.com/events\")).");
 
-                var schemaUriBuilder = new UriBuilder(PublisherOptions.DataSchemaBaseUri);
+                var schemaUriBuilder = new UriBuilder(dataSchemaBaseUri);
                 schemaUriBuilder.Path = $"{schemaUriBuilder.Path}/{eventType}/{dataVersion}";
                 schemaUri = schemaUriBuilder.Uri;
             }
@@ -87,6 +88,18 @@ namespace Deveel.Events
             }
 
             return @event;
+        }
+
+        private Uri? ResolveDataSchemaBaseUri(Type dataType)
+        {
+            if (PublisherOptions.DataSchemaBaseUri != null)
+                return PublisherOptions.DataSchemaBaseUri;
+
+            var assemblyAttribute = dataType.Assembly.GetCustomAttribute<EventDataSchemaUriAttribute>();
+            if (assemblyAttribute == null)
+                return null;
+
+            return new Uri(assemblyAttribute.BaseUri, UriKind.Absolute);
         }
     }
 }

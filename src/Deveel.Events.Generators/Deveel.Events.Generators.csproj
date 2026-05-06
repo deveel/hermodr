@@ -1,0 +1,66 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Roslyn generators must target netstandard2.0 -->
+    <TargetFrameworks>netstandard2.0</TargetFrameworks>
+    <LangVersion>latest</LangVersion>
+    <!-- Override multi-target from Directory.Build.props -->
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Deveel.Events</RootNamespace>
+
+    <IsRoslynComponent>true</IsRoslynComponent>
+    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+    <!-- Suppress release-tracking noise until the first shipped release -->
+    <NoWarn>$(NoWarn);RS2000;RS2007;RS2008</NoWarn>
+    
+    <Title>Deveel Events Source Generators</Title>
+    <Description>
+      Roslyn incremental source generators that emit compile-time IEventConvertible
+      implementations from [Event]-annotated partial classes, eliminating runtime
+      reflection in EventFactory and shifting annotation errors to the build.
+    </Description>
+    <PackageTags>event;events;source-generator;roslyn;codegen;cloudevents;annotations</PackageTags>
+
+    <!-- The generator DLL ships inside analyzers/dotnet/cs/ in the NuGet package -->
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);PackGeneratorAnalyzer</TargetsForTfmSpecificContentInPackage>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp"
+                      Version="4.9.2"
+                      PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers"
+                      Version="3.3.4"
+                      PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- Release tracking files required by RS2008 -->
+  <ItemGroup>
+    <AdditionalFiles Include="AnalyzerReleases.Shipped.md" />
+    <AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
+  </ItemGroup>
+
+  <!-- Pack the generator DLL as an analyzer -->
+  <ItemGroup>
+    <None Include="buildTransitive/Deveel.Events.Generators.props"
+          Pack="true"
+          PackagePath="buildTransitive/Deveel.Events.Generators.props"
+          Visible="false" />
+  </ItemGroup>
+
+  <Target Name="PackGeneratorAnalyzer">
+    <ItemGroup>
+      <TfmSpecificPackageFile Include="$(TargetPath)">
+        <PackagePath>analyzers/dotnet/cs</PackagePath>
+      </TfmSpecificPackageFile>
+    </ItemGroup>
+  </Target>
+
+</Project>
+
+
+
+

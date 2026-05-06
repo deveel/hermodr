@@ -1,0 +1,8 @@
+<Project>
+  <ItemGroup>
+    <!-- Make custom MSBuild properties visible to Deveel.Events source generators. -->
+    <CompilerVisibleProperty Include="EventDataSchemaBaseUri" />
+    <CompilerVisibleProperty Include="EventJsonSerializationOptionsProviderType" />
+  </ItemGroup>
+</Project>
+

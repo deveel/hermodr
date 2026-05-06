@@ -6,6 +6,7 @@
 using CloudNative.CloudEvents;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 using System.Text.Json;
 
@@ -163,6 +164,49 @@ namespace Deveel.Events
                     TestContext.Current.CancellationToken));
         }
 
+        [Fact]
+        public async Task PublishAsync_VersionedGeneratedConvertible_UsesPublisherScopedContext()
+        {
+            var firstPublisherEvents = new List<CloudEvent>();
+            var secondPublisherEvents = new List<CloudEvent>();
+            var serviceProvider = new ServiceCollection().BuildServiceProvider();
+
+            var firstPublisher = new EventPublisher(
+                Options.Create(new EventPublisherOptions
+                {
+                    DataSchemaBaseUri = new Uri("https://schemas-a.example.com/events"),
+                    JsonSerializerOptions = new JsonSerializerOptions
+                    {
+                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                    }
+                }),
+                [new CallbackChannel(e => firstPublisherEvents.Add(e))],
+                serviceProvider);
+
+            var secondPublisher = new EventPublisher(
+                Options.Create(new EventPublisherOptions
+                {
+                    DataSchemaBaseUri = new Uri("https://schemas-b.example.com/events"),
+                    JsonSerializerOptions = new JsonSerializerOptions()
+                }),
+                [new CallbackChannel(e => secondPublisherEvents.Add(e))],
+                serviceProvider);
+
+            await firstPublisher.PublishAsync(new ContextAwareVersionedEvent { OrderId = "42" },
+                cancellationToken: TestContext.Current.CancellationToken);
+
+            await secondPublisher.PublishAsync(new ContextAwareVersionedEvent { OrderId = "99" },
+                cancellationToken: TestContext.Current.CancellationToken);
+
+            var firstEvent = Assert.Single(firstPublisherEvents);
+            Assert.Equal("https://schemas-a.example.com/events/order.versioned/1.0", firstEvent.DataSchema?.ToString());
+            Assert.Contains("\"orderId\":\"42\"", Assert.IsType<string>(firstEvent.Data));
+
+            var secondEvent = Assert.Single(secondPublisherEvents);
+            Assert.Equal("https://schemas-b.example.com/events/order.versioned/1.0", secondEvent.DataSchema?.ToString());
+            Assert.Contains("\"OrderId\":\"99\"", Assert.IsType<string>(secondEvent.Data));
+        }
+
         // ── Publisher sets attribute byte[] type ──────────────────────────────
 
         [Fact]
@@ -262,6 +306,36 @@ namespace Deveel.Events
         {
             public CloudEvent ToCloudEvent() =>
                 throw new InvalidOperationException("Conversion failed on purpose");
+        }
+
+        private sealed class ContextAwareVersionedEvent : IEventConvertible
+        {
+            public string? OrderId { get; set; }
+
+            public CloudEvent ToCloudEvent()
+            {
+                const string eventType = "order.versioned";
+                const string dataVersion = "1.0";
+
+                Uri? schemaUri = null;
+                var baseUri = EventGeneratorContext.DataSchemaBaseUri;
+                if (baseUri != null)
+                {
+                    var builder = new UriBuilder(baseUri);
+                    builder.Path = builder.Path.TrimEnd('/') + "/" + eventType + "/" + dataVersion;
+                    schemaUri = builder.Uri;
+                }
+
+                return new CloudEvent
+                {
+                    Type = eventType,
+                    Source = new Uri("https://example.com"),
+                    Id = Guid.NewGuid().ToString("N"),
+                    DataSchema = schemaUri,
+                    DataContentType = "application/json",
+                    Data = JsonSerializer.Serialize(this, EventGeneratorContext.JsonSerializerOptions),
+                };
+            }
         }
 
         private sealed class CallbackChannel : IEventPublishChannel

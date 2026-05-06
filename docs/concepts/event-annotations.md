@@ -127,3 +127,65 @@ public class OrderPlacedData
 - [RabbitMQ Channel — AMQP Annotations](../publishers/rabbitmq.md#amqp-annotations)
 - [Schema from Annotations](../schema/from-annotations.md)
 
+---
+
+## Assembly-level generator attributes
+
+When `Deveel.Events.Generators` is referenced as an analyzer, two optional
+**assembly-level** attributes let you supply defaults that are baked directly
+into the generated code at build time, eliminating runtime lookups entirely.
+
+### `[EventDataSchemaUri]`
+
+Tells the generator the base URI to use when building the `dataschema` CloudEvents
+attribute for events that declare a `DataVersion` (rather than a full absolute URI):
+
+```csharp
+[assembly: EventDataSchemaUri("https://schemas.example.com/events")]
+```
+
+The generator appends `/{eventType}/{dataVersion}` and emits the result as a
+`const string` inside the generated `partial class`.  For example, given:
+
+```csharp
+[Event("order.placed", "2.0")]
+public partial class OrderPlaced { ... }
+```
+
+the generator emits:
+
+```csharp
+private const string __dataSchema = "https://schemas.example.com/events/order.placed/2.0";
+```
+
+No runtime lookup via `EventGeneratorContext` is needed for the schema URI.
+
+If the attribute is absent, the generator falls back to reading
+`EventGeneratorContext.DataSchemaBaseUri` at call time (seeded from the active
+`EventPublisher` instance's `EventPublisherOptions.DataSchemaBaseUri`).
+
+### `[EventJsonSerializationOptions]`
+
+Designates a type whose static `GetOptions()` method provides the
+`JsonSerializerOptions` used when serialising event data inside `ToCloudEvent()`:
+
+```csharp
+[assembly: EventJsonSerializationOptions(typeof(MyApp.MyJsonOptions))]
+```
+
+The referenced type must expose:
+
+```csharp
+public static JsonSerializerOptions GetOptions();
+```
+
+The generator emits a direct static call to that method:
+
+```csharp
+Data = JsonSerializer.Serialize(this, global::MyApp.MyJsonOptions.GetOptions()),
+```
+
+If the attribute is absent, the generator reads `EventGeneratorContext.JsonSerializerOptions`
+at runtime instead.
+
+Both attributes are **independent** — you can use one, both, or neither.

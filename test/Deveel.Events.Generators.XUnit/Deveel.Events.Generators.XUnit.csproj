@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Reference the generator as a plain library so we can instantiate
+      EventConvertibleGenerator directly in tests via CSharpGeneratorDriver.
+      Do NOT use OutputItemType="Analyzer" here — that would make the generator
+      run against this test project at compile time instead.
+    -->
+    <ProjectReference Include="..\..\src\Deveel.Events.Generators\Deveel.Events.Generators.csproj" />
+    <ProjectReference Include="..\..\src\Deveel.Events.Annotations\Deveel.Events.Annotations.csproj" />
+    <ProjectReference Include="..\..\src\Deveel.Events.Publisher\Deveel.Events.Publisher.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Roslyn APIs for compilation setup and generator driver -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.12.*" />
+  </ItemGroup>
+
+</Project>
+

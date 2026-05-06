@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <RootNamespace>Deveel</RootNamespace>
   </PropertyGroup>
-
+  
   <PropertyGroup>
     <Authors>antonello</Authors>
     <Company>Deveel</Company>

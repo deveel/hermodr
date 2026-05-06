@@ -14,15 +14,30 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.5" />
+    <PackageReference Include="CloudNative.CloudEvents" Version="2.8.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.15" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.15" />
     <PackageReference Include="MassTransit.RabbitMQ" Version="9.1.0" />
   </ItemGroup>
 
   <ItemGroup>
     <!-- Outbox EF Core repository (reads & updates outbox rows) -->
-    <ProjectReference Include="..\..\..\src\Deveel.Events.Publisher.Outbox.EntityFramework\Deveel.Events.Publisher.Outbox.EntityFramework.csproj" />
+    <Reference Include="Deveel.Events.Annotations">
+      <HintPath>..\libs\Deveel.Events.Annotations.dll</HintPath>
+    </Reference>
+    <Reference Include="Deveel.Events.Publisher">
+      <HintPath>..\libs\Deveel.Events.Publisher.dll</HintPath>
+    </Reference>
+    <Reference Include="Deveel.Events.Publisher.Outbox">
+      <HintPath>..\libs\Deveel.Events.Publisher.Outbox.dll</HintPath>
+    </Reference>
+    <Reference Include="Deveel.Events.Publisher.Outbox.EntityFramework">
+      <HintPath>..\libs\Deveel.Events.Publisher.Outbox.EntityFramework.dll</HintPath>
+    </Reference>
     <!-- MassTransit publish channel (transport used by the relay) -->
-    <ProjectReference Include="..\..\..\src\Deveel.Events.Publisher.MassTransit\Deveel.Events.Publisher.MassTransit.csproj" />
+    <Reference Include="Deveel.Events.Publisher.MassTransit">
+      <HintPath>..\libs\Deveel.Events.Publisher.MassTransit.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>

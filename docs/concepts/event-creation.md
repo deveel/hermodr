@@ -147,6 +147,67 @@ When `PublishAsync<TData>` detects that `TData` implements `IEventConvertible`, 
 
 ---
 
+## Source-generated `IEventConvertible`
+
+When `Deveel.Events.Generators` is referenced as a Roslyn analyzer, annotating a `partial`
+class with `[Event]` is enough — the generator writes `ToCloudEvent()` for you:
+
+```csharp
+[Event("order.placed", "2.0", ContentType = "application/json")]
+public partial class OrderPlaced
+{
+    public string OrderId { get; init; } = "";
+    public decimal Total  { get; init; }
+}
+```
+
+The generator emits a second `partial class` file that implements
+`IEventConvertible.ToCloudEvent()` with zero runtime reflection.
+
+### How the schema URI is resolved
+
+The generated code builds the `dataschema` URI through one of three paths, in priority order:
+
+| Priority | Source | When used |
+|----------|--------|-----------|
+| **1. Compile-time const** | `[assembly: EventDataSchemaUri("https://…")]` + `DataVersion` | Assembly attribute present |
+| **2. Compile-time const** | Absolute URI in `[Event("type", "https://…")]` | Full URI given directly on the event |
+| **3. Runtime lookup** | `EventGeneratorContext.DataSchemaBaseUri` | No assembly attribute or full URI |
+
+For path 3, `EventPublisher` pushes the value from `EventPublisherOptions.DataSchemaBaseUri`
+into `EventGeneratorContext` for the duration of each `ToCloudEvent()` call, so every
+publisher instance uses its own options without interfering with other instances.
+
+### How JSON options are resolved
+
+Similarly, the `Data` serialisation follows one of two paths:
+
+| Priority | Source | When used |
+|----------|--------|-----------|
+| **1. Compile-time static call** | `[assembly: EventJsonSerializationOptions(typeof(MyOptions))]` | Assembly attribute present |
+| **2. Runtime lookup** | `EventGeneratorContext.JsonSerializerOptions` | No assembly attribute |
+
+The provider type must expose `public static JsonSerializerOptions GetOptions()`.
+
+### Setting assembly defaults
+
+Place either or both attributes at assembly level (any `.cs` file):
+
+```csharp
+// Bakes the full schema URI into a const string for every event with DataVersion.
+[assembly: EventDataSchemaUri("https://schemas.example.com/events")]
+
+// Emits a direct static call to MyJsonOptions.GetOptions() for every serialisation.
+[assembly: EventJsonSerializationOptions(typeof(MyApp.MyJsonOptions))]
+```
+
+Both are optional and independent. You can use one, both, or neither.
+
+See [Event Annotations](event-annotations.md#assembly-level-generator-attributes) for the full reference.
+
+
+---
+
 ## `CreateEventFromData` — protected virtual hook
 
 `EventPublisher` exposes `CreateEventFromData(Type, object?)` as a `protected virtual`

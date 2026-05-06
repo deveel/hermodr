@@ -15,14 +15,31 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="CloudNative.CloudEvents" Version="2.8.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.5" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.5" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.15" />
   </ItemGroup>
 
   <ItemGroup>
     <!-- Deveel.Events: outbox pattern (EF Core) + RabbitMQ transport channel -->
-    <ProjectReference Include="..\..\..\src\Deveel.Events.Publisher.Outbox.EntityFramework\Deveel.Events.Publisher.Outbox.EntityFramework.csproj" />
-    <ProjectReference Include="..\..\..\src\Deveel.Events.Publisher.RabbitMq\Deveel.Events.Publisher.RabbitMq.csproj" />
+    <Reference Include="Deveel.Events.Annotations">
+      <HintPath>..\libs\Deveel.Events.Annotations.dll</HintPath>
+    </Reference>
+    <Reference Include="Deveel.Events.Publisher">
+      <HintPath>..\libs\Deveel.Events.Publisher.dll</HintPath>
+    </Reference>
+    <Reference Include="Deveel.Events.Publisher.Outbox">
+      <HintPath>..\libs\Deveel.Events.Publisher.Outbox.dll</HintPath>
+    </Reference>
+    <Reference Include="Deveel.Events.Publisher.Outbox.EntityFramework">
+      <HintPath>..\libs\Deveel.Events.Publisher.Outbox.EntityFramework.dll</HintPath>
+    </Reference>
+    <Reference Include="Deveel.Events.Amqp.Annotations">
+      <HintPath>..\libs\Deveel.Events.Amqp.Annotations.dll</HintPath>
+    </Reference>
+    <Reference Include="Deveel.Events.Publisher.RabbitMq">
+      <HintPath>..\libs\Deveel.Events.Publisher.RabbitMq.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>

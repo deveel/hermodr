@@ -50,6 +50,7 @@ namespace Deveel.Events
             _pipeline = pipeline ?? new EventPublisherPipeline();
             _pipelineFactory = new Lazy<Func<EventPublishDelegate, EventPublishDelegate>>(
                 () => _pipeline.Build(), LazyThreadSafetyMode.ExecutionAndPublication);
+
         }
 
         /// <summary>Gets the service that is used to create events.</summary>
@@ -490,6 +491,10 @@ namespace Deveel.Events
         {
             try
             {
+                using var _ = EventGeneratorContext.Push(
+                    PublisherOptions.DataSchemaBaseUri,
+                    PublisherOptions.JsonSerializerOptions);
+
                 var converted = convertible.ToCloudEvent();
                 if (converted == null)
                 {

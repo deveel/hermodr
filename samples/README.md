@@ -9,6 +9,21 @@ Each sample is self-contained: it has its own project file, configuration, and (
 
 | Sample | Transport | Description |
 |--------|-----------|-------------|
+| [aspnet-publisher/OrderService](aspnet-publisher/OrderService/README.md) | RabbitMQ | ASP.NET Core Minimal API microservice that publishes Order lifecycle events to a RabbitMQ exchange |
+| [event-genration](event-genration/README.md) | MassTransit (mocked endpoints) | Console app showing `[Event]` source-generation to `IEventConvertible` and publish through a MassTransit channel |
+
+---
+
+## Shared build scripts
+
+Sample-level dependency scripts (`build-libs.sh`, `build-libs.ps1`, `build-libs.bat`) are thin wrappers.
+They forward the project list and output folder to shared core scripts in this folder:
+
+- `build-libs-core.sh`
+- `build-libs-core.ps1`
+- `build-libs-core.bat`
+
+This keeps build/copy logic centralized and avoids duplication across samples.
 | [aspnet-publisher/OrderService.SimplePublisher](aspnet-publisher/OrderService.SimplePublisher/README.md) | RabbitMQ | ASP.NET Core Minimal API microservice that publishes Order lifecycle events to a RabbitMQ exchange |
 | [outbox-inapp/OrderService.InAppOutbox](outbox-inapp/OrderService.InAppOutbox/README.md) | RabbitMQ | Single-process transactional outbox with EF Core SQLite storage and an in-process relay |
 | [outbox-relay](outbox-relay/README.md) | MassTransit / RabbitMQ | Split transactional outbox with a separate relay worker consuming the shared SQLite outbox |
@@ -17,9 +32,9 @@ Each sample is self-contained: it has its own project file, configuration, and (
 
 ---
 
-## aspnet-publisher / OrderService.SimplePublisher
+## aspnet-publisher / OrderService
 
-**Path:** `aspnet-publisher/OrderService.SimplePublisher/`  
+**Path:** `aspnet-publisher/OrderService/`  
 **Framework:** ASP.NET Core 9 Minimal API  
 **Transport:** RabbitMQ (`Deveel.Events.Publisher.RabbitMq`)
 
@@ -110,3 +125,4 @@ See the [sample README](deadletter-relay/README.md) for the full walkthrough.
    - A `docker-compose.yml` if external infrastructure is required
    - A `README.md` following the same structure as the existing samples
 3. Register the new sample in the table above and in [`docs/samples/README.md`](../docs/samples/README.md).
+
