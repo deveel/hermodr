@@ -42,7 +42,7 @@ public class DeadLetterReplayTests
 
         await using var provider = services.BuildServiceProvider();
 
-        await Assert.ThrowsAsync<EventPublishException>(() =>
+        await Assert.ThrowsAsync<EventPublishChannelException>(() =>
             provider.GetRequiredService<EventPublisher>()
                 .PublishEventAsync(MakeEvent(), cancellationToken: TestContext.Current.CancellationToken));
 
@@ -86,7 +86,7 @@ public class DeadLetterReplayTests
         var registeredStore = Assert.IsType<FakeDeadLetterStore>(
             provider.GetRequiredService<IDeadLetterMessageStore>());
 
-        await Assert.ThrowsAsync<EventPublishException>(() =>
+        await Assert.ThrowsAsync<EventPublishChannelException>(() =>
             publisher.PublishEventAsync(MakeEvent(), cancellationToken: TestContext.Current.CancellationToken));
         var stored = Assert.Single(registeredStore.Messages);
 
@@ -120,11 +120,11 @@ public class DeadLetterReplayTests
         var store = Assert.IsType<FakeDeadLetterStore>(
             provider.GetRequiredService<IDeadLetterMessageStore>());
 
-        await Assert.ThrowsAsync<EventPublishException>(() =>
+        await Assert.ThrowsAsync<EventPublishChannelException>(() =>
             publisher.PublishEventAsync(MakeEvent(), cancellationToken: TestContext.Current.CancellationToken));
         var stored = Assert.Single(store.Messages);
 
-        await Assert.ThrowsAsync<EventPublishException>(() =>
+        await Assert.ThrowsAsync<EventPublishChannelException>(() =>
             provider.GetRequiredService<IDeadLetterMessageReplayer>()
                 .ReplayAsync(stored, TestContext.Current.CancellationToken));
 
@@ -170,7 +170,7 @@ public class DeadLetterReplayTests
         await using var provider = services.BuildServiceProvider();
         var registeredStore = Assert.IsType<FakeDeadLetterStore>(
             provider.GetRequiredService<IDeadLetterMessageStore>());
-        await Assert.ThrowsAsync<EventPublishException>(() =>
+        await Assert.ThrowsAsync<EventPublishChannelException>(() =>
             provider.GetRequiredService<EventPublisher>()
                 .PublishEventAsync(MakeEvent(), cancellationToken: TestContext.Current.CancellationToken));
 

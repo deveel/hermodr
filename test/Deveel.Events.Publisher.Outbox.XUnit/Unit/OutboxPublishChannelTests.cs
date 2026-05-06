@@ -158,8 +158,8 @@ namespace Deveel.Events
 
             var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
 
-            // When ThrowOnErrors = true the publisher wraps channel errors in EventPublishException.
-            await Assert.ThrowsAsync<EventPublishException>(
+            // When ThrowOnErrors = true channel failures surface as EventPublishChannelException.
+            await Assert.ThrowsAsync<EventPublishChannelException>(
                 () => publisher.PublishEventAsync(MakeEvent(), cancellationToken: TestContext.Current.CancellationToken));
 
             Assert.Empty(repository.Store);
@@ -184,7 +184,7 @@ namespace Deveel.Events
 
             var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
 
-            await Assert.ThrowsAsync<EventPublishException>(
+            await Assert.ThrowsAsync<EventPublishChannelException>(
                 () => publisher.PublishEventAsync(MakeEvent(), cancellationToken: TestContext.Current.CancellationToken));
         }
 
@@ -226,7 +226,7 @@ namespace Deveel.Events
             var provider = services.BuildServiceProvider();
             var publisher = provider.GetRequiredService<EventPublisher>();
 
-            await Assert.ThrowsAsync<EventPublishException>(
+            await Assert.ThrowsAsync<EventPublishChannelException>(
                 () => publisher.PublishEventAsync(MakeEvent(), cancellationToken: TestContext.Current.CancellationToken));
         }
 
