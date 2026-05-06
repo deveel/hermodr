@@ -136,11 +136,11 @@ The framework is still evolving. See the [ROADMAP](ROADMAP.md) for the full desc
 - [x] **Event Subscription & Routing** — subscribe to event types with attribute-based filtering and in-process routing
 - [x] **Event Middleware Pipeline** — composable cross-cutting hooks (logging, validation, correlation, tracing)
 
-### v1.2 — Reliability ✅
+### v1.2 — Reliability
 
 - [x] **Event Replay & Dead-Letter Handling** — capture and resubmit failed events with configurable retry and back-off
 - [x] **Outbox Pattern Integration** — guaranteed exactly-once publishing via a transactional outbox channel
-- [x] **Event Scheduler & Deferred Publishing** — defer event publishing to a future point in time or after a delay
+- [ ] **Event Scheduler & Deferred Publishing** — defer event publishing to a future point in time or after a delay
 
 ### v1.3 — Observability
 

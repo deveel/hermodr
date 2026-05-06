@@ -399,3 +399,4 @@ FodyWeavers.xsd
 .idea
 
 samples/**/libs
+.DS_Store
