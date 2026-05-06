@@ -125,7 +125,7 @@ The source of the documentation is also available in the [`docs/`](docs/README.m
 |---------|-------------|
 | [Getting Started](https://events.deveel.org/getting-started/installation) | Installation and quick-start guide |
 | [Core Concepts](https://events.deveel.org/concepts/) | Publisher, channels, and event annotations |
-| [Publisher Channels](https://events.deveel.org/publishers/) | Azure Service Bus, RabbitMQ, MassTransit, Webhook, and transactional outbox |
+| [Publisher Channels](https://events.deveel.org/publishers/) | Azure Service Bus, RabbitMQ, MassTransit, Webhook, Outbox, and Dead-Letter Replay |
 | [Event Subscriptions](https://events.deveel.org/subscriptions/) | Event dispatcher, filters, routing, and custom resolvers |
 | [Event Schema](https://events.deveel.org/schema/) | Schema definition, export (JSON / YAML / AsyncAPI), and validation |
 | [Testing](https://events.deveel.org/testing/) | Unit-testing event publishing |
@@ -141,7 +141,7 @@ The framework is still evolving. See the [ROADMAP](ROADMAP.md) for the full desc
 
 ### v1.2 — Reliability
 
-- [ ] **Event Replay & Dead-Letter Handling** — capture and resubmit failed events with configurable retry and back-off
+- [x] **Event Replay & Dead-Letter Handling** — capture and resubmit failed events with configurable retry and back-off
 - [x] **Outbox Pattern Integration** — guaranteed exactly-once publishing via a transactional outbox channel
 - [ ] **Event Scheduler & Deferred Publishing** — defer event publishing to a future point in time or after a delay
 
