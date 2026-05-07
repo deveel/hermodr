@@ -158,7 +158,7 @@ namespace Deveel.Events
 
             var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
 
-            await Assert.ThrowsAsync<EventPublishException>(
+            await Assert.ThrowsAsync<EventConversionException>(
                 () => publisher.PublishAsync(new ThrowingConvertible(), cancellationToken:
                     TestContext.Current.CancellationToken));
         }

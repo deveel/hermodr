@@ -20,6 +20,8 @@ namespace Deveel.Events
     [Trait("Feature", "Outbox")]
     public class OutboxPublishChannelTests
     {
+        private static readonly DateTimeOffset FixedNow = new(2099, 01, 15, 12, 00, 00, TimeSpan.Zero);
+
         // ── Helpers ──────────────────────────────────────────────────────────
 
         private static CloudEvent MakeEvent(string type = "test.event") => new()
@@ -116,6 +118,27 @@ namespace Deveel.Events
             Assert.Equal("event.three", repository.Store[2].Event.Type);
         }
 
+        [Fact]
+        public async Task PublishAsync_WithScheduleDeliveryAt_DefersFirstDeliveryInOutbox()
+        {
+            var factory    = new FakeOutboxMessageFactory();
+            var repository = new FakeOutboxMessageRepository();
+            var provider   = BuildProvider(factory, repository);
+
+            var publisher = provider.GetRequiredService<EventPublisher>();
+            var scheduledAt = FixedNow.AddMinutes(5);
+
+            await publisher.PublishEventAsync(
+                MakeEvent("event.scheduled"),
+                new OutboxPublishOptions { ScheduleDeliveryAt = scheduledAt },
+                TestContext.Current.CancellationToken);
+
+            var stored = Assert.Single(repository.Store);
+            Assert.Equal(scheduledAt, stored.NextRetryAt);
+            Assert.Equal(0, stored.RetryCount);
+            Assert.Null(stored.ErrorMessage);
+        }
+
         // ── PublishAsync: factory error ──────────────────────────────────────
 
         [Fact]
@@ -135,8 +158,8 @@ namespace Deveel.Events
 
             var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
 
-            // When ThrowOnErrors = true the publisher wraps channel errors in EventPublishException.
-            await Assert.ThrowsAsync<EventPublishException>(
+            // When ThrowOnErrors = true channel failures surface as EventPublishChannelException.
+            await Assert.ThrowsAsync<EventPublishChannelException>(
                 () => publisher.PublishEventAsync(MakeEvent(), cancellationToken: TestContext.Current.CancellationToken));
 
             Assert.Empty(repository.Store);
@@ -161,7 +184,7 @@ namespace Deveel.Events
 
             var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
 
-            await Assert.ThrowsAsync<EventPublishException>(
+            await Assert.ThrowsAsync<EventPublishChannelException>(
                 () => publisher.PublishEventAsync(MakeEvent(), cancellationToken: TestContext.Current.CancellationToken));
         }
 
@@ -203,7 +226,7 @@ namespace Deveel.Events
             var provider = services.BuildServiceProvider();
             var publisher = provider.GetRequiredService<EventPublisher>();
 
-            await Assert.ThrowsAsync<EventPublishException>(
+            await Assert.ThrowsAsync<EventPublishChannelException>(
                 () => publisher.PublishEventAsync(MakeEvent(), cancellationToken: TestContext.Current.CancellationToken));
         }
 
@@ -235,6 +258,8 @@ namespace Deveel.Events
             public Task SetSendingAsync(FakeOutboxMessage message, CancellationToken ct = default)
                 => throw new NotImplementedException();
             public Task SetDeliveredAsync(FakeOutboxMessage message, CancellationToken ct = default)
+                => throw new NotImplementedException();
+            public Task SetDeferredAsync(FakeOutboxMessage message, DateTimeOffset scheduledAt, CancellationToken ct = default)
                 => throw new NotImplementedException();
             public Task SetRetryAsync(FakeOutboxMessage message, string errorMessage, DateTimeOffset nextRetryAt, CancellationToken ct = default)
                 => throw new NotImplementedException();

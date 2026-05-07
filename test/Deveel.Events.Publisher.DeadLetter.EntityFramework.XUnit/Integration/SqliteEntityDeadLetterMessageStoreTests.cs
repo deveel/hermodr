@@ -15,6 +15,8 @@ namespace Deveel.Events;
 [Trait("Feature", "DeadLetterEntityFramework")]
 public class SqliteEntityDeadLetterMessageStoreTests
 {
+    private static readonly DateTimeOffset FixedNow = new(2026, 01, 15, 12, 00, 00, TimeSpan.Zero);
+
     [Fact]
     public async Task StoreAndReplayStateTransitions_WorkWithSqlite()
     {
@@ -28,7 +30,8 @@ public class SqliteEntityDeadLetterMessageStoreTests
         await using var context = new DeadLetterDbContext(options);
         await context.Database.EnsureCreatedAsync(TestContext.Current.CancellationToken);
 
-        var store = new EntityDeadLetterMessageStore<DbDeadLetterMessage>(context);
+        var clock = new TestSystemTime(FixedNow);
+        var store = new EntityDeadLetterMessageStore<DbDeadLetterMessage>(context, clock);
         var message = CreateMessage();
 
         await store.AddAsync(message, TestContext.Current.CancellationToken);
@@ -38,11 +41,11 @@ public class SqliteEntityDeadLetterMessageStoreTests
         Assert.Equal("test.event", ((IDeadLetterMessage)stored).Event.Type);
         Assert.Equal("primary", stored.ChannelName);
 
-        await store.SetRetryAsync(stored, "retry", DateTimeOffset.UtcNow.AddMinutes(5), TestContext.Current.CancellationToken);
+        await store.SetRetryAsync(stored, "retry", FixedNow.AddMinutes(5), TestContext.Current.CancellationToken);
         pending = await store.GetPendingMessagesAsync(cancellationToken: TestContext.Current.CancellationToken);
         Assert.Empty(pending);
 
-        stored.NextReplayAt = DateTimeOffset.UtcNow.AddMinutes(-1);
+        stored.NextReplayAt = FixedNow.AddMinutes(-1);
         await store.SetReplayingAsync(stored, TestContext.Current.CancellationToken);
         Assert.Equal(DeadLetterMessageStatus.Replaying, stored.Status);
 
@@ -62,7 +65,7 @@ public class SqliteEntityDeadLetterMessageStoreTests
             ChannelType = typeof(object).FullName,
             ErrorMessage = "failed",
             Status = DeadLetterMessageStatus.Pending,
-            CreatedAt = DateTimeOffset.UtcNow,
+            CreatedAt = FixedNow,
             DataText = "{\"ok\":true}"
         };
 
@@ -75,5 +78,10 @@ public class SqliteEntityDeadLetterMessageStoreTests
         });
 
         return message;
+    }
+
+    private sealed class TestSystemTime(DateTimeOffset utcNow) : IEventSystemTime
+    {
+        public DateTimeOffset UtcNow { get; } = utcNow;
     }
 }

@@ -216,6 +216,9 @@ namespace Deveel.Events {
         private static IEventPublishChannel ApplyChannelName(IEventPublishChannel channel, string? channelName)
             => !string.IsNullOrEmpty(channelName) ? new NamedChannelDecorator(channel, channelName!) : channel;
 
+        private static IEventPublishChannel BuildChannelEntry(IEventPublishChannel channel, string? channelName)
+            => ApplyChannelName(channel, channelName);
+
         /// <summary>
         /// Wraps <paramref name="channel"/> in a <see cref="NamedChannelDecorator{TEvent}"/> when
         /// <paramref name="channelName"/> is non-null/non-empty, otherwise returns the
@@ -224,6 +227,10 @@ namespace Deveel.Events {
         private static IEventPublishChannel<TEvent> ApplyChannelName<TEvent>(IEventPublishChannel<TEvent> channel, string? channelName)
             where TEvent : class
             => !string.IsNullOrEmpty(channelName) ? new NamedChannelDecorator<TEvent>(channel, channelName!) : channel;
+
+        private static IEventPublishChannel<TEvent> BuildChannelEntry<TEvent>(IEventPublishChannel<TEvent> channel, string? channelName)
+            where TEvent : class
+            => ApplyChannelName(channel, channelName);
 
         /// <summary>
         /// Registers a publish channel of type <typeparamref name="TChannel"/> for
@@ -244,8 +251,8 @@ namespace Deveel.Events {
         {
             Services.TryAdd(new ServiceDescriptor(typeof(TChannel), typeof(TChannel), lifetime));
             Services.Add(ServiceDescriptor.KeyedSingleton<IEventPublishChannel>(
-                Name, (sp, _) => ApplyChannelName(sp.GetRequiredService<TChannel>(), channelName)));
-            _channelFactories.Add(sp => ApplyChannelName(sp.GetRequiredService<TChannel>(), channelName));
+                Name, (sp, _) => BuildChannelEntry(sp.GetRequiredService<TChannel>(), channelName)));
+            _channelFactories.Add(sp => BuildChannelEntry(sp.GetRequiredService<TChannel>(), channelName));
             return this;
         }
 
@@ -279,8 +286,8 @@ namespace Deveel.Events {
 
             Services.TryAdd(new ServiceDescriptor(channelType, channelType, lifetime));
             Services.Add(ServiceDescriptor.KeyedSingleton<IEventPublishChannel>(
-                Name, (sp, _) => ApplyChannelName((IEventPublishChannel)sp.GetRequiredService(channelType), channelName)));
-            _channelFactories.Add(sp => ApplyChannelName((IEventPublishChannel)sp.GetRequiredService(channelType), channelName));
+                Name, (sp, _) => BuildChannelEntry((IEventPublishChannel)sp.GetRequiredService(channelType), channelName)));
+            _channelFactories.Add(sp => BuildChannelEntry((IEventPublishChannel)sp.GetRequiredService(channelType), channelName));
             return this;
         }
 
@@ -294,9 +301,9 @@ namespace Deveel.Events {
         /// </param>
         public EventPublisherBuilder AddChannel(IEventPublishChannel channel, string? channelName = null)
         {
-            var entry = ApplyChannelName(channel, channelName);
-            Services.AddKeyedSingleton<IEventPublishChannel>(Name, entry);
-            _channelFactories.Add(_ => entry);
+            Services.Add(ServiceDescriptor.KeyedSingleton<IEventPublishChannel>(
+                Name, (sp, _) => BuildChannelEntry(channel, channelName)));
+            _channelFactories.Add(_ => BuildChannelEntry(channel, channelName));
             return this;
         }
 
@@ -317,10 +324,10 @@ namespace Deveel.Events {
         {
             Services.TryAdd(new ServiceDescriptor(typeof(TChannel), typeof(TChannel), lifetime));
             Services.Add(ServiceDescriptor.KeyedSingleton<IEventPublishChannel>(
-                Name, (sp, _) => (IEventPublishChannel)ApplyChannelName(sp.GetRequiredService<TChannel>(), channelName)));
+                Name, (sp, _) => (IEventPublishChannel)BuildChannelEntry(sp.GetRequiredService<TChannel>(), channelName)));
             Services.Add(ServiceDescriptor.KeyedSingleton<IEventPublishChannel<TEvent>>(
-                Name, (sp, _) => ApplyChannelName(sp.GetRequiredService<TChannel>(), channelName)));
-            _channelFactories.Add(sp => (IEventPublishChannel)ApplyChannelName(sp.GetRequiredService<TChannel>(), channelName));
+                Name, (sp, _) => BuildChannelEntry(sp.GetRequiredService<TChannel>(), channelName)));
+            _channelFactories.Add(sp => (IEventPublishChannel)BuildChannelEntry(sp.GetRequiredService<TChannel>(), channelName));
             return this;
         }
 
@@ -335,10 +342,11 @@ namespace Deveel.Events {
         public EventPublisherBuilder AddChannel<TEvent>(IEventPublishChannel<TEvent> channel, string? channelName = null)
             where TEvent : class
         {
-            var entry = ApplyChannelName(channel, channelName);
-            Services.AddKeyedSingleton<IEventPublishChannel>(Name, (IEventPublishChannel)entry);
-            Services.AddKeyedSingleton<IEventPublishChannel<TEvent>>(Name, entry);
-            _channelFactories.Add(_ => (IEventPublishChannel)entry);
+            Services.Add(ServiceDescriptor.KeyedSingleton<IEventPublishChannel>(
+                Name, (sp, _) => (IEventPublishChannel)BuildChannelEntry(channel, channelName)));
+            Services.Add(ServiceDescriptor.KeyedSingleton<IEventPublishChannel<TEvent>>(
+                Name, (sp, _) => BuildChannelEntry(channel, channelName)));
+            _channelFactories.Add(_ => (IEventPublishChannel)BuildChannelEntry(channel, channelName));
             return this;
         }
     }

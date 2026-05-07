@@ -5,4 +5,10 @@
   <ItemGroup>
     <ProjectReference Include="..\Deveel.Events.Schema\Deveel.Events.Schema.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <None Remove="docs\api\Deveel.Events.EventSchemaYamlWriter.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="docs\api\" />
+  </ItemGroup>
 </Project>

@@ -24,6 +24,8 @@ namespace Deveel.Events
     [Trait("Kind", "Unit")]
     public static class RabbitMqPublishChannelUnitTests
     {
+        private static readonly DateTimeOffset FixedNow = new(2026, 01, 15, 12, 00, 00, TimeSpan.Zero);
+
         // ── Helpers ───────────────────────────────────────────────────────────
 
         /// <summary>
@@ -51,7 +53,7 @@ namespace Deveel.Events
                 Type   = "test.event",
                 Source = new Uri("https://test.example.com"),
                 Id     = Guid.NewGuid().ToString("N"),
-                Time   = DateTimeOffset.UtcNow,
+                Time   = FixedNow,
                 DataContentType = "application/json",
                 Data   = JsonSerializer.Serialize(new { Value = 42 })
             };

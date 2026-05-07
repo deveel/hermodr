@@ -63,7 +63,7 @@ public class DeadLetterHandlingTests
 
         await using var provider = services.BuildServiceProvider();
 
-        await Assert.ThrowsAsync<EventPublishException>(() =>
+        await Assert.ThrowsAsync<EventPublishChannelException>(() =>
             provider.GetRequiredService<EventPublisher>()
                 .PublishEventAsync(MakeEvent(), cancellationToken: TestContext.Current.CancellationToken));
 
@@ -85,7 +85,7 @@ public class DeadLetterHandlingTests
 
         await using var provider = services.BuildServiceProvider();
 
-        var exception = await Assert.ThrowsAsync<EventPublishException>(() =>
+        var exception = await Assert.ThrowsAsync<EventPublishErrorHandlerException>(() =>
             provider.GetRequiredService<EventPublisher>()
                 .PublishEventAsync(MakeEvent(), cancellationToken: TestContext.Current.CancellationToken));
 

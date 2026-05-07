@@ -24,6 +24,17 @@ A `CloudEvent` consists of a set of **required** and **optional** attributes:
 | `time` | `DateTimeOffset?` | Timestamp when the event occurred |
 | `data` | `object?` | The event payload |
 
+## Event time semantics
+
+In Deveel Events, `CloudEvent.time` is the **occurrence timestamp** of the business fact, not the transport delivery time.
+
+- Use `time` to answer **when the event happened** in domain terms.
+- Use transport/outbox/dead-letter metadata (`NextRetryAt`, `NextReplayAt`, delivery headers) to answer **when delivery was attempted**.
+- Keep these concepts separate to preserve an accurate event record and make replay/audit timelines reliable.
+
+When the event has no `time`, `EventPublisher` fills it through `IEventSystemTime.UtcNow` during enrichment.
+This allows deterministic tests by replacing the clock via `UseSystemTime<TClock>()`.
+
 ## How Deveel Events Populates the Envelope
 
 When you call `publisher.PublishAsync(data)` with an annotated data object, the `IEventFactory` service reads the `[Event]` attribute and populates the envelope as follows:
@@ -58,12 +69,14 @@ You can bypass the annotation system and construct a `CloudEvent` manually when 
 ```csharp
 using CloudNative.CloudEvents;
 
+var systemTime = serviceProvider.GetRequiredService<IEventSystemTime>();
+
 var @event = new CloudEvent
 {
     Id      = Guid.NewGuid().ToString(),
     Type    = "com.acme.order.shipped",
     Source  = new Uri("https://orders.acme.com"),
-    Time    = DateTimeOffset.UtcNow,
+    Time    = systemTime.UtcNow,
     DataContentType = "application/json",
     Data    = new { OrderId = 42, TrackingNumber = "1Z999AA1" }
 };

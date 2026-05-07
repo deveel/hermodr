@@ -41,6 +41,7 @@ namespace Deveel.Events
                 PublisherConfirms     = typedOptions.PublisherConfirms     ?? baseOptions.PublisherConfirms,
                 ConfirmTimeout        = typedOptions.ConfirmTimeout        ?? baseOptions.ConfirmTimeout,
                 Mandatory             = typedOptions.Mandatory             ?? baseOptions.Mandatory,
+                ScheduleDeliveryAt    = typedOptions.ScheduleDeliveryAt    ?? baseOptions.ScheduleDeliveryAt,
             };
         }
         

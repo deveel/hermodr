@@ -28,6 +28,13 @@ namespace Deveel.Events;
 public abstract class EventPublishOptions
 {
     /// <summary>
+    /// Gets or sets the UTC time when event delivery should be attempted.
+    /// When <c>null</c>, delivery is attempted immediately.
+    /// </summary>
+    public DateTimeOffset? ScheduleDeliveryAt { get; set; }
+
+
+    /// <summary>
     /// Creates a <see cref="CombinedPublishOptions"/> that bundles multiple per-channel
     /// options instances together so that a single call to
     /// <see cref="EventPublisher.PublishEventAsync(CloudNative.CloudEvents.CloudEvent, EventPublishOptions, System.Threading.CancellationToken)"/> or

@@ -20,6 +20,8 @@ namespace Deveel.Events
     /// </summary>
     public class WebhookChannelAdditionalTests
     {
+        private static readonly DateTimeOffset FixedNow = new(2026, 01, 15, 12, 00, 00, TimeSpan.Zero);
+
         // ── Helpers ──────────────────────────────────────────────────────────
 
         private static CloudEvent MakeEvent(string type = "test.event") => new()
@@ -29,7 +31,7 @@ namespace Deveel.Events
             Id              = Guid.NewGuid().ToString("N"),
             DataContentType = "application/json",
             Data            = JsonSerializer.Serialize(new { name = "Test" }),
-            Time            = DateTimeOffset.UtcNow,
+            Time            = FixedNow,
         };
 
         private static IBatchEventPublishChannel BuildChannel(
@@ -148,11 +150,11 @@ namespace Deveel.Events
         }
 
         [Fact]
-        public async Task PublishAsync_Returns429_ThenExhausted_ThrowsDeliveryException()
+        public async Task PublishAsync_Returns429_ThenExhausted_ThrowsStatusCodeException()
         {
             var handler = new FakeHandler(_ => new HttpResponseMessage(HttpStatusCode.TooManyRequests));
 
-            await Assert.ThrowsAsync<WebhookDeliveryException>(
+            await Assert.ThrowsAsync<WebhookStatusCodeException>(
                 () => BuildChannel(handler, o =>
                 {
                     o.MaxRetryCount = 1;
@@ -195,7 +197,7 @@ namespace Deveel.Events
             });
 
             // 418 is NOT in the default retryable codes → should throw immediately after 1 attempt
-            await Assert.ThrowsAsync<WebhookDeliveryException>(
+            await Assert.ThrowsAsync<WebhookStatusCodeException>(
                 () => BuildChannel(handler, o =>
                 {
                     o.MaxRetryCount = 3;
@@ -263,7 +265,7 @@ namespace Deveel.Events
                 o.RetryDelay    = TimeSpan.FromMilliseconds(1);
             });
 
-            await Assert.ThrowsAsync<WebhookDeliveryException>(
+            await Assert.ThrowsAsync<WebhookStatusCodeException>(
                 () => channel.PublishBatchAsync(
                     [MakeEvent("event.a"), MakeEvent("event.b")]));
         }
@@ -279,7 +281,7 @@ namespace Deveel.Events
                 o.RetryDelay    = TimeSpan.FromMilliseconds(1);
             });
 
-            await Assert.ThrowsAsync<WebhookDeliveryException>(
+            await Assert.ThrowsAsync<WebhookTransportException>(
                 () => channel.PublishBatchAsync([MakeEvent()]));
         }
 

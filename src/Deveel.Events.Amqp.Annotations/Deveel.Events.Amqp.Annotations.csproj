@@ -6,5 +6,8 @@
   <ItemGroup>
     <ProjectReference Include="..\Deveel.Events.Annotations\Deveel.Events.Annotations.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <None Remove="docs\api\Deveel.Events.AmqpExchangeAttribute.md" />
+  </ItemGroup>
 
 </Project>

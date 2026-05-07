@@ -141,13 +141,22 @@ namespace Deveel.Events
             options = options?.Unwrap();
 
             if (options == null) return null;
-            var channelType = channel.GetType();
+            var effectiveChannel = UnwrapDecoratedChannel(channel);
+            var channelType = effectiveChannel.GetType();
             var expectedOptionsType = FindExpectedOptionsType(channelType);
             if (expectedOptionsType is null) return null;
             var channelEventType = FindChannelEventType(channelType);
             if (options is CombinedPublishOptions combined)
                 return ResolveCombinedOptions(channel, combined, expectedOptionsType, channelEventType);
             return ResolveSingleOptions(channel, options, expectedOptionsType, channelEventType);
+        }
+
+        private static IEventPublishChannel UnwrapDecoratedChannel(IEventPublishChannel channel)
+        {
+            while (channel is IEventPublishChannelDecorator decorator)
+                channel = decorator.InnerChannel;
+
+            return channel;
         }
 
         private static EventPublishOptions? ResolveCombinedOptions(
@@ -272,11 +281,12 @@ namespace Deveel.Events
             ValidateCloudEvent(context.Event);
             foreach (var channel in channels)
             {
-                _logger.TraceEventPublishing(context.Event.Type!, channel.GetType());
+                var effectiveChannel = UnwrapDecoratedChannel(channel);
+                _logger.TraceEventPublishing(context.Event.Type!, effectiveChannel.GetType());
                 try
                 {
                     await PublishEventAsync(channel, context.Event, context.Options, context.CancellationToken);
-                    _logger.TraceEventPublished(context.Event.Type!, channel.GetType());
+                    _logger.TraceEventPublished(context.Event.Type!, effectiveChannel.GetType());
                 }
                 catch (OperationCanceledException) when (context.CancellationToken.IsCancellationRequested)
                 {
@@ -293,9 +303,9 @@ namespace Deveel.Events
                         context.Event,
                         context.Options,
                         context.RawOptions,
-                        channel.GetType(),
+                        effectiveChannel.GetType(),
                         (channel as INamedEventPublishChannel)?.Name));
-                    HandleChannelPublishError(ex, context.Event.Type!, channel.GetType());
+                    HandleChannelPublishError(ex, context.Event.Type!, effectiveChannel.GetType());
                 }
             }
         }
@@ -304,7 +314,7 @@ namespace Deveel.Events
         {
             _logger.LogEventPublishError(ex, eventType, channelType);
             if (!PublisherOptions.ThrowOnErrors) return;
-            throw new EventPublishException(
+            throw new EventPublishChannelException(
                 $"An error occurred while publishing an event of type {eventType} to the channel '{channelType.Name}'",
                 ex);
         }
@@ -334,7 +344,7 @@ namespace Deveel.Events
                 catch (Exception handlerException)
                 {
                     _logger.LogPublishErrorHandlerError(handlerException, context.Stage, context.Event?.Type, context.ChannelType);
-                    throw new EventPublishException(
+                    throw new EventPublishErrorHandlerException(
                         $"An error occurred while handling a publish error at stage {context.Stage}",
                         new AggregateException(context.Exception, handlerException));
                 }
@@ -418,7 +428,7 @@ namespace Deveel.Events
                     dataType: eventType,
                     data: @event));
                 if (PublisherOptions.ThrowOnErrors)
-                    throw new EventPublishException(
+                    throw new EventCreationException(
                         $"An error occurred while creating an event of type {eventType.FullName} from the provided event",
                         ex);
                 return null;
@@ -513,7 +523,7 @@ namespace Deveel.Events
                     dataType: dataType,
                     data: data));
                 if (PublisherOptions.ThrowOnErrors)
-                    throw new EventPublishException("An error occurred while converting data", ex);
+                    throw new EventConversionException("An error occurred while converting data", ex);
                 return null;
             }
         }

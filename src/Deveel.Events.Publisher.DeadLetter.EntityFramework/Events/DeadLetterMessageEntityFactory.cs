@@ -12,12 +12,19 @@ namespace Deveel.Events;
 public sealed class DeadLetterMessageEntityFactory<TMessage> : IDeadLetterMessageFactory<TMessage>
     where TMessage : DbDeadLetterMessage, new()
 {
+    private readonly IEventSystemTime _systemTime;
+
+    public DeadLetterMessageEntityFactory(IEventSystemTime? systemTime = null)
+    {
+        _systemTime = systemTime ?? EventSystemTime.Instance;
+    }
+
     public TMessage Create(DeadLetterContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
 
         var message = new TMessage();
-        message.PopulateFromDeadLetterContext(context);
+        message.PopulateFromDeadLetterContext(context, _systemTime.UtcNow);
         return message;
     }
 }

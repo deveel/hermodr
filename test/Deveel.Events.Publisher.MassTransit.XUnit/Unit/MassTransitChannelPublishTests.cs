@@ -55,6 +55,7 @@ namespace Deveel.Events
         [Fact]
         public async Task PublishCloudEvent_UsesPublishEndpoint()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var cloudEvent = new CloudEvent
             {
                 Type = "person.created",
@@ -65,7 +66,7 @@ namespace Deveel.Events
                 Data = JsonSerializer.Serialize(new { FirstName = "John", LastName = "Doe" }),
             };
 
-            await Publisher.PublishEventAsync(cloudEvent);
+            await Publisher.PublishEventAsync(cloudEvent, cancellationToken: cancellationToken);
 
             // The extension method ultimately calls the interface method with IPipe<PublishContext<T>>
             await _publishEndpoint.Received(1)
@@ -78,6 +79,7 @@ namespace Deveel.Events
         [Fact]
         public async Task PublishCloudEvent_MessageBodyIsValidStructuredCloudEvent()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             ICloudEventMessage? capturedMessage = null;
 
             await _publishEndpoint.Publish<ICloudEventMessage>(
@@ -95,7 +97,7 @@ namespace Deveel.Events
                 Data = JsonSerializer.Serialize(new { OrderId = "ord-001" }),
             };
 
-            await Publisher.PublishEventAsync(cloudEvent);
+            await Publisher.PublishEventAsync(cloudEvent, cancellationToken: cancellationToken);
 
             Assert.NotNull(capturedMessage);
             Assert.NotEmpty(capturedMessage.Body);
@@ -114,6 +116,7 @@ namespace Deveel.Events
         [Fact]
         public async Task PublishEventData_CloudEventTypeIsSet()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             ICloudEventMessage? capturedMessage = null;
 
             await _publishEndpoint.Publish<ICloudEventMessage>(
@@ -125,7 +128,7 @@ namespace Deveel.Events
             {
                 FirstName = "Jane",
                 LastName = "Smith",
-            });
+            }, cancellationToken: cancellationToken);
 
             Assert.NotNull(capturedMessage);
 

@@ -10,7 +10,7 @@ namespace Deveel.Events
     /// <see cref="INamedEventPublishChannel"/>, without requiring the underlying
     /// channel implementation to carry that concern.
     /// </summary>
-    internal sealed class NamedChannelDecorator : INamedEventPublishChannel
+    internal sealed class NamedChannelDecorator : IEventPublishChannelDecorator, INamedEventPublishChannel
     {
         private readonly IEventPublishChannel _inner;
 
@@ -19,6 +19,9 @@ namespace Deveel.Events
             _inner = inner;
             Name = name;
         }
+
+        /// <inheritdoc/>
+        public IEventPublishChannel InnerChannel => _inner;
 
         /// <inheritdoc/>
         public string? Name { get; }
@@ -34,7 +37,7 @@ namespace Deveel.Events
     /// channel to carry the naming concern.
     /// </summary>
     /// <typeparam name="TEvent">The event data class this channel is keyed against.</typeparam>
-    internal sealed class NamedChannelDecorator<TEvent> : INamedEventPublishChannel, IEventPublishChannel<TEvent>
+    internal sealed class NamedChannelDecorator<TEvent> : IEventPublishChannelDecorator, INamedEventPublishChannel, IEventPublishChannel<TEvent>
         where TEvent : class
     {
         private readonly IEventPublishChannel<TEvent> _inner;
@@ -44,6 +47,9 @@ namespace Deveel.Events
             _inner = inner;
             Name = name;
         }
+
+        /// <inheritdoc/>
+        public IEventPublishChannel InnerChannel => _inner;
 
         /// <inheritdoc/>
         public string? Name { get; }

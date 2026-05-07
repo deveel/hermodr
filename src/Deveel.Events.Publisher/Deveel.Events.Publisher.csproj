@@ -25,4 +25,5 @@
   <ItemGroup>
     <ProjectReference Include="..\Deveel.Events.Annotations\Deveel.Events.Annotations.csproj" />
   </ItemGroup>
+
 </Project>

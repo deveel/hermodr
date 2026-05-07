@@ -62,6 +62,7 @@
 * [Overview](samples/README.md)
 * [OrderService — Minimal API + RabbitMQ](samples/aspnet-publisher-rabbitmq.md)
 * [OrderService — In-Process Outbox + RabbitMQ](samples/outbox-inapp-rabbitmq.md)
+* [OrderService — In-Process Outbox with Scheduled Delivery](samples/outbox-inapp-scheduled-delivery.md)
 * [OrderService — Split Outbox + MassTransit RabbitMQ](samples/outbox-relay-masstransit.md)
 * [OrderService — In-Process Dead-Letter Replay](samples/deadletter-inproc.md)
 * [OrderService — Split Dead-Letter Replay with Entity Framework](samples/deadletter-relay-entityframework.md)

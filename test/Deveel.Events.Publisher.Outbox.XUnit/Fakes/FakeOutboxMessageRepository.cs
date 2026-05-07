@@ -76,6 +76,17 @@ internal sealed class FakeOutboxMessageRepository : IOutboxMessageRepository<Fak
         return Task.CompletedTask;
     }
 
+    public Task SetDeferredAsync(
+        FakeOutboxMessage message,
+        DateTimeOffset scheduledAt,
+        CancellationToken cancellationToken = default)
+    {
+        message.Status = OutboxMessageStatus.Pending;
+        message.ErrorMessage = null;
+        message.NextRetryAt = scheduledAt;
+        return Task.CompletedTask;
+    }
+
     public Task SetRetryAsync(
         FakeOutboxMessage message,
         string errorMessage,

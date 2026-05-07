@@ -8,6 +8,11 @@ namespace OrderService.Services;
 /// <summary>
 /// In-memory implementation of <see cref="IOrderService"/>.
 /// Publishes domain events via <see cref="IEventPublisher"/> after each state transition.
+/// Events are NOT sent directly to RabbitMQ here — the publisher routes them through
+/// the <c>OutboxPublishChannel</c>, which persists them atomically to SQLite.
+/// For <c>order.created</c> the sample optionally delays only the transport delivery,
+/// while still recording the event immediately in the outbox. The in-process
+/// <c>OutboxRelayService</c> background service then forwards due messages to RabbitMQ.
 /// </summary>
 public sealed class OrderManagementService : IOrderService
 {
@@ -19,7 +24,7 @@ public sealed class OrderManagementService : IOrderService
     public OrderManagementService(IEventPublisher publisher, ILogger<OrderManagementService> logger)
     {
         _publisher = publisher;
-        _logger = logger;
+        _logger    = logger;
     }
 
     // ── Create ────────────────────────────────────────────────────────────
@@ -29,7 +34,7 @@ public sealed class OrderManagementService : IOrderService
         var order = new Order
         {
             CustomerId = request.CustomerId,
-            Status = OrderStatus.Pending
+            Status     = OrderStatus.Pending
         };
 
         foreach (var item in request.Items)
@@ -44,8 +49,19 @@ public sealed class OrderManagementService : IOrderService
         }
 
         _store[order.Id] = order;
-        _logger.LogInformation("Order {OrderId} created for customer {CustomerId}", order.Id, order.CustomerId);
+        _logger.LogInformation(
+            "Order {OrderId} created for customer {CustomerId}; event delivery scheduled for {ScheduleDeliveryAt}",
+            order.Id,
+            order.CustomerId,
+            request.ScheduleEventDeliveryAt);
 
+        var publishOptions = request.ScheduleEventDeliveryAt is { } scheduleDeliveryAt
+            ? new OutboxPublishOptions { ScheduleDeliveryAt = scheduleDeliveryAt }
+            : null;
+
+        // Publishing saves the event to the outbox (SQLite) immediately. When
+        // ScheduleDeliveryAt is set, the relay waits until that UTC time before sending
+        // the event to RabbitMQ.
         await _publisher.PublishAsync(new OrderCreated
         {
             OrderId     = order.Id,
@@ -59,7 +75,7 @@ public sealed class OrderManagementService : IOrderService
                 Quantity    = i.Quantity,
                 UnitPrice   = i.UnitPrice
             }).ToList()
-        }, cancellationToken: ct);
+        }, publishOptions, ct);
 
         return order;
     }

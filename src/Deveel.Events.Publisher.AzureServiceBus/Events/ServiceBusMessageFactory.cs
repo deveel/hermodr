@@ -133,11 +133,15 @@ namespace Deveel.Events {
         /// <param name="event">
         /// The event to create the message from.
         /// </param>
+        /// <param name="options">
+        /// Optional publish options used to populate transport-specific metadata
+        /// such as scheduled enqueue time.
+        /// </param>
         /// <returns>
         /// Returns a new instance of <see cref="ServiceBusMessage"/>
         /// that represents the event.
         /// </returns>
-        public ServiceBusMessage CreateMessage(CloudEvent @event)
+        public ServiceBusMessage CreateMessage(CloudEvent @event, ServiceBusPublishOptions? options = null)
 		{
 			var body = GetBinaryData(@event.DataContentType, @event.Data);
 
@@ -150,6 +154,10 @@ namespace Deveel.Events {
 				CorrelationId = GetCorrelationId(@event)
 				// TODO: extract the partition key from the event
 			};
+
+            var scheduleDeliveryAt = options?.ScheduleDeliveryAt;
+            if (scheduleDeliveryAt.HasValue)
+                message.ScheduledEnqueueTime = scheduleDeliveryAt.Value;
 
 			AddProperties(message.ApplicationProperties, @event);
 
