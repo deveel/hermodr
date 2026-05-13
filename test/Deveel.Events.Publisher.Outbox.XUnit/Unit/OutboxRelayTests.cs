@@ -10,6 +10,8 @@ using Deveel.Events.Fakes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
+using System.Diagnostics;
+
 namespace Deveel.Events
 {
     /// <summary>
@@ -256,6 +258,23 @@ namespace Deveel.Events
             Assert.Equal(2, relayChannel.Published.Count);
         }
 
+        // ── Helpers ──────────────────────────────────────────────────────────
+
+        private static async Task PollAssertAsync(Func<bool> predicate, TimeSpan timeout, TimeSpan pollingInterval)
+        {
+            var sw = Stopwatch.StartNew();
+            while (true)
+            {
+                if (predicate())
+                    return;
+
+                if (sw.Elapsed >= timeout)
+                    throw new TimeoutException($"Condition not met within {timeout}");
+
+                await Task.Delay(pollingInterval);
+            }
+        }
+
         // ── OutboxRelayService (integration via IHost) ────────────────────────
 
         [Fact]
@@ -287,12 +306,15 @@ namespace Deveel.Events
             var msg = new FakeOutboxMessage(MakeEvent("hosted.event"));
             repository.SeedAsync(msg);
 
-            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 
             await host.StartAsync(cts.Token);
 
-            // Wait for at least two relay ticks (100 ms) to ensure the message is processed.
-            await Task.Delay(200, TestContext.Current.CancellationToken);
+            // Poll for the message to be delivered by the relay processor
+            await PollAssertAsync(
+                () => msg.Status == OutboxMessageStatus.Delivered && relayChannel.Published.Count == 1,
+                timeout: TimeSpan.FromSeconds(5),
+                pollingInterval: TimeSpan.FromMilliseconds(50));
 
             await host.StopAsync(TestContext.Current.CancellationToken);
 

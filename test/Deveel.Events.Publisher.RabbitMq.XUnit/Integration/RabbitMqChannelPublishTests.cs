@@ -18,6 +18,7 @@ namespace Deveel.Events
     public class RabbitMqChannelPublishTests : IClassFixture<RabbitMqTestServer>, IAsyncLifetime
     {
         private IChannel? _channel;
+        private TaskCompletionSource<CloudEvent> _receivedTcs = new();
 
         public RabbitMqChannelPublishTests(RabbitMqTestServer testServer, ITestOutputHelper outputHelper)
         {
@@ -43,10 +44,10 @@ namespace Deveel.Events
 
         private EventPublisher Publisher => Services.GetRequiredService<EventPublisher>();
 
-        private CloudEvent? ReceivedEvent { get; set; }
-
         public async ValueTask InitializeAsync()
         {
+            _receivedTcs = new TaskCompletionSource<CloudEvent>(TaskCreationOptions.RunContinuationsAsynchronously);
+
             var connection = Services.GetRequiredService<IConnection>();
             _channel = await connection.CreateChannelAsync();
 
@@ -58,7 +59,8 @@ namespace Deveel.Events
 
                 var json = JsonSerializer.Deserialize<JsonElement>(message);
                 var formatter = new JsonEventFormatter();
-                ReceivedEvent = formatter.ConvertFromJsonElement(json, null);
+                var received = formatter.ConvertFromJsonElement(json, null);
+                _receivedTcs.TrySetResult(received);
 
                 return Task.CompletedTask;
             };
@@ -97,13 +99,13 @@ namespace Deveel.Events
 
             await Publisher.PublishEventAsync(cloudEvent);
 
-            await Task.Delay(500);
+            var received = await _receivedTcs.Task.WaitAsync(TimeSpan.FromSeconds(10));
 
-            Assert.NotNull(ReceivedEvent);
-            Assert.Equal(cloudEvent.Id, ReceivedEvent.Id);
-            Assert.Equal(cloudEvent.Type, ReceivedEvent.Type);
-            Assert.Equal(cloudEvent.Source, ReceivedEvent.Source);
-            Assert.Equal(cloudEvent.Subject, ReceivedEvent.Subject);
+            Assert.NotNull(received);
+            Assert.Equal(cloudEvent.Id, received.Id);
+            Assert.Equal(cloudEvent.Type, received.Type);
+            Assert.Equal(cloudEvent.Source, received.Source);
+            Assert.Equal(cloudEvent.Subject, received.Subject);
         }
 
         [Fact]
@@ -117,13 +119,13 @@ namespace Deveel.Events
 
             await Publisher.PublishAsync(personCreated);
 
-            await Task.Delay(500);
+            var received = await _receivedTcs.Task.WaitAsync(TimeSpan.FromSeconds(10));
 
-            Assert.NotNull(ReceivedEvent);
+            Assert.NotNull(received);
 
-            Assert.Equal("person.created", ReceivedEvent.Type);
-            Assert.Equal("test", ReceivedEvent["amqpexchange"]);
-            Assert.Equal("test.event1", ReceivedEvent["amqproutingkey"]);
+            Assert.Equal("person.created", received.Type);
+            Assert.Equal("test", received["amqpexchange"]);
+            Assert.Equal("test.event1", received["amqproutingkey"]);
 
             // TODO: deserialize the event data from JSON
         }

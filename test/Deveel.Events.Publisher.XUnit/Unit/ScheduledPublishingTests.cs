@@ -32,9 +32,10 @@ public static class ScheduledPublishingTests
             Id = Guid.NewGuid().ToString("N"),
         };
 
+        var scheduledDelay = TimeSpan.FromMilliseconds(120);
         var options = new TestPublishOptions
         {
-            ScheduleDeliveryAt = now.AddMilliseconds(120),
+            ScheduleDeliveryAt = now + scheduledDelay,
         };
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -42,7 +43,9 @@ public static class ScheduledPublishingTests
         sw.Stop();
 
         Assert.Equal(1, channel.PublishCount);
-        Assert.True(sw.Elapsed < TimeSpan.FromMilliseconds(90));
+        // Must complete well before the scheduled delay (proves no waiting)
+        Assert.True(sw.Elapsed < scheduledDelay - TimeSpan.FromMilliseconds(20),
+            $"Publisher took {sw.Elapsed.TotalMilliseconds}ms (expected < {scheduledDelay.TotalMilliseconds - 20}ms)");
     }
 
     [Fact]
@@ -77,7 +80,9 @@ public static class ScheduledPublishingTests
 
         Assert.Equal(1, channel.PublishCount);
         Assert.Equal(scheduledAt, channel.LastScheduleDeliveryAt);
-        Assert.True(sw.Elapsed < TimeSpan.FromMilliseconds(90));
+        // 10s scheduled delay; any reasonable in-memory publish is << 1s
+        Assert.True(sw.Elapsed < TimeSpan.FromSeconds(1),
+            $"Publisher took {sw.Elapsed.TotalMilliseconds}ms (expected < 1000ms)");
     }
 
     private sealed class TestPublishOptions : EventPublishOptions

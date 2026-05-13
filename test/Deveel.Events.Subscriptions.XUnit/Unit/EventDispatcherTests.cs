@@ -395,6 +395,7 @@ namespace Deveel.Events
         public async Task Publish_WithDispatcher_RespectsCancellation()
         {
             using var cts = new CancellationTokenSource();
+            var handlerStarted = new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             var services = new ServiceCollection();
             services.AddLogging();
@@ -402,13 +403,19 @@ namespace Deveel.Events
                 .AddSubscriptions()
                 .Subscribe(
                     FilterExpression.Constant(true),
-                    async (_, ct) => await Task.Delay(Timeout.Infinite, ct));
+                    async (_, ct) =>
+                    {
+                        handlerStarted.TrySetResult(null);
+                        await Task.Delay(Timeout.Infinite, ct);
+                    });
 
             var provider = services.BuildServiceProvider();
             var publisher = provider.GetRequiredService<EventPublisher>().UseDispatcher();
 
             var task = publisher.PublishEventAsync(MakeEvent(), cancellationToken: cts.Token);
-            await Task.Delay(50);
+
+            // Wait for the handler to start before cancelling
+            await handlerStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
             cts.Cancel();
 
             await Assert.ThrowsAnyAsync<OperationCanceledException>(() => task);

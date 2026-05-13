@@ -34,7 +34,7 @@ namespace Deveel.Events
 
         private readonly string _connectionString;
         private IChannel? _consumerChannel;
-        private CloudEvent? ReceivedEvent { get; set; }
+        private TaskCompletionSource<CloudEvent> _receivedTcs = new();
 
         public RabbitMqChannelAdvancedPublishTests(
             RabbitMqTestServer testServer,
@@ -74,6 +74,8 @@ namespace Deveel.Events
 
         public async ValueTask InitializeAsync()
         {
+            _receivedTcs = new TaskCompletionSource<CloudEvent>(TaskCreationOptions.RunContinuationsAsynchronously);
+
             var connection = Services.GetRequiredService<IConnection>();
             _consumerChannel = await connection.CreateChannelAsync();
 
@@ -88,7 +90,8 @@ namespace Deveel.Events
             {
                 var json = JsonSerializer.Deserialize<JsonElement>(args.Body.ToArray());
                 var formatter = new JsonEventFormatter();
-                ReceivedEvent = formatter.ConvertFromJsonElement(json, null);
+                var received = formatter.ConvertFromJsonElement(json, null);
+                _receivedTcs.TrySetResult(received);
                 return Task.CompletedTask;
             };
 
@@ -121,11 +124,11 @@ namespace Deveel.Events
 
             // Exchange and routing key come entirely from channel options.
             await Publisher.PublishEventAsync(cloudEvent);
-            await Task.Delay(500);
+            var received = await _receivedTcs.Task.WaitAsync(TimeSpan.FromSeconds(10));
 
-            Assert.NotNull(ReceivedEvent);
-            Assert.Equal(cloudEvent.Id,   ReceivedEvent.Id);
-            Assert.Equal(cloudEvent.Type, ReceivedEvent.Type);
+            Assert.NotNull(received);
+            Assert.Equal(cloudEvent.Id,   received.Id);
+            Assert.Equal(cloudEvent.Type, received.Type);
         }
 
         // ── Options-based routing (no AMQP attributes on the event) ──────────
@@ -147,10 +150,10 @@ namespace Deveel.Events
             };
 
             await Publisher.PublishEventAsync(cloudEvent);
-            await Task.Delay(500);
+            var received = await _receivedTcs.Task.WaitAsync(TimeSpan.FromSeconds(10));
 
-            Assert.NotNull(ReceivedEvent);
-            Assert.Equal(cloudEvent.Id, ReceivedEvent.Id);
+            Assert.NotNull(received);
+            Assert.Equal(cloudEvent.Id, received.Id);
         }
 
         // ── Non-persistent delivery mode (per-call override) ─────────────────
@@ -179,10 +182,10 @@ namespace Deveel.Events
             };
 
             await channel.PublishAsync(cloudEvent, perCallOptions, CancellationToken.None);
-            await Task.Delay(500);
+            var received = await _receivedTcs.Task.WaitAsync(TimeSpan.FromSeconds(10));
 
-            Assert.NotNull(ReceivedEvent);
-            Assert.Equal(cloudEvent.Id, ReceivedEvent.Id);
+            Assert.NotNull(received);
+            Assert.Equal(cloudEvent.Id, received.Id);
         }
 
         // ── Per-call ClientName override ──────────────────────────────────────
@@ -209,10 +212,10 @@ namespace Deveel.Events
             };
 
             await channel.PublishAsync(cloudEvent, perCallOptions, CancellationToken.None);
-            await Task.Delay(500);
+            var received = await _receivedTcs.Task.WaitAsync(TimeSpan.FromSeconds(10));
 
-            Assert.NotNull(ReceivedEvent);
-            Assert.Equal(cloudEvent.Id, ReceivedEvent.Id);
+            Assert.NotNull(received);
+            Assert.Equal(cloudEvent.Id, received.Id);
         }
 
         // ── Typed channel ─────────────────────────────────────────────────────
@@ -247,10 +250,10 @@ namespace Deveel.Events
             var order = new OrderCreated { OrderId = "X-999", Total = 49.99m };
 
             await publisher.PublishAsync(order);
-            await Task.Delay(500);
+            var received = await _receivedTcs.Task.WaitAsync(TimeSpan.FromSeconds(10));
 
-            Assert.NotNull(ReceivedEvent);
-            Assert.Equal("order.created", ReceivedEvent.Type);
+            Assert.NotNull(received);
+            Assert.Equal("order.created", received.Type);
         }
 
         // ── Already-cancelled token ───────────────────────────────────────────
