@@ -22,7 +22,6 @@ public class NdJsonEventDeliveryLogRepository : IEventDeliveryLogRepository, IDi
     private readonly JsonSerializerOptions _jsonOptions;
     private readonly SemaphoreSlim _writeLock = new(1, 1);
 
-    private StreamWriter? _currentWriter;
     private string? _currentFilePath;
     private long _currentFileSize;
     private DateTimeOffset? _currentFileCreatedAt;
@@ -85,11 +84,15 @@ public class NdJsonEventDeliveryLogRepository : IEventDeliveryLogRepository, IDi
         await _writeLock.WaitAsync(cancellationToken);
         try
         {
-            await EnsureWriterAsync(cancellationToken);
             var json = JsonSerializer.Serialize(record, _jsonOptions);
-            await _currentWriter!.WriteLineAsync(json);
-            await _currentWriter.FlushAsync();
-            _currentFileSize += System.Text.Encoding.UTF8.GetByteCount(json) + Environment.NewLine.Length;
+            var writeByteCount = System.Text.Encoding.UTF8.GetByteCount(json) + Environment.NewLine.Length;
+
+            var filePath = ResolveFilePath(writeByteCount);
+
+            await using var stream = File.Open(filePath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+            await using var writer = new StreamWriter(stream);
+            await writer.WriteLineAsync(json);
+
             CleanupOldFiles();
         }
         finally
@@ -98,38 +101,25 @@ public class NdJsonEventDeliveryLogRepository : IEventDeliveryLogRepository, IDi
         }
     }
 
-    private async Task EnsureWriterAsync(CancellationToken cancellationToken)
+    private string ResolveFilePath(long writeByteCount)
     {
         var now = _systemTime.UtcNow;
-        var needsRoll = _currentWriter == null ||
-                        _currentFileSize >= _options.MaxFileSizeBytes ||
+        var needsRoll = _currentFilePath == null ||
+                        _currentFileSize + writeByteCount > _options.MaxFileSizeBytes ||
                         (_options.RollInterval.HasValue &&
                          _currentFileCreatedAt.HasValue &&
                          now - _currentFileCreatedAt.Value >= _options.RollInterval.Value);
 
-        if (!needsRoll)
-            return;
-
-        if (_currentWriter != null)
+        if (needsRoll)
         {
-            try
-            {
-                await _currentWriter.DisposeAsync();
-            }
-            finally
-            {
-                _currentWriter = null;
-            }
+            var timestamp = now.ToString("yyyyMMdd-HHmmss");
+            _currentFilePath = Path.Combine(_options.DirectoryPath, $"delivery-log-{timestamp}.ndjson");
+            _currentFileCreatedAt = now;
+            _currentFileSize = 0;
         }
 
-        var timestamp = now.ToString("yyyyMMdd-HHmmss-fffffff");
-        var filePath = Path.Combine(_options.DirectoryPath, $"delivery-log-{timestamp}.ndjson");
-        _currentFilePath = filePath;
-        _currentFileCreatedAt = now;
-        _currentFileSize = 0;
-
-        var fileStream = File.Open(filePath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
-        _currentWriter = new StreamWriter(fileStream);
+        _currentFileSize += writeByteCount;
+        return _currentFilePath!;
     }
 
     private void CleanupOldFiles()
@@ -300,12 +290,10 @@ public class NdJsonEventDeliveryLogRepository : IEventDeliveryLogRepository, IDi
     object? IRepository<EventDeliveryRecord, object>.GetEntityKey(EventDeliveryRecord entity) => entity.Id;
 
     /// <summary>
-    /// Releases all resources used by the repository, including the current file writer
-    /// and the write lock semaphore.
+    /// Releases the write lock semaphore used by the repository.
     /// </summary>
     public void Dispose()
     {
-        _currentWriter?.Dispose();
         _writeLock.Dispose();
     }
 }
