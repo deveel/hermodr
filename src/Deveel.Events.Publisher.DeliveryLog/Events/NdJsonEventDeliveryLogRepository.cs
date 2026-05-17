@@ -112,16 +112,24 @@ public class NdJsonEventDeliveryLogRepository : IEventDeliveryLogRepository, IDi
 
         if (_currentWriter != null)
         {
-            await _currentWriter.DisposeAsync();
-            _currentWriter = null;
+            try
+            {
+                await _currentWriter.DisposeAsync();
+            }
+            finally
+            {
+                _currentWriter = null;
+            }
         }
 
-        var timestamp = now.ToString("yyyyMMdd-HHmmss");
+        var timestamp = now.ToString("yyyyMMdd-HHmmss-fffffff");
         var filePath = Path.Combine(_options.DirectoryPath, $"delivery-log-{timestamp}.ndjson");
         _currentFilePath = filePath;
-        _currentWriter = new StreamWriter(File.Open(filePath, FileMode.Append, FileAccess.Write, FileShare.Read));
-        _currentFileSize = new FileInfo(filePath).Length;
         _currentFileCreatedAt = now;
+        _currentFileSize = 0;
+
+        var fileStream = File.Open(filePath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+        _currentWriter = new StreamWriter(fileStream);
     }
 
     private void CleanupOldFiles()
