@@ -30,7 +30,8 @@ public class NdJsonEventDeliveryLogRepository : IEventDeliveryLogRepository, IDi
     private static readonly JsonSerializerOptions DefaultJsonOptions = new()
     {
         WriteIndented = false,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        Converters = { new CloudEventJsonConverter() }
     };
 
     /// <summary>
