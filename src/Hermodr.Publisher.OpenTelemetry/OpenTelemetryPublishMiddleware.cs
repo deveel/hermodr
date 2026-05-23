@@ -60,38 +60,37 @@ namespace Hermodr
                 return;
             }
 
-            try
+            using (activity)
             {
-                _options.EnrichWithEvent?.Invoke(activity, context.Event);
-
-                HermodrTelemetry.InjectTraceContext(context.Event, activity);
-
-                if (context.Event.Id != null)
+                try
                 {
-                    activity.SetTag("event.id", context.Event.Id);
+                    _options.EnrichWithEvent?.Invoke(activity, context.Event);
+
+                    HermodrTelemetry.InjectTraceContext(context.Event, activity);
+
+                    if (context.Event.Id != null)
+                    {
+                        activity.SetTag("event.id", context.Event.Id);
+                    }
+
+                    await next(context);
+
+                    activity.SetStatus(ActivityStatusCode.Ok);
                 }
-
-                await next(context);
-
-                activity.SetStatus(ActivityStatusCode.Ok);
-            }
-            catch (Exception ex)
-            {
-                if (_options.RecordException)
+                catch (Exception ex)
                 {
-                    activity.SetStatus(ActivityStatusCode.Error, ex.Message);
-                    activity.AddException(ex);
-                }
-                else
-                {
-                    activity.SetStatus(ActivityStatusCode.Error, ex.Message);
-                }
+                    if (_options.RecordException)
+                    {
+                        activity.SetStatus(ActivityStatusCode.Error, ex.Message);
+                        activity.AddException(ex);
+                    }
+                    else
+                    {
+                        activity.SetStatus(ActivityStatusCode.Error, ex.Message);
+                    }
 
-                throw;
-            }
-            finally
-            {
-                activity.Dispose();
+                    throw;
+                }
             }
         }
     }

@@ -27,9 +27,8 @@ public class HermodrTelemetryTests
         HermodrTelemetry.InjectTraceContext(cloudEvent, activity);
 
         var traceparentAttr = CloudEventAttribute.CreateExtension(TraceParentKey, CloudEventAttributeType.String);
-        var traceparent = cloudEvent[traceparentAttr] as string;
+        var traceparent = Assert.IsType<string>(cloudEvent[traceparentAttr]);
 
-        Assert.NotNull(traceparent);
         Assert.StartsWith("00-", traceparent);
         var parts = traceparent.Split('-');
         Assert.Equal(4, parts.Length);
@@ -255,8 +254,7 @@ public class HermodrTelemetryTests
         HermodrTelemetry.InjectTraceContext(cloudEvent, activity);
 
         var traceparentAttr = CloudEventAttribute.CreateExtension(TraceParentKey, CloudEventAttributeType.String);
-        var traceparent = cloudEvent[traceparentAttr] as string;
-        Assert.NotNull(traceparent);
+        var traceparent = Assert.IsType<string>(cloudEvent[traceparentAttr]);
         var parts = traceparent.Split('-');
         Assert.Equal(4, parts.Length);
         var expectedFlags = activity.ActivityTraceFlags.HasFlag(ActivityTraceFlags.Recorded) ? "01" : "00";

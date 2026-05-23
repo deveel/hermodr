@@ -66,6 +66,7 @@ This comparison focuses on what is natively provided by each framework core and 
 | In-process subscription routing | Built-in subscriptions package (`Hermodr.Subscriptions`) | Native consumer/handler pipeline | Native local and remote handlers | Native message handler pipeline | Native message handler pipeline |
 | Middleware/extensibility pipeline | Built-in event middleware pipeline | Native filters/middleware/observers | Native middleware and handler pipeline extensions | Native pipeline behaviors and extensibility points | Native pipeline steps and extensibility points |
 | Distributed tracing (OpenTelemetry) | Built-in (`Hermodr.Publisher.OpenTelemetry`) — W3C trace context via CloudEvents extensions | Tracing available via separate OpenTelemetry packages; no native CloudEvents trace propagation | Tracing available via separate packages; no native CloudEvents trace propagation | Tracing available via separate packages; no native CloudEvents trace propagation | Tracing available via separate packages; no native CloudEvents trace propagation |
+| Delivery log persistence | Built-in (`Hermodr.Publisher.DeliveryLog`) with EF Core provider | Not natively provided | Not natively provided | Not natively provided | Not natively provided |
 | Testing support for publish flow | Dedicated in-memory test publisher package | Native test harness support | Native testing utilities | Native testing support | Native testing support |
 
 Why teams choose Hermodr over these frameworks usually comes down to contract ownership and boundary clarity:
@@ -136,8 +137,8 @@ Treat your event schemas the same way you treat public API contracts:
 - **Channel implementations** for Azure Service Bus, RabbitMQ, MassTransit, HTTP Webhooks, and a transactional outbox — each installable as a separate NuGet package.
 - **In-process subscriptions and routing** via `AddSubscriptions()`, filters, and resolver extensibility.
 - **Distributed tracing** via `AddOpenTelemetry()` — propagates W3C trace context as CloudEvents extensions for end-to-end correlation across service boundaries.
-- **Channel implementations** for Azure Service Bus, RabbitMQ, MassTransit, and HTTP Webhooks — each installable as a separate NuGet package.
 - **Reliability extensions** for dead-letter handling, replay, and the transactional outbox.
+- **Delivery log** for per-attempt operational records (channel, outcome, error code, latency, retry count) with EF Core persistence.
 - **Annotation attributes** (`[Event]`, `[EventProperty]`) to describe event metadata directly on your data classes, in the ubiquitous language of the domain.
 - **Schema support** — derive, build, and export event schemas to JSON, YAML, and AsyncAPI documents.
 - **Validation** — validate `CloudEvent` instances against a schema before publishing.
@@ -160,11 +161,10 @@ All events are modelled as [`CloudEvent`](https://github.com/cloudevents/spec) o
 | [Installation](getting-started/installation.md) | How to install the packages |
 | [Quick Start](getting-started/quick-start.md) | Publish your first event in minutes |
 | [Core Concepts](concepts/README.md) | Understand the building blocks |
-| [Publisher Channels](publishers/README.md) | Configure a specific transport |
-| [Event Subscriptions](subscriptions/README.md) | In-process dispatch, filters, routing, and resolvers |
-| [Publisher Channels](publishers/README.md) | Configure a specific transport |
-| [OpenTelemetry Instrumentation](publishers/opentelemetry.md) | Distributed tracing with W3C trace context propagation |
 | [Publisher Channels](publishers/README.md) | Configure transports plus reliability features such as outbox and dead-letter replay |
+| [OpenTelemetry Instrumentation](publishers/opentelemetry.md) | Distributed tracing with W3C trace context propagation |
+| [Delivery Log](publishers/delivery-log.md) | Per-attempt operational records with pluggable storage backends |
+| [Event Subscriptions](subscriptions/README.md) | In-process dispatch, filters, routing, and resolvers |
 | [Event Schema](schema/README.md) | Schema definition, export, and validation |
 | [Testing](testing/README.md) | Unit-test event publishing |
 | [Samples](samples/README.md) | Runnable end-to-end example projects |

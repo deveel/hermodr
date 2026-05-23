@@ -22,6 +22,14 @@ namespace Hermodr
 
         public const string MessagingSystem = "hermodr";
 
+        public const string MetricPublishDuration = "hermodr.publish.duration";
+        public const string MetricPublishTotal = "hermodr.publish.total";
+        public const string MetricPublishErrors = "hermodr.publish.errors";
+        public const string MetricSubscriptionDispatchTotal = "hermodr.subscription.dispatch.total";
+        public const string MetricSubscriptionHandlerDuration = "hermodr.subscription.handler.duration";
+
+        public const string PublishStartTimeItemKey = "Hermodr.Metrics.Publish.StartTime";
+
         public static string PublisherSpanName(string eventType) => $"{PublisherSpanNamePrefix} {eventType}";
         public static string ConsumerSpanName(string eventType) => $"{ConsumerSpanNamePrefix} {eventType}";
     }

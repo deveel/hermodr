@@ -4,6 +4,7 @@
 //
 
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -21,7 +22,7 @@ namespace Hermodr
         /// </summary>
         /// <remarks>
         /// <para>
-        /// This registers two middleware components:
+        /// This registers three middleware components:
         /// <list type="bullet">
         ///   <item>
         ///     <see cref="OpenTelemetryPublishMiddleware"/> — creates a producer span for
@@ -34,6 +35,11 @@ namespace Hermodr
         ///     placed before the event dispatcher so subscription handlers
         ///     automatically participate in the distributed trace via <c>Activity.Current</c>.
         ///   </item>
+        ///   <item>
+        ///     <see cref="MetricsMiddleware"/> — collects OpenTelemetry metrics for publish
+        ///     operations including duration, total count, and error count. Individual metrics
+        ///     can be toggled via <see cref="OpenTelemetryInstrumentationOptions.Metrics"/>.
+        ///   </item>
         /// </list>
         /// </para>
         /// <para>
@@ -41,6 +47,11 @@ namespace Hermodr
         /// name from <see cref="OpenTelemetryInstrumentationOptions.ActivitySourceName"/>
         /// (default: <c>"Hermodr"</c>). Configure your OpenTelemetry SDK to listen to this
         /// source to collect spans.
+        /// </para>
+        /// <para>
+        /// The shared <see cref="TelemetryMetrics.Meter"/> is configured with the name from
+        /// <see cref="MetricsOptions.MeterName"/> (default: <c>"Hermodr"</c>). Configure your
+        /// OpenTelemetry SDK to listen to this meter to collect metrics.
         /// </para>
         /// </remarks>
         /// <param name="builder">The builder to configure.</param>
@@ -51,7 +62,11 @@ namespace Hermodr
         /// <example>
         /// <code language="csharp">
         /// services.AddEventPublisher()
-        ///     .AddOpenTelemetry()
+        ///     .AddOpenTelemetry(opts =>
+        ///     {
+        ///         opts.Metrics.PublishDuration = true;
+        ///         opts.Metrics.PublishErrors = true;
+        ///     })
         ///     .AddRabbitMq(opts => { ... });
         /// </code>
         /// </example>
@@ -67,8 +82,12 @@ namespace Hermodr
             builder.Services.AddSingleton<ActivitySourceFactory>();
             builder.Services.AddSingleton<ActivitySource>(sp => sp.GetRequiredService<ActivitySourceFactory>().Create());
 
+            builder.Services.AddSingleton<MeterFactory>();
+            builder.Services.AddSingleton<Meter>(sp => sp.GetRequiredService<MeterFactory>().Create());
+
             builder.Use<OpenTelemetryPublishMiddleware>();
             builder.Use<OpenTelemetrySubscriptionMiddleware>();
+            builder.Use<MetricsMiddleware>();
 
             return builder;
         }
@@ -98,7 +117,11 @@ namespace Hermodr
             builder.Services.AddSingleton<ActivitySourceFactory>();
             builder.Services.AddSingleton<ActivitySource>(sp => sp.GetRequiredService<ActivitySourceFactory>().Create());
 
+            builder.Services.AddSingleton<MeterFactory>();
+            builder.Services.AddSingleton<Meter>(sp => sp.GetRequiredService<MeterFactory>().Create());
+
             builder.Use<OpenTelemetryPublishMiddleware>();
+            builder.Use<MetricsMiddleware>();
 
             return builder;
         }
@@ -128,7 +151,11 @@ namespace Hermodr
             builder.Services.AddSingleton<ActivitySourceFactory>();
             builder.Services.AddSingleton<ActivitySource>(sp => sp.GetRequiredService<ActivitySourceFactory>().Create());
 
+            builder.Services.AddSingleton<MeterFactory>();
+            builder.Services.AddSingleton<Meter>(sp => sp.GetRequiredService<MeterFactory>().Create());
+
             builder.Use<OpenTelemetrySubscriptionMiddleware>();
+            builder.Use<MetricsMiddleware>();
 
             return builder;
         }
@@ -152,6 +179,27 @@ namespace Hermodr
             var source = new ActivitySource(_options.ActivitySourceName);
             HermodrTelemetry.ActivitySource = source;
             return source;
+        }
+    }
+
+    /// <summary>
+    /// Factory for creating the <see cref="Meter"/> used by Hermodr metrics instrumentation.
+    /// Receives configuration via constructor injection and sets the shared <see cref="TelemetryMetrics.Meter"/>.
+    /// </summary>
+    internal sealed class MeterFactory
+    {
+        private readonly OpenTelemetryInstrumentationOptions _options;
+
+        public MeterFactory(IOptions<OpenTelemetryInstrumentationOptions> options)
+        {
+            _options = options.Value;
+        }
+
+        public Meter Create()
+        {
+            var meter = new Meter(_options.Metrics.MeterName);
+            TelemetryMetrics.Meter = meter;
+            return meter;
         }
     }
 }

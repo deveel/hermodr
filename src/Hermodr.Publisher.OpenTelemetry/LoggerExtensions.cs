@@ -27,6 +27,12 @@ namespace Hermodr
                 new EventId(3, "TraceExtracted"),
                 "Extracted trace context from event type '{EventType}' with trace ID '{TraceId}'");
 
+        private static readonly Action<ILogger, string, Exception?> _metricsNotEnabled =
+            LoggerMessage.Define<string>(
+                LogLevel.Trace,
+                new EventId(4, "MetricsNotEnabled"),
+                "Metrics not enabled for event type '{EventType}'");
+
         public static void TracePublishSpanNotEnabled(this ILogger logger, string eventType) =>
             _tracePublishSpanNotEnabled(logger, eventType, null);
 
@@ -35,5 +41,8 @@ namespace Hermodr
 
         public static void TraceExtracted(this ILogger logger, string eventType, string traceId) =>
             _traceExtracted(logger, eventType, traceId, null);
+
+        public static void MetricsNotEnabled(this ILogger logger, string eventType) =>
+            _metricsNotEnabled(logger, eventType, null);
     }
 }

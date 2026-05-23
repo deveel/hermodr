@@ -223,6 +223,93 @@ public class OpenTelemetryBuilderExtensionsTests
         Assert.NotNull(options.EnrichWithEvent);
     }
 
+    [Fact]
+    public void OpenTelemetryInstrumentationOptions_Metrics_HasCorrectDefaults()
+    {
+        var options = new OpenTelemetryInstrumentationOptions();
+
+        Assert.NotNull(options.Metrics);
+        Assert.True(options.Metrics.Enabled);
+        Assert.Equal("Hermodr", options.Metrics.MeterName);
+        Assert.True(options.Metrics.PublishDuration);
+        Assert.True(options.Metrics.PublishTotal);
+        Assert.True(options.Metrics.PublishErrors);
+    }
+
+    [Fact]
+    public void OpenTelemetryInstrumentationOptions_Metrics_CanBeConfigured()
+    {
+        var options = new OpenTelemetryInstrumentationOptions();
+        options.Metrics.Enabled = false;
+        options.Metrics.MeterName = "custom-meter";
+        options.Metrics.PublishDuration = false;
+        options.Metrics.PublishErrors = false;
+
+        Assert.False(options.Metrics.Enabled);
+        Assert.Equal("custom-meter", options.Metrics.MeterName);
+        Assert.False(options.Metrics.PublishDuration);
+        Assert.True(options.Metrics.PublishTotal);
+        Assert.False(options.Metrics.PublishErrors);
+    }
+
+    [Fact]
+    public async Task AddOpenTelemetry_RegistersMeter()
+    {
+        var services = new ServiceCollection().AddLogging();
+        services.AddEventPublisher(opts => opts.Source = new Uri("https://example.com"))
+            .AddOpenTelemetry()
+            .AddTestChannel(_ => { });
+
+        await using var provider = services.BuildServiceProvider();
+
+        var meter = provider.GetService<System.Diagnostics.Metrics.Meter>();
+        Assert.NotNull(meter);
+        Assert.Equal("Hermodr", meter.Name);
+    }
+
+    [Fact]
+    public async Task AddOpenTelemetry_UsesCustomMeterName()
+    {
+        var services = new ServiceCollection().AddLogging();
+        services.AddEventPublisher(opts => opts.Source = new Uri("https://example.com"))
+            .AddOpenTelemetry(o => o.Metrics.MeterName = "custom-meter")
+            .AddTestChannel(_ => { });
+
+        await using var provider = services.BuildServiceProvider();
+
+        var meter = provider.GetService<System.Diagnostics.Metrics.Meter>();
+        Assert.NotNull(meter);
+        Assert.Equal("custom-meter", meter.Name);
+    }
+
+    [Fact]
+    public async Task AddOpenTelemetryPublisherInstrumentation_RegistersMeter()
+    {
+        var services = new ServiceCollection().AddLogging();
+        services.AddEventPublisher(opts => opts.Source = new Uri("https://example.com"))
+            .AddOpenTelemetryPublisherInstrumentation()
+            .AddTestChannel(_ => { });
+
+        await using var provider = services.BuildServiceProvider();
+
+        var meter = provider.GetService<System.Diagnostics.Metrics.Meter>();
+        Assert.NotNull(meter);
+    }
+
+    [Fact]
+    public async Task AddOpenTelemetrySubscriptionInstrumentation_RegistersMeter()
+    {
+        var services = new ServiceCollection().AddLogging();
+        services.AddEventPublisher(opts => opts.Source = new Uri("https://example.com"))
+            .AddOpenTelemetrySubscriptionInstrumentation()
+            .AddTestChannel(_ => { });
+
+        await using var provider = services.BuildServiceProvider();
+
+        var meter = provider.GetService<System.Diagnostics.Metrics.Meter>();
+        Assert.NotNull(meter);
+    }
+
     private static ActivityListener CreateListener(ActivitySource source, List<Activity> captured)
     {
         var listener = new ActivityListener

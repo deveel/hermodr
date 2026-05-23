@@ -43,5 +43,10 @@ namespace Hermodr
         /// Invoked after the span is created but before the operation executes.
         /// </summary>
         public Action<Activity, CloudEvent>? EnrichWithEvent { get; set; }
+
+        /// <summary>
+        /// Gets the options for configuring metrics collection.
+        /// </summary>
+        public MetricsOptions Metrics { get; set; } = new();
     }
 }

@@ -78,7 +78,11 @@ namespace Hermodr
                 traceId = ActivityTraceId.CreateFromString(parts[1].AsSpan());
                 spanId = ActivitySpanId.CreateFromString(parts[2].AsSpan());
             }
-            catch
+            catch (FormatException)
+            {
+                return false;
+            }
+            catch (ArgumentException)
             {
                 return false;
             }

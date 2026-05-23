@@ -54,7 +54,7 @@ namespace Hermodr
                 _logger.TraceExtracted(eventType, extracted.TraceId.ToString());
             }
 
-            var activity = _activitySource.StartActivity(
+            using var activity = _activitySource.StartActivity(
                 TelemetryConstants.ConsumerSpanName(eventType),
                 ActivityKind.Consumer,
                 parentContext: parentContext ?? default,
@@ -100,10 +100,6 @@ namespace Hermodr
                 }
 
                 throw;
-            }
-            finally
-            {
-                activity.Dispose();
             }
         }
     }
