@@ -1,13 +1,15 @@
+<p align="center">
+  <img src="hermodr-full-logo.png" alt="Hermodr" width="400"/>
+</p>
+
 [![GitHub License](https://img.shields.io/github/license/deveel/hermodr)](https://github.com/deveel/hermodr/blob/main/LICENSE)
 [![GitHub Release](https://img.shields.io/github/v/release/deveel/hermodr)](https://github.com/deveel/hermodr/releases) [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/deveel/hermodr/cicd.yml?logo=github)](https://github.com/deveel/hermodr/actions/workflows/cicd.yml)
 [![Codecov](https://img.shields.io/codecov/c/github/deveel/hermodr?logo=codecov)](https://codecov.io/gh/deveel/hermodr)
 [![.NET](https://img.shields.io/badge/-8%20%7C%209%20%7C%2010-512BD4?logo=dotnet)](https://dotnet.microsoft.com/download)
 [![Documentation](https://img.shields.io/badge/docs-hermodr.deveel.org-blue)](https://hermodr.deveel.org)
 
-> **Renamed:** This project was formerly called **Deveel Events**. As of **23 May 2026**, it has been renamed to **Hermodr** — named after the messenger of the gods in Norse mythology — to better reflect its role as a message delivery framework and to distinguish it from the broader Deveel ecosystem.
+> **Renamed:** This project was formerly called **Deveel Events** - as of **23 May 2026**, it has been renamed to **Hermodr** — named after the [messenger of the gods](https://no.wikipedia.org/wiki/Hermod) in Norse mythology — to better reflect its role as a message delivery framework and to distinguish it from the broader [Deveel](https://github.com/deveel) ecosystem.
 > Existing NuGet packages (`Deveel.Events.*`) remain published and will be deprecated in favor of the new `Hermodr.*` packages.
-
-# Hermodr
 
 **Hermodr** is a lightweight, extensible framework for building event-driven .NET applications, built on top of the [CloudEvents](https://cloudevents.io/) standard.
 
@@ -48,9 +50,10 @@ Hermodr provides a single, consistent way to publish events across any transport
 
 ## Hermodr vs .NET Messaging Frameworks
 
-These frameworks solve different problems and can be complementary in the same architecture. The table below is a quick positioning guide, not a ranking.
+Hermodr does not try to compete with other messaging frameworks in the .NET ecosystem: these frameworks solve different problems and can be complementary in the same architecture. The table below is a quick positioning guide, not a ranking.
 
-| Feature | **Hermodr** | **MassTransit** | **Wolverine** | **NServiceBus** | **Rebus** |
+| Feature | `Hermodr` | `MassTransit` | `Wolverine` | `NServiceBus` | `Rebus` |
+|---------|-----------|---------------|--------------|---------------|-----------|
 | Event contract model | CloudEvents-first publish pipeline | Framework-native message contracts; CloudEvents not natively provided by the framework core | Framework-native message contracts; CloudEvents not natively provided by the framework core | Framework-native message contracts; CloudEvents not natively provided by the framework core | Framework-native message contracts; CloudEvents not natively provided by the framework core |
 | Event metadata annotations | Built-in attributes (`Hermodr.Annotations`, AMQP extensions) | Event metadata annotations not natively provided by the framework core | Event metadata annotations not natively provided by the framework core | Event metadata annotations not natively provided by the framework core | Event metadata annotations not natively provided by the framework core |
 | Schema export formats | JSON Schema, YAML, AsyncAPI packages | Schema export not natively provided by the framework core | Schema export not natively provided by the framework core | Schema export not natively provided by the framework core | Schema export not natively provided by the framework core |
