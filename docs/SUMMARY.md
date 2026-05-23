@@ -29,6 +29,7 @@
 * [MassTransit](publishers/masstransit.md)
 * [Webhook](publishers/webhook.md)
 * [Publish Error Handling](publishers/error-handling.md)
+* [OpenTelemetry Instrumentation](publishers/opentelemetry.md)
 * [Transactional Outbox](publishers/outbox.md)
 * [Dead-Letter Handling and Replay](publishers/dead-letter.md)
 * [Publish Delivery Log](publishers/delivery-log.md)

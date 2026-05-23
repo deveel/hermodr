@@ -21,7 +21,7 @@
 | **Bounded-context integration** | Events are the preferred mechanism for sharing information across bounded contexts without creating tight dependencies. |
 | **Temporal decoupling** | Consumers can process events asynchronously, at their own pace, enabling reliable and scalable integrations. |
 
-### Events vs. commands vs. queries
+### Events vs. Commands vs. Queries
 
 | Concept | Intent | Direction | Example |
 |---------|--------|-----------|---------|
@@ -65,6 +65,7 @@ This comparison focuses on what is natively provided by each framework core and 
 | Deferred/scheduled delivery | Planned (`Event Scheduler & Deferred Publishing` on roadmap) | Natively supported (transport/scheduler dependent) | Natively supported (runtime/transport dependent) | Natively supported (transport dependent) | Natively supported (transport dependent) |
 | In-process subscription routing | Built-in subscriptions package (`Hermodr.Subscriptions`) | Native consumer/handler pipeline | Native local and remote handlers | Native message handler pipeline | Native message handler pipeline |
 | Middleware/extensibility pipeline | Built-in event middleware pipeline | Native filters/middleware/observers | Native middleware and handler pipeline extensions | Native pipeline behaviors and extensibility points | Native pipeline steps and extensibility points |
+| Distributed tracing (OpenTelemetry) | Built-in (`Hermodr.Publisher.OpenTelemetry`) — W3C trace context via CloudEvents extensions | Tracing available via separate OpenTelemetry packages; no native CloudEvents trace propagation | Tracing available via separate packages; no native CloudEvents trace propagation | Tracing available via separate packages; no native CloudEvents trace propagation | Tracing available via separate packages; no native CloudEvents trace propagation |
 | Testing support for publish flow | Dedicated in-memory test publisher package | Native test harness support | Native testing utilities | Native testing support | Native testing support |
 
 Why teams choose Hermodr over these frameworks usually comes down to contract ownership and boundary clarity:
@@ -134,6 +135,7 @@ Treat your event schemas the same way you treat public API contracts:
 - A **unified `EventPublisher` service** that fans out events to one or more registered channels.
 - **Channel implementations** for Azure Service Bus, RabbitMQ, MassTransit, HTTP Webhooks, and a transactional outbox — each installable as a separate NuGet package.
 - **In-process subscriptions and routing** via `AddSubscriptions()`, filters, and resolver extensibility.
+- **Distributed tracing** via `AddOpenTelemetry()` — propagates W3C trace context as CloudEvents extensions for end-to-end correlation across service boundaries.
 - **Channel implementations** for Azure Service Bus, RabbitMQ, MassTransit, and HTTP Webhooks — each installable as a separate NuGet package.
 - **Reliability extensions** for dead-letter handling, replay, and the transactional outbox.
 - **Annotation attributes** (`[Event]`, `[EventProperty]`) to describe event metadata directly on your data classes, in the ubiquitous language of the domain.
@@ -161,6 +163,7 @@ All events are modelled as [`CloudEvent`](https://github.com/cloudevents/spec) o
 | [Publisher Channels](publishers/README.md) | Configure a specific transport |
 | [Event Subscriptions](subscriptions/README.md) | In-process dispatch, filters, routing, and resolvers |
 | [Publisher Channels](publishers/README.md) | Configure a specific transport |
+| [OpenTelemetry Instrumentation](publishers/opentelemetry.md) | Distributed tracing with W3C trace context propagation |
 | [Publisher Channels](publishers/README.md) | Configure transports plus reliability features such as outbox and dead-letter replay |
 | [Event Schema](schema/README.md) | Schema definition, export, and validation |
 | [Testing](testing/README.md) | Unit-test event publishing |

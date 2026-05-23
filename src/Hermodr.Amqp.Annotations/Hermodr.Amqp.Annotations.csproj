@@ -2,6 +2,7 @@
   <PropertyGroup>
     <Title>Hermodr AMQP Annotations</Title>
     <Description>Provides annotations to define metadata to Events that are published to AMQP brokers</Description>
+    <PackageTags>event;events;amqp;annotations;attribute;messaging</PackageTags>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Hermodr.Annotations\Hermodr.Annotations.csproj" />

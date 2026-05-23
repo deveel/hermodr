@@ -65,16 +65,26 @@ namespace Hermodr {
 					binaryData = new BinaryData(Encoding.UTF8.GetBytes(s));
 				} else
 				{
-					// TODO: json options ...
-                    var json = JsonSerializer.Serialize(data);
-                    binaryData = new BinaryData(Encoding.UTF8.GetBytes(json));
-                }
+					var json = JsonSerializer.Serialize(data, GetJsonSerializerOptions());
+					binaryData = new BinaryData(Encoding.UTF8.GetBytes(json));
+				}
 			} else {
 				throw new NotSupportedException("The content type of the event data is not supported");
 			}
 
 			return binaryData;
 		}
+
+        /// <summary>
+        /// Gets the JSON serializer options to use when serializing
+        /// non-string event data.
+        /// </summary>
+        /// <returns>
+        /// Returns an instance of <see cref="JsonSerializerOptions"/>.
+        /// Override in a derived class to customize serialization behavior.
+        /// </returns>
+        protected virtual JsonSerializerOptions GetJsonSerializerOptions() =>
+            JsonSerializerOptions.Default;
 
         /// <summary>
         /// Gets the subject of the event.
@@ -87,8 +97,6 @@ namespace Hermodr {
         /// </returns>
         protected virtual string? GetSubject(CloudEvent @event) => @event.Subject;
 
-        // TODO: get the correlation id from the event
-        //       from a configured attribute
         /// <summary>
         /// Gets the identifier to be used to correlate the event
         /// in the stream of messages.
@@ -96,12 +104,38 @@ namespace Hermodr {
         /// <param name="event">
         /// The event to extract the correlation identifier from.
         /// </param>
+        /// <param name="attributeName">
+        /// The CloudEvent extension attribute name to use.
+        /// </param>
         /// <returns>
         /// Returns the correlation identifier for the event.
-        /// Currently returns an empty string; override in a derived class
-        /// to extract a correlation identifier from a CloudEvent extension attribute.
+        /// Extracts the value from the specified CloudEvent extension attribute
+        /// if present; otherwise returns an empty string.
         /// </returns>
-        protected virtual string GetCorrelationId(CloudEvent @event) => "";
+        protected virtual string GetCorrelationId(CloudEvent @event, string attributeName) {
+            var attr = CloudEventAttribute.CreateExtension(attributeName, CloudEventAttributeType.String);
+            return @event[attr] as string ?? "";
+        }
+
+        /// <summary>
+        /// Gets the partition key to be used for partitioning the message
+        /// in the Azure Service Bus.
+        /// </summary>
+        /// <param name="event">
+        /// The event to extract the partition key from.
+        /// </param>
+        /// <param name="attributeName">
+        /// The CloudEvent extension attribute name to use.
+        /// </param>
+        /// <returns>
+        /// Returns the partition key for the event.
+        /// Extracts the value from the specified CloudEvent extension attribute
+        /// if present; otherwise returns null.
+        /// </returns>
+        protected virtual string? GetPartitionKey(CloudEvent @event, string attributeName) {
+            var attr = CloudEventAttribute.CreateExtension(attributeName, CloudEventAttributeType.String);
+            return @event[attr] as string;
+        }
 
         /// <summary>
         /// Adds the event properties to the set of properties of a message.
@@ -145,14 +179,17 @@ namespace Hermodr {
 		{
 			var body = GetBinaryData(@event.DataContentType, @event.Data);
 
+			var correlationIdAttr = options?.CorrelationIdAttributeName ?? ServiceBusEventAttributes.CorrelationId;
+			var partitionKeyAttr = options?.PartitionKeyAttributeName ?? ServiceBusEventAttributes.PartitionKey;
+
 			var message = new ServiceBusMessage
 			{
 				Body = body,
 				MessageId = @event.Id,
 				ContentType = @event.DataContentType,
 				Subject = GetSubject(@event),
-				CorrelationId = GetCorrelationId(@event)
-				// TODO: extract the partition key from the event
+				CorrelationId = GetCorrelationId(@event, correlationIdAttr),
+				PartitionKey = GetPartitionKey(@event, partitionKeyAttr)
 			};
 
             var scheduleDeliveryAt = options?.ScheduleDeliveryAt;
