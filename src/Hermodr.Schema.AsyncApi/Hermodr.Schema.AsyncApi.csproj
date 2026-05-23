@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Saunter" Version="0.13.0" />
+    <PackageReference Include="YamlDotNet" Version="16.3.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Hermodr.Schema\Hermodr.Schema.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Remove="docs\api\Hermodr.AsyncApiSerializer.md" />
+    <None Remove="docs\api\Hermodr.EventSchemaAsyncApiExtensions.ToJsonSchema(thisHermodr.IEventSchema).md" />
+    <None Remove="docs\api\Hermodr.EventSchemaAsyncApiExtensions.md" />
+    <None Remove="docs\api\Hermodr.EventSchemaAsyncApiWriter.Title.md" />
+    <None Remove="docs\api\Hermodr.EventSchemaAsyncApiWriter.md" />
+    <None Remove="docs\api\Hermodr.EventSchemasAsyncApiWriter.EventSchemasAsyncApiWriter(string,string,Hermodr.AsyncApiFormat).md" />
+    <None Remove="docs\api\Hermodr.EventSchemasAsyncApiWriter.Title.md" />
+    <None Remove="docs\api\Hermodr.EventSchemasAsyncApiWriter.Version.md" />
+  </ItemGroup>
+</Project>

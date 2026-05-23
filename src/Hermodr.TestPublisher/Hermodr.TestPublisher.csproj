@@ -1,0 +1,11 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\Hermodr.Publisher\Hermodr.Publisher.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Remove="docs\api\Hermodr.TestPublisher\IEventPublishCallback.OnEventPublishedAsync.7V0SE1DVRDNBJ02NLCMQN5DWE.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="docs\api\Hermodr.TestPublisher\" />
+  </ItemGroup>
+</Project>

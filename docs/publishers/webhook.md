@@ -1,11 +1,11 @@
 # Webhook Channel
 
-The `Deveel.Events.Publisher.Webhook` package delivers `CloudEvent` instances over HTTP to a configured endpoint URL, with optional HMAC request signing, exponential-backoff retries, and pluggable serialisers.
+The `Hermodr.Publisher.Webhook` package delivers `CloudEvent` instances over HTTP to a configured endpoint URL, with optional HMAC request signing, exponential-backoff retries, and pluggable serialisers.
 
 ## Installation
 
 ```bash
-dotnet add package Deveel.Events.Publisher.Webhook
+dotnet add package Hermodr.Publisher.Webhook
 ```
 
 ## Registration
@@ -13,7 +13,7 @@ dotnet add package Deveel.Events.Publisher.Webhook
 ### Inline configuration
 
 ```csharp
-using Deveel.Events;
+using Hermodr;
 
 builder.Services
     .AddEventPublisher()
@@ -163,7 +163,7 @@ Use `EventMessageFormat` constants when selecting a built-in format.
 Pass a `WebhookPublishOptions` instance as the second argument to `PublishAsync`.  Only the properties you set (non-`null`) override the channel default — all others fall back to the values configured at registration time.  `AdditionalHeaders` are merged: per-call entries win on key collision.
 
 ```csharp
-using Deveel.Events;
+using Hermodr;
 
 // Resolve the concrete channel directly from DI.
 var webhookChannel = serviceProvider.GetRequiredService<WebhookPublishChannel>();

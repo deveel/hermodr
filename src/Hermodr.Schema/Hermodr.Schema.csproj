@@ -1,0 +1,69 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="CloudNative.CloudEvents" Version="2.8.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Hermodr.Annotations\Hermodr.Annotations.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Remove="docs\api\Hermodr.EventProperty.Constraints.md" />
+    <None Remove="docs\api\Hermodr.EventProperty.DataType.md" />
+    <None Remove="docs\api\Hermodr.EventProperty.Description.md" />
+    <None Remove="docs\api\Hermodr.EventProperty.EventProperty(string,string,string).md" />
+    <None Remove="docs\api\Hermodr.EventProperty.IsNullable.md" />
+    <None Remove="docs\api\Hermodr.EventProperty.Name.md" />
+    <None Remove="docs\api\Hermodr.EventProperty.Properties.md" />
+    <None Remove="docs\api\Hermodr.EventPropertyBuilder.AddProperty(string,System.Action_Hermodr.EventPropertyBuilder_).md" />
+    <None Remove="docs\api\Hermodr.EventPropertyBuilder.EventPropertyBuilder(string).md" />
+    <None Remove="docs\api\Hermodr.EventPropertyBuilder.Nullable().md" />
+    <None Remove="docs\api\Hermodr.EventPropertyBuilder.OfType(string).md" />
+    <None Remove="docs\api\Hermodr.EventPropertyBuilder.Required().md" />
+    <None Remove="docs\api\Hermodr.EventPropertyBuilder.WithConstraint(Hermodr.IEventPropertyConstraint).md" />
+    <None Remove="docs\api\Hermodr.EventPropertyBuilder.WithDescription(string).md" />
+    <None Remove="docs\api\Hermodr.EventPropertyCollection.Contains(string).md" />
+    <None Remove="docs\api\Hermodr.EventPropertyConstraintCollection.md" />
+    <None Remove="docs\api\Hermodr.EventPropertyExtensions.IsNullable(thisHermodr.IEventProperty).md" />
+    <None Remove="docs\api\Hermodr.EventSchema.Build(string).md" />
+    <None Remove="docs\api\Hermodr.EventSchema.EventSchema(string,string,string).md" />
+    <None Remove="docs\api\Hermodr.EventSchema.FromDataType.md" />
+    <None Remove="docs\api\Hermodr.EventSchema.Properties.md" />
+    <None Remove="docs\api\Hermodr.EventSchema.Version.md" />
+    <None Remove="docs\api\Hermodr.EventSchemaBuilder.AddProperty.md" />
+    <None Remove="docs\api\Hermodr.EventSchemaBuilder.Build().md" />
+    <None Remove="docs\api\Hermodr.EventSchemaBuilder.EventSchemaBuilder(string).md" />
+    <None Remove="docs\api\Hermodr.EventSchemaCreator.md" />
+    <None Remove="docs\api\Hermodr.EventSchemaFactory.Default.md" />
+    <None Remove="docs\api\Hermodr.EventSchemaFactory.md" />
+    <None Remove="docs\api\Hermodr.EventSchemaJsonWriter.EventSchemaJsonWriter(System.Nullable_System.Text.Json.JsonWriterOptions_).md" />
+    <None Remove="docs\api\Hermodr.EventSchemaJsonWriter.JsonWriterOptions.md" />
+    <None Remove="docs\api\Hermodr.EventSchemaJsonWriter.WriteToAsync(System.IO.Stream,Hermodr.IEventSchema,System.Threading.CancellationToken).md" />
+    <None Remove="docs\api\Hermodr.EventSchemaJsonWriter.md" />
+    <None Remove="docs\api\Hermodr.IEnumMemberConstraint.AllowedValueObjects.md" />
+    <None Remove="docs\api\Hermodr.IEnumMemberConstraint.md" />
+    <None Remove="docs\api\Hermodr.IEventProperty.Constraints.md" />
+    <None Remove="docs\api\Hermodr.IEventProperty.DataType.md" />
+    <None Remove="docs\api\Hermodr.IEventProperty.Description.md" />
+    <None Remove="docs\api\Hermodr.IEventProperty.IsNullable.md" />
+    <None Remove="docs\api\Hermodr.IEventProperty.IsRequired.md" />
+    <None Remove="docs\api\Hermodr.IEventProperty.Name.md" />
+    <None Remove="docs\api\Hermodr.IEventProperty.Properties.md" />
+    <None Remove="docs\api\Hermodr.IEventProperty.Version.md" />
+    <None Remove="docs\api\Hermodr.IEventPropertyConstraint.md" />
+    <None Remove="docs\api\Hermodr.IEventSchema.ContentType.md" />
+    <None Remove="docs\api\Hermodr.IEventSchema.Description.md" />
+    <None Remove="docs\api\Hermodr.IEventSchema.Properties.md" />
+    <None Remove="docs\api\Hermodr.IEventSchemaFactory.md" />
+    <None Remove="docs\api\Hermodr.IEventSchemaValidator.ValidateEventAsync(Hermodr.IEventSchema,CloudNative.CloudEvents.CloudEvent,System.Threading.CancellationToken).md" />
+    <None Remove="docs\api\Hermodr.IEventSchemaWriter.WriteToAsync(System.IO.Stream,Hermodr.IEventSchema,System.Threading.CancellationToken).md" />
+    <None Remove="docs\api\Hermodr.IRangeConstraint.Max.md" />
+    <None Remove="docs\api\Hermodr.IRangeConstraint.ValueType.md" />
+    <None Remove="docs\api\Hermodr.IVersionedElement.Version.md" />
+    <None Remove="docs\api\Hermodr.IVersionedElement.md" />
+    <None Remove="docs\api\Hermodr.PropertyRequiredConstraint.ConstraintType.md" />
+    <None Remove="docs\api\Hermodr.PropertyRequiredConstraint.IsValid(object).md" />
+    <None Remove="docs\api\Hermodr.RangeConstraint_TValue_.ConstraintType.md" />
+    <None Remove="docs\api\Hermodr.RangeConstraint_TValue_.Min.md" />
+    <None Remove="docs\api\Hermodr.RangeConstraint_TValue_.RangeConstraint(System.Nullable_TValue_,System.Nullable_TValue_).md" />
+    <None Remove="docs\api\Hermodr.RangeConstraint_TValue_.md" />
+  </ItemGroup>
+</Project>

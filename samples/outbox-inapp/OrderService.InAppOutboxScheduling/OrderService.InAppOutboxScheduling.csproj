@@ -8,7 +8,7 @@
     <AssemblyName>OrderService.InAppOutboxScheduling</AssemblyName>
     <Description>
       Sample ASP.NET Minimal API that demonstrates delayed event delivery with the
-      Transactional Outbox pattern using Deveel.Events: order domain events are
+      Transactional Outbox pattern using Hermodr: order domain events are
       recorded immediately in a SQLite outbox and optionally scheduled for later
       transport delivery to RabbitMQ by an in-process relay BackgroundService.
     </Description>
@@ -20,9 +20,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Deveel.Events: outbox pattern (EF Core) + RabbitMQ transport channel -->
-    <ProjectReference Include="..\..\..\src\Deveel.Events.Publisher.Outbox.EntityFramework\Deveel.Events.Publisher.Outbox.EntityFramework.csproj" />
-    <ProjectReference Include="..\..\..\src\Deveel.Events.Publisher.RabbitMq\Deveel.Events.Publisher.RabbitMq.csproj" />
+    <!-- Hermodr: outbox pattern (EF Core) + RabbitMQ transport channel -->
+    <ProjectReference Include="..\..\..\src\Hermodr.Publisher.Outbox.EntityFramework\Hermodr.Publisher.Outbox.EntityFramework.csproj" />
+    <ProjectReference Include="..\..\..\src\Hermodr.Publisher.RabbitMq\Hermodr.Publisher.RabbitMq.csproj" />
   </ItemGroup>
 
 </Project>

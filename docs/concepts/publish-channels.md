@@ -76,11 +76,11 @@ The Webhook channel implements both `IEventPublishChannel` and `IBatchEventPubli
 
 | Channel | Package | Registration method | Typed overload |
 |---------|---------|---------------------|----------------|
-| Azure Service Bus | `Deveel.Events.Publisher.AzureServiceBus` | `.AddServiceBus(...)` | `.AddServiceBus<TEvent>(...)` |
-| RabbitMQ | `Deveel.Events.Publisher.RabbitMq` | `.AddRabbitMq(...)` | `.AddRabbitMq<TEvent>(...)` |
-| MassTransit | `Deveel.Events.Publisher.MassTransit` | `.AddMassTransit(...)` | `.AddMassTransit<TEvent>(...)` |
-| Webhook (HTTP) | `Deveel.Events.Publisher.Webhook` | `.AddWebhooks(...)` | `.AddWebhooks<TEvent>(...)` |
-| Test (in-memory) | `Deveel.Events.TestPublisher` | `.AddTestChannel(...)` | `.AddTestChannel<TEvent>(...)` |
+| Azure Service Bus | `Hermodr.Publisher.AzureServiceBus` | `.AddServiceBus(...)` | `.AddServiceBus<TEvent>(...)` |
+| RabbitMQ | `Hermodr.Publisher.RabbitMq` | `.AddRabbitMq(...)` | `.AddRabbitMq<TEvent>(...)` |
+| MassTransit | `Hermodr.Publisher.MassTransit` | `.AddMassTransit(...)` | `.AddMassTransit<TEvent>(...)` |
+| Webhook (HTTP) | `Hermodr.Publisher.Webhook` | `.AddWebhooks(...)` | `.AddWebhooks<TEvent>(...)` |
+| Test (in-memory) | `Hermodr.TestPublisher` | `.AddTestChannel(...)` | `.AddTestChannel<TEvent>(...)` |
 
 Multiple channels can be registered simultaneously — the publisher will deliver to all of them.  When a typed channel exists for `TEvent`, **only typed channels** receive that event.
 
@@ -90,7 +90,7 @@ To create your own channel, implement `IEventPublishChannel` and register it in 
 
 ```csharp
 using CloudNative.CloudEvents;
-using Deveel.Events;
+using Hermodr;
 
 public class KafkaEventPublishChannel : IEventPublishChannel
 {

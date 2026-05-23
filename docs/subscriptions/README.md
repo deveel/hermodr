@@ -1,6 +1,6 @@
 # Event Subscriptions
 
-The `Deveel.Events.Subscriptions` package adds an **event dispatcher middleware** that routes published `CloudEvent` instances to matching subscriber handlers.
+The `Hermodr.Subscriptions` package adds an **event dispatcher middleware** that routes published `CloudEvent` instances to matching subscriber handlers.
 
 ## Overview
 
@@ -51,7 +51,7 @@ Subscriptions are evaluated by one or more `IEventSubscriptionResolver` implemen
 ### 1. Install the package
 
 ```bash
-dotnet add package Deveel.Events.Subscriptions
+dotnet add package Hermodr.Subscriptions
 ```
 
 ### 2. Register subscriptions in DI

@@ -1,5 +1,4 @@
-using Deveel;
-using Deveel.Events;
+using Hermodr;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -18,7 +17,7 @@ builder.Services.AddOpenApi();
 // Order business logic
 builder.Services.AddSingleton<IOrderService, OrderManagementService>();
 
-// ── Deveel.Events — Transactional Outbox + Scheduled Delivery Relay ───────
+// ── Hermodr — Transactional Outbox + Scheduled Delivery Relay ───────
 //
 // Architecture (all within the same ASP.NET process):
 //

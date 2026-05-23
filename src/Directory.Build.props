@@ -3,7 +3,7 @@
     <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <RootNamespace>Deveel</RootNamespace>
+    <RootNamespace>Hermodr</RootNamespace>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <DefaultDocumentationFolder>$(SolutionDir)docs/api/$(MSBuildProjectName)</DefaultDocumentationFolder>
     <DefaultDocumentationFileNameFactory>NameAndMd5Mix</DefaultDocumentationFileNameFactory>
@@ -13,7 +13,7 @@
     <Authors>antonello</Authors>
     <Company>Deveel</Company>
     <Copyright>Copyright (C) 2024-2026 Antonello Provenzano</Copyright>
-    <RepositoryUrl>https://github.com/deveel/deveel.events</RepositoryUrl>
+    <RepositoryUrl>https://github.com/deveel/hermodr</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -21,7 +21,7 @@
     <DeterministicBuilds>true</DeterministicBuilds>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <DebugType>embedded</DebugType>
-    <PackageIcon>deveel-logo.png</PackageIcon>
+    <PackageIcon>hermodr-logo.png</PackageIcon>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
@@ -36,11 +36,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\..\deveel-logo.png">
+    <None Include="..\..\hermodr-logo.png">
       <Pack>True</Pack>
       <PackagePath></PackagePath>
     </None>
-    <None Include="..\..\Deveel.Events.licenseheader">
+    <None Include="..\..\Hermodr.licenseheader">
       <Pack>false</Pack>
     </None>
     <None Include="..\..\README.md">

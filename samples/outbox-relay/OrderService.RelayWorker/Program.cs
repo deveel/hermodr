@@ -1,5 +1,4 @@
-using Deveel;
-using Deveel.Events;
+using Hermodr;
 
 using MassTransit;
 
@@ -14,7 +13,7 @@ var builder = Host.CreateApplicationBuilder(args);
 // ── MassTransit — RabbitMQ transport ──────────────────────────────────────
 //
 // MassTransit is registered first so that IPublishEndpoint / ISendEndpointProvider
-// are available in the DI container when the Deveel.Events MassTransit channel resolves them.
+// are available in the DI container when the Hermodr MassTransit channel resolves them.
 
 builder.Services.AddMassTransit(mt =>
 {
@@ -35,7 +34,7 @@ builder.Services.AddMassTransit(mt =>
     });
 });
 
-// ── Deveel.Events — Outbox relay → MassTransit ────────────────────────────
+// ── Hermodr — Outbox relay → MassTransit ────────────────────────────
 //
 // Architecture:
 //

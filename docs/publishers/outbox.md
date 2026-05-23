@@ -1,6 +1,6 @@
 # Transactional Outbox Channel
 
-The `Deveel.Events.Publisher.Outbox` package implements the **Transactional Outbox** pattern for Deveel Events.  Instead of dispatching a `CloudEvent` directly to a message broker, the publisher first persists the event into the same transactional store as the business data.  A separate relay process then picks up pending records and forwards them to the real transport channel.
+The `Hermodr.Publisher.Outbox` package implements the **Transactional Outbox** pattern for Hermodr.  Instead of dispatching a `CloudEvent` directly to a message broker, the publisher first persists the event into the same transactional store as the business data.  A separate relay process then picks up pending records and forwards them to the real transport channel.
 
 ## Why use the Outbox pattern?
 
@@ -36,13 +36,13 @@ The Transactional Outbox pattern closes that window in three steps:
 ### Core outbox package
 
 ```bash
-dotnet add package Deveel.Events.Publisher.Outbox
+dotnet add package Hermodr.Publisher.Outbox
 ```
 
 ### Entity Framework Core integration (recommended)
 
 ```bash
-dotnet add package Deveel.Events.Publisher.Outbox.EntityFramework
+dotnet add package Hermodr.Publisher.Outbox.EntityFramework
 ```
 
 The EF Core package provides ready-made base classes and a pre-built repository so you do not have to write EF Core persistence code yourself.  See [Entity Framework Core integration](#entity-framework-core-integration) below.
@@ -80,7 +80,7 @@ In tests, inject a frozen clock to assert exact timestamp values deterministical
 
 To use the outbox channel you provide three components that adapt the library to your persistence technology.  The library defines the contracts; you supply the implementations.
 
-> **Entity Framework Core users:** if you are using the `Deveel.Events.Publisher.Outbox.EntityFramework` package your message entity **must** derive from `DbOutboxMessage` — implementing `IOutboxMessage` directly is not sufficient.  `WithEntityFramework()` validates this at registration time and throws `InvalidOperationException` if the constraint is not met.  Skip to the [Entity Framework Core integration](#entity-framework-core-integration) section for the recommended approach.
+> **Entity Framework Core users:** if you are using the `Hermodr.Publisher.Outbox.EntityFramework` package your message entity **must** derive from `DbOutboxMessage` — implementing `IOutboxMessage` directly is not sufficient.  `WithEntityFramework()` validates this at registration time and throws `InvalidOperationException` if the constraint is not met.  Skip to the [Entity Framework Core integration](#entity-framework-core-integration) section for the recommended approach.
 
 ### Outbox message entity
 
@@ -150,7 +150,7 @@ The outbox-specific methods handle the delivery lifecycle:
 
 ## Entity Framework Core integration
 
-The `Deveel.Events.Publisher.Outbox.EntityFramework` package eliminates most of the boilerplate by providing:
+The `Hermodr.Publisher.Outbox.EntityFramework` package eliminates most of the boilerplate by providing:
 
 | Type | Role |
 |------|------|

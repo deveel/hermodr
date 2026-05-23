@@ -1,12 +1,12 @@
 # Versioning Strategy
 
-This document describes how Deveel Events is versioned, how version numbers are calculated automatically, and how releases are produced.
+This document describes how Hermodr is versioned, how version numbers are calculated automatically, and how releases are produced.
 
 ---
 
 ## Semantic Versioning
 
-Deveel Events follows [Semantic Versioning 2.0.0](https://semver.org/):
+Hermodr follows [Semantic Versioning 2.0.0](https://semver.org/):
 
 ```
 MAJOR.MINOR.PATCH[-pre-release]

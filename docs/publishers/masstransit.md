@@ -1,11 +1,11 @@
 # MassTransit Channel
 
-The `Deveel.Events.Publisher.MassTransit` package adds a publish channel that routes `CloudEvent` instances through a MassTransit bus, making Deveel Events broker-agnostic — any MassTransit-supported transport (RabbitMQ, Azure Service Bus, Amazon SQS, Kafka, In-Memory, …) can be used transparently.
+The `Hermodr.Publisher.MassTransit` package adds a publish channel that routes `CloudEvent` instances through a MassTransit bus, making Hermodr broker-agnostic — any MassTransit-supported transport (RabbitMQ, Azure Service Bus, Amazon SQS, Kafka, In-Memory, …) can be used transparently.
 
 ## Installation
 
 ```bash
-dotnet add package Deveel.Events.Publisher.MassTransit
+dotnet add package Hermodr.Publisher.MassTransit
 ```
 
 > **Prerequisite:** MassTransit must already be configured in your application with at least one transport registered.  See the [MassTransit documentation](https://masstransit.io/documentation) for setup details.
@@ -15,7 +15,7 @@ dotnet add package Deveel.Events.Publisher.MassTransit
 ### Inline configuration
 
 ```csharp
-using Deveel.Events;
+using Hermodr;
 
 builder.Services
     .AddEventPublisher()

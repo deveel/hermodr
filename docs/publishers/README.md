@@ -1,19 +1,19 @@
 # Publisher Channels Overview
 
-Deveel Events ships ready-made channel implementations for the most common messaging transports, plus reliability-oriented publisher extensions such as the transactional outbox and dead-letter replay. You install only what you need and register the pieces in the `EventPublisherBuilder` chain.
+Hermodr ships ready-made channel implementations for the most common messaging transports, plus reliability-oriented publisher extensions such as the transactional outbox and dead-letter replay. You install only what you need and register the pieces in the `EventPublisherBuilder` chain.
 
 ## Available channels and reliability extensions
 
 | Feature | Package | Best for |
 |---------|---------|----------|
-| [Azure Service Bus](azure-service-bus.md) | `Deveel.Events.Publisher.AzureServiceBus` | Cloud-native apps on Azure, reliable queue- or topic-based delivery |
-| [RabbitMQ](rabbitmq.md) | `Deveel.Events.Publisher.RabbitMq` | On-premise or self-hosted AMQP broker, fine-grained routing |
-| [MassTransit](masstransit.md) | `Deveel.Events.Publisher.MassTransit` | Projects already using MassTransit; broker-agnostic |
-| [Webhook](webhook.md) | `Deveel.Events.Publisher.Webhook` | Delivering events to external HTTP endpoints with HMAC signing |
-| [Publish Error Handling](error-handling.md) | `Deveel.Events.Publisher` | Cross-cutting interception of publish failures for logging, policy, auditing, and custom recovery |
-| [Transactional Outbox](outbox.md) | `Deveel.Events.Publisher.Outbox` | Guaranteed at-least-once delivery via a transactional outbox table |
-| [Dead-Letter Handling and Replay](dead-letter.md) | `Deveel.Events.Publisher.DeadLetter` | Capturing failed channel deliveries, persisting them, and replaying them later |
-| [Test (in-memory)](../testing/README.md) | `Deveel.Events.TestPublisher` | Unit and integration tests |
+| [Azure Service Bus](azure-service-bus.md) | `Hermodr.Publisher.AzureServiceBus` | Cloud-native apps on Azure, reliable queue- or topic-based delivery |
+| [RabbitMQ](rabbitmq.md) | `Hermodr.Publisher.RabbitMq` | On-premise or self-hosted AMQP broker, fine-grained routing |
+| [MassTransit](masstransit.md) | `Hermodr.Publisher.MassTransit` | Projects already using MassTransit; broker-agnostic |
+| [Webhook](webhook.md) | `Hermodr.Publisher.Webhook` | Delivering events to external HTTP endpoints with HMAC signing |
+| [Publish Error Handling](error-handling.md) | `Hermodr.Publisher` | Cross-cutting interception of publish failures for logging, policy, auditing, and custom recovery |
+| [Transactional Outbox](outbox.md) | `Hermodr.Publisher.Outbox` | Guaranteed at-least-once delivery via a transactional outbox table |
+| [Dead-Letter Handling and Replay](dead-letter.md) | `Hermodr.Publisher.DeadLetter` | Capturing failed channel deliveries, persisting them, and replaying them later |
+| [Test (in-memory)](../testing/README.md) | `Hermodr.TestPublisher` | Unit and integration tests |
 
 ## Multiple channels
 

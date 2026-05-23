@@ -1,0 +1,14 @@
+//
+// Copyright (c) Antonello Provenzano and other contributors. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for details.
+//
+
+namespace Hermodr;
+
+/// <summary>
+/// Processes pending dead-letter messages for replay.
+/// </summary>
+public interface IDeadLetterReplayProcessor
+{
+    Task ProcessPendingMessagesAsync(CancellationToken cancellationToken = default);
+}

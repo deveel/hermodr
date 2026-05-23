@@ -7,8 +7,8 @@ If you already have a data-transfer class decorated with `[Event]` and standard 
 Install both the annotations and schema packages:
 
 ```bash
-dotnet add package Deveel.Events.Annotations
-dotnet add package Deveel.Events.Schema
+dotnet add package Hermodr.Annotations
+dotnet add package Hermodr.Schema
 ```
 
 ## Annotating your class
@@ -17,7 +17,7 @@ Apply `[Event]` at class level and standard data-annotation attributes on proper
 
 ```csharp
 using System.ComponentModel.DataAnnotations;
-using Deveel.Events;
+using Hermodr;
 
 [Event("order.placed", "1.0", Description = "Raised when a customer places an order")]
 public class OrderPlacedData
@@ -51,7 +51,7 @@ public class OrderPlacedData
 ### Static helper
 
 ```csharp
-using Deveel.Events;
+using Hermodr;
 
 var schema = EventSchema.FromDataType<OrderPlacedData>();
 ```
@@ -59,7 +59,7 @@ var schema = EventSchema.FromDataType<OrderPlacedData>();
 ### Via the injectable factory (preferred in DI scenarios)
 
 ```csharp
-using Deveel.Events;
+using Hermodr;
 using Microsoft.Extensions.DependencyInjection;
 
 // Register the schema factory
@@ -109,11 +109,11 @@ Once you have an `IEventSchema`, you can export it in any supported format:
 var jsonWriter = new EventSchemaJsonWriter(new JsonWriterOptions { Indented = true });
 await jsonWriter.WriteToAsync(stream, schema);
 
-// YAML (requires Deveel.Events.Schema.Yaml)
+// YAML (requires Hermodr.Schema.Yaml)
 var yamlWriter = new EventSchemaYamlWriter();
 await yamlWriter.WriteToAsync(stream, schema);
 
-// AsyncAPI (requires Deveel.Events.Schema.AsyncApi)
+// AsyncAPI (requires Hermodr.Schema.AsyncApi)
 var asyncApiWriter = new EventSchemaAsyncApiWriter(AsyncApiFormat.Yaml);
 await asyncApiWriter.WriteToAsync(stream, schema);
 ```

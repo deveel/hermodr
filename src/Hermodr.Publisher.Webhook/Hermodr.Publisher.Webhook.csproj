@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Title>Hermodr Webhook Publisher</Title>
+    <Description>Provides a publisher of CloudEvents through HTTP POST webhooks with signature verification, delivery tracking and retry support</Description>
+    <PackageTags>event;events;ddd;publisher;webhook;http;cloudevents</PackageTags>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="CloudNative.CloudEvents.SystemTextJson" Version="2.8.0" />
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="9.6.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Hermodr.Publisher\Hermodr.Publisher.csproj" />
+  </ItemGroup>
+</Project>
+

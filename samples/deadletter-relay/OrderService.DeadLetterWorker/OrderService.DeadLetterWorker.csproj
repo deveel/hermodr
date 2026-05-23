@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\src\Deveel.Events.Publisher.DeadLetter.EntityFramework\Deveel.Events.Publisher.DeadLetter.EntityFramework.csproj" />
+    <ProjectReference Include="..\..\..\src\Hermodr.Publisher.DeadLetter.EntityFramework\Hermodr.Publisher.DeadLetter.EntityFramework.csproj" />
   </ItemGroup>
 
 </Project>

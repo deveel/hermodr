@@ -1,11 +1,11 @@
 # Export Schema as JSON
 
-`EventSchemaJsonWriter` serialises an `IEventSchema` to a JSON stream.  It is included in the `Deveel.Events.Schema` package — no extra installation required.
+`EventSchemaJsonWriter` serialises an `IEventSchema` to a JSON stream.  It is included in the `Hermodr.Schema` package — no extra installation required.
 
 ## Usage
 
 ```csharp
-using Deveel.Events;
+using Hermodr;
 using System.Text.Json;
 
 var schema = EventSchema.FromDataType<OrderPlacedData>();

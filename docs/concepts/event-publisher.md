@@ -82,7 +82,7 @@ Register the publisher in your DI container using the `AddEventPublisher` extens
 middleware, and other services — all at registration time.
 
 ```csharp
-using Deveel.Events;
+using Hermodr;
 
 // Minimal registration
 builder.Services.AddEventPublisher();
@@ -560,7 +560,7 @@ you **own the full publishing contract**:
 | Null / no-op publisher | Silently discards events during integration-test isolation. |
 | Completely exotic fan-out strategy | Cannot be modelled as one or more `IEventPublishChannel` implementations. |
 
-For tests, the `Deveel.Events.TestPublisher` package provides `AddTestChannel()`, which makes
+For tests, the `Hermodr.TestPublisher` package provides `AddTestChannel()`, which makes
 an in-memory capture available without re-implementing the publisher at all.
 
 > ⚠️  If you find yourself re-implementing `IEventPublisher` to add a cross-cutting concern

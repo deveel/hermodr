@@ -1,6 +1,8 @@
-# Deveel Events
+> **Renamed:** This project was formerly called **Deveel Events**. As of **23 May 2026**, it has been renamed to **Hermodr** — the messenger of the gods in Norse mythology — to reflect its role as a message delivery framework and distinguish it from the broader Deveel ecosystem.
 
-**Deveel Events** is a lightweight, extensible framework for publishing domain events in .NET applications, built on top of the [CloudEvents](https://cloudevents.io/) standard.
+# Hermodr
+
+**Hermodr** is a lightweight, extensible framework for publishing domain events in .NET applications, built on top of the [CloudEvents](https://cloudevents.io/) standard.
 
 ## Domain Events in DDD
 
@@ -29,9 +31,9 @@
 
 Events differ from commands in a subtle but important way: a command _could_ be rejected; an event is a statement of fact about the past — it already happened.
 
-### Where Deveel Events fits in
+### Where Hermodr fits in
 
-Deveel Events implements the **publishing side** of domain events.  The framework is intentionally scoped: it does not dictate how you model your aggregates, store events, or rebuild read models.  What it does provide is a consistent, transport-agnostic way to broadcast domain events once they occur inside a bounded context.
+Hermodr implements the **publishing side** of domain events.  The framework is intentionally scoped: it does not dictate how you model your aggregates, store events, or rebuild read models.  What it does provide is a consistent, transport-agnostic way to broadcast domain events once they occur inside a bounded context.
 
 ```
 Aggregate root raises event
@@ -45,27 +47,27 @@ Aggregate root raises event
         └──► (any IEventPublishChannel)
 ```
 
-## Deveel Events vs Other .NET Messaging Frameworks
+## Hermodr vs Other .NET Messaging Frameworks
 
-If your primary goal is to publish domain events as explicit integration contracts, framework scope matters more than feature count. Some frameworks are optimized for full service-bus runtime concerns (handler orchestration, endpoints, distributed workflows), while Deveel Events is optimized for contract-first event publication around CloudEvents and schema governance.
+If your primary goal is to publish domain events as explicit integration contracts, framework scope matters more than feature count. Some frameworks are optimized for full service-bus runtime concerns (handler orchestration, endpoints, distributed workflows), while Hermodr is optimized for contract-first event publication around CloudEvents and schema governance.
 
 This comparison focuses on what is natively provided by each framework core and packages in their standard ecosystem. It is not a ranking: teams often combine these tools depending on their architecture.
 
-| Feature | `Deveel Events` | `MassTransit` | `Wolverine` | `NServiceBus` | `Rebus` |
+| Feature | `Hermodr` | `MassTransit` | `Wolverine` | `NServiceBus` | `Rebus` |
 |---------|------------------|---------------|--------------|---------------|-----------|
 | Event contract model | CloudEvents-first publish pipeline | Framework-native message contracts; CloudEvents not natively provided by the framework core | Framework-native message contracts; CloudEvents not natively provided by the framework core | Framework-native message contracts; CloudEvents not natively provided by the framework core | Framework-native message contracts; CloudEvents not natively provided by the framework core |
-| Event metadata annotations | Built-in attributes (`Deveel.Events.Annotations`, AMQP extensions) | Event metadata annotations not natively provided by the framework core | Event metadata annotations not natively provided by the framework core | Event metadata annotations not natively provided by the framework core | Event metadata annotations not natively provided by the framework core |
+| Event metadata annotations | Built-in attributes (`Hermodr.Annotations`, AMQP extensions) | Event metadata annotations not natively provided by the framework core | Event metadata annotations not natively provided by the framework core | Event metadata annotations not natively provided by the framework core | Event metadata annotations not natively provided by the framework core |
 | Schema export formats | JSON Schema, YAML, AsyncAPI packages | Schema export not natively provided by the framework core | Schema export not natively provided by the framework core | Schema export not natively provided by the framework core | Schema export not natively provided by the framework core |
-| AsyncAPI generation | Dedicated package (`Deveel.Events.Schema.AsyncApi`) | AsyncAPI generation not natively provided by the framework core | AsyncAPI generation not natively provided by the framework core | AsyncAPI generation not natively provided by the framework core | AsyncAPI generation not natively provided by the framework core |
+| AsyncAPI generation | Dedicated package (`Hermodr.Schema.AsyncApi`) | AsyncAPI generation not natively provided by the framework core | AsyncAPI generation not natively provided by the framework core | AsyncAPI generation not natively provided by the framework core | AsyncAPI generation not natively provided by the framework core |
 | Transport adapters included | Azure Service Bus, RabbitMQ, MassTransit, Webhook, Outbox, Dead-Letter | Native multi-transport broker integrations | Native multi-transport messaging endpoints | Native transport support via transport packages | Native transport integrations |
 | Transactional outbox support | Built-in channel + EF integration packages | Natively supported | Natively supported | Natively supported | Natively supported |
 | Dead-letter capture and replay | Dedicated dead-letter packages + replay worker model | Dead-letter handling available; replay workflow not natively standardized by the framework core | Dead-letter handling available; replay workflow not natively standardized by the framework core | Dead-letter handling available; replay workflow not natively standardized by the framework core | Dead-letter handling available; replay workflow not natively standardized by the framework core |
 | Deferred/scheduled delivery | Planned (`Event Scheduler & Deferred Publishing` on roadmap) | Natively supported (transport/scheduler dependent) | Natively supported (runtime/transport dependent) | Natively supported (transport dependent) | Natively supported (transport dependent) |
-| In-process subscription routing | Built-in subscriptions package (`Deveel.Events.Subscriptions`) | Native consumer/handler pipeline | Native local and remote handlers | Native message handler pipeline | Native message handler pipeline |
+| In-process subscription routing | Built-in subscriptions package (`Hermodr.Subscriptions`) | Native consumer/handler pipeline | Native local and remote handlers | Native message handler pipeline | Native message handler pipeline |
 | Middleware/extensibility pipeline | Built-in event middleware pipeline | Native filters/middleware/observers | Native middleware and handler pipeline extensions | Native pipeline behaviors and extensibility points | Native pipeline steps and extensibility points |
 | Testing support for publish flow | Dedicated in-memory test publisher package | Native test harness support | Native testing utilities | Native testing support | Native testing support |
 
-Why teams choose Deveel Events over these frameworks usually comes down to contract ownership and boundary clarity:
+Why teams choose Hermodr over these frameworks usually comes down to contract ownership and boundary clarity:
 
 - They want a **CloudEvents-native model** instead of treating CloudEvents as an adapter concern.
 - They need **schema artifacts as first-class outputs** (JSON Schema, YAML, AsyncAPI) to version and review alongside code.
@@ -73,7 +75,7 @@ Why teams choose Deveel Events over these frameworks usually comes down to contr
 - They need **transport flexibility** while keeping one event contract and one publisher abstraction.
 - They want to add reliability patterns (outbox, dead-letter replay) without coupling the domain model to a single broker runtime.
 
-Choose Deveel Events when the hardest problem in your system is maintaining stable event contracts across teams and over time. Choose a full messaging runtime when your hardest problem is orchestrating complex consumer workflows and endpoint-level operational behavior. In many systems, a practical approach is combining both: Deveel Events for contract-first publication at domain boundaries, and a broker/runtime framework for downstream processing topology.
+Choose Hermodr when the hardest problem in your system is maintaining stable event contracts across teams and over time. Choose a full messaging runtime when your hardest problem is orchestrating complex consumer workflows and endpoint-level operational behavior. In many systems, a practical approach is combining both: Hermodr for contract-first publication at domain boundaries, and a broker/runtime framework for downstream processing topology.
 
 Framework capabilities evolve; verify current details in each framework's official documentation before making a final decision.
 
@@ -112,7 +114,7 @@ public class OrderPlacedData                 Validates payload
                       └──► AsyncAPI 2.x document
 ```
 
-The `Deveel.Events.Schema` package can derive a schema automatically from annotated data classes, or you can build one explicitly with the fluent `EventSchemaBuilder`.  Either way, the schema can then be:
+The `Hermodr.Schema` package can derive a schema automatically from annotated data classes, or you can build one explicitly with the fluent `EventSchemaBuilder`.  Either way, the schema can then be:
 
 - **Exported as JSON** — for integration with schema registries or tooling.
 - **Exported as YAML** — for human-readable documentation or version-controlled contracts.
@@ -143,7 +145,7 @@ Treat your event schemas the same way you treat public API contracts:
 
 The framework intentionally does **not** aim to be a full event-sourcing or message-broker solution.  Its goal is a thin, opinionated layer that lets every team publish domain events in a consistent way without rewriting the same plumbing every time.
 
-> If you need durable event storage, complex routing, or consumer-side processing at scale, consider pairing this library with a dedicated message broker (RabbitMQ, Kafka, Azure Service Bus) — Deveel Events already ships channel adapters for the most popular ones.
+> If you need durable event storage, complex routing, or consumer-side processing at scale, consider pairing this library with a dedicated message broker (RabbitMQ, Kafka, Azure Service Bus) — Hermodr already ships channel adapters for the most popular ones.
 
 ## CloudEvents Standard
 
@@ -166,5 +168,5 @@ All events are modelled as [`CloudEvent`](https://github.com/cloudevents/spec) o
 
 ## License
 
-Released under the [MIT License](https://github.com/deveel/deveel.events/blob/main/LICENSE).  
+Released under the [MIT License](https://github.com/deveel/hermodr/blob/main/LICENSE).  
 Developed and maintained by the [Deveel](https://deveel.com) team.

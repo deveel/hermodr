@@ -1,6 +1,6 @@
 # Publish Delivery Log
 
-The `Deveel.Events.Publisher.DeliveryLog` package records operational telemetry for every event publish attempt: which channel was used, when the attempt happened, how many times it was retried, how long it took, whether it succeeded or failed, and what error occurred. The records are stored in a pluggable storage backend of your choice.
+The `Hermodr.Publisher.DeliveryLog` package records operational telemetry for every event publish attempt: which channel was used, when the attempt happened, how many times it was retried, how long it took, whether it succeeded or failed, and what error occurred. The records are stored in a pluggable storage backend of your choice.
 
 ## Why use the Delivery Log?
 
@@ -74,16 +74,16 @@ Use the error handler when `ThrowOnErrors = false` and you still want failures r
 
 ## Installation
 
-The core package depends on `Deveel.Events.Publisher` (for the middleware pipeline), `Deveel.Repository.Core` and `Deveel.Repository.InMemory` (for storage abstractions), and `Microsoft.Extensions.Logging.Abstractions`.
+The core package depends on `Hermodr.Publisher` (for the middleware pipeline), `Deveel.Repository.Core` and `Deveel.Repository.InMemory` (for storage abstractions), and `Microsoft.Extensions.Logging.Abstractions`.
 
 ```bash
-dotnet add package Deveel.Events.Publisher.DeliveryLog
+dotnet add package Hermodr.Publisher.DeliveryLog
 ```
 
 For EF Core persistence (depends on `Deveel.Repository.EntityFramework`):
 
 ```bash
-dotnet add package Deveel.Events.Publisher.DeliveryLog.EntityFramework
+dotnet add package Hermodr.Publisher.DeliveryLog.EntityFramework
 dotnet add package Microsoft.EntityFrameworkCore.Sqlite
 ```
 

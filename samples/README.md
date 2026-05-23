@@ -1,6 +1,6 @@
-# Deveel Events — Samples
+# Hermodr — Samples
 
-This directory contains runnable sample projects that demonstrate the major use cases of the **Deveel Events** framework.  
+This directory contains runnable sample projects that demonstrate the major use cases of the **Hermodr** framework.  
 Each sample is self-contained: it has its own project file, configuration, and (where needed) a `docker-compose.yml` to spin up the required infrastructure.
 
 ---
@@ -22,12 +22,12 @@ Each sample is self-contained: it has its own project file, configuration, and (
 
 **Path:** `aspnet-publisher/OrderService.SimplePublisher/`  
 **Framework:** ASP.NET Core 9 Minimal API  
-**Transport:** RabbitMQ (`Deveel.Events.Publisher.RabbitMq`)
+**Transport:** RabbitMQ (`Hermodr.Publisher.RabbitMq`)
 
 A microservice managing the full lifecycle of an **Order** entity.  
 Every state transition — creation, confirmation, shipping, delivery, cancellation — publishes a typed, CloudEvent-compliant domain event to a RabbitMQ exchange.
 
-### Key Deveel.Events patterns shown
+### Key Hermodr patterns shown
 
 | Pattern | Where |
 |---------|-------|

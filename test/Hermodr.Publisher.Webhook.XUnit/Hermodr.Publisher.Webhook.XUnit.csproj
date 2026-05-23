@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Hermodr.Publisher.Webhook\Hermodr.Publisher.Webhook.csproj" />
+  </ItemGroup>
+
+</Project>

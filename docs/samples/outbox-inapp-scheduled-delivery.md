@@ -1,8 +1,8 @@
 # Sample: OrderService — In-Process Outbox with Scheduled Delivery
 
-**Location:** [`samples/outbox-inapp/OrderService.InAppOutboxScheduling/`](https://github.com/deveel/deveel.events/tree/main/samples/outbox-inapp/OrderService.InAppOutboxScheduling)  
+**Location:** [`samples/outbox-inapp/OrderService.InAppOutboxScheduling/`](https://github.com/deveel/hermodr/tree/main/samples/outbox-inapp/OrderService.InAppOutboxScheduling)  
 **Framework:** ASP.NET Core 9 Minimal API  
-**Transport:** RabbitMQ — `Deveel.Events.Publisher.RabbitMq`  
+**Transport:** RabbitMQ — `Hermodr.Publisher.RabbitMq`  
 **Pattern:** Transactional Outbox with delayed transport delivery
 
 ---

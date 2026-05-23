@@ -1,6 +1,6 @@
 # OrderService — In-Process Dead-Letter Replay
 
-This sample demonstrates the **in-process** dead-letter flow in `Deveel.Events.Publisher.DeadLetter`.
+This sample demonstrates the **in-process** dead-letter flow in `Hermodr.Publisher.DeadLetter`.
 
 ## What it demonstrates
 

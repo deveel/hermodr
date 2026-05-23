@@ -1,11 +1,11 @@
 # Export Schema as AsyncAPI
 
-The `Deveel.Events.Schema.AsyncApi` package generates fully valid [AsyncAPI 2.x](https://www.asyncapi.com/) documents from one or more event schemas.
+The `Hermodr.Schema.AsyncApi` package generates fully valid [AsyncAPI 2.x](https://www.asyncapi.com/) documents from one or more event schemas.
 
 ## Installation
 
 ```bash
-dotnet add package Deveel.Events.Schema.AsyncApi
+dotnet add package Hermodr.Schema.AsyncApi
 ```
 
 ## Single schema → standalone document
@@ -19,7 +19,7 @@ dotnet add package Deveel.Events.Schema.AsyncApi
 ### JSON output (default)
 
 ```csharp
-using Deveel.Events;
+using Hermodr;
 
 var schema = EventSchema.FromDataType<OrderPlacedData>();
 
@@ -46,7 +46,7 @@ await writer.WriteToAsync(stream, schema);
 `EventSchemasAsyncApiWriter` merges several schemas into one document — useful for generating a service-wide contract file.
 
 ```csharp
-using Deveel.Events;
+using Hermodr;
 
 IEnumerable<IEventSchema> schemas =
 [
@@ -76,7 +76,7 @@ await writer.WriteToAsync(stream, schemas);
 `EventSchemaAsyncApiExtensions` exposes helpers for fine-grained control:
 
 ```csharp
-using Deveel.Events;
+using Hermodr;
 using NJsonSchema;
 using Saunter.AsyncApiSchema.v2;
 

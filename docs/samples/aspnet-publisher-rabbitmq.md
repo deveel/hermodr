@@ -1,14 +1,14 @@
 # Sample: OrderService — Minimal API + RabbitMQ
 
-**Location:** [`samples/aspnet-publisher/OrderService/`](https://github.com/deveel/deveel.events/tree/main/samples/aspnet-publisher/OrderService)  
+**Location:** [`samples/aspnet-publisher/OrderService/`](https://github.com/deveel/hermodr/tree/main/samples/aspnet-publisher/OrderService)  
 **Framework:** ASP.NET Core 9 Minimal API  
-**Transport:** RabbitMQ — `Deveel.Events.Publisher.RabbitMq`
+**Transport:** RabbitMQ — `Hermodr.Publisher.RabbitMq`
 
 ---
 
 ## Overview
 
-This sample shows how to embed **Deveel Events** into a real-world microservice.  
+This sample shows how to embed **Hermodr** into a real-world microservice.  
 The service manages the lifecycle of an **Order** entity and publishes a CloudEvent-compliant domain event to a RabbitMQ exchange at every state transition.
 
 ```
