@@ -15,6 +15,7 @@ Each sample is self-contained: it has its own project file, configuration, and (
 | [outbox-relay](outbox-relay/README.md) | MassTransit / RabbitMQ | Split transactional outbox with a separate relay worker consuming the shared SQLite outbox |
 | [deadletter-inproc/OrderService.InProcDeadLetter](deadletter-inproc/OrderService.InProcDeadLetter/README.md) | In-memory sample channels | Immediate in-process dead-letter interception and replay through the same publisher pipeline |
 | [deadletter-relay](deadletter-relay/README.md) | EF Core SQLite + in-memory recovery channel | Split dead-letter sample with a publisher app and a background worker sharing the replay repository |
+| [opentelemetry/OrderService.OpenTelemetry](opentelemetry/OrderService.OpenTelemetry/README.md) | In-memory sample channels | OpenTelemetry instrumentation with producer/consumer spans, trace context injection/extraction, and metrics |
 
 ---
 

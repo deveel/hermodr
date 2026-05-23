@@ -188,9 +188,10 @@ public class OpenTelemetryPublishMiddlewareTests
                 opts.Source = new Uri("https://example.com");
                 opts.ThrowOnErrors = throwOnChannel;
             });
-            builder.AddOpenTelemetryPublisherInstrumentation(o =>
+            builder.UseOpenTelemetry(o =>
             {
                 o.ActivitySourceName = sourceName;
+                o.InstrumentSubscription = false;
                 o.RecordException = recordException;
                 configure?.Invoke(o);
             });
@@ -238,7 +239,7 @@ public class OpenTelemetryPublishMiddlewareTests
             services.AddSingleton(_source);
             services.AddOptions<OpenTelemetryInstrumentationOptions>();
             var builder = services.AddEventPublisher(opts => opts.Source = new Uri("https://example.com"));
-            builder.AddOpenTelemetryPublisherInstrumentation();
+            builder.UseOpenTelemetry();
             builder.AddTestChannel(e => Received.Add(e));
             _provider = services.BuildServiceProvider();
         }

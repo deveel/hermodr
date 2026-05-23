@@ -166,7 +166,7 @@ public class EndToEndTracePropagationTests
             var services = new ServiceCollection().AddLogging();
             services.AddSingleton(_source);
             var builder = services.AddEventPublisher(opts => opts.Source = new Uri("https://example.com"));
-            builder.AddOpenTelemetry(o =>
+            builder.UseOpenTelemetry(o =>
             {
                 o.ActivitySourceName = sourceName;
                 configure?.Invoke(o);
@@ -217,7 +217,11 @@ public class EndToEndTracePropagationTests
             var services = new ServiceCollection().AddLogging();
             services.AddSingleton(_source);
             services.AddEventPublisher(opts => opts.Source = new Uri("https://example.com"))
-                .AddOpenTelemetryPublisherInstrumentation(o => o.ActivitySourceName = sourceName)
+                .UseOpenTelemetry(o =>
+                {
+                    o.ActivitySourceName = sourceName;
+                    o.InstrumentSubscription = false;
+                })
                 .AddTestChannel(_ => { });
 
             _provider = services.BuildServiceProvider();
@@ -256,7 +260,11 @@ public class EndToEndTracePropagationTests
             var services = new ServiceCollection().AddLogging();
             services.AddSingleton(_source);
             services.AddEventPublisher(opts => opts.Source = new Uri("https://example.com"))
-                .AddOpenTelemetrySubscriptionInstrumentation(o => o.ActivitySourceName = sourceName)
+                .UseOpenTelemetry(o =>
+                {
+                    o.ActivitySourceName = sourceName;
+                    o.InstrumentPublisher = false;
+                })
                 .AddSubscriptions(subs =>
                 {
                     subs.Subscribe("com.test.*", async (evt, ct) => await Task.CompletedTask);

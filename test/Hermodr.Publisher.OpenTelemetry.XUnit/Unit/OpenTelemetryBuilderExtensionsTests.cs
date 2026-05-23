@@ -17,25 +17,13 @@ public class OpenTelemetryBuilderExtensionsTests
     private const string TraceParentKey = "traceparent";
 
     [Fact]
-    public void AddOpenTelemetry_Throws_WhenBuilderIsNull()
+    public void UseOpenTelemetry_Throws_WhenBuilderIsNull()
     {
-        Assert.Throws<ArgumentNullException>(() => ((EventPublisherBuilder)null!).AddOpenTelemetry());
+        Assert.Throws<ArgumentNullException>(() => ((EventPublisherBuilder)null!).UseOpenTelemetry());
     }
 
     [Fact]
-    public void AddOpenTelemetryPublisherInstrumentation_Throws_WhenBuilderIsNull()
-    {
-        Assert.Throws<ArgumentNullException>(() => ((EventPublisherBuilder)null!).AddOpenTelemetryPublisherInstrumentation());
-    }
-
-    [Fact]
-    public void AddOpenTelemetrySubscriptionInstrumentation_Throws_WhenBuilderIsNull()
-    {
-        Assert.Throws<ArgumentNullException>(() => ((EventPublisherBuilder)null!).AddOpenTelemetrySubscriptionInstrumentation());
-    }
-
-    [Fact]
-    public async Task AddOpenTelemetry_RegistersBothMiddlewares()
+    public async Task UseOpenTelemetry_RegistersBothMiddlewares()
     {
         var capturedActivities = new List<Activity>();
         var sourceName = $"Hermodr.Test.{Guid.NewGuid():N}";
@@ -45,7 +33,7 @@ public class OpenTelemetryBuilderExtensionsTests
         var services = new ServiceCollection().AddLogging();
         services.AddSingleton(source);
         services.AddEventPublisher(opts => opts.Source = new Uri("https://example.com"))
-            .AddOpenTelemetry(o => o.ActivitySourceName = sourceName)
+            .UseOpenTelemetry(o => o.ActivitySourceName = sourceName)
             .AddSubscriptions(subs =>
             {
                 subs.Subscribe("com.test.*", async (evt, ct) => await Task.CompletedTask);
@@ -64,7 +52,7 @@ public class OpenTelemetryBuilderExtensionsTests
     }
 
     [Fact]
-    public async Task AddOpenTelemetryPublisherInstrumentation_DoesNotCreateConsumerSpan()
+    public async Task UseOpenTelemetry_DisablesSubscriptionSpan_WhenConfigured()
     {
         var capturedActivities = new List<Activity>();
         var sourceName = $"Hermodr.Test.{Guid.NewGuid():N}";
@@ -74,7 +62,11 @@ public class OpenTelemetryBuilderExtensionsTests
         var services = new ServiceCollection().AddLogging();
         services.AddSingleton(source);
         services.AddEventPublisher(opts => opts.Source = new Uri("https://example.com"))
-            .AddOpenTelemetryPublisherInstrumentation(o => o.ActivitySourceName = sourceName)
+            .UseOpenTelemetry(o =>
+            {
+                o.ActivitySourceName = sourceName;
+                o.InstrumentSubscription = false;
+            })
             .AddSubscriptions(subs =>
             {
                 subs.Subscribe("com.test.*", async (evt, ct) => await Task.CompletedTask);
@@ -91,7 +83,7 @@ public class OpenTelemetryBuilderExtensionsTests
     }
 
     [Fact]
-    public async Task AddOpenTelemetrySubscriptionInstrumentation_DoesNotCreateProducerSpan()
+    public async Task UseOpenTelemetry_DisablesPublisherSpan_WhenConfigured()
     {
         var capturedActivities = new List<Activity>();
         var sourceName = $"Hermodr.Test.{Guid.NewGuid():N}";
@@ -101,7 +93,11 @@ public class OpenTelemetryBuilderExtensionsTests
         var services = new ServiceCollection().AddLogging();
         services.AddSingleton(source);
         services.AddEventPublisher(opts => opts.Source = new Uri("https://example.com"))
-            .AddOpenTelemetrySubscriptionInstrumentation(o => o.ActivitySourceName = sourceName)
+            .UseOpenTelemetry(o =>
+            {
+                o.ActivitySourceName = sourceName;
+                o.InstrumentPublisher = false;
+            })
             .AddSubscriptions(subs =>
             {
                 subs.Subscribe("com.test.*", async (evt, ct) => await Task.CompletedTask);
@@ -118,7 +114,7 @@ public class OpenTelemetryBuilderExtensionsTests
     }
 
     [Fact]
-    public async Task AddOpenTelemetry_UsesCustomActivitySourceName()
+    public async Task UseOpenTelemetry_UsesCustomActivitySourceName()
     {
         var customSourceName = $"Custom.Hermodr.{Guid.NewGuid():N}";
         var capturedActivities = new List<Activity>();
@@ -128,7 +124,7 @@ public class OpenTelemetryBuilderExtensionsTests
         var services = new ServiceCollection().AddLogging();
         services.AddSingleton(source);
         services.AddEventPublisher(opts => opts.Source = new Uri("https://example.com"))
-            .AddOpenTelemetry(o => o.ActivitySourceName = customSourceName)
+            .UseOpenTelemetry(o => o.ActivitySourceName = customSourceName)
             .AddTestChannel(_ => { });
 
         await using var provider = services.BuildServiceProvider();
@@ -141,7 +137,7 @@ public class OpenTelemetryBuilderExtensionsTests
     }
 
     [Fact]
-    public async Task AddOpenTelemetry_InjectsTrace_WhenFullInstrumentation()
+    public async Task UseOpenTelemetry_InjectsTrace_WhenFullInstrumentation()
     {
         var sourceName = $"Hermodr.Test.{Guid.NewGuid():N}";
         using var source = new ActivitySource(sourceName);
@@ -151,7 +147,7 @@ public class OpenTelemetryBuilderExtensionsTests
         var services = new ServiceCollection().AddLogging();
         services.AddSingleton(source);
         services.AddEventPublisher(opts => opts.Source = new Uri("https://example.com"))
-            .AddOpenTelemetry(o => o.ActivitySourceName = sourceName)
+            .UseOpenTelemetry(o => o.ActivitySourceName = sourceName)
             .AddSubscriptions(subs =>
             {
                 subs.Subscribe("com.test.*", async (evt, ct) => received.Add(evt));
@@ -169,7 +165,7 @@ public class OpenTelemetryBuilderExtensionsTests
     }
 
     [Fact]
-    public async Task AddOpenTelemetry_CanBeChainedWithOtherBuilderMethods()
+    public async Task UseOpenTelemetry_CanBeChainedWithOtherBuilderMethods()
     {
         var sourceName = $"Hermodr.Test.{Guid.NewGuid():N}";
         using var source = new ActivitySource(sourceName);
@@ -179,7 +175,7 @@ public class OpenTelemetryBuilderExtensionsTests
         var services = new ServiceCollection().AddLogging();
         services.AddSingleton(source);
         var builder = services.AddEventPublisher(opts => opts.Source = new Uri("https://example.com"))
-            .AddOpenTelemetry(o => o.ActivitySourceName = sourceName)
+            .UseOpenTelemetry(o => o.ActivitySourceName = sourceName)
             .AddTestChannel(e => received.Add(e));
 
         Assert.NotNull(builder);
@@ -253,11 +249,11 @@ public class OpenTelemetryBuilderExtensionsTests
     }
 
     [Fact]
-    public async Task AddOpenTelemetry_RegistersMeter()
+    public async Task UseOpenTelemetry_RegistersMeter()
     {
         var services = new ServiceCollection().AddLogging();
         services.AddEventPublisher(opts => opts.Source = new Uri("https://example.com"))
-            .AddOpenTelemetry()
+            .UseOpenTelemetry()
             .AddTestChannel(_ => { });
 
         await using var provider = services.BuildServiceProvider();
@@ -268,11 +264,11 @@ public class OpenTelemetryBuilderExtensionsTests
     }
 
     [Fact]
-    public async Task AddOpenTelemetry_UsesCustomMeterName()
+    public async Task UseOpenTelemetry_UsesCustomMeterName()
     {
         var services = new ServiceCollection().AddLogging();
         services.AddEventPublisher(opts => opts.Source = new Uri("https://example.com"))
-            .AddOpenTelemetry(o => o.Metrics.MeterName = "custom-meter")
+            .UseOpenTelemetry(o => o.Metrics.MeterName = "custom-meter")
             .AddTestChannel(_ => { });
 
         await using var provider = services.BuildServiceProvider();
@@ -280,34 +276,6 @@ public class OpenTelemetryBuilderExtensionsTests
         var meter = provider.GetService<System.Diagnostics.Metrics.Meter>();
         Assert.NotNull(meter);
         Assert.Equal("custom-meter", meter.Name);
-    }
-
-    [Fact]
-    public async Task AddOpenTelemetryPublisherInstrumentation_RegistersMeter()
-    {
-        var services = new ServiceCollection().AddLogging();
-        services.AddEventPublisher(opts => opts.Source = new Uri("https://example.com"))
-            .AddOpenTelemetryPublisherInstrumentation()
-            .AddTestChannel(_ => { });
-
-        await using var provider = services.BuildServiceProvider();
-
-        var meter = provider.GetService<System.Diagnostics.Metrics.Meter>();
-        Assert.NotNull(meter);
-    }
-
-    [Fact]
-    public async Task AddOpenTelemetrySubscriptionInstrumentation_RegistersMeter()
-    {
-        var services = new ServiceCollection().AddLogging();
-        services.AddEventPublisher(opts => opts.Source = new Uri("https://example.com"))
-            .AddOpenTelemetrySubscriptionInstrumentation()
-            .AddTestChannel(_ => { });
-
-        await using var provider = services.BuildServiceProvider();
-
-        var meter = provider.GetService<System.Diagnostics.Metrics.Meter>();
-        Assert.NotNull(meter);
     }
 
     private static ActivityListener CreateListener(ActivitySource source, List<Activity> captured)

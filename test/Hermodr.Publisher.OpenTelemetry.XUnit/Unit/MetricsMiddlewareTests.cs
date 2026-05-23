@@ -270,9 +270,10 @@ public class MetricsMiddlewareTests
                 opts.Source = new Uri("https://example.com");
                 opts.ThrowOnErrors = throwOnChannel;
             });
-            builder.AddOpenTelemetryPublisherInstrumentation(o =>
+            builder.UseOpenTelemetry(o =>
             {
                 o.ActivitySourceName = sourceName;
+                o.InstrumentSubscription = false;
                 o.Metrics.MeterName = _meterName;
                 configure?.Invoke(o);
             });

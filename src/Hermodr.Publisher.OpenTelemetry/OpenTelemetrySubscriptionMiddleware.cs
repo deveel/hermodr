@@ -45,6 +45,12 @@ namespace Hermodr
             ArgumentNullException.ThrowIfNull(context);
             ArgumentNullException.ThrowIfNull(next);
 
+            if (!_options.InstrumentSubscription)
+            {
+                await next(context);
+                return;
+            }
+
             var eventType = context.Event.Type ?? "unknown";
 
             ActivityContext? parentContext = null;

@@ -62,7 +62,7 @@ namespace Hermodr
         /// <example>
         /// <code language="csharp">
         /// services.AddEventPublisher()
-        ///     .AddOpenTelemetry(opts =>
+        ///     .UseOpenTelemetry(opts =>
         ///     {
         ///         opts.Metrics.PublishDuration = true;
         ///         opts.Metrics.PublishErrors = true;
@@ -70,7 +70,7 @@ namespace Hermodr
         ///     .AddRabbitMq(opts => { ... });
         /// </code>
         /// </example>
-        public static EventPublisherBuilder AddOpenTelemetry(
+        public static EventPublisherBuilder UseOpenTelemetry(
             this EventPublisherBuilder builder,
             Action<OpenTelemetryInstrumentationOptions>? configure = null)
         {
@@ -86,74 +86,6 @@ namespace Hermodr
             builder.Services.AddSingleton<Meter>(sp => sp.GetRequiredService<MeterFactory>().Create());
 
             builder.Use<OpenTelemetryPublishMiddleware>();
-            builder.Use<OpenTelemetrySubscriptionMiddleware>();
-            builder.Use<MetricsMiddleware>();
-
-            return builder;
-        }
-
-        /// <summary>
-        /// Adds only the publisher-side OpenTelemetry instrumentation (producer span + trace injection).
-        /// Does not add the subscription-side middleware.
-        /// </summary>
-        /// <param name="builder">The builder to configure.</param>
-        /// <param name="configure">
-        /// An optional action to customize <see cref="OpenTelemetryInstrumentationOptions"/>.
-        /// </param>
-        /// <returns>The same <paramref name="builder"/> for chaining.</returns>
-        public static EventPublisherBuilder AddOpenTelemetryPublisherInstrumentation(
-            this EventPublisherBuilder builder,
-            Action<OpenTelemetryInstrumentationOptions>? configure = null)
-        {
-            ArgumentNullException.ThrowIfNull(builder);
-
-            builder.Services.Configure<OpenTelemetryInstrumentationOptions>(
-                opts =>
-                {
-                    opts.InstrumentSubscription = false;
-                    configure?.Invoke(opts);
-                });
-
-            builder.Services.AddSingleton<ActivitySourceFactory>();
-            builder.Services.AddSingleton<ActivitySource>(sp => sp.GetRequiredService<ActivitySourceFactory>().Create());
-
-            builder.Services.AddSingleton<MeterFactory>();
-            builder.Services.AddSingleton<Meter>(sp => sp.GetRequiredService<MeterFactory>().Create());
-
-            builder.Use<OpenTelemetryPublishMiddleware>();
-            builder.Use<MetricsMiddleware>();
-
-            return builder;
-        }
-
-        /// <summary>
-        /// Adds only the subscription-side OpenTelemetry instrumentation (trace extraction + consumer span).
-        /// Does not add the publisher-side middleware.
-        /// </summary>
-        /// <param name="builder">The builder to configure.</param>
-        /// <param name="configure">
-        /// An optional action to customize <see cref="OpenTelemetryInstrumentationOptions"/>.
-        /// </param>
-        /// <returns>The same <paramref name="builder"/> for chaining.</returns>
-        public static EventPublisherBuilder AddOpenTelemetrySubscriptionInstrumentation(
-            this EventPublisherBuilder builder,
-            Action<OpenTelemetryInstrumentationOptions>? configure = null)
-        {
-            ArgumentNullException.ThrowIfNull(builder);
-
-            builder.Services.Configure<OpenTelemetryInstrumentationOptions>(
-                opts =>
-                {
-                    opts.InstrumentPublisher = false;
-                    configure?.Invoke(opts);
-                });
-
-            builder.Services.AddSingleton<ActivitySourceFactory>();
-            builder.Services.AddSingleton<ActivitySource>(sp => sp.GetRequiredService<ActivitySourceFactory>().Create());
-
-            builder.Services.AddSingleton<MeterFactory>();
-            builder.Services.AddSingleton<Meter>(sp => sp.GetRequiredService<MeterFactory>().Create());
-
             builder.Use<OpenTelemetrySubscriptionMiddleware>();
             builder.Use<MetricsMiddleware>();
 
