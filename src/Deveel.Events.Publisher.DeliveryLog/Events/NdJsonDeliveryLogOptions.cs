@@ -9,7 +9,7 @@ public class NdJsonDeliveryLogOptions
     /// Gets or sets the directory path where NDJSON delivery log files are stored.
     /// Defaults to a temporary directory named "delivery-logs".
     /// </summary>
-    public string DirectoryPath { get; set; } = Path.Combine(Path.GetTempPath(), "delivery-logs");
+    public string DirectoryPath { get; set; } = Path.Join(Path.GetTempPath(), "delivery-logs");
 
     /// <summary>
     /// Gets or sets the maximum size of a single NDJSON file in bytes before rolling to a new file.

@@ -138,13 +138,11 @@ public class EntityEventDeliveryLogRepositoryIntegrationTests : IClassFixture<Sq
         var repo = _db.CreateRepository();
         var eventId = Guid.NewGuid().ToString("N");
 
-        var records = new List<EventDeliveryRecord>();
         for (int i = 0; i < 5; i++)
         {
             var record = CreateRecord();
             record.Event!.Id = eventId;
             record.Timestamp = DateTimeOffset.UtcNow.AddHours(-i);
-            records.Add(record);
             await repo.RecordAsync(record, TestContext.Current.CancellationToken);
         }
 

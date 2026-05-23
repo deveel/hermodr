@@ -91,7 +91,11 @@ public class DeliveryLogMiddleware : IEventMiddleware
                 await _deliveryLog.RecordAsync(record, context.CancellationToken);
                 _logger.LogDeliveryRecordWritten(record.Event?.Id, record.ChannelName, record.Outcome);
             }
-            catch (Exception ex)
+            catch (IOException ex)
+            {
+                _logger.LogDeliveryRecordFailed(ex, record.Event?.Id, record.ChannelName);
+            }
+            catch (InvalidOperationException ex)
             {
                 _logger.LogDeliveryRecordFailed(ex, record.Event?.Id, record.ChannelName);
             }

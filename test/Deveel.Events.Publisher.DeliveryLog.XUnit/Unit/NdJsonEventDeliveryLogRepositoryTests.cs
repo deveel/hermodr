@@ -51,7 +51,8 @@ public class NdJsonEventDeliveryLogRepositoryTests : IDisposable
         if (Directory.Exists(_tempDir))
         {
             try { Directory.Delete(_tempDir, true); }
-            catch { /* cleanup best-effort */ }
+            catch (IOException) { /* cleanup best-effort */ }
+            catch (UnauthorizedAccessException) { /* cleanup best-effort */ }
         }
     }
 

@@ -97,7 +97,11 @@ public class DbEventDeliveryRecord : IEventDeliveryRecord
                     var bytes = Encoding.UTF8.GetBytes(EventData);
                     return EventFormatter.DecodeStructuredModeMessage(bytes, CloudEventsContentType, null);
                 }
-                catch
+                catch (ArgumentException)
+                {
+                    // ignore deserialization errors
+                }
+                catch (InvalidOperationException)
                 {
                     // ignore deserialization errors
                 }
@@ -123,7 +127,10 @@ public class DbEventDeliveryRecord : IEventDeliveryRecord
                 var bytes = Encoding.UTF8.GetBytes(EventData);
                 cloudEvent = EventFormatter.DecodeStructuredModeMessage(bytes, CloudEventsContentType, null);
             }
-            catch
+            catch (ArgumentException)
+            {
+            }
+            catch (InvalidOperationException)
             {
             }
         }

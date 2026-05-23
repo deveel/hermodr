@@ -113,7 +113,7 @@ public class NdJsonEventDeliveryLogRepository : IEventDeliveryLogRepository, IDi
         if (needsRoll)
         {
             var timestamp = now.ToString("yyyyMMdd-HHmmss");
-            _currentFilePath = Path.Combine(_options.DirectoryPath, $"delivery-log-{timestamp}.ndjson");
+            _currentFilePath = Path.Join(_options.DirectoryPath, $"delivery-log-{timestamp}.ndjson");
             _currentFileCreatedAt = now;
             _currentFileSize = 0;
         }
@@ -141,13 +141,21 @@ public class NdJsonEventDeliveryLogRepository : IEventDeliveryLogRepository, IDi
                 {
                     File.Delete(file);
                 }
-                catch (Exception ex)
+                catch (IOException ex)
+                {
+                    _logger.LogWarning(ex, "Failed to delete old delivery log file: {FilePath}", file);
+                }
+                catch (UnauthorizedAccessException ex)
                 {
                     _logger.LogWarning(ex, "Failed to delete old delivery log file: {FilePath}", file);
                 }
             }
         }
-        catch (Exception ex)
+        catch (IOException ex)
+        {
+            _logger.LogWarning(ex, "Failed to clean up old delivery log files.");
+        }
+        catch (UnauthorizedAccessException ex)
         {
             _logger.LogWarning(ex, "Failed to clean up old delivery log files.");
         }
@@ -258,7 +266,7 @@ public class NdJsonEventDeliveryLogRepository : IEventDeliveryLogRepository, IDi
             {
                 record = JsonSerializer.Deserialize<EventDeliveryRecord>(line, DefaultJsonOptions);
             }
-            catch
+            catch (JsonException)
             {
             }
 
