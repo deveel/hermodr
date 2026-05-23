@@ -1,4 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Title>Hermodr Event Schema - AsyncAPI</Title>
+    <Description>Provides AsyncAPI schema conversion and serialization for Hermodr event schemas.</Description>
+    <PackageTags>event;events;schema;asyncapi;openapi;serialization</PackageTags>
+  </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>

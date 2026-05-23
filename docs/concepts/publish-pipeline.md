@@ -310,6 +310,7 @@ public sealed class TenantRoutingMiddleware : IEventMiddleware
 | Validation / policy | Inspect `context.Event` and block selected publishes |
 | Deduplication | Short-circuit when the same event ID has already been seen |
 | Observability | Log, trace, and measure latency before/after `next(context)` |
+| Distributed tracing | Built-in via `AddOpenTelemetry()` — see [OpenTelemetry Instrumentation](../publishers/opentelemetry.md) |
 | Options injection | Set or wrap `context.Options` to change channel routing at runtime |
 | Data sharing | Use `context.Items` to pass intermediate results between steps |
 | Subscription dispatching | Wired automatically by `AddSubscriptions()` — see below |
