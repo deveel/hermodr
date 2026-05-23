@@ -71,14 +71,14 @@ public sealed class EventPublishErrorContext
     public CloudEvent? Event { get; }
 
     /// <summary>
-        /// Gets the effective per-call publish options, when available.
-        /// </summary>
-        public EventPublishOptions? Options { get; }
+    /// Gets the effective per-call publish options, when available.
+    /// </summary>
+    public EventPublishOptions? Options { get; }
 
-        /// <summary>
-        /// Gets the original per-call publish options before transport wrappers were unwrapped.
-        /// </summary>
-        public EventPublishOptions? RawOptions { get; }
+    /// <summary>
+    /// Gets the original per-call publish options before transport wrappers were unwrapped.
+    /// </summary>
+    public EventPublishOptions? RawOptions { get; }
 
     /// <summary>
     /// Gets the concrete channel type involved in the failure, when available.

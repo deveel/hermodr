@@ -31,6 +31,7 @@
 * [Publish Error Handling](publishers/error-handling.md)
 * [Transactional Outbox](publishers/outbox.md)
 * [Dead-Letter Handling and Replay](publishers/dead-letter.md)
+* [Publish Delivery Log](publishers/delivery-log.md)
 * [Typed Channels](publishers/typed-channels.md)
 * [Named Channels](publishers/named-channels.md)
 
