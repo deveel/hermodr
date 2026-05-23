@@ -8,7 +8,7 @@
     <AssemblyName>OrderService.RelayWorker</AssemblyName>
     <Description>
       Console background worker that implements the relay half of the split Transactional Outbox
-      pattern using Deveel.Events: it polls the shared SQLite outbox database written by
+      pattern using Hermodr: it polls the shared SQLite outbox database written by
       OrderService.Api and forwards pending CloudEvents to RabbitMQ via MassTransit.
     </Description>
   </PropertyGroup>
@@ -20,9 +20,9 @@
 
   <ItemGroup>
     <!-- Outbox EF Core repository (reads & updates outbox rows) -->
-    <ProjectReference Include="..\..\..\src\Deveel.Events.Publisher.Outbox.EntityFramework\Deveel.Events.Publisher.Outbox.EntityFramework.csproj" />
+    <ProjectReference Include="..\..\..\src\Hermodr.Publisher.Outbox.EntityFramework\Hermodr.Publisher.Outbox.EntityFramework.csproj" />
     <!-- MassTransit publish channel (transport used by the relay) -->
-    <ProjectReference Include="..\..\..\src\Deveel.Events.Publisher.MassTransit\Deveel.Events.Publisher.MassTransit.csproj" />
+    <ProjectReference Include="..\..\..\src\Hermodr.Publisher.MassTransit\Hermodr.Publisher.MassTransit.csproj" />
   </ItemGroup>
 
 </Project>

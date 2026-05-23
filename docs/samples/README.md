@@ -1,6 +1,6 @@
 # Sample Projects
 
-The [`samples/`](https://github.com/deveel/deveel.events/tree/main/samples) directory of the repository contains runnable projects that demonstrate the major use cases of the **Deveel Events** framework.
+The [`samples/`](https://github.com/deveel/hermodr/tree/main/samples) directory of the repository contains runnable projects that demonstrate the major use cases of the **Hermodr** framework.
 
 Each sample is self-contained. Some samples spin up external infrastructure with `docker-compose.yml`, while others are pure .NET projects that you can run directly.
 

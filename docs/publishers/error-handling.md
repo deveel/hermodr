@@ -194,7 +194,7 @@ Error handlers observe failures, but they do not replace the publisher's normal 
 
 ## Dead-letter handling is built on this
 
-`Deveel.Events.Publisher.DeadLetter` is an implementation of the generic publish error handling capability focused on `EventPublishStage.ChannelPublish`.
+`Hermodr.Publisher.DeadLetter` is an implementation of the generic publish error handling capability focused on `EventPublishStage.ChannelPublish`.
 
 Use the generic error handler page when you need broad failure interception across publisher stages.
 

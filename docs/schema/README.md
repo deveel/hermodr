@@ -1,11 +1,11 @@
 # Event Schema
 
-The `Deveel.Events.Schema` package adds the ability to formally describe the structure of your events — what properties they carry, their types, and constraints — and to validate `CloudEvent` instances against those descriptions before publishing.
+The `Hermodr.Schema` package adds the ability to formally describe the structure of your events — what properties they carry, their types, and constraints — and to validate `CloudEvent` instances against those descriptions before publishing.
 
 ## Installation
 
 ```bash
-dotnet add package Deveel.Events.Schema
+dotnet add package Hermodr.Schema
 ```
 
 ## What's included

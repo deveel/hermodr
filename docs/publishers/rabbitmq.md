@@ -1,11 +1,11 @@
 # RabbitMQ Channel
 
-The `Deveel.Events.Publisher.RabbitMq` package adds a publish channel that delivers `CloudEvent` instances to a RabbitMQ exchange using the official `RabbitMQ.Client` library.
+The `Hermodr.Publisher.RabbitMq` package adds a publish channel that delivers `CloudEvent` instances to a RabbitMQ exchange using the official `RabbitMQ.Client` library.
 
 ## Installation
 
 ```bash
-dotnet add package Deveel.Events.Publisher.RabbitMq
+dotnet add package Hermodr.Publisher.RabbitMq
 ```
 
 ## Registration
@@ -13,7 +13,7 @@ dotnet add package Deveel.Events.Publisher.RabbitMq
 ### Inline configuration
 
 ```csharp
-using Deveel.Events;
+using Hermodr;
 
 builder.Services
     .AddEventPublisher()
@@ -57,7 +57,7 @@ builder.Services
 | `ExchangeName` | `string?` | `null` | Exchange to publish to (falls back to per-event `[AmqpExchange]` annotation) |
 | `RoutingKey` | `string?` | `null` | Default routing key (falls back to per-event `[AmqpRoutingKey]` annotation) |
 | `QueueName` | `string?` | `null` | Optional queue to bind the exchange to |
-| `ClientName` | `string?` | `"Deveel.Events"` | Client name shown in RabbitMQ management UI |
+| `ClientName` | `string?` | `"Hermodr"` | Client name shown in RabbitMQ management UI |
 | `MessageFormat` | `RabbitMqMessageFormat?` | `Json` | Serialisation format: `Json` or `Binary`. `null` → use channel default |
 | `MessageContent` | `RabbitMqMessageContent?` | `CloudEvent` | Whether to send the full `CloudEvent` envelope or only the `data` payload. `null` → use channel default |
 | `PersistentMessages` | `bool?` | `true` | Delivery mode 2 (survives broker restarts). `null` → use channel default |
@@ -143,10 +143,10 @@ See [Typed Channels](typed-channels.md) for a full explanation of the two-level 
 
 ## AMQP Annotations
 
-Install the `Deveel.Events.Amqp.Annotations` package to declare routing metadata on individual event data classes, overriding the global channel defaults on a per-event-type basis.
+Install the `Hermodr.Amqp.Annotations` package to declare routing metadata on individual event data classes, overriding the global channel defaults on a per-event-type basis.
 
 ```bash
-dotnet add package Deveel.Events.Amqp.Annotations
+dotnet add package Hermodr.Amqp.Annotations
 ```
 
 ### `[AmqpExchange]`
@@ -154,7 +154,7 @@ dotnet add package Deveel.Events.Amqp.Annotations
 Declares the AMQP exchange that events of this type should be published to.
 
 ```csharp
-using Deveel.Events;
+using Hermodr;
 
 [Event("order.placed", "1.0")]
 [AmqpExchange("orders")]
@@ -193,7 +193,7 @@ When multiple sources of AMQP routing metadata exist, the following priority app
 
 ```csharp
 using System.ComponentModel.DataAnnotations;
-using Deveel.Events;
+using Hermodr;
 
 [Event("inventory.low-stock", "1.0", Description = "Raised when a product is running low on stock")]
 [AmqpExchange("inventory")]

@@ -1,11 +1,11 @@
 # Test Publisher
 
-The `Deveel.Events.TestPublisher` package provides an in-memory publish channel (`TestEventPublishChannel`) that can be used in unit and integration tests to assert on published events without requiring a real messaging transport.
+The `Hermodr.TestPublisher` package provides an in-memory publish channel (`TestEventPublishChannel`) that can be used in unit and integration tests to assert on published events without requiring a real messaging transport.
 
 ## Installation
 
 ```bash
-dotnet add package Deveel.Events.TestPublisher
+dotnet add package Hermodr.TestPublisher
 ```
 
 ## Registration
@@ -16,7 +16,7 @@ Register a test channel using one of the `AddTestChannel` overloads on `EventPub
 
 ```csharp
 using CloudNative.CloudEvents;
-using Deveel.Events;
+using Hermodr;
 using Microsoft.Extensions.DependencyInjection;
 
 var publishedEvents = new List<CloudEvent>();
@@ -65,7 +65,7 @@ services.AddEventPublisher()
 
 ```csharp
 using CloudNative.CloudEvents;
-using Deveel.Events;
+using Hermodr;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 

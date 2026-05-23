@@ -1,8 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\Deveel.Events.Publisher.DeliveryLog\Deveel.Events.Publisher.DeliveryLog.csproj" />
-    <ProjectReference Include="..\..\src\Deveel.Events.TestPublisher\Deveel.Events.TestPublisher.csproj" />
-  </ItemGroup>
-
-</Project>

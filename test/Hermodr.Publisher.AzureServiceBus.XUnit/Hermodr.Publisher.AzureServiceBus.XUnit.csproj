@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <!-- Configuration.Binder is not centralised – needed only here -->
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="$(MicrosoftExtensionsVersion)" />
+    <PackageReference Include="Testcontainers.ServiceBus" Version="4.11.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Hermodr.Publisher.AzureServiceBus\Hermodr.Publisher.AzureServiceBus.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="service-bus-config.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+</Project>

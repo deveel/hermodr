@@ -8,7 +8,7 @@
     <AssemblyName>OrderService.Api</AssemblyName>
     <Description>
       Sample ASP.NET Minimal API that demonstrates the first half of the split Transactional Outbox
-      pattern using Deveel.Events: order domain events are persisted to a SQLite outbox (via EF Core)
+      pattern using Hermodr: order domain events are persisted to a SQLite outbox (via EF Core)
       and then left for the external OrderService.RelayWorker process to pick up and forward to
       RabbitMQ via MassTransit.
     </Description>
@@ -21,7 +21,7 @@
 
   <ItemGroup>
     <!-- Only the outbox persistence channel is needed here — no transport dependency. -->
-    <ProjectReference Include="..\..\..\src\Deveel.Events.Publisher.Outbox.EntityFramework\Deveel.Events.Publisher.Outbox.EntityFramework.csproj" />
+    <ProjectReference Include="..\..\..\src\Hermodr.Publisher.Outbox.EntityFramework\Hermodr.Publisher.Outbox.EntityFramework.csproj" />
   </ItemGroup>
 
 </Project>

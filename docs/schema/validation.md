@@ -4,10 +4,10 @@
 
 ## Prerequisites
 
-The validator is provided by the `Deveel.Events.Schema` package:
+The validator is provided by the `Hermodr.Schema` package:
 
 ```bash
-dotnet add package Deveel.Events.Schema
+dotnet add package Hermodr.Schema
 ```
 
 ## Interface
@@ -27,7 +27,7 @@ public interface IEventSchemaValidator
 `IEventSchemaFactory` and `EventSchemaFactory` are not automatically wired by the publisher builder.  Register them explicitly:
 
 ```csharp
-using Deveel.Events;
+using Hermodr;
 using Microsoft.Extensions.DependencyInjection;
 
 builder.Services.AddSingleton<IEventSchemaFactory, EventSchemaFactory>();
@@ -39,7 +39,7 @@ builder.Services.AddSingleton<IEventSchemaFactory, EventSchemaFactory>();
 
 ```csharp
 using CloudNative.CloudEvents;
-using Deveel.Events;
+using Hermodr;
 using System.ComponentModel.DataAnnotations;
 
 public class OrderService

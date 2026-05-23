@@ -1,6 +1,6 @@
 # OrderService — In-Process Dead-Letter Replay
 
-**Location:** [`samples/deadletter-inproc/OrderService.InProcDeadLetter/`](https://github.com/deveel/deveel.events/tree/main/samples/deadletter-inproc/OrderService.InProcDeadLetter)  
+**Location:** [`samples/deadletter-inproc/OrderService.InProcDeadLetter/`](https://github.com/deveel/hermodr/tree/main/samples/deadletter-inproc/OrderService.InProcDeadLetter)  
 **Transport:** In-memory sample channels  
 **Pattern:** Dead-letter callback + immediate replay through the publisher pipeline
 

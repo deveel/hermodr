@@ -8,7 +8,7 @@
     <RootNamespace>OrderService.InProcDeadLetter</RootNamespace>
     <AssemblyName>OrderService.InProcDeadLetter</AssemblyName>
     <Description>
-      Console sample that demonstrates in-process dead-letter handling using Deveel.Events:
+      Console sample that demonstrates in-process dead-letter handling using Hermodr:
       a failing publish is intercepted, transformed into a dead-letter callback, and replayed
       immediately through the same publisher pipeline to a recovery channel.
     </Description>
@@ -19,8 +19,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\src\Deveel.Events.Publisher\Deveel.Events.Publisher.csproj" />
-    <ProjectReference Include="..\..\..\src\Deveel.Events.Publisher.DeadLetter\Deveel.Events.Publisher.DeadLetter.csproj" />
+    <ProjectReference Include="..\..\..\src\Hermodr.Publisher\Hermodr.Publisher.csproj" />
+    <ProjectReference Include="..\..\..\src\Hermodr.Publisher.DeadLetter\Hermodr.Publisher.DeadLetter.csproj" />
   </ItemGroup>
 
 </Project>

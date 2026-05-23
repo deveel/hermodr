@@ -1,0 +1,279 @@
+//
+// Copyright (c) Antonello Provenzano and other contributors. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for details.
+//
+
+using CloudNative.CloudEvents;
+
+using Hermodr.Fakes;
+
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Hermodr
+{
+    /// <summary>
+    /// Tests that verify the <see cref="OutboxPublishChannel{TMessage}"/> persists
+    /// events correctly through the factory/repository pair.
+    /// </summary>
+    [Trait("Category", "Unit")]
+    [Trait("Layer", "Infrastructure")]
+    [Trait("Feature", "Outbox")]
+    public class OutboxPublishChannelTests
+    {
+        private static readonly DateTimeOffset FixedNow = new(2099, 01, 15, 12, 00, 00, TimeSpan.Zero);
+
+        // ── Helpers ──────────────────────────────────────────────────────────
+
+        private static CloudEvent MakeEvent(string type = "test.event") => new()
+        {
+            Type   = type,
+            Source = new Uri("https://example.com"),
+            Id     = Guid.NewGuid().ToString("N"),
+        };
+
+        /// <summary>
+        /// Builds a minimal <see cref="IServiceProvider"/> that can resolve an
+        /// <see cref="OutboxPublishChannel{TMessage}"/> wired to the given fakes.
+        /// </summary>
+        private static IServiceProvider BuildProvider(
+            FakeOutboxMessageFactory factory,
+            FakeOutboxMessageRepository repository)
+        {
+            var services = new ServiceCollection();
+
+            services.AddEventPublisher()
+                    .AddOutbox<FakeOutboxMessage>()
+                    .WithFactory<FakeOutboxMessageFactory>()
+                    .WithRepository<FakeOutboxMessageRepository>();
+
+            // Replace registrations with pre-built instances so tests share the
+            // same objects and can inspect them afterward.
+            services.AddSingleton<IOutboxMessageFactory<FakeOutboxMessage>>(factory);
+            services.AddSingleton<IOutboxMessageRepository<FakeOutboxMessage>>(repository);
+
+            return services.BuildServiceProvider();
+        }
+
+        // ── PublishAsync: happy path ────────────────────────────────────────
+
+        [Fact]
+        public async Task PublishAsync_ValidEvent_CreatesMessageViaFactory()
+        {
+            var factory    = new FakeOutboxMessageFactory();
+            var repository = new FakeOutboxMessageRepository();
+            var provider   = BuildProvider(factory, repository);
+
+            var publisher = provider.GetRequiredService<EventPublisher>();
+            var evt       = MakeEvent("order.placed");
+
+            await publisher.PublishEventAsync(evt, cancellationToken: TestContext.Current.CancellationToken);
+
+            var created = Assert.Single(factory.Created);
+            Assert.Equal("order.placed", created.Event.Type);
+        }
+
+        [Fact]
+        public async Task PublishAsync_ValidEvent_PersistsMessageInRepository()
+        {
+            var factory    = new FakeOutboxMessageFactory();
+            var repository = new FakeOutboxMessageRepository();
+            var provider   = BuildProvider(factory, repository);
+
+            var publisher = provider.GetRequiredService<EventPublisher>();
+            await publisher.PublishEventAsync(MakeEvent(), cancellationToken: TestContext.Current.CancellationToken);
+
+            Assert.Single(repository.Store);
+        }
+
+        [Fact]
+        public async Task PublishAsync_ValidEvent_StoredMessageHasPendingStatus()
+        {
+            var factory    = new FakeOutboxMessageFactory();
+            var repository = new FakeOutboxMessageRepository();
+            var provider   = BuildProvider(factory, repository);
+
+            var publisher = provider.GetRequiredService<EventPublisher>();
+            await publisher.PublishEventAsync(MakeEvent(), cancellationToken: TestContext.Current.CancellationToken);
+
+            var stored = Assert.Single(repository.Store);
+            Assert.Equal(OutboxMessageStatus.Pending, stored.Status);
+        }
+
+        [Fact]
+        public async Task PublishAsync_MultipleEvents_AllPersistedInOrder()
+        {
+            var factory    = new FakeOutboxMessageFactory();
+            var repository = new FakeOutboxMessageRepository();
+            var provider   = BuildProvider(factory, repository);
+
+            var publisher = provider.GetRequiredService<EventPublisher>();
+
+            await publisher.PublishEventAsync(MakeEvent("event.one"),   cancellationToken: TestContext.Current.CancellationToken);
+            await publisher.PublishEventAsync(MakeEvent("event.two"),   cancellationToken: TestContext.Current.CancellationToken);
+            await publisher.PublishEventAsync(MakeEvent("event.three"), cancellationToken: TestContext.Current.CancellationToken);
+
+            Assert.Equal(3, repository.Store.Count);
+            Assert.Equal("event.one",   repository.Store[0].Event.Type);
+            Assert.Equal("event.two",   repository.Store[1].Event.Type);
+            Assert.Equal("event.three", repository.Store[2].Event.Type);
+        }
+
+        [Fact]
+        public async Task PublishAsync_WithScheduleDeliveryAt_DefersFirstDeliveryInOutbox()
+        {
+            var factory    = new FakeOutboxMessageFactory();
+            var repository = new FakeOutboxMessageRepository();
+            var provider   = BuildProvider(factory, repository);
+
+            var publisher = provider.GetRequiredService<EventPublisher>();
+            var scheduledAt = FixedNow.AddMinutes(5);
+
+            await publisher.PublishEventAsync(
+                MakeEvent("event.scheduled"),
+                new OutboxPublishOptions { ScheduleDeliveryAt = scheduledAt },
+                TestContext.Current.CancellationToken);
+
+            var stored = Assert.Single(repository.Store);
+            Assert.Equal(scheduledAt, stored.NextRetryAt);
+            Assert.Equal(0, stored.RetryCount);
+            Assert.Null(stored.ErrorMessage);
+        }
+
+        // ── PublishAsync: factory error ──────────────────────────────────────
+
+        [Fact]
+        public async Task PublishAsync_WhenFactoryThrows_ExceptionPropagates()
+        {
+            var repository = new FakeOutboxMessageRepository();
+            var factory    = new ThrowingFactory();
+
+            var services = new ServiceCollection();
+            services.AddEventPublisher(o => o.ThrowOnErrors = true)
+                    .AddOutbox<FakeOutboxMessage>()
+                    .WithFactory<ThrowingFactory>()
+                    .WithRepository<FakeOutboxMessageRepository>();
+
+            services.AddSingleton<IOutboxMessageFactory<FakeOutboxMessage>>(factory);
+            services.AddSingleton<IOutboxMessageRepository<FakeOutboxMessage>>(repository);
+
+            var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
+
+            // When ThrowOnErrors = true channel failures surface as EventPublishChannelException.
+            await Assert.ThrowsAsync<EventPublishChannelException>(
+                () => publisher.PublishEventAsync(MakeEvent(), cancellationToken: TestContext.Current.CancellationToken));
+
+            Assert.Empty(repository.Store);
+        }
+
+        // ── PublishAsync: repository error ───────────────────────────────────
+
+        [Fact]
+        public async Task PublishAsync_WhenRepositoryThrows_ExceptionPropagates()
+        {
+            var factory    = new FakeOutboxMessageFactory();
+            var repository = new ThrowingRepository();
+
+            var services = new ServiceCollection();
+            services.AddEventPublisher(o => o.ThrowOnErrors = true)
+                    .AddOutbox<FakeOutboxMessage>()
+                    .WithFactory<FakeOutboxMessageFactory>()
+                    .WithRepository<ThrowingRepository>();
+
+            services.AddSingleton<IOutboxMessageFactory<FakeOutboxMessage>>(factory);
+            services.AddSingleton<IOutboxMessageRepository<FakeOutboxMessage>>(repository);
+
+            var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
+
+            await Assert.ThrowsAsync<EventPublishChannelException>(
+                () => publisher.PublishEventAsync(MakeEvent(), cancellationToken: TestContext.Current.CancellationToken));
+        }
+
+        // ── Null-guard tests via DI resolution ───────────────────────────────
+        // The channel is internal so we verify the guards indirectly: the DI
+        // container will fail to activate the channel when a required dependency
+        // is missing and throw InvalidOperationException during service resolution.
+
+        [Fact]
+        public void Resolve_WithoutFactory_ThrowsOnServiceResolution()
+        {
+            var services = new ServiceCollection();
+            services.AddEventPublisher()
+                    .AddOutbox<FakeOutboxMessage>()
+                    // factory deliberately omitted
+                    .WithRepository<FakeOutboxMessageRepository>();
+
+            services.AddSingleton<IOutboxMessageRepository<FakeOutboxMessage>, FakeOutboxMessageRepository>();
+
+            var provider = services.BuildServiceProvider();
+
+            // The publisher is lazily resolved; acquiring it triggers channel activation.
+            Assert.Throws<InvalidOperationException>(
+                () => provider.GetRequiredService<EventPublisher>());
+        }
+
+        [Fact]
+        public async Task Resolve_WithoutRepository_ThrowsOnPublish()
+        {
+            // The manager (and repository) are resolved lazily inside PublishCoreAsync, so
+            // service-resolution succeeds but the first publish call throws because no
+            // OutboxMessageManager<FakeOutboxMessage> is registered.
+            var services = new ServiceCollection();
+            services.AddEventPublisher(o => o.ThrowOnErrors = true)
+                    .AddOutbox<FakeOutboxMessage>()
+                    .WithFactory<FakeOutboxMessageFactory>();
+                    // repository deliberately omitted
+
+            var provider = services.BuildServiceProvider();
+            var publisher = provider.GetRequiredService<EventPublisher>();
+
+            await Assert.ThrowsAsync<EventPublishChannelException>(
+                () => publisher.PublishEventAsync(MakeEvent(), cancellationToken: TestContext.Current.CancellationToken));
+        }
+
+        // ── Helpers ──────────────────────────────────────────────────────────
+
+        private sealed class ThrowingFactory : IOutboxMessageFactory<FakeOutboxMessage>
+        {
+            public FakeOutboxMessage Create(CloudEvent cloudEvent, OutboxPublishOptions? options = null)
+                => throw new InvalidOperationException("Factory is deliberately broken.");
+        }
+
+        private sealed class ThrowingRepository : IOutboxMessageRepository<FakeOutboxMessage>
+        {
+            public string GetEntityKey(FakeOutboxMessage entity) => entity.Id;
+            public Task<OutboxMessageStatus> GetStatusAsync(FakeOutboxMessage message, CancellationToken ct = default)
+                => throw new NotImplementedException();
+            public Task AddAsync(FakeOutboxMessage entity, CancellationToken ct = default)
+                => throw new InvalidOperationException("Repository is deliberately broken.");
+            public Task AddRangeAsync(IEnumerable<FakeOutboxMessage> entities, CancellationToken ct = default)
+                => throw new NotImplementedException();
+            public Task<bool> UpdateAsync(FakeOutboxMessage entity, CancellationToken ct = default)
+                => throw new NotImplementedException();
+            public Task<bool> RemoveAsync(FakeOutboxMessage entity, CancellationToken ct = default)
+                => throw new NotImplementedException();
+            public Task RemoveRangeAsync(IEnumerable<FakeOutboxMessage> entities, CancellationToken ct = default)
+                => throw new NotImplementedException();
+            public Task<FakeOutboxMessage?> FindAsync(string key, CancellationToken ct = default)
+                => throw new NotImplementedException();
+            public Task SetSendingAsync(FakeOutboxMessage message, CancellationToken ct = default)
+                => throw new NotImplementedException();
+            public Task SetDeliveredAsync(FakeOutboxMessage message, CancellationToken ct = default)
+                => throw new NotImplementedException();
+            public Task SetDeferredAsync(FakeOutboxMessage message, DateTimeOffset scheduledAt, CancellationToken ct = default)
+                => throw new NotImplementedException();
+            public Task SetRetryAsync(FakeOutboxMessage message, string errorMessage, DateTimeOffset nextRetryAt, CancellationToken ct = default)
+                => throw new NotImplementedException();
+            public Task SetFailedAsync(FakeOutboxMessage message, string errorMessage, CancellationToken ct = default)
+                => throw new NotImplementedException();
+            public Task<IReadOnlyList<FakeOutboxMessage>> GetPendingMessagesAsync(int? limit = null, CancellationToken ct = default)
+                => throw new NotImplementedException();
+        }
+    }
+}
+
+
+
+
+
+
+

@@ -316,7 +316,7 @@ public sealed class TenantRoutingMiddleware : IEventMiddleware
 
 ### Dispatcher middleware (subscriptions)
 
-The `Deveel.Events.Subscriptions` package wires `EventDispatcher` as a middleware step
+The `Hermodr.Subscriptions` package wires `EventDispatcher` as a middleware step
 **automatically** when you call `AddSubscriptions()` on the builder.  No manual
 `UseDispatcher()` call on the publisher instance is needed (the method still exists for
 source compatibility but is a **no-op**).

@@ -5,13 +5,13 @@
 ## Installation
 
 ```bash
-dotnet add package Deveel.Events.Schema.Yaml
+dotnet add package Hermodr.Schema.Yaml
 ```
 
 ## Usage
 
 ```csharp
-using Deveel.Events;
+using Hermodr;
 
 var schema = EventSchema.FromDataType<OrderPlacedData>();
 

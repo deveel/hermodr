@@ -1,6 +1,6 @@
 # Dead-Letter Handling and Replay
 
-Dead-letter handling lets an `EventPublisher` capture **failed channel deliveries** and route them to a fallback path instead of just logging the exception and moving on. In Deveel Events, the feature is implemented as an extension on top of the publisher's generic publish-error pipeline described in [Publish Error Handling](error-handling.md).
+Dead-letter handling lets an `EventPublisher` capture **failed channel deliveries** and route them to a fallback path instead of just logging the exception and moving on. In Hermodr, the feature is implemented as an extension on top of the publisher's generic publish-error pipeline described in [Publish Error Handling](error-handling.md).
 
 > **IMPORTANT**
 > In normal conditions, prefer the native dead-letter capabilities provided by the underlying transport when they exist. Brokers and messaging platforms such as RabbitMQ, Azure Service Bus, and Amazon SQS already offer built-in dead-letter handling, and that native behavior is usually the recommended choice. This extension is mainly intended for channels that do not support dead-lettering natively, or for the uncommon case where you intentionally want to override the transport's built-in behavior.
@@ -16,8 +16,8 @@ The feature is split into two packages:
 
 | Package | Purpose |
 |---------|---------|
-| `Deveel.Events.Publisher.DeadLetter` | Dead-letter handlers, persistent replay abstractions, on-demand replay, background replay worker |
-| `Deveel.Events.Publisher.DeadLetter.EntityFramework` | Entity Framework Core persistence for dead-letter messages |
+| `Hermodr.Publisher.DeadLetter` | Dead-letter handlers, persistent replay abstractions, on-demand replay, background replay worker |
+| `Hermodr.Publisher.DeadLetter.EntityFramework` | Entity Framework Core persistence for dead-letter messages |
 
 ## Why use dead-letter handling?
 
@@ -53,20 +53,20 @@ They do **not** run for:
 - event creation failures
 - `IEventConvertible` conversion failures
 
-Those earlier failures go through the generic publisher error pipeline instead. If you need one hook for all publish stages, use `UseErrorHandler(...)` from `Deveel.Events.Publisher`; see [Publish Error Handling](error-handling.md).
+Those earlier failures go through the generic publisher error pipeline instead. If you need one hook for all publish stages, use `UseErrorHandler(...)` from `Hermodr.Publisher`; see [Publish Error Handling](error-handling.md).
 
 ## Installation
 
 ### Core dead-letter package
 
 ```bash
-dotnet add package Deveel.Events.Publisher.DeadLetter
+dotnet add package Hermodr.Publisher.DeadLetter
 ```
 
 ### Entity Framework Core integration
 
 ```bash
-dotnet add package Deveel.Events.Publisher.DeadLetter.EntityFramework
+dotnet add package Hermodr.Publisher.DeadLetter.EntityFramework
 dotnet add package Microsoft.EntityFrameworkCore.Sqlite
 ```
 
@@ -78,7 +78,7 @@ The lightest integration is `AddDeadLetter(...)`. It returns a `DeadLetterBuilde
 
 ```csharp
 using Deveel;
-using Deveel.Events;
+using Hermodr;
 using Microsoft.Extensions.DependencyInjection;
 
 builder.Services
@@ -132,7 +132,7 @@ You can replay a dead-lettered event immediately by publishing the captured `Clo
 
 ```csharp
 using Deveel;
-using Deveel.Events;
+using Hermodr;
 using Microsoft.Extensions.DependencyInjection;
 
 builder.Services
@@ -349,7 +349,7 @@ Stored dead letters move through a small, explicit state machine:
 
 ## Entity Framework Core integration
 
-`Deveel.Events.Publisher.DeadLetter.EntityFramework` provides a ready-made EF implementation:
+`Hermodr.Publisher.DeadLetter.EntityFramework` provides a ready-made EF implementation:
 
 | Type | Purpose |
 |------|---------|
@@ -363,7 +363,7 @@ Stored dead letters move through a small, explicit state machine:
 
 ```csharp
 using Deveel;
-using Deveel.Events;
+using Hermodr;
 using Microsoft.EntityFrameworkCore;
 
 services.AddEventPublisher(options =>

@@ -1,6 +1,6 @@
 # Order Service — Outbox Pattern Sample
 
-This sample shows how to use **Deveel.Events** to implement the
+This sample shows how to use **Hermodr** to implement the
 [Transactional Outbox pattern](https://microservices.io/patterns/data/transactional-outbox.html)
 inside a single ASP.NET Minimal API process.
 

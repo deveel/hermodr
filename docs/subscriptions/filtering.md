@@ -1,6 +1,6 @@
 # Subscription Filters
 
-The `Deveel.Events.Subscriptions` package provides a composable filter system built on `FilterExpression` from the [`Deveel.Filters`](https://www.nuget.org/packages/Deveel.Filters) package. A `FilterExpression` can be evaluated against a `CloudEvent` using the `Matches` extension method:
+The `Hermodr.Subscriptions` package provides a composable filter system built on `FilterExpression` from the [`Deveel.Filters`](https://www.nuget.org/packages/Deveel.Filters) package. A `FilterExpression` can be evaluated against a `CloudEvent` using the `Matches` extension method:
 
 ```csharp
 bool matches = filter.Matches(cloudEvent, EventSubscriptionContext.Empty);

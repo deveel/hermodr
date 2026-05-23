@@ -1,6 +1,6 @@
 # Order Service — Scheduled Delivery Outbox Sample
 
-This sample shows how to use **Deveel.Events** to record a domain event immediately and delay only its **transport delivery** through the **Transactional Outbox** pattern.
+This sample shows how to use **Hermodr** to record a domain event immediately and delay only its **transport delivery** through the **Transactional Outbox** pattern.
 
 The business fact (`order.created`) happens now. The event is written to the SQLite outbox immediately. If the caller provides a future `scheduleEventDeliveryAt` timestamp, the relay waits until that UTC time before forwarding the event to RabbitMQ.
 

@@ -1,6 +1,6 @@
 # Filter Expressions
 
-Event subscription filters in `Deveel.Events.Subscriptions` are built on `FilterExpression` from the [`Deveel.Filters`](https://www.nuget.org/packages/Deveel.Filters) package. A `FilterExpression` is a structured, data-driven, serializable representation of a filter predicate — unlike a plain delegate, it can be introspected, persisted, and composed programmatically.
+Event subscription filters in `Hermodr.Subscriptions` are built on `FilterExpression` from the [`Deveel.Filters`](https://www.nuget.org/packages/Deveel.Filters) package. A `FilterExpression` is a structured, data-driven, serializable representation of a filter predicate — unlike a plain delegate, it can be introspected, persisted, and composed programmatically.
 
 ## Motivation
 
@@ -214,7 +214,7 @@ bool matches = filter.Matches(cloudEvent, EventSubscriptionContext.Empty);
 ## Serialization
 
 `FilterExpression` can be round-tripped to and from JSON using `JsonFilterConverter` — a `System.Text.Json` converter that ships with the `Deveel.Filters` package.  
-The `Deveel.Events.Subscriptions` package surfaces this through two convenience members:
+The `Hermodr.Subscriptions` package surfaces this through two convenience members:
 
 | Member | Where | Purpose |
 |--------|-------|---------|

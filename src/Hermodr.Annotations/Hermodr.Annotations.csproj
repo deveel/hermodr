@@ -1,0 +1,11 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Title>Hermodr Model</Title>
+    <Description>Provides annotations to define events that are published in a channel</Description>
+    <PackageTags>event;events;model;abstractions;annotations;attribute</PackageTags>
+  </PropertyGroup>
+
+
+
+</Project>

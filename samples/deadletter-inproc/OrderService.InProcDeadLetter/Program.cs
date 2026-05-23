@@ -1,6 +1,5 @@
 using CloudNative.CloudEvents;
-using Deveel;
-using Deveel.Events;
+using Hermodr;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using OrderService.InProcDeadLetter.Events;

@@ -1,0 +1,13 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Title>Hermodr AMQP Annotations</Title>
+    <Description>Provides annotations to define metadata to Events that are published to AMQP brokers</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Hermodr.Annotations\Hermodr.Annotations.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Remove="docs\api\Hermodr.AmqpExchangeAttribute.md" />
+  </ItemGroup>
+
+</Project>

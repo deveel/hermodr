@@ -1,12 +1,12 @@
 # OrderService — Split Dead-Letter Replay with Entity Framework
 
-**Location:** [`samples/deadletter-relay/`](https://github.com/deveel/deveel.events/tree/main/samples/deadletter-relay)  
+**Location:** [`samples/deadletter-relay/`](https://github.com/deveel/hermodr/tree/main/samples/deadletter-relay)  
 **Transport:** SQLite-backed dead-letter repository + in-memory recovery channel  
 **Pattern:** Persistent dead-letter storage with a separate replay worker
 
 ## What it demonstrates
 
-- `Deveel.Events.Publisher.DeadLetter.EntityFramework` as a persistence layer
+- `Hermodr.Publisher.DeadLetter.EntityFramework` as a persistence layer
 - one application that persists failed deliveries into the dead-letter store
 - a second application that polls the shared store and replays pending messages
 - background replay through `WithReplayWorker(...)`

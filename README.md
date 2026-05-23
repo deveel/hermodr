@@ -1,12 +1,15 @@
-[![GitHub License](https://img.shields.io/github/license/deveel/deveel.events)](https://github.com/deveel/deveel.events/blob/main/LICENSE)
-[![GitHub Release](https://img.shields.io/github/v/release/deveel/deveel.events)](https://github.com/deveel/deveel.events/releases) [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/deveel/deveel.events/cicd.yml?logo=github)](https://github.com/deveel/deveel.events/actions/workflows/cicd.yml)
-[![Codecov](https://img.shields.io/codecov/c/github/deveel/deveel.events?logo=codecov)](https://codecov.io/gh/deveel/deveel.events)
+[![GitHub License](https://img.shields.io/github/license/deveel/hermodr)](https://github.com/deveel/hermodr/blob/main/LICENSE)
+[![GitHub Release](https://img.shields.io/github/v/release/deveel/hermodr)](https://github.com/deveel/hermodr/releases) [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/deveel/hermodr/cicd.yml?logo=github)](https://github.com/deveel/hermodr/actions/workflows/cicd.yml)
+[![Codecov](https://img.shields.io/codecov/c/github/deveel/hermodr?logo=codecov)](https://codecov.io/gh/deveel/hermodr)
 [![.NET](https://img.shields.io/badge/-8%20%7C%209%20%7C%2010-512BD4?logo=dotnet)](https://dotnet.microsoft.com/download)
-[![Documentation](https://img.shields.io/badge/docs-events.deveel.org-blue)](https://events.deveel.org)
+[![Documentation](https://img.shields.io/badge/docs-hermodr.deveel.org-blue)](https://hermodr.deveel.org)
 
-# Deveel Events
+> **Renamed:** This project was formerly called **Deveel Events**. As of **23 May 2026**, it has been renamed to **Hermodr** — named after the messenger of the gods in Norse mythology — to better reflect its role as a message delivery framework and to distinguish it from the broader Deveel ecosystem.
+> Existing NuGet packages (`Deveel.Events.*`) remain published and will be deprecated in favor of the new `Hermodr.*` packages.
 
-**Deveel Events** is a lightweight, extensible framework for building event-driven .NET applications, built on top of the [CloudEvents](https://cloudevents.io/) standard.
+# Hermodr
+
+**Hermodr** is a lightweight, extensible framework for building event-driven .NET applications, built on top of the [CloudEvents](https://cloudevents.io/) standard.
 
 The ambition of this framework is to implement a set of common patterns and practices for a simple and efficient event-driven architecture in .NET — from publishing domain events to consuming them, managing subscriptions, and validating event schemas — without reinventing the wheel every time a team needs to integrate across bounded contexts.
 
@@ -23,13 +26,13 @@ Key properties of domain events:
 - **Cross-context integration** — events are the preferred way to share information across bounded contexts without tight coupling.
 - **Temporal decoupling** — consumers can process events asynchronously, at their own pace.
 
-Deveel Events implements the **publishing side** of this pattern: a transport-agnostic layer that broadcasts domain events from a bounded context to any number of downstream consumers, without prescribing how you model aggregates or build read models.
+Hermodr implements the **publishing side** of this pattern: a transport-agnostic layer that broadcasts domain events from a bounded context to any number of downstream consumers, without prescribing how you model aggregates or build read models.
 
 ## Event Schemas as Async API Contracts
 
 Publishing an event is only half the story. Consumers need to know the **shape** of each event — its properties, types, and constraints — to deserialise it correctly and build reliable integrations. Without a formal contract, field renames silently break consumers and integration knowledge lives only in tribal memory.
 
-**Event schemas** fill the same role for asynchronous messaging that OpenAPI/Swagger fills for REST APIs. The `Deveel.Events.Schema` package can derive a schema automatically from annotated data classes and export it as:
+**Event schemas** fill the same role for asynchronous messaging that OpenAPI/Swagger fills for REST APIs. The `Hermodr.Schema` package can derive a schema automatically from annotated data classes and export it as:
 
 - **JSON Schema** — for schema-registry integration and tooling.
 - **YAML** — for human-readable, version-controlled contract documents.
@@ -41,23 +44,22 @@ Treat schemas as public API contracts: version them, prefer additive changes, an
 
 Applications frequently need to notify other parts of the system about domain events. Teams end up rewriting the same boilerplate — serialising payloads, constructing envelopes, wiring up transport clients — over and over again.
 
-Deveel Events provides a single, consistent way to publish events across any transport, so teams can focus on domain logic instead of infrastructure plumbing.
+Hermodr provides a single, consistent way to publish events across any transport, so teams can focus on domain logic instead of infrastructure plumbing.
 
-## Deveel Events vs .NET Messaging Frameworks
+## Hermodr vs .NET Messaging Frameworks
 
 These frameworks solve different problems and can be complementary in the same architecture. The table below is a quick positioning guide, not a ranking.
 
-| Feature | `Deveel Events` | `MassTransit` | `Wolverine` | `NServiceBus` | `Rebus` |
-|---------|------------------|---------------|--------------|---------------|-----------|
+| Feature | **Hermodr** | **MassTransit** | **Wolverine** | **NServiceBus** | **Rebus** |
 | Event contract model | CloudEvents-first publish pipeline | Framework-native message contracts; CloudEvents not natively provided by the framework core | Framework-native message contracts; CloudEvents not natively provided by the framework core | Framework-native message contracts; CloudEvents not natively provided by the framework core | Framework-native message contracts; CloudEvents not natively provided by the framework core |
-| Event metadata annotations | Built-in attributes (`Deveel.Events.Annotations`, AMQP extensions) | Event metadata annotations not natively provided by the framework core | Event metadata annotations not natively provided by the framework core | Event metadata annotations not natively provided by the framework core | Event metadata annotations not natively provided by the framework core |
+| Event metadata annotations | Built-in attributes (`Hermodr.Annotations`, AMQP extensions) | Event metadata annotations not natively provided by the framework core | Event metadata annotations not natively provided by the framework core | Event metadata annotations not natively provided by the framework core | Event metadata annotations not natively provided by the framework core |
 | Schema export formats | JSON Schema, YAML, AsyncAPI packages | Schema export not natively provided by the framework core | Schema export not natively provided by the framework core | Schema export not natively provided by the framework core | Schema export not natively provided by the framework core |
-| AsyncAPI generation focus | Dedicated package (`Deveel.Events.Schema.AsyncApi`) | AsyncAPI generation not natively provided by the framework core | AsyncAPI generation not natively provided by the framework core | AsyncAPI generation not natively provided by the framework core | AsyncAPI generation not natively provided by the framework core |
+| AsyncAPI generation focus | Dedicated package (`Hermodr.Schema.AsyncApi`) | AsyncAPI generation not natively provided by the framework core | AsyncAPI generation not natively provided by the framework core | AsyncAPI generation not natively provided by the framework core | AsyncAPI generation not natively provided by the framework core |
 | Transport adapters included | Azure Service Bus, RabbitMQ, MassTransit, Webhook, Outbox, Dead-Letter | Native multi-transport broker integrations | Native multi-transport messaging endpoints | Native transport support via transport packages | Native transport integrations |
 | Transactional outbox support | Built-in channel + EF integration packages | Natively supported | Natively supported | Natively supported | Natively supported |
 | Dead-letter capture and replay | Dedicated dead-letter packages + replay worker model | Dead-letter handling available; replay workflow not natively standardized by the framework core | Dead-letter handling available; replay workflow not natively standardized by the framework core | Dead-letter handling available; replay workflow not natively standardized by the framework core | Dead-letter handling available; replay workflow not natively standardized by the framework core |
 | Deferred/scheduled delivery | Planned (`Event Scheduler & Deferred Publishing` on roadmap) | Natively supported (transport/scheduler dependent) | Natively supported (runtime/transport dependent) | Natively supported (transport dependent) | Natively supported (transport dependent) |
-| In-process subscription routing | Built-in subscriptions package (`Deveel.Events.Subscriptions`) | Native consumer/handler pipeline | Native local and remote handlers | Native message handler pipeline | Native message handler pipeline |
+| In-process subscription routing | Built-in subscriptions package (`Hermodr.Subscriptions`) | Native consumer/handler pipeline | Native local and remote handlers | Native message handler pipeline | Native message handler pipeline |
 | Middleware/extensibility pipeline | Built-in event middleware pipeline | Native filters/middleware/observers | Native middleware and handler pipeline extensions | Native pipeline behaviors and extensibility points | Native pipeline steps and extensibility points |
 | Testing support for publish flow | Dedicated in-memory test publisher package | Native test harness support | Native testing utilities | Native testing support | Native testing support |
 
@@ -75,28 +77,28 @@ All packages in this solution multi-target the following runtimes:
 |---------|---------|
 | .NET | 8, 9, 10 |
 
-> **Note:** `Deveel.Events.Schema.AsyncApi` also requires the **ASP.NET Core** shared framework (`Microsoft.AspNetCore.App`), since it integrates with the Saunter AsyncAPI middleware.
+> **Note:** `Hermodr.Schema.AsyncApi` also requires the **ASP.NET Core** shared framework (`Microsoft.AspNetCore.App`), since it integrates with the Saunter AsyncAPI middleware.
 
 Every package requires the **Microsoft Dependency Injection** infrastructure (`Microsoft.Extensions.DependencyInjection`). Below are the additional per-package dependencies automatically pulled in as transitive NuGet references:
 
 | Package | Key Dependencies |
 |---------|-----------------|
-| `Deveel.Events.Annotations` | *(none — pure attribute library)* |
-| `Deveel.Events.Amqp.Annotations` | *(none — pure attribute library)* |
-| `Deveel.Events.Publisher` | `CloudNative.CloudEvents` · `Microsoft.Extensions.Options` · `Microsoft.Extensions.Logging.Abstractions` |
-| `Deveel.Events.Publisher.AzureServiceBus` | `Azure.Messaging.ServiceBus` ≥ 7.20 |
-| `Deveel.Events.Publisher.DeadLetter` | `Deveel.Events.Publisher` · `Microsoft.Extensions.Hosting.Abstractions` |
-| `Deveel.Events.Publisher.DeadLetter.EntityFramework` | `Deveel.Events.Publisher.DeadLetter` · `Microsoft.EntityFrameworkCore` |
-| `Deveel.Events.Publisher.RabbitMq` | `RabbitMQ.Client` ≥ 7.2 · `Deveel.Events.Amqp.Annotations` |
-| `Deveel.Events.Publisher.MassTransit` | `MassTransit` ≥ 9.1 |
-| `Deveel.Events.Publisher.Webhook` | `Microsoft.Extensions.Http.Resilience` ≥ 9.6 |
-| `Deveel.Events.Publisher.Outbox` | `Deveel.Repository.Manager` · `Microsoft.Extensions.Hosting.Abstractions` |
-| `Deveel.Events.Publisher.Outbox.EntityFramework` | `Deveel.Events.Publisher.Outbox` · `Deveel.Repository.EntityFramework` · `Microsoft.EntityFrameworkCore.Relational` |
-| `Deveel.Events.Subscriptions` | `Deveel.Events.Publisher` · `Deveel.Filters` · `Microsoft.Extensions.Logging.Abstractions` |
-| `Deveel.Events.Schema` | `CloudNative.CloudEvents` |
-| `Deveel.Events.Schema.Yaml` | `YamlDotNet` ≥ 16.3 |
-| `Deveel.Events.Schema.AsyncApi` | `Saunter` ≥ 0.13 · `YamlDotNet` ≥ 16.3 · ASP.NET Core shared framework |
-| `Deveel.Events.TestPublisher` | `Deveel.Events.Publisher` |
+| `Hermodr.Annotations` | *(none — pure attribute library)* |
+| `Hermodr.Amqp.Annotations` | *(none — pure attribute library)* |
+| `Hermodr.Publisher` | `CloudNative.CloudEvents` · `Microsoft.Extensions.Options` · `Microsoft.Extensions.Logging.Abstractions` |
+| `Hermodr.Publisher.AzureServiceBus` | `Azure.Messaging.ServiceBus` ≥ 7.20 |
+| `Hermodr.Publisher.DeadLetter` | `Hermodr.Publisher` · `Microsoft.Extensions.Hosting.Abstractions` |
+| `Hermodr.Publisher.DeadLetter.EntityFramework` | `Hermodr.Publisher.DeadLetter` · `Microsoft.EntityFrameworkCore` |
+| `Hermodr.Publisher.RabbitMq` | `RabbitMQ.Client` ≥ 7.2 · `Hermodr.Amqp.Annotations` |
+| `Hermodr.Publisher.MassTransit` | `MassTransit` ≥ 9.1 |
+| `Hermodr.Publisher.Webhook` | `Microsoft.Extensions.Http.Resilience` ≥ 9.6 |
+| `Hermodr.Publisher.Outbox` | `Deveel.Repository.Manager` · `Microsoft.Extensions.Hosting.Abstractions` |
+| `Hermodr.Publisher.Outbox.EntityFramework` | `Hermodr.Publisher.Outbox` · `Deveel.Repository.EntityFramework` · `Microsoft.EntityFrameworkCore.Relational` |
+| `Hermodr.Subscriptions` | `Hermodr.Publisher` · `Deveel.Filters` · `Microsoft.Extensions.Logging.Abstractions` |
+| `Hermodr.Schema` | `CloudNative.CloudEvents` |
+| `Hermodr.Schema.Yaml` | `YamlDotNet` ≥ 16.3 |
+| `Hermodr.Schema.AsyncApi` | `Saunter` ≥ 0.13 · `YamlDotNet` ≥ 16.3 · ASP.NET Core shared framework |
+| `Hermodr.TestPublisher` | `Hermodr.Publisher` |
 
 ## Packages
 
@@ -104,51 +106,51 @@ Every package requires the **Microsoft Dependency Injection** infrastructure (`M
 
 | Package | Description | NuGet (Stable) | GitHub (Unstable) |
 |---------|-------------|---------------|-------------------|
-| `Deveel.Events.Annotations` | Attributes for describing event metadata on data classes | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Annotations.svg)](https://www.nuget.org/packages/Deveel.Events.Annotations) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Annotations.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Annotations) |
-| `Deveel.Events.Publisher` | Core publisher infrastructure (`EventPublisher`, DI helpers) | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Publisher.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Publisher) |
-| `Deveel.Events.Publisher.AzureServiceBus` | Publish events to Azure Service Bus | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.AzureServiceBus.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.AzureServiceBus) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Publisher.AzureServiceBus.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Publisher.AzureServiceBus) |
-| `Deveel.Events.Publisher.DeadLetter` | Dead-letter handling, persistent replay abstractions, and replay workers | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.DeadLetter.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.DeadLetter) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Publisher.DeadLetter.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Publisher.DeadLetter) |
-| `Deveel.Events.Publisher.DeadLetter.EntityFramework` | Entity Framework Core persistence for dead-letter messages | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.DeadLetter.EntityFramework.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.DeadLetter.EntityFramework) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Publisher.DeadLetter.EntityFramework.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Publisher.DeadLetter.EntityFramework) |
-| `Deveel.Events.Amqp.Annotations` | AMQP-specific routing attributes (exchange, routing key) | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Amqp.Annotations.svg)](https://www.nuget.org/packages/Deveel.Events.Amqp.Annotations) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Amqp.Annotations.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Amqp.Annotations) |
-| `Deveel.Events.Publisher.RabbitMq` | Publish events to a RabbitMQ exchange | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.RabbitMq.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.RabbitMq) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Publisher.RabbitMq.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Publisher.RabbitMq) |
-| `Deveel.Events.Publisher.MassTransit` | Publish events through a MassTransit bus | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.MassTransit.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.MassTransit) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Publisher.MassTransit.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Publisher.MassTransit) |
-| `Deveel.Events.Publisher.Webhook` | Deliver events to HTTP webhook endpoints | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.Webhook.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.Webhook) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Publisher.Webhook.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Publisher.Webhook) |
-| `Deveel.Events.Publisher.Outbox` | Persist events in a transactional outbox for later relay | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.Outbox.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.Outbox) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Publisher.Outbox.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Publisher.Outbox) |
-| `Deveel.Events.Publisher.Outbox.EntityFramework` | Entity Framework Core repository and helpers for the outbox channel | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Publisher.Outbox.EntityFramework.svg)](https://www.nuget.org/packages/Deveel.Events.Publisher.Outbox.EntityFramework) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Publisher.Outbox.EntityFramework.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Publisher.Outbox.EntityFramework) |
+| `Hermodr.Annotations` | Attributes for describing event metadata on data classes | [![NuGet](https://img.shields.io/nuget/v/Hermodr.Annotations.svg)](https://www.nuget.org/packages/Hermodr.Annotations) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Hermodr.Annotations.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Hermodr.Annotations) |
+| `Hermodr.Publisher` | Core publisher infrastructure (`EventPublisher`, DI helpers) | [![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.svg)](https://www.nuget.org/packages/Hermodr.Publisher) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Hermodr.Publisher.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Hermodr.Publisher) |
+| `Hermodr.Publisher.AzureServiceBus` | Publish events to Azure Service Bus | [![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.AzureServiceBus.svg)](https://www.nuget.org/packages/Hermodr.Publisher.AzureServiceBus) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Hermodr.Publisher.AzureServiceBus.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Hermodr.Publisher.AzureServiceBus) |
+| `Hermodr.Publisher.DeadLetter` | Dead-letter handling, persistent replay abstractions, and replay workers | [![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.DeadLetter.svg)](https://www.nuget.org/packages/Hermodr.Publisher.DeadLetter) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Hermodr.Publisher.DeadLetter.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Hermodr.Publisher.DeadLetter) |
+| `Hermodr.Publisher.DeadLetter.EntityFramework` | Entity Framework Core persistence for dead-letter messages | [![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.DeadLetter.EntityFramework.svg)](https://www.nuget.org/packages/Hermodr.Publisher.DeadLetter.EntityFramework) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Hermodr.Publisher.DeadLetter.EntityFramework.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Hermodr.Publisher.DeadLetter.EntityFramework) |
+| `Hermodr.Amqp.Annotations` | AMQP-specific routing attributes (exchange, routing key) | [![NuGet](https://img.shields.io/nuget/v/Hermodr.Amqp.Annotations.svg)](https://www.nuget.org/packages/Hermodr.Amqp.Annotations) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Hermodr.Amqp.Annotations.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Hermodr.Amqp.Annotations) |
+| `Hermodr.Publisher.RabbitMq` | Publish events to a RabbitMQ exchange | [![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.RabbitMq.svg)](https://www.nuget.org/packages/Hermodr.Publisher.RabbitMq) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Hermodr.Publisher.RabbitMq.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Hermodr.Publisher.RabbitMq) |
+| `Hermodr.Publisher.MassTransit` | Publish events through a MassTransit bus | [![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.MassTransit.svg)](https://www.nuget.org/packages/Hermodr.Publisher.MassTransit) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Hermodr.Publisher.MassTransit.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Hermodr.Publisher.MassTransit) |
+| `Hermodr.Publisher.Webhook` | Deliver events to HTTP webhook endpoints | [![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.Webhook.svg)](https://www.nuget.org/packages/Hermodr.Publisher.Webhook) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Hermodr.Publisher.Webhook.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Hermodr.Publisher.Webhook) |
+| `Hermodr.Publisher.Outbox` | Persist events in a transactional outbox for later relay | [![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.Outbox.svg)](https://www.nuget.org/packages/Hermodr.Publisher.Outbox) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Hermodr.Publisher.Outbox.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Hermodr.Publisher.Outbox) |
+| `Hermodr.Publisher.Outbox.EntityFramework` | Entity Framework Core repository and helpers for the outbox channel | [![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.Outbox.EntityFramework.svg)](https://www.nuget.org/packages/Hermodr.Publisher.Outbox.EntityFramework) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Hermodr.Publisher.Outbox.EntityFramework.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Hermodr.Publisher.Outbox.EntityFramework) |
 
 ### Subscriptions
 
 | Package | Description | NuGet (Stable) | GitHub (Unstable) |
 |---------|-------------|---------------|-------------------|
-| `Deveel.Events.Subscriptions` | Event dispatcher and subscription management with pluggable resolvers | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Subscriptions.svg)](https://www.nuget.org/packages/Deveel.Events.Subscriptions) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Subscriptions.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Subscriptions) |
+| `Hermodr.Subscriptions` | Event dispatcher and subscription management with pluggable resolvers | [![NuGet](https://img.shields.io/nuget/v/Hermodr.Subscriptions.svg)](https://www.nuget.org/packages/Hermodr.Subscriptions) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Hermodr.Subscriptions.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Hermodr.Subscriptions) |
 
 ### Schema
 
 | Package | Description | NuGet (Stable) | GitHub (Unstable) |
 |---------|-------------|---------------|-------------------|
-| `Deveel.Events.Schema` | Schema model, fluent builder, JSON writer, and validation | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Schema.svg)](https://www.nuget.org/packages/Deveel.Events.Schema) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Schema.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Schema) |
-| `Deveel.Events.Schema.Yaml` | Export an event schema as YAML | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Schema.Yaml.svg)](https://www.nuget.org/packages/Deveel.Events.Schema.Yaml) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Schema.Yaml.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Schema.Yaml) |
-| `Deveel.Events.Schema.AsyncApi` | Export schemas as an AsyncAPI 2.x document | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.Schema.AsyncApi.svg)](https://www.nuget.org/packages/Deveel.Events.Schema.AsyncApi) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.Schema.AsyncApi.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.Schema.AsyncApi) |
+| `Hermodr.Schema` | Schema model, fluent builder, JSON writer, and validation | [![NuGet](https://img.shields.io/nuget/v/Hermodr.Schema.svg)](https://www.nuget.org/packages/Hermodr.Schema) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Hermodr.Schema.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Hermodr.Schema) |
+| `Hermodr.Schema.Yaml` | Export an event schema as YAML | [![NuGet](https://img.shields.io/nuget/v/Hermodr.Schema.Yaml.svg)](https://www.nuget.org/packages/Hermodr.Schema.Yaml) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Hermodr.Schema.Yaml.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Hermodr.Schema.Yaml) |
+| `Hermodr.Schema.AsyncApi` | Export schemas as an AsyncAPI 2.x document | [![NuGet](https://img.shields.io/nuget/v/Hermodr.Schema.AsyncApi.svg)](https://www.nuget.org/packages/Hermodr.Schema.AsyncApi) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Hermodr.Schema.AsyncApi.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Hermodr.Schema.AsyncApi) |
 
 ### Testing
 
 | Package | Description | NuGet (Stable) | GitHub (Unstable) |
 |---------|-------------|---------------|-------------------|
-| `Deveel.Events.TestPublisher` | In-memory test channel for unit and integration tests | [![NuGet](https://img.shields.io/nuget/v/Deveel.Events.TestPublisher.svg)](https://www.nuget.org/packages/Deveel.Events.TestPublisher) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Deveel.Events.TestPublisher.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Deveel.Events.TestPublisher) |
+| `Hermodr.TestPublisher` | In-memory test channel for unit and integration tests | [![NuGet](https://img.shields.io/nuget/v/Hermodr.TestPublisher.svg)](https://www.nuget.org/packages/Hermodr.TestPublisher) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Hermodr.TestPublisher.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Hermodr.TestPublisher) |
 
 ## Documentation
 
-The full documentation is published at **[events.deveel.org](https://events.deveel.org)** — including installation guides, concept references, channel adapters, schema export, and testing utilities.
+The full documentation is published at **[hermodr.deveel.org](https://hermodr.deveel.org)** — including installation guides, concept references, channel adapters, schema export, and testing utilities.
 
 The source of the documentation is also available in the [`docs/`](docs/README.md) folder of this repository
 | Section | Description |
 |---------|-------------|
-| [Getting Started](https://events.deveel.org/getting-started/installation) | Installation and quick-start guide |
-| [Core Concepts](https://events.deveel.org/concepts/) | Publisher, channels, and event annotations |
-| [Publisher Channels](https://events.deveel.org/publishers/) | Azure Service Bus, RabbitMQ, MassTransit, Webhook, Outbox, and Dead-Letter Replay |
-| [Event Subscriptions](https://events.deveel.org/subscriptions/) | Event dispatcher, filters, routing, and custom resolvers |
-| [Event Schema](https://events.deveel.org/schema/) | Schema definition, export (JSON / YAML / AsyncAPI), and validation |
-| [Testing](https://events.deveel.org/testing/) | Unit-testing event publishing |
+| [Getting Started](https://hermodr.deveel.org/getting-started/installation) | Installation and quick-start guide |
+| [Core Concepts](https://hermodr.deveel.org/concepts/) | Publisher, channels, and event annotations |
+| [Publisher Channels](https://hermodr.deveel.org/publishers/) | Azure Service Bus, RabbitMQ, MassTransit, Webhook, Outbox, and Dead-Letter Replay |
+| [Event Subscriptions](https://hermodr.deveel.org/subscriptions/) | Event dispatcher, filters, routing, and custom resolvers |
+| [Event Schema](https://hermodr.deveel.org/schema/) | Schema definition, export (JSON / YAML / AsyncAPI), and validation |
+| [Testing](https://hermodr.deveel.org/testing/) | Unit-testing event publishing |
 
 ## Future Work
 
@@ -200,7 +202,7 @@ The framework is still evolving. See the [ROADMAP](ROADMAP.md) for the full desc
 - [ ] **Pre-built Webhook Consumer Adapters** — ready-made payload mappers and signature verifiers for Facebook, SendGrid, Twilio, Stripe, GitHub, and Shopify
 - [ ] **RabbitMQ Consumer** — consume CloudEvents from RabbitMQ queues and route them through the subscription registry
 - [ ] **Azure Service Bus Consumer** — consume CloudEvents from Service Bus queues and topic subscriptions
-- [ ] **MassTransit Consumer Bridge** — expose Deveel Events subscriptions as MassTransit consumers and vice versa
+- [ ] **MassTransit Consumer Bridge** — expose Hermodr subscriptions as MassTransit consumers and vice versa
 
 ### v2.1 — Testing & DX
 
@@ -208,7 +210,7 @@ The framework is still evolving. See the [ROADMAP](ROADMAP.md) for the full desc
 - [ ] **Local Development Console Sink** — zero-configuration channel that pretty-prints CloudEvents to the console during local development, with automatic exclusion in non-development environments
 - [ ] **.NET Aspire Integration** — surface publish channels as Aspire resources for dashboard visibility, automatic broker provisioning, and OTLP trace export out of the box
 - [ ] **`dotnet event` CLI Extension** — `dotnet` global tool adding `dotnet event new`, `schema export`, `schema validate`, `schema diff`, and `channel add` sub-commands for event scaffolding and schema governance
-- [ ] **Standalone `deveel-events` CLI** — self-contained cross-platform executable and Docker image exposing the same command surface without requiring the .NET SDK, with GitHub Actions action and machine-readable SARIF output
+- [ ] **Standalone `hermodr` CLI** — self-contained cross-platform executable and Docker image exposing the same command surface without requiring the .NET SDK, with GitHub Actions action and machine-readable SARIF output
 
 ### v2.2 — Subscription Management
 
@@ -223,13 +225,13 @@ The framework is still evolving. See the [ROADMAP](ROADMAP.md) for the full desc
 - [ ] **Wolverine Integration** — emit CloudEvents as a Wolverine message side-effect and route inbound CloudEvents into the Wolverine runtime via `IMessageBus`
 - [ ] **Brighter Integration** — publish CloudEvents as a post-handler pipeline step for Brighter `ICommand` / `IEvent` types and bridge inbound CloudEvents into the Brighter command processor
 
-Monitor the [open issues](https://github.com/deveel/deveel.events/issues) to see what is being actively worked on.
+Monitor the [open issues](https://github.com/deveel/hermodr/issues) to see what is being actively worked on.
 
 ## Contributors
 
 Thanks go to all the people who have contributed to this project!
 
-[![Contributors](https://contrib.rocks/image?repo=deveel/deveel.events)](https://github.com/deveel/deveel.events/graphs/contributors)
+[![Contributors](https://contrib.rocks/image?repo=deveel/hermodr)](https://github.com/deveel/hermodr/graphs/contributors)
 
 ## Contributing
 

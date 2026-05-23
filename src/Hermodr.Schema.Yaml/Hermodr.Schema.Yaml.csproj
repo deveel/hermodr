@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="YamlDotNet" Version="16.3.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Hermodr.Schema\Hermodr.Schema.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Remove="docs\api\Hermodr.EventSchemaYamlWriter.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="docs\api\" />
+  </ItemGroup>
+</Project>

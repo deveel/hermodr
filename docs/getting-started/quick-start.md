@@ -5,14 +5,14 @@ This guide walks you through publishing your first event in under five minutes.
 ## 1. Install the packages
 
 ```bash
-dotnet add package Deveel.Events.Publisher
-dotnet add package Deveel.Events.Annotations
+dotnet add package Hermodr.Publisher
+dotnet add package Hermodr.Annotations
 ```
 
 Add a channel package for the transport you want to use, for example Azure Service Bus:
 
 ```bash
-dotnet add package Deveel.Events.Publisher.AzureServiceBus
+dotnet add package Hermodr.Publisher.AzureServiceBus
 ```
 
 ## 2. Annotate your event data class
@@ -21,7 +21,7 @@ Create a class that represents the data payload of your event and decorate it wi
 
 ```csharp
 using System.ComponentModel.DataAnnotations;
-using Deveel.Events;
+using Hermodr;
 
 [Event("order.placed", "1.0")]
 public class OrderPlacedData
@@ -47,7 +47,7 @@ The `[Event]` attribute records the **event type** string and its **version**.  
 In your `Program.cs` (or wherever you configure DI), register the event publisher and the Azure Service Bus channel:
 
 ```csharp
-using Deveel.Events;
+using Hermodr;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -70,7 +70,7 @@ builder.Services
 Inject `EventPublisher` wherever you need it and call `PublishAsync`:
 
 ```csharp
-using Deveel.Events;
+using Hermodr;
 
 public class OrderService
 {
@@ -103,7 +103,7 @@ If you already have a `CloudEvent` instance you can publish it directly:
 
 ```csharp
 using CloudNative.CloudEvents;
-using Deveel.Events;
+using Hermodr;
 
 var @event = new CloudEvent
 {

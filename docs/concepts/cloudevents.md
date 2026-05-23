@@ -1,6 +1,6 @@
 # CloudEvents Standard
 
-Deveel Events uses the [CloudEvents](https://cloudevents.io/) specification as its event model.  Every event published through the framework is represented as a `CloudEvent` object from the [`CloudNative.CloudEvents`](https://github.com/cloudevents/sdk-csharp) SDK.
+Hermodr uses the [CloudEvents](https://cloudevents.io/) specification as its event model.  Every event published through the framework is represented as a `CloudEvent` object from the [`CloudNative.CloudEvents`](https://github.com/cloudevents/sdk-csharp) SDK.
 
 ## Why CloudEvents?
 
@@ -26,7 +26,7 @@ A `CloudEvent` consists of a set of **required** and **optional** attributes:
 
 ## Event time semantics
 
-In Deveel Events, `CloudEvent.time` is the **occurrence timestamp** of the business fact, not the transport delivery time.
+In Hermodr, `CloudEvent.time` is the **occurrence timestamp** of the business fact, not the transport delivery time.
 
 - Use `time` to answer **when the event happened** in domain terms.
 - Use transport/outbox/dead-letter metadata (`NextRetryAt`, `NextReplayAt`, delivery headers) to answer **when delivery was attempted**.
@@ -35,7 +35,7 @@ In Deveel Events, `CloudEvent.time` is the **occurrence timestamp** of the busin
 When the event has no `time`, `EventPublisher` fills it through `IEventSystemTime.UtcNow` during enrichment.
 This allows deterministic tests by replacing the clock via `UseSystemTime<TClock>()`.
 
-## How Deveel Events Populates the Envelope
+## How Hermodr Populates the Envelope
 
 When you call `publisher.PublishAsync(data)` with an annotated data object, the `IEventFactory` service reads the `[Event]` attribute and populates the envelope as follows:
 

@@ -7,114 +7,114 @@ jobs:
   clean:
     runs-on: ubuntu-latest
     steps:
-      - name: Clean Deveel.Events.Annotations package
+      - name: Clean Hermodr.Annotations package
         uses: actions/delete-package-versions@v5.0.0
         with:
-          package-name: 'Deveel.Events.Annotations'
+          package-name: 'Hermodr.Annotations'
           package-type: 'nuget'
           min-versions-to-keep: 10
           delete-only-pre-release-versions: true
 
-      - name: Clean Deveel.Events.Amqp.Annotations package
+      - name: Clean Hermodr.Amqp.Annotations package
         uses: actions/delete-package-versions@v5.0.0
         with:
-          package-name: 'Deveel.Events.Amqp.Annotations'
+          package-name: 'Hermodr.Amqp.Annotations'
           package-type: 'nuget'
           min-versions-to-keep: 10
           delete-only-pre-release-versions: true
 
-      - name: Clean Deveel.Events.Schema package
+      - name: Clean Hermodr.Schema package
         uses: actions/delete-package-versions@v5.0.0
         with:
-          package-name: 'Deveel.Events.Schema'
+          package-name: 'Hermodr.Schema'
           package-type: 'nuget'
           min-versions-to-keep: 10
           delete-only-pre-release-versions: true
 
-      - name: Clean Deveel.Events.Schema.AsyncApi package
+      - name: Clean Hermodr.Schema.AsyncApi package
         uses: actions/delete-package-versions@v5.0.0
         with:
-          package-name: 'Deveel.Events.Schema.AsyncApi'
+          package-name: 'Hermodr.Schema.AsyncApi'
           package-type: 'nuget'
           min-versions-to-keep: 10
           delete-only-pre-release-versions: true
 
-      - name: Clean Deveel.Events.Schema.Yaml package
+      - name: Clean Hermodr.Schema.Yaml package
         uses: actions/delete-package-versions@v5.0.0
         with:
-          package-name: 'Deveel.Events.Schema.Yaml'
+          package-name: 'Hermodr.Schema.Yaml'
           package-type: 'nuget'
           min-versions-to-keep: 10
           delete-only-pre-release-versions: true
 
-      - name: Clean Deveel.Events.Publisher package
+      - name: Clean Hermodr.Publisher package
         uses: actions/delete-package-versions@v5.0.0
         with:
-          package-name: 'Deveel.Events.Publisher'
+          package-name: 'Hermodr.Publisher'
           package-type: 'nuget'
           min-versions-to-keep: 10
           delete-only-pre-release-versions: true
 
-      - name: Clean Deveel.Events.Publisher.AzureServiceBus package
+      - name: Clean Hermodr.Publisher.AzureServiceBus package
         uses: actions/delete-package-versions@v5.0.0
         with:
-          package-name: 'Deveel.Events.Publisher.AzureServiceBus'
+          package-name: 'Hermodr.Publisher.AzureServiceBus'
           package-type: 'nuget'
           min-versions-to-keep: 10
           delete-only-pre-release-versions: true
 
-      - name: Clean Deveel.Events.Publisher.MassTransit package
+      - name: Clean Hermodr.Publisher.MassTransit package
         uses: actions/delete-package-versions@v5.0.0
         with:
-          package-name: 'Deveel.Events.Publisher.MassTransit'
+          package-name: 'Hermodr.Publisher.MassTransit'
           package-type: 'nuget'
           min-versions-to-keep: 10
           delete-only-pre-release-versions: true
 
-      - name: Clean Deveel.Events.Publisher.RabbitMq package
+      - name: Clean Hermodr.Publisher.RabbitMq package
         uses: actions/delete-package-versions@v5.0.0
         with:
-          package-name: 'Deveel.Events.Publisher.RabbitMq'
+          package-name: 'Hermodr.Publisher.RabbitMq'
           package-type: 'nuget'
           min-versions-to-keep: 10
           delete-only-pre-release-versions: true
 
-      - name: Clean Deveel.Events.Publisher.Webhook package
+      - name: Clean Hermodr.Publisher.Webhook package
         uses: actions/delete-package-versions@v5.0.0
         with:
-          package-name: 'Deveel.Events.Publisher.Webhook'
+          package-name: 'Hermodr.Publisher.Webhook'
           package-type: 'nuget'
           min-versions-to-keep: 10
           delete-only-pre-release-versions: true
 
-      - name: Clean Deveel.Events.Publisher.Outbox package
+      - name: Clean Hermodr.Publisher.Outbox package
         uses: actions/delete-package-versions@v5.0.0
         with:
-          package-name: 'Deveel.Events.Publisher.Outbox'
+          package-name: 'Hermodr.Publisher.Outbox'
           package-type: 'nuget'
           min-versions-to-keep: 10
           delete-only-pre-release-versions: true
 
-      - name: Clean Deveel.Events.Publisher.Outbox.EntityFramework package
+      - name: Clean Hermodr.Publisher.Outbox.EntityFramework package
         uses: actions/delete-package-versions@v5.0.0
         with:
-          package-name: 'Deveel.Events.Publisher.Outbox.EntityFramework'
+          package-name: 'Hermodr.Publisher.Outbox.EntityFramework'
           package-type: 'nuget'
           min-versions-to-keep: 10
           delete-only-pre-release-versions: true
 
-      - name: Clean Deveel.Events.Subscriptions package
+      - name: Clean Hermodr.Subscriptions package
         uses: actions/delete-package-versions@v5.0.0
         with:
-          package-name: 'Deveel.Events.Subscriptions'
+          package-name: 'Hermodr.Subscriptions'
           package-type: 'nuget'
           min-versions-to-keep: 10
           delete-only-pre-release-versions: true
 
-      - name: Clean Deveel.Events.TestPublisher package
+      - name: Clean Hermodr.TestPublisher package
         uses: actions/delete-package-versions@v5.0.0
         with:
-          package-name: 'Deveel.Events.TestPublisher'
+          package-name: 'Hermodr.TestPublisher'
           package-type: 'nuget'
           min-versions-to-keep: 10
           delete-only-pre-release-versions: true

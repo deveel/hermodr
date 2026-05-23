@@ -1,6 +1,6 @@
 # Core Concepts
 
-This section explains the fundamental building blocks of the Deveel Events framework.
+This section explains the fundamental building blocks of the Hermodr framework.
 
 ## Overview
 

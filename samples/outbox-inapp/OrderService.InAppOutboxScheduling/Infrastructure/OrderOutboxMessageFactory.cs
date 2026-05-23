@@ -1,6 +1,6 @@
 using CloudNative.CloudEvents;
 
-using Deveel.Events;
+using Hermodr;
 
 namespace OrderService.Infrastructure;
 

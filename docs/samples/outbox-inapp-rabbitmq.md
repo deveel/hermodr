@@ -1,8 +1,8 @@
 # Sample: OrderService — In-Process Outbox + RabbitMQ
 
-**Location:** [`samples/outbox-inapp/OrderService.InAppOutbox/`](https://github.com/deveel/deveel.events/tree/main/samples/outbox-inapp/OrderService.InAppOutbox)  
+**Location:** [`samples/outbox-inapp/OrderService.InAppOutbox/`](https://github.com/deveel/hermodr/tree/main/samples/outbox-inapp/OrderService.InAppOutbox)  
 **Framework:** ASP.NET Core 9 Minimal API  
-**Transport:** RabbitMQ — `Deveel.Events.Publisher.RabbitMq`  
+**Transport:** RabbitMQ — `Hermodr.Publisher.RabbitMq`  
 **Pattern:** Transactional Outbox (in-process relay)
 
 ---

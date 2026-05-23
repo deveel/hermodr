@@ -1,6 +1,5 @@
 using CloudNative.CloudEvents;
-using Deveel;
-using Deveel.Events;
+using Hermodr;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;

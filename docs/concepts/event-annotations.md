@@ -1,11 +1,11 @@
 # Event Annotations
 
-The `Deveel.Events.Annotations` package provides attributes that let you embed event metadata directly on your data-transfer classes, removing the need to hard-code event types or versions at the call site.
+The `Hermodr.Annotations` package provides attributes that let you embed event metadata directly on your data-transfer classes, removing the need to hard-code event types or versions at the call site.
 
 ## Installation
 
 ```bash
-dotnet add package Deveel.Events.Annotations
+dotnet add package Hermodr.Annotations
 ```
 
 ## `[Event]` attribute
@@ -13,7 +13,7 @@ dotnet add package Deveel.Events.Annotations
 Applied at class level.  Describes the event type, version, and other envelope defaults.
 
 ```csharp
-using Deveel.Events;
+using Hermodr;
 
 [Event("order.placed", "1.0")]
 public class OrderPlacedData
@@ -97,7 +97,7 @@ Standard `System.ComponentModel.DataAnnotations` attributes (e.g. `[Required]`, 
 
 ```csharp
 using System.ComponentModel.DataAnnotations;
-using Deveel.Events;
+using Hermodr;
 
 [Event("order.placed", "1.0", Description = "Raised when a customer places an order")]
 public class OrderPlacedData

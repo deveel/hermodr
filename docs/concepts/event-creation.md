@@ -22,7 +22,7 @@ for the pipeline details.
 Annotate a plain CLR class with `[Event]` to declare its CloudEvents metadata:
 
 ```csharp
-using Deveel.Events;
+using Hermodr;
 
 [Event("com.example.order.placed")]
 public class OrderPlaced

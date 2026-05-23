@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Title>Hermodr Azure ServiceBus Channel</Title>
+    <Description>Provides a channel that publishes events in the Azure ServiceBus queues</Description>
+    <PackageTags>event;events;ddd;azure;servicebus;amqp;channel;publisher</PackageTags>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Hermodr.Publisher\Hermodr.Publisher.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.20.1" />
+  </ItemGroup>
+</Project>

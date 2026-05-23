@@ -1,8 +1,8 @@
 # Sample: OrderService — Split Outbox + MassTransit RabbitMQ
 
-**Location:** [`samples/outbox-relay/`](https://github.com/deveel/deveel.events/tree/main/samples/outbox-relay)  
+**Location:** [`samples/outbox-relay/`](https://github.com/deveel/hermodr/tree/main/samples/outbox-relay)  
 **Framework:** ASP.NET Core 9 Minimal API · .NET 9 Worker Service  
-**Transport:** MassTransit over RabbitMQ — `Deveel.Events.Publisher.MassTransit`  
+**Transport:** MassTransit over RabbitMQ — `Hermodr.Publisher.MassTransit`  
 **Pattern:** Transactional Outbox (external relay process)
 
 ---
@@ -65,7 +65,7 @@ events
     // ↑ No .WithRelay() — forwarding is handled by the external relay worker
 ```
 
-The API project references **only** `Deveel.Events.Publisher.Outbox.EntityFramework` — there is no dependency on any transport package.
+The API project references **only** `Hermodr.Publisher.Outbox.EntityFramework` — there is no dependency on any transport package.
 
 ### 2. Worker — relay + MassTransit
 
@@ -87,7 +87,7 @@ builder.Services.AddMassTransit(mt =>
     });
 });
 
-// ── Deveel.Events outbox relay → MassTransit ─────────────────────────────
+// ── Hermodr outbox relay → MassTransit ─────────────────────────────
 var events = builder.Services.AddEventPublisher(options =>
 {
     options.Source = new Uri("https://example.com/services/order-service");
@@ -114,7 +114,7 @@ events
     .AddMassTransit<OrderCancelled>();
 ```
 
-MassTransit must be registered **before** the Deveel.Events channels so that `IPublishEndpoint` and `ISendEndpointProvider` are available in DI when the `MassTransitPublishChannel` resolves them.
+MassTransit must be registered **before** the Hermodr channels so that `IPublishEndpoint` and `ISendEndpointProvider` are available in DI when the `MassTransitPublishChannel` resolves them.
 
 ### 3. Event types — no AMQP coupling in the API
 
@@ -223,7 +223,7 @@ curl -s -X PUT "http://localhost:5000/orders/$ORDER_ID/ship" \
 curl -s -X PUT "http://localhost:5000/orders/$ORDER_ID/deliver" | jq
 ```
 
-Within ~5 seconds after each request, the relay worker logs a `Sending` update followed by a `Sent` confirmation. The messages appear in the [RabbitMQ management UI](http://localhost:15672) as MassTransit-formatted messages on the `Deveel.Events` exchange topology.
+Within ~5 seconds after each request, the relay worker logs a `Sending` update followed by a `Sent` confirmation. The messages appear in the [RabbitMQ management UI](http://localhost:15672) as MassTransit-formatted messages on the `Hermodr` exchange topology.
 
 ---
 
@@ -252,7 +252,7 @@ Within ~5 seconds after each request, the relay worker logs a `Sending` update f
 |---|---|---|
 | **Process count** | 1 — API + relay in the same host | 2 — API and relay run independently |
 | **Transport** | RabbitMQ (direct AMQP channel) | **MassTransit** (broker-agnostic abstraction) |
-| **API dependency on transport** | Yes — `Deveel.Events.Publisher.RabbitMq` | **No** — API only refs the outbox package |
+| **API dependency on transport** | Yes — `Hermodr.Publisher.RabbitMq` | **No** — API only refs the outbox package |
 | **Relay restart** | Restarts the entire API process | Relay restarts independently |
 | **Independent scaling** | ❌ Relay scales with the API | ✅ Scale relay separately |
 | **Swap broker later** | Requires API changes | Change worker only |

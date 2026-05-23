@@ -1,4 +1,4 @@
-# Contributing to Deveel Events
+# Contributing to Hermodr
 
 Thank you for your interest in contributing!  We welcome bug reports, feature requests, documentation improvements, and pull requests.
 
@@ -10,7 +10,7 @@ Please be respectful and constructive in all interactions.  We follow the [Contr
 
 ### 1. Open an Issue First
 
-**No development should begin without a corresponding GitHub Issue.**  Before writing any code (feature or bug fix), open an issue at [github.com/deveel/deveel.events/issues](https://github.com/deveel/deveel.events/issues) and describe:
+**No development should begin without a corresponding GitHub Issue.**  Before writing any code (feature or bug fix), open an issue at [github.com/deveel/hermodr/issues](https://github.com/deveel/hermodr/issues) and describe:
 
 - What you want to build or fix.
 - Why it is needed (use-case or observed behaviour).
@@ -145,7 +145,7 @@ dotnet test -c Release -- --filter-not-trait "Channel=RabbitMQ"
 
 ## Reporting Issues
 
-Open a [GitHub Issue](https://github.com/deveel/deveel.events/issues) and include:
+Open a [GitHub Issue](https://github.com/deveel/hermodr/issues) and include:
 
 - A clear title and description.
 - The package version affected.
@@ -160,5 +160,5 @@ Open a GitHub Issue labelled `enhancement`.  Describe the use-case and proposed 
 
 ## License
 
-By contributing you agree that your contributions will be licensed under the [MIT License](https://github.com/deveel/deveel.events/blob/main/LICENSE).
+By contributing you agree that your contributions will be licensed under the [MIT License](https://github.com/deveel/hermodr/blob/main/LICENSE).
 
