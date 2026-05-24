@@ -1,4 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Title>Hermodr Test Publisher</Title>
+    <Description>Provides test utilities and mock implementations for testing Hermodr event publishing.</Description>
+    <PackageTags>event;events;testing;mock;publisher;unittest</PackageTags>
+  </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Hermodr.Publisher\Hermodr.Publisher.csproj" />
   </ItemGroup>

@@ -29,6 +29,12 @@ The framework is split into focused NuGet packages so you only take what you nee
 |---------|-------------|
 | [`Hermodr.Subscriptions`](#hermodr-subscriptions) | In-process event subscription registry and dispatcher |
 
+## Observability package
+
+| Package | Description |
+|---------|-------------|
+| [`Hermodr.Publisher.OpenTelemetry`](#hermodr-publisher-opentelemetry) | Distributed tracing with W3C trace context propagation via CloudEvents extensions |
+
 ## Schema packages
 
 | Package | Description |
@@ -187,6 +193,20 @@ Adds an in-process event subscription registry and dispatcher middleware to the 
 ```bash
 dotnet add package Hermodr.Subscriptions
 ```
+
+---
+
+### `Hermodr.Publisher.OpenTelemetry`
+
+[![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.OpenTelemetry.svg)](https://www.nuget.org/packages/Hermodr.Publisher.OpenTelemetry)
+
+Adds OpenTelemetry instrumentation to the event publishing pipeline. Creates producer and consumer `Activity` spans, injects W3C `traceparent`/`tracestate` as CloudEvents extension attributes on publish, and extracts them on the subscription side to enable end-to-end distributed tracing across service boundaries.
+
+```bash
+dotnet add package Hermodr.Publisher.OpenTelemetry
+```
+
+See [OpenTelemetry Instrumentation](publishers/opentelemetry.md) for the full guide.
 
 ---
 

@@ -34,5 +34,19 @@ namespace Hermodr {
         /// Azure Service Bus.
         /// </summary>
 		public ServiceBusClientOptions ClientOptions { get; set; } = new ServiceBusClientOptions();
+
+        /// <summary>
+        /// Gets or sets the CloudEvent extension attribute name used to
+        /// extract the correlation ID from the event. Defaults to
+        /// <see cref="ServiceBusEventAttributes.CorrelationId"/>.
+        /// </summary>
+        public string? CorrelationIdAttributeName { get; set; }
+
+        /// <summary>
+        /// Gets or sets the CloudEvent extension attribute name used to
+        /// extract the partition key from the event. Defaults to
+        /// <see cref="ServiceBusEventAttributes.PartitionKey"/>.
+        /// </summary>
+        public string? PartitionKeyAttributeName { get; set; }
 	}
 }

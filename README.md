@@ -6,7 +6,7 @@
 [![GitHub Release](https://img.shields.io/github/v/release/deveel/hermodr)](https://github.com/deveel/hermodr/releases) [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/deveel/hermodr/cicd.yml?logo=github)](https://github.com/deveel/hermodr/actions/workflows/cicd.yml)
 [![Codecov](https://img.shields.io/codecov/c/github/deveel/hermodr?logo=codecov)](https://codecov.io/gh/deveel/hermodr)
 [![.NET](https://img.shields.io/badge/-8%20%7C%209%20%7C%2010-512BD4?logo=dotnet)](https://dotnet.microsoft.com/download)
-[![Documentation](https://img.shields.io/badge/docs-hermodr.deveel.org-blue)](https://hermodr.deveel.org)
+[![Documentation](https://img.shields.io/badge/docs-hermodr.deveel.org-blue)](https://hermodr.deveel.org) ![Static Badge](https://img.shields.io/badge/Buy%20Me-A%20Coffee!-FFDD00?style=flat&logo=buy-me-a-coffee&link=https%3A%2F%2Fbuymeacoffee.com%2Ftsutomi)
 
 > **Renamed:** This project was formerly called **Deveel Events** - as of **23 May 2026**, it has been renamed to **Hermodr** — named after the [messenger of the gods](https://no.wikipedia.org/wiki/Hermod) in Norse mythology — to better reflect its role as a message delivery framework and to distinguish it from the broader [Deveel](https://github.com/deveel) ecosystem.
 > Existing NuGet packages (`Deveel.Events.*`) remain published and will be deprecated in favor of the new `Hermodr.*` packages.
@@ -97,6 +97,9 @@ Every package requires the **Microsoft Dependency Injection** infrastructure (`M
 | `Hermodr.Publisher.Webhook` | `Microsoft.Extensions.Http.Resilience` ≥ 9.6 |
 | `Hermodr.Publisher.Outbox` | `Deveel.Repository.Manager` · `Microsoft.Extensions.Hosting.Abstractions` |
 | `Hermodr.Publisher.Outbox.EntityFramework` | `Hermodr.Publisher.Outbox` · `Deveel.Repository.EntityFramework` · `Microsoft.EntityFrameworkCore.Relational` |
+| `Hermodr.Publisher.DeliveryLog` | `Hermodr.Publisher` · `Microsoft.Extensions.Hosting.Abstractions` |
+| `Hermodr.Publisher.DeliveryLog.EntityFramework` | `Hermodr.Publisher.DeliveryLog` · `Microsoft.EntityFrameworkCore` |
+| `Hermodr.Publisher.OpenTelemetry` | `OpenTelemetry.API` · `Hermodr.Publisher` |
 | `Hermodr.Subscriptions` | `Hermodr.Publisher` · `Deveel.Filters` · `Microsoft.Extensions.Logging.Abstractions` |
 | `Hermodr.Schema` | `CloudNative.CloudEvents` |
 | `Hermodr.Schema.Yaml` | `YamlDotNet` ≥ 16.3 |
@@ -120,6 +123,9 @@ Every package requires the **Microsoft Dependency Injection** infrastructure (`M
 | `Hermodr.Publisher.Webhook` | Deliver events to HTTP webhook endpoints | [![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.Webhook.svg)](https://www.nuget.org/packages/Hermodr.Publisher.Webhook) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Hermodr.Publisher.Webhook.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Hermodr.Publisher.Webhook) |
 | `Hermodr.Publisher.Outbox` | Persist events in a transactional outbox for later relay | [![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.Outbox.svg)](https://www.nuget.org/packages/Hermodr.Publisher.Outbox) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Hermodr.Publisher.Outbox.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Hermodr.Publisher.Outbox) |
 | `Hermodr.Publisher.Outbox.EntityFramework` | Entity Framework Core repository and helpers for the outbox channel | [![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.Outbox.EntityFramework.svg)](https://www.nuget.org/packages/Hermodr.Publisher.Outbox.EntityFramework) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Hermodr.Publisher.Outbox.EntityFramework.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Hermodr.Publisher.Outbox.EntityFramework) |
+| `Hermodr.Publisher.DeliveryLog` | Per-attempt operational record (channel, outcome, error code, latency, retry count) with pluggable storage backends | [![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.DeliveryLog.svg)](https://www.nuget.org/packages/Hermodr.Publisher.DeliveryLog) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Hermodr.Publisher.DeliveryLog.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Hermodr.Publisher.DeliveryLog) |
+| `Hermodr.Publisher.DeliveryLog.EntityFramework` | Entity Framework Core persistence for delivery log records | [![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.DeliveryLog.EntityFramework.svg)](https://www.nuget.org/packages/Hermodr.Publisher.DeliveryLog.EntityFramework) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Hermodr.Publisher.DeliveryLog.EntityFramework.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Hermodr.Publisher.DeliveryLog.EntityFramework) |
+| `Hermodr.Publisher.OpenTelemetry` | OpenTelemetry instrumentation for distributed tracing with W3C trace context propagation | [![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.OpenTelemetry.svg)](https://www.nuget.org/packages/Hermodr.Publisher.OpenTelemetry) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Hermodr.Publisher.OpenTelemetry.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Hermodr.Publisher.OpenTelemetry) |
 
 ### Subscriptions
 
@@ -172,10 +178,10 @@ The framework is still evolving. See the [ROADMAP](ROADMAP.md) for the full desc
 
 ### v1.3 — Observability
 
-- [ ] **OpenTelemetry & Distributed Tracing Integration** — propagate W3C trace context as CloudEvents extensions for end-to-end traces
+- [x] **OpenTelemetry & Distributed Tracing Integration** — propagate W3C trace context as CloudEvents extensions for end-to-end traces
 - [ ] **Event Store & Audit Log Channel** — append-only persistence of every domain event for auditing and read-model rebuilding
 - [ ] **Schema Validation at Publish Time** — validate event payloads against their registered schema before channel dispatch
-- [ ] **Publish Delivery Log** — per-attempt operational record (channel, outcome, error code, latency, retry count) across pluggable storage backends
+- [x] **Publish Delivery Log** — per-attempt operational record (channel, outcome, error code, latency, retry count) across pluggable storage backends
 
 ### v1.4 — Schema Governance
 

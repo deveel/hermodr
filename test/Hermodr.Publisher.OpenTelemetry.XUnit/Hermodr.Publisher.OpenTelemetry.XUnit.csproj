@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Hermodr.Publisher.OpenTelemetry\Hermodr.Publisher.OpenTelemetry.csproj" />
+    <ProjectReference Include="..\..\src\Hermodr.Subscriptions\Hermodr.Subscriptions.csproj" />
+    <ProjectReference Include="..\..\src\Hermodr.TestPublisher\Hermodr.TestPublisher.csproj" />
+  </ItemGroup>
+
+</Project>

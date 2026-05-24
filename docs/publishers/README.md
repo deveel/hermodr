@@ -11,6 +11,7 @@ Hermodr ships ready-made channel implementations for the most common messaging t
 | [MassTransit](masstransit.md) | `Hermodr.Publisher.MassTransit` | Projects already using MassTransit; broker-agnostic |
 | [Webhook](webhook.md) | `Hermodr.Publisher.Webhook` | Delivering events to external HTTP endpoints with HMAC signing |
 | [Publish Error Handling](error-handling.md) | `Hermodr.Publisher` | Cross-cutting interception of publish failures for logging, policy, auditing, and custom recovery |
+| [OpenTelemetry Instrumentation](opentelemetry.md) | `Hermodr.Publisher.OpenTelemetry` | Distributed tracing with W3C trace context propagation across service boundaries |
 | [Transactional Outbox](outbox.md) | `Hermodr.Publisher.Outbox` | Guaranteed at-least-once delivery via a transactional outbox table |
 | [Dead-Letter Handling and Replay](dead-letter.md) | `Hermodr.Publisher.DeadLetter` | Capturing failed channel deliveries, persisting them, and replaying them later |
 | [Test (in-memory)](../testing/README.md) | `Hermodr.TestPublisher` | Unit and integration tests |

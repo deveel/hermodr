@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Title>Hermodr OpenTelemetry Publisher</Title>
+    <Description>
+      OpenTelemetry instrumentation for Hermodr event publishing.
+      Injects W3C traceparent/tracestate as CloudEvents extension attributes on publish
+      and extracts them on the subscription side to enable end-to-end distributed tracing.
+    </Description>
+    <PackageTags>event;events;ddd;publisher;opentelemetry;tracing;distributed-tracing;cloud-events</PackageTags>
+  </PropertyGroup>
+  <ItemGroup Condition="$(TargetFramework) == 'net8.0'">
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.3" />
+  </ItemGroup>
+  <ItemGroup Condition="$(TargetFramework) == 'net9.0'">
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.15" />
+  </ItemGroup>
+  <ItemGroup Condition="$(TargetFramework) == 'net10.0'">
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.7" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="CloudNative.CloudEvents" Version="2.8.0" />
+    <PackageReference Include="OpenTelemetry.Api" Version="1.15.3" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Hermodr.Publisher\Hermodr.Publisher.csproj" />
+  </ItemGroup>
+</Project>
