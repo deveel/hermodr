@@ -3,6 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 //
 
+using System.Diagnostics.CodeAnalysis;
+
 using Microsoft.Extensions.Logging;
 
 namespace Hermodr
@@ -10,6 +12,7 @@ namespace Hermodr
     /// <summary>
     /// Compile-time generated, zero-allocation logging helpers for the webhook publisher.
     /// </summary>
+    [ExcludeFromCodeCoverage]
     internal static partial class LoggerExtensions
     {
         // ── Delivery start ──────────────────────────────────────────────────

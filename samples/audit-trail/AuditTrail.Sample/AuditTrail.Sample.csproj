@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFrameworks>net9.0;net10.0</TargetFrameworks>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Hermodr.Annotations\Hermodr.Annotations.csproj" />
+    <ProjectReference Include="..\..\..\src\Hermodr.Publisher\Hermodr.Publisher.csproj" />
+    <ProjectReference Include="..\..\..\src\Hermodr.Publisher.AuditTrail\Hermodr.Publisher.AuditTrail.csproj" />
+    <ProjectReference Include="..\..\..\src\Hermodr.AuditTrail.EntityFramework\Hermodr.AuditTrail.EntityFramework.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.15" />
+  </ItemGroup>
+
+</Project>

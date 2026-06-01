@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Hermodr.AuditTrail\Hermodr.AuditTrail.csproj" />
+    <ProjectReference Include="..\..\src\Hermodr.AuditTrail.InMemory\Hermodr.AuditTrail.InMemory.csproj" />
+  </ItemGroup>
+
+</Project>

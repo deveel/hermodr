@@ -1,7 +1,10 @@
+using System.Diagnostics.CodeAnalysis;
+
 using Microsoft.Extensions.Logging;
 
 namespace Hermodr;
 
+[ExcludeFromCodeCoverage]
 static partial class LoggerExtensions
 {
     [LoggerMessage(33001, LogLevel.Debug, "Delivery record written: EventId={EventId}, Channel={Channel}, Outcome={Outcome}")]

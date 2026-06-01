@@ -3,10 +3,13 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 //
 
+using System.Diagnostics.CodeAnalysis;
+
 using Microsoft.Extensions.Logging;
 
 namespace Hermodr
 {
+    [ExcludeFromCodeCoverage]
     internal static class LoggerExtensions
     {
         private static readonly Action<ILogger, string, Exception?> _tracePublishSpanNotEnabled =

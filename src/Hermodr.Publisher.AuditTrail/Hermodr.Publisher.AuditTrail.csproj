@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Title>Hermodr Publisher Audit Trail</Title>
+    <Description>Integrates the audit trail as a channel in the Hermodr event publisher, recording every published domain event for compliance auditing.</Description>
+    <PackageTags>deveel;events;publisher;audit;trail;compliance</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Hermodr.Publisher\Hermodr.Publisher.csproj" />
+    <ProjectReference Include="..\Hermodr.AuditTrail\Hermodr.AuditTrail.csproj" />
+  </ItemGroup>
+
+</Project>

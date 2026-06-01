@@ -400,3 +400,7 @@ FodyWeavers.xsd
 
 samples/**/libs
 .DS_Store
+
+# HonKit
+docs/node_modules
+docs/_book

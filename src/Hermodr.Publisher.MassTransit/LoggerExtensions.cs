@@ -2,9 +2,13 @@
 // Copyright (c) Antonello Provenzano and other contributors. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 //
+
+using System.Diagnostics.CodeAnalysis;
+
 using Microsoft.Extensions.Logging;
 namespace Hermodr
 {
+    [ExcludeFromCodeCoverage]
     internal static partial class LoggerExtensions
     {
         [LoggerMessage(EventId = 1, Level = LogLevel.Trace, Message = "Publishing event of type '{EventType}' via MassTransit")]
