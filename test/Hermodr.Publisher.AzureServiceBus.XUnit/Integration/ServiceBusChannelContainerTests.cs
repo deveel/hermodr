@@ -73,6 +73,8 @@ namespace Hermodr
         [Fact]
         public async Task PublishCloudEventWithBinaryData()
         {
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             var cloudEvent = new CloudNative.CloudEvents.CloudEvent
             {
                 Subject = "test",
@@ -85,9 +87,9 @@ namespace Hermodr
                 DataSchema = new Uri("http://example.com/schema/1.0")
             };
 
-            await Publisher.PublishEventAsync(cloudEvent);
+            await Publisher.PublishEventAsync(cloudEvent, cancellationToken: cancellationToken);
 
-            var received = await _receiver!.ReceiveMessageAsync(maxWaitTime: TimeSpan.FromSeconds(30));
+            var received = await _receiver!.ReceiveMessageAsync(maxWaitTime: TimeSpan.FromSeconds(30), cancellationToken);
 
             Assert.NotNull(received);
             Assert.Equal("test", received.Subject);
@@ -96,12 +98,14 @@ namespace Hermodr
             Assert.True(received.ApplicationProperties.ContainsKey(ServiceBusMessageProperties.EventType));
             Assert.Equal("test.created", received.ApplicationProperties[ServiceBusMessageProperties.EventType]);
 
-            await _receiver.CompleteMessageAsync(received);
+            await _receiver.CompleteMessageAsync(received, cancellationToken);
         }
 
         [Fact]
         public async Task PublishCloudEventWithJsonData()
         {
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             var cloudEvent = new CloudNative.CloudEvents.CloudEvent
             {
                 Subject = "test",
@@ -114,9 +118,9 @@ namespace Hermodr
                 DataSchema = new Uri("http://example.com/schema/1.0")
             };
 
-            await Publisher.PublishEventAsync(cloudEvent);
+            await Publisher.PublishEventAsync(cloudEvent, cancellationToken: cancellationToken);
 
-            var received = await _receiver!.ReceiveMessageAsync(maxWaitTime: TimeSpan.FromSeconds(30));
+            var received = await _receiver!.ReceiveMessageAsync(maxWaitTime: TimeSpan.FromSeconds(30), cancellationToken);
 
             Assert.NotNull(received);
             Assert.Equal("test", received.Subject);
@@ -125,28 +129,30 @@ namespace Hermodr
             Assert.True(received.ApplicationProperties.ContainsKey(ServiceBusMessageProperties.EventType));
             Assert.Equal("test.created", received.ApplicationProperties[ServiceBusMessageProperties.EventType]);
 
-            await _receiver.CompleteMessageAsync(received);
+            await _receiver.CompleteMessageAsync(received, cancellationToken);
         }
 
         [Fact]
         public async Task PublishEventData()
         {
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             var personCreated = new PersonCreated
             {
                 Name = "John Doe",
                 Age = 30
             };
 
-            await Publisher.PublishAsync(personCreated);
+            await Publisher.PublishAsync(personCreated, cancellationToken: cancellationToken);
 
-            var received = await _receiver!.ReceiveMessageAsync(maxWaitTime: TimeSpan.FromSeconds(30));
+            var received = await _receiver!.ReceiveMessageAsync(maxWaitTime: TimeSpan.FromSeconds(30), cancellationToken);
 
             Assert.NotNull(received);
             Assert.NotNull(received.Body);
             Assert.True(received.ApplicationProperties.ContainsKey(ServiceBusMessageProperties.EventType));
             Assert.Equal("person.created", received.ApplicationProperties[ServiceBusMessageProperties.EventType]);
 
-            await _receiver.CompleteMessageAsync(received);
+            await _receiver.CompleteMessageAsync(received, cancellationToken);
         }
 
         [Fact]

@@ -19,10 +19,11 @@ public class OpenTelemetryPublishMiddlewareTests
     [Fact]
     public async Task PublishEventAsync_InjectsTraceContextIntoEvent()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var fixture = new TestFixture();
         var publisher = fixture.CreatePublisher();
 
-        await publisher.PublishEventAsync(MakeEvent());
+        await publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken);
 
         var traceparentAttr = CloudEventAttribute.CreateExtension(TraceParentKey, CloudEventAttributeType.String);
         var traceparent = fixture.Received[0][traceparentAttr] as string;
@@ -33,10 +34,11 @@ public class OpenTelemetryPublishMiddlewareTests
     [Fact]
     public async Task PublishEventAsync_CreatesProducerSpan()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var fixture = new TestFixture();
         var publisher = fixture.CreatePublisher();
 
-        await publisher.PublishEventAsync(MakeEvent("com.test.order"));
+        await publisher.PublishEventAsync(MakeEvent("com.test.order"), cancellationToken: cancellationToken);
 
         var activity = fixture.SingleProducerActivity;
         Assert.Equal("publish com.test.order", activity.DisplayName);
@@ -46,12 +48,13 @@ public class OpenTelemetryPublishMiddlewareTests
     [Fact]
     public async Task PublishEventAsync_SetsEventIdTag()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var fixture = new TestFixture();
         var publisher = fixture.CreatePublisher();
 
         var evt = MakeEvent();
         evt.Id = "my-event-id";
-        await publisher.PublishEventAsync(evt);
+        await publisher.PublishEventAsync(evt, cancellationToken: cancellationToken);
 
         Assert.Equal("my-event-id", fixture.SingleProducerActivity.GetTagItem("event.id"));
     }
@@ -59,10 +62,11 @@ public class OpenTelemetryPublishMiddlewareTests
     [Fact]
     public async Task PublishEventAsync_PropagatesException_FromChannel()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var fixture = new TestFixture(throwOnChannel: true);
         var publisher = fixture.CreatePublisher();
 
-        await Assert.ThrowsAsync<EventPublishChannelException>(() => publisher.PublishEventAsync(MakeEvent()));
+        await Assert.ThrowsAsync<EventPublishChannelException>(() => publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken));
 
         Assert.Equal(ActivityStatusCode.Error, fixture.SingleProducerActivity.Status);
     }
@@ -70,6 +74,7 @@ public class OpenTelemetryPublishMiddlewareTests
     [Fact]
     public async Task PublishEventAsync_InvokesEnrichWithEvent_Callback()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         Activity? enrichedActivity = null;
         CloudEvent? enrichedEvent = null;
 
@@ -83,7 +88,7 @@ public class OpenTelemetryPublishMiddlewareTests
         });
         var publisher = fixture.CreatePublisher();
 
-        await publisher.PublishEventAsync(MakeEvent());
+        await publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken);
 
         Assert.NotNull(enrichedActivity);
         Assert.NotNull(enrichedEvent);
@@ -94,10 +99,11 @@ public class OpenTelemetryPublishMiddlewareTests
     [Fact]
     public async Task PublishEventAsync_SetsExceptionDetails_WhenRecordExceptionIsTrue()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var fixture = new TestFixture(throwOnChannel: true, recordException: true);
         var publisher = fixture.CreatePublisher();
 
-        await Assert.ThrowsAsync<EventPublishChannelException>(() => publisher.PublishEventAsync(MakeEvent()));
+        await Assert.ThrowsAsync<EventPublishChannelException>(() => publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken));
 
         var activity = fixture.SingleProducerActivity;
         Assert.Equal(ActivityStatusCode.Error, activity.Status);
@@ -108,10 +114,11 @@ public class OpenTelemetryPublishMiddlewareTests
     [Fact]
     public async Task PublishEventAsync_UsesDefaultOptions_WhenNotConfigured()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var fixture = new TestFixtureWithoutOptions();
         var publisher = fixture.CreatePublisher();
 
-        await publisher.PublishEventAsync(MakeEvent());
+        await publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken);
 
         Assert.Single(fixture.Received);
     }
@@ -120,10 +127,11 @@ public class OpenTelemetryPublishMiddlewareTests
     [Fact]
     public async Task PublishEventAsync_SetsMessagingSystemTag()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var fixture = new TestFixture();
         var publisher = fixture.CreatePublisher();
 
-        await publisher.PublishEventAsync(MakeEvent());
+        await publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken);
 
         var activity = fixture.SingleProducerActivity;
         Assert.Equal("hermodr", activity.GetTagItem("messaging.system"));

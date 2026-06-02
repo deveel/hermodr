@@ -124,6 +124,7 @@ namespace Hermodr {
 
         [Fact]
         public static async Task WriteSchema_CustomSerializer_UsedForOutput() {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var schema = new EventSchema("test", "1.0", "application/json");
             schema.Properties.Add(new EventProperty("id", "guid"));
 
@@ -133,9 +134,9 @@ namespace Hermodr {
 
             var writer = new EventSchemaYamlWriter(customSerializer);
             using var stream = new MemoryStream();
-            await writer.WriteToAsync(stream, schema);
+            await writer.WriteToAsync(stream, schema, cancellationToken);
             stream.Position = 0;
-            var yaml = await new StreamReader(stream).ReadToEndAsync();
+            var yaml = await new StreamReader(stream).ReadToEndAsync(cancellationToken);
 
             Assert.NotEmpty(yaml);
             Assert.Contains("type:", yaml);

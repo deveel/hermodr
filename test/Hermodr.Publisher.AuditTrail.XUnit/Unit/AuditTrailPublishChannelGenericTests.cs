@@ -27,6 +27,7 @@ public class AuditTrailPublishChannelGenericTests
     [Fact]
     public async Task PublishAsync_ShouldAppendEvent()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var channel = new AuditTrailPublishChannel<TestEvent>(
             _auditTrail,
             Options.Create(new AuditTrailPublishOptions()));
@@ -38,7 +39,7 @@ public class AuditTrailPublishChannelGenericTests
             Source = new Uri("https://test.com")
         };
 
-        await channel.PublishAsync(cloudEvent);
+        await channel.PublishAsync(cloudEvent, cancellationToken: cancellationToken);
 
         var entries = _bag.GetAll();
         Assert.Single(entries);
@@ -48,6 +49,7 @@ public class AuditTrailPublishChannelGenericTests
     [Fact]
     public async Task PublishAsync_WithBypassOptions_ShouldNotAppend()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var channel = new AuditTrailPublishChannel<TestEvent>(
             _auditTrail,
             Options.Create(new AuditTrailPublishOptions()));
@@ -59,7 +61,7 @@ public class AuditTrailPublishChannelGenericTests
             Source = new Uri("https://test.com")
         };
 
-        await channel.PublishAsync(cloudEvent, new BypassAuditTrailOptions());
+        await channel.PublishAsync(cloudEvent, new BypassAuditTrailOptions(), cancellationToken: cancellationToken);
 
         var entries = _bag.GetAll();
         Assert.Empty(entries);
@@ -68,6 +70,7 @@ public class AuditTrailPublishChannelGenericTests
     [Fact]
     public async Task PublishAsync_MultipleEvents_ShouldAppendAll()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var channel = new AuditTrailPublishChannel<TestEvent>(
             _auditTrail,
             Options.Create(new AuditTrailPublishOptions()));
@@ -79,7 +82,7 @@ public class AuditTrailPublishChannelGenericTests
                 Id = $"event-{i}",
                 Type = "test-type",
                 Source = new Uri("https://test.com")
-            });
+            }, cancellationToken: cancellationToken);
         }
 
         var entries = _bag.GetAll();

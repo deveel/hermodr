@@ -100,9 +100,10 @@ namespace Hermodr {
 
         [Fact]
         public async Task WriteJson_StreamLeftOpen() {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var writer = new EventSchemaAsyncApiWriter();
             using var ms = new MemoryStream();
-            await writer.WriteToAsync(ms, TestSchemas.SimpleSchema());
+            await writer.WriteToAsync(ms, TestSchemas.SimpleSchema(), cancellationToken);
 
             Assert.True(ms.CanWrite);
         }

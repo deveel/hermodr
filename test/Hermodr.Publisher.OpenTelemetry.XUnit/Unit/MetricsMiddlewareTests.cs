@@ -18,22 +18,30 @@ public class MetricsMiddlewareTests
     [Fact]
     public async Task PublishEventAsync_RecordsPublishTotal()
     {
+        // Arrange
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var fixture = new MetricsTestFixture();
         var publisher = fixture.CreatePublisher();
 
-        await publisher.PublishEventAsync(MakeEvent());
+        // Act
+        await publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken);
 
+        // Assert
         Assert.Equal(1, fixture.PublishTotalCount);
     }
 
     [Fact]
     public async Task PublishEventAsync_RecordsPublishDuration()
     {
+        // Arrange
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var fixture = new MetricsTestFixture();
         var publisher = fixture.CreatePublisher();
 
-        await publisher.PublishEventAsync(MakeEvent());
+        // Act
+        await publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken);
 
+        // Assert
         Assert.NotEmpty(fixture.PublishDurationValues);
         Assert.All(fixture.PublishDurationValues, v => Assert.True(v >= 0));
     }
@@ -41,11 +49,15 @@ public class MetricsMiddlewareTests
     [Fact]
     public async Task PublishEventAsync_RecordsDurationWithSuccessTag()
     {
+        // Arrange
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var fixture = new MetricsTestFixture();
         var publisher = fixture.CreatePublisher();
 
-        await publisher.PublishEventAsync(MakeEvent());
+        // Act
+        await publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken);
 
+        // Assert
         Assert.Single(fixture.PublishDurationTags);
         var tags = fixture.PublishDurationTags[0];
         Assert.Contains(tags, kvp => kvp.Key == "success" && kvp.Value?.Equals(true) == true);
@@ -54,10 +66,13 @@ public class MetricsMiddlewareTests
     [Fact]
     public async Task PublishEventAsync_RecordsErrorCount_OnChannelFailure()
     {
+        // Arrange
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var fixture = new MetricsTestFixture(throwOnChannel: true);
         var publisher = fixture.CreatePublisher();
 
-        await Assert.ThrowsAsync<EventPublishChannelException>(() => publisher.PublishEventAsync(MakeEvent()));
+        // Act & Assert
+        await Assert.ThrowsAsync<EventPublishChannelException>(() => publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken));
 
         Assert.Equal(1, fixture.PublishErrorCount);
     }
@@ -65,10 +80,13 @@ public class MetricsMiddlewareTests
     [Fact]
     public async Task PublishEventAsync_RecordsDurationWithFailureTag_OnChannelFailure()
     {
+        // Arrange
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var fixture = new MetricsTestFixture(throwOnChannel: true);
         var publisher = fixture.CreatePublisher();
 
-        await Assert.ThrowsAsync<EventPublishChannelException>(() => publisher.PublishEventAsync(MakeEvent()));
+        // Act & Assert
+        await Assert.ThrowsAsync<EventPublishChannelException>(() => publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken));
 
         Assert.Single(fixture.PublishDurationTags);
         var tags = fixture.PublishDurationTags[0];
@@ -78,11 +96,15 @@ public class MetricsMiddlewareTests
     [Fact]
     public async Task PublishEventAsync_SkipsMetrics_WhenMetricsDisabled()
     {
+        // Arrange
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var fixture = new MetricsTestFixture(configure: opts => opts.Metrics.Enabled = false);
         var publisher = fixture.CreatePublisher();
 
-        await publisher.PublishEventAsync(MakeEvent());
+        // Act
+        await publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken);
 
+        // Assert
         Assert.Equal(0, fixture.PublishTotalCount);
         Assert.Empty(fixture.PublishDurationValues);
         Assert.Equal(0, fixture.PublishErrorCount);
@@ -91,11 +113,15 @@ public class MetricsMiddlewareTests
     [Fact]
     public async Task PublishEventAsync_SkipsPublishDuration_WhenToggleOff()
     {
+        // Arrange
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var fixture = new MetricsTestFixture(configure: opts => opts.Metrics.PublishDuration = false);
         var publisher = fixture.CreatePublisher();
 
-        await publisher.PublishEventAsync(MakeEvent());
+        // Act
+        await publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken);
 
+        // Assert
         Assert.Empty(fixture.PublishDurationValues);
         Assert.Equal(1, fixture.PublishTotalCount);
     }
@@ -103,11 +129,15 @@ public class MetricsMiddlewareTests
     [Fact]
     public async Task PublishEventAsync_SkipsPublishTotal_WhenToggleOff()
     {
+        // Arrange
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var fixture = new MetricsTestFixture(configure: opts => opts.Metrics.PublishTotal = false);
         var publisher = fixture.CreatePublisher();
 
-        await publisher.PublishEventAsync(MakeEvent());
+        // Act
+        await publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken);
 
+        // Assert
         Assert.Equal(0, fixture.PublishTotalCount);
         Assert.NotEmpty(fixture.PublishDurationValues);
     }
@@ -115,12 +145,15 @@ public class MetricsMiddlewareTests
     [Fact]
     public async Task PublishEventAsync_SkipsPublishErrors_WhenToggleOff()
     {
+        // Arrange
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var fixture = new MetricsTestFixture(
             throwOnChannel: true,
             configure: opts => opts.Metrics.PublishErrors = false);
         var publisher = fixture.CreatePublisher();
 
-        await Assert.ThrowsAsync<EventPublishChannelException>(() => publisher.PublishEventAsync(MakeEvent()));
+        // Act & Assert
+        await Assert.ThrowsAsync<EventPublishChannelException>(() => publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken));
 
         Assert.Equal(0, fixture.PublishErrorCount);
     }
@@ -128,11 +161,15 @@ public class MetricsMiddlewareTests
     [Fact]
     public async Task PublishEventAsync_RecordsEventTypeTag()
     {
+        // Arrange
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var fixture = new MetricsTestFixture();
         var publisher = fixture.CreatePublisher();
 
-        await publisher.PublishEventAsync(MakeEvent("com.test.order"));
+        // Act
+        await publisher.PublishEventAsync(MakeEvent("com.test.order"), cancellationToken: cancellationToken);
 
+        // Assert
         Assert.Single(fixture.PublishTotalTags);
         var tags = fixture.PublishTotalTags[0];
         Assert.Contains(tags, kvp => kvp.Key == "event.type" && kvp.Value?.Equals("com.test.order") == true);

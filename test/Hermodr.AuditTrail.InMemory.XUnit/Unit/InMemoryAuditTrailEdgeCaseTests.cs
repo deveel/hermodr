@@ -13,25 +13,27 @@ public class InMemoryAuditTrailEdgeCaseTests
     [Fact]
     public async Task AppendAsync_NullEvent_ShouldThrowArgumentNullException()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var bag = new InMemorySharedBag<AuditTrailEntry>();
         var auditTrail = new InMemoryAuditTrail(bag);
 
-        await Assert.ThrowsAsync<ArgumentNullException>(() => auditTrail.AppendAsync(null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => auditTrail.AppendAsync(null!, cancellationToken: cancellationToken));
     }
 
     [Fact]
     public async Task ReadAsync_WithFromOnly_ShouldFilterCorrectly()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var bag = new InMemorySharedBag<AuditTrailEntry>();
         var auditTrail = new InMemoryAuditTrail(bag);
         var now = DateTimeOffset.UtcNow;
 
-        await auditTrail.AppendAsync(new CloudEvent { Id = "1", Type = "t", Source = new Uri("https://test.com"), Time = now.AddHours(-5) });
-        await auditTrail.AppendAsync(new CloudEvent { Id = "2", Type = "t", Source = new Uri("https://test.com"), Time = now.AddHours(-1) });
+        await auditTrail.AppendAsync(new CloudEvent { Id = "1", Type = "t", Source = new Uri("https://test.com"), Time = now.AddHours(-5) }, cancellationToken: cancellationToken);
+        await auditTrail.AppendAsync(new CloudEvent { Id = "2", Type = "t", Source = new Uri("https://test.com"), Time = now.AddHours(-1) }, cancellationToken: cancellationToken);
 
         var query = new AuditTrailStreamQuery { From = now.AddHours(-3) };
         var results = new List<AuditTrailEntry>();
-        await foreach (var entry in auditTrail.ReadAsync(query))
+        await foreach (var entry in auditTrail.ReadAsync(query, cancellationToken: cancellationToken))
         {
             results.Add(entry);
         }
@@ -43,16 +45,17 @@ public class InMemoryAuditTrailEdgeCaseTests
     [Fact]
     public async Task ReadAsync_WithToOnly_ShouldFilterCorrectly()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var bag = new InMemorySharedBag<AuditTrailEntry>();
         var auditTrail = new InMemoryAuditTrail(bag);
         var now = DateTimeOffset.UtcNow;
 
-        await auditTrail.AppendAsync(new CloudEvent { Id = "1", Type = "t", Source = new Uri("https://test.com"), Time = now.AddHours(-5) });
-        await auditTrail.AppendAsync(new CloudEvent { Id = "2", Type = "t", Source = new Uri("https://test.com"), Time = now.AddHours(-1) });
+        await auditTrail.AppendAsync(new CloudEvent { Id = "1", Type = "t", Source = new Uri("https://test.com"), Time = now.AddHours(-5) }, cancellationToken: cancellationToken);
+        await auditTrail.AppendAsync(new CloudEvent { Id = "2", Type = "t", Source = new Uri("https://test.com"), Time = now.AddHours(-1) }, cancellationToken: cancellationToken);
 
         var query = new AuditTrailStreamQuery { To = now.AddHours(-3) };
         var results = new List<AuditTrailEntry>();
-        await foreach (var entry in auditTrail.ReadAsync(query))
+        await foreach (var entry in auditTrail.ReadAsync(query, cancellationToken: cancellationToken))
         {
             results.Add(entry);
         }
@@ -64,6 +67,7 @@ public class InMemoryAuditTrailEdgeCaseTests
     [Fact]
     public async Task ReadAsync_WithMultipleAttributes_ShouldFilterCorrectly()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var bag = new InMemorySharedBag<AuditTrailEntry>();
         var auditTrail = new InMemoryAuditTrail(bag);
 
@@ -74,15 +78,15 @@ public class InMemoryAuditTrailEdgeCaseTests
         var ce2 = new CloudEvent { Id = "2", Type = "t", Source = new Uri("https://test.com") };
         ce2["attr1"] = "val1";
 
-        await auditTrail.AppendAsync(ce1);
-        await auditTrail.AppendAsync(ce2);
+        await auditTrail.AppendAsync(ce1, cancellationToken: cancellationToken);
+        await auditTrail.AppendAsync(ce2, cancellationToken: cancellationToken);
 
         var query = new AuditTrailStreamQuery
         {
             Attributes = new Dictionary<string, string> { ["attr1"] = "val1", ["attr2"] = "val2" }
         };
         var results = new List<AuditTrailEntry>();
-        await foreach (var entry in auditTrail.ReadAsync(query))
+        await foreach (var entry in auditTrail.ReadAsync(query, cancellationToken: cancellationToken))
         {
             results.Add(entry);
         }
@@ -94,10 +98,11 @@ public class InMemoryAuditTrailEdgeCaseTests
     [Fact]
     public async Task ReadAsync_CancellationRequested_ShouldThrowOperationCanceled()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var bag = new InMemorySharedBag<AuditTrailEntry>();
         var auditTrail = new InMemoryAuditTrail(bag);
 
-        await auditTrail.AppendAsync(new CloudEvent { Id = "1", Type = "t", Source = new Uri("https://test.com") });
+        await auditTrail.AppendAsync(new CloudEvent { Id = "1", Type = "t", Source = new Uri("https://test.com") }, cancellationToken: cancellationToken);
 
         using var cts = new CancellationTokenSource();
         cts.Cancel();
@@ -110,18 +115,19 @@ public class InMemoryAuditTrailEdgeCaseTests
                 {
                     // Should not reach here
                 }
-            });
+            }, cancellationToken: cancellationToken);
         });
     }
 
     [Fact]
     public async Task ReadAsync_EmptyBag_ShouldReturnEmpty()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var bag = new InMemorySharedBag<AuditTrailEntry>();
         var auditTrail = new InMemoryAuditTrail(bag);
 
         var results = new List<AuditTrailEntry>();
-        await foreach (var entry in auditTrail.ReadAsync())
+        await foreach (var entry in auditTrail.ReadAsync(cancellationToken: cancellationToken))
         {
             results.Add(entry);
         }

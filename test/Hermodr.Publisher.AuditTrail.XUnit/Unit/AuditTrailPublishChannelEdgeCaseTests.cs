@@ -24,6 +24,7 @@ public class AuditTrailPublishChannelEdgeCaseTests
     [Fact]
     public async Task PublishCoreAsync_WriterThrows_ShouldPropagateException()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var failingWriter = new FailingAuditTrailWriter();
         var channel = new AuditTrailPublishChannel(
             failingWriter,
@@ -37,12 +38,13 @@ public class AuditTrailPublishChannelEdgeCaseTests
         };
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            channel.PublishAsync(cloudEvent));
+            channel.PublishAsync(cloudEvent, cancellationToken: cancellationToken));
     }
 
     [Fact]
     public async Task PublishCoreAsync_Success_ShouldAppendToWriter()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var channel = new AuditTrailPublishChannel(
             _auditTrail,
             Options.Create(new AuditTrailPublishOptions()));
@@ -54,7 +56,7 @@ public class AuditTrailPublishChannelEdgeCaseTests
             Source = new Uri("https://test.com")
         };
 
-        await channel.PublishAsync(cloudEvent);
+        await channel.PublishAsync(cloudEvent, cancellationToken: cancellationToken);
 
         var entries = _bag.GetAll();
         Assert.Single(entries);
@@ -64,6 +66,7 @@ public class AuditTrailPublishChannelEdgeCaseTests
     [Fact]
     public async Task PublishCoreAsync_BypassOptions_ShouldNotAppend()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var channel = new AuditTrailPublishChannel(
             _auditTrail,
             Options.Create(new AuditTrailPublishOptions()));
@@ -75,7 +78,7 @@ public class AuditTrailPublishChannelEdgeCaseTests
             Source = new Uri("https://test.com")
         };
 
-        await channel.PublishAsync(cloudEvent, new BypassAuditTrailOptions());
+        await channel.PublishAsync(cloudEvent, new BypassAuditTrailOptions(), cancellationToken: cancellationToken);
 
         var entries = _bag.GetAll();
         Assert.Empty(entries);
@@ -84,6 +87,7 @@ public class AuditTrailPublishChannelEdgeCaseTests
     [Fact]
     public async Task PublishCoreAsync_AuditTrailPublishOptions_ShouldAppend()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var channel = new AuditTrailPublishChannel(
             _auditTrail,
             Options.Create(new AuditTrailPublishOptions()));
@@ -95,7 +99,7 @@ public class AuditTrailPublishChannelEdgeCaseTests
             Source = new Uri("https://test.com")
         };
 
-        await channel.PublishAsync(cloudEvent, new AuditTrailPublishOptions());
+        await channel.PublishAsync(cloudEvent, new AuditTrailPublishOptions(), cancellationToken: cancellationToken);
 
         var entries = _bag.GetAll();
         Assert.Single(entries);
@@ -104,6 +108,7 @@ public class AuditTrailPublishChannelEdgeCaseTests
     [Fact]
     public async Task PublishCoreAsync_MultipleEvents_ShouldAppendAll()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var channel = new AuditTrailPublishChannel(
             _auditTrail,
             Options.Create(new AuditTrailPublishOptions()));
@@ -115,7 +120,7 @@ public class AuditTrailPublishChannelEdgeCaseTests
                 Id = $"event-{i}",
                 Type = "test-type",
                 Source = new Uri("https://test.com")
-            });
+            }, cancellationToken: cancellationToken);
         }
 
         var entries = _bag.GetAll();

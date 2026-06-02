@@ -25,6 +25,7 @@ public class OpenTelemetryBuilderExtensionsTests
     [Fact]
     public async Task UseOpenTelemetry_RegistersBothMiddlewares()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var capturedActivities = new List<Activity>();
         var sourceName = $"Hermodr.Test.{Guid.NewGuid():N}";
         using var source = new ActivitySource(sourceName);
@@ -43,7 +44,7 @@ public class OpenTelemetryBuilderExtensionsTests
         await using var provider = services.BuildServiceProvider();
         var publisher = provider.GetRequiredService<EventPublisher>();
 
-        await publisher.PublishEventAsync(MakeEvent());
+        await publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken);
 
         var producerActivity = capturedActivities.Single(a => a.Kind == ActivityKind.Producer);
         var consumerActivity = capturedActivities.Single(a => a.Kind == ActivityKind.Consumer);
@@ -54,6 +55,7 @@ public class OpenTelemetryBuilderExtensionsTests
     [Fact]
     public async Task UseOpenTelemetry_DisablesSubscriptionSpan_WhenConfigured()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var capturedActivities = new List<Activity>();
         var sourceName = $"Hermodr.Test.{Guid.NewGuid():N}";
         using var source = new ActivitySource(sourceName);
@@ -76,7 +78,7 @@ public class OpenTelemetryBuilderExtensionsTests
         await using var provider = services.BuildServiceProvider();
         var publisher = provider.GetRequiredService<EventPublisher>();
 
-        await publisher.PublishEventAsync(MakeEvent());
+        await publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken);
 
         Assert.Single(capturedActivities);
         Assert.Equal(ActivityKind.Producer, capturedActivities[0].Kind);
@@ -85,6 +87,7 @@ public class OpenTelemetryBuilderExtensionsTests
     [Fact]
     public async Task UseOpenTelemetry_DisablesPublisherSpan_WhenConfigured()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var capturedActivities = new List<Activity>();
         var sourceName = $"Hermodr.Test.{Guid.NewGuid():N}";
         using var source = new ActivitySource(sourceName);
@@ -107,7 +110,7 @@ public class OpenTelemetryBuilderExtensionsTests
         await using var provider = services.BuildServiceProvider();
         var publisher = provider.GetRequiredService<EventPublisher>();
 
-        await publisher.PublishEventAsync(MakeEvent());
+        await publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken);
 
         Assert.Single(capturedActivities);
         Assert.Equal(ActivityKind.Consumer, capturedActivities[0].Kind);
@@ -116,6 +119,7 @@ public class OpenTelemetryBuilderExtensionsTests
     [Fact]
     public async Task UseOpenTelemetry_UsesCustomActivitySourceName()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var customSourceName = $"Custom.Hermodr.{Guid.NewGuid():N}";
         var capturedActivities = new List<Activity>();
         using var source = new ActivitySource(customSourceName);
@@ -130,7 +134,7 @@ public class OpenTelemetryBuilderExtensionsTests
         await using var provider = services.BuildServiceProvider();
         var publisher = provider.GetRequiredService<EventPublisher>();
 
-        await publisher.PublishEventAsync(MakeEvent());
+        await publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken);
 
         Assert.NotEmpty(capturedActivities);
         Assert.All(capturedActivities, a => Assert.Equal(customSourceName, a.Source!.Name));
@@ -139,6 +143,7 @@ public class OpenTelemetryBuilderExtensionsTests
     [Fact]
     public async Task UseOpenTelemetry_InjectsTrace_WhenFullInstrumentation()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var sourceName = $"Hermodr.Test.{Guid.NewGuid():N}";
         using var source = new ActivitySource(sourceName);
         using var listener = CreateListener(source, new List<Activity>());
@@ -157,7 +162,7 @@ public class OpenTelemetryBuilderExtensionsTests
         await using var provider = services.BuildServiceProvider();
         var publisher = provider.GetRequiredService<EventPublisher>();
 
-        await publisher.PublishEventAsync(MakeEvent());
+        await publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken);
 
         Assert.Single(received);
         var traceparentAttr = CloudEventAttribute.CreateExtension(TraceParentKey, CloudEventAttributeType.String);
@@ -167,6 +172,7 @@ public class OpenTelemetryBuilderExtensionsTests
     [Fact]
     public async Task UseOpenTelemetry_CanBeChainedWithOtherBuilderMethods()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var sourceName = $"Hermodr.Test.{Guid.NewGuid():N}";
         using var source = new ActivitySource(sourceName);
         using var listener = CreateListener(source, new List<Activity>());
@@ -183,7 +189,7 @@ public class OpenTelemetryBuilderExtensionsTests
         await using var provider = services.BuildServiceProvider();
         var publisher = provider.GetRequiredService<EventPublisher>();
 
-        await publisher.PublishEventAsync(MakeEvent());
+        await publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken);
 
         Assert.Single(received);
     }

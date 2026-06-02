@@ -29,6 +29,7 @@ namespace Hermodr
         public async Task Should_InvokeCallback_When_SyncActionCallbackIsRegistered()
         {
             // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             var receivedEvents = new List<CloudEvent>();
             var services = new ServiceCollection();
             services.AddEventPublisher()
@@ -36,7 +37,7 @@ namespace Hermodr
             var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
 
             // Act
-            await publisher.PublishEventAsync(MakeEvent());
+            await publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken);
 
             // Assert
             Assert.Single(receivedEvents);
@@ -46,6 +47,7 @@ namespace Hermodr
         public async Task Should_InvokeCallback_When_AsyncFuncCallbackIsRegistered()
         {
             // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             var receivedEvents = new List<CloudEvent>();
             var services = new ServiceCollection();
             services.AddEventPublisher()
@@ -57,7 +59,7 @@ namespace Hermodr
             var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
 
             // Act
-            await publisher.PublishEventAsync(MakeEvent());
+            await publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken);
 
             // Assert
             Assert.Single(receivedEvents);
@@ -67,6 +69,7 @@ namespace Hermodr
         public async Task Should_InvokeCallback_When_IEventPublishCallbackIsRegistered()
         {
             // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             var callback = new CountingCallback();
             var services = new ServiceCollection();
             services.AddEventPublisher()
@@ -74,7 +77,7 @@ namespace Hermodr
             var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
 
             // Act
-            await publisher.PublishEventAsync(MakeEvent());
+            await publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken);
 
             // Assert
             Assert.Equal(1, callback.Count);
@@ -84,6 +87,7 @@ namespace Hermodr
         public async Task Should_InvokeAsyncCallback_When_AsyncIEventPublishCallbackIsRegistered()
         {
             // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             var receivedEvents = new List<CloudEvent>();
             var callback = new AsyncCallback(e =>
             {
@@ -96,7 +100,7 @@ namespace Hermodr
             var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
 
             // Act
-            await publisher.PublishEventAsync(MakeEvent());
+            await publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken);
 
             // Assert
             Assert.Single(receivedEvents);
@@ -108,6 +112,7 @@ namespace Hermodr
         public async Task Should_InvokeSyncCallback_When_TypedSyncCallbackIsRegistered()
         {
             // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             var received = new List<CloudEvent>();
             var services = new ServiceCollection();
             services.AddEventPublisher(o => o.Source = new Uri("https://api.example.com"))
@@ -115,7 +120,7 @@ namespace Hermodr
             var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
 
             // Act
-            await publisher.PublishAsync(new OrderPlaced { OrderId = "T-001" });
+            await publisher.PublishAsync(new OrderPlaced { OrderId = "T-001" }, cancellationToken: cancellationToken);
 
             // Assert
             Assert.Single(received);
@@ -125,6 +130,7 @@ namespace Hermodr
         public async Task Should_InvokeAsyncCallback_When_TypedAsyncCallbackIsRegistered()
         {
             // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             var received = new List<CloudEvent>();
             var services = new ServiceCollection();
             services.AddEventPublisher(o => o.Source = new Uri("https://api.example.com"))
@@ -136,7 +142,7 @@ namespace Hermodr
             var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
 
             // Act
-            await publisher.PublishAsync(new OrderPlaced { OrderId = "T-002" });
+            await publisher.PublishAsync(new OrderPlaced { OrderId = "T-002" }, cancellationToken: cancellationToken);
 
             // Assert
             Assert.Single(received);
@@ -146,6 +152,7 @@ namespace Hermodr
         public async Task Should_OnlyReceiveMatchingEventType_When_MultipleTypedChannelsAreRegistered()
         {
             // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             var orderReceived = new List<CloudEvent>();
             var userReceived  = new List<CloudEvent>();
             var services = new ServiceCollection();
@@ -155,7 +162,7 @@ namespace Hermodr
             var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
 
             // Act
-            await publisher.PublishAsync(new OrderPlaced { OrderId = "X-1" });
+            await publisher.PublishAsync(new OrderPlaced { OrderId = "X-1" }, cancellationToken: cancellationToken);
 
             // Assert
             Assert.Single(orderReceived);
@@ -166,6 +173,7 @@ namespace Hermodr
         public async Task Should_EnrichEvent_When_TypedEventIsPublished()
         {
             // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             CloudEvent? received = null;
             var services = new ServiceCollection();
             services.AddEventPublisher(o => o.Source = new Uri("https://api.example.com"))
@@ -173,7 +181,7 @@ namespace Hermodr
             var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
 
             // Act
-            await publisher.PublishAsync(new OrderPlaced { OrderId = "enrich-1" });
+            await publisher.PublishAsync(new OrderPlaced { OrderId = "enrich-1" }, cancellationToken: cancellationToken);
 
             // Assert
             Assert.NotNull(received);

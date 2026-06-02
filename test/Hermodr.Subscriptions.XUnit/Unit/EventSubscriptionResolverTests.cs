@@ -52,12 +52,13 @@ namespace Hermodr
         [Fact]
         public static async Task Registry_AsResolver_ReturnsMatchingSubscriptions()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var sub = MakeSub(EventFilter.ByType("com.example.order.placed"), "order");
             var registry = new EventSubscriptionRegistry([sub]);
 
             IEventSubscriptionResolver resolver = registry;
 
-            var matches = await resolver.ResolveSubscriptionsAsync(MakeEvent("com.example.order.placed"));
+            var matches = await resolver.ResolveSubscriptionsAsync(MakeEvent("com.example.order.placed"), cancellationToken: cancellationToken);
             Assert.Single(matches);
             Assert.Same(sub, matches[0]);
         }
@@ -65,18 +66,20 @@ namespace Hermodr
         [Fact]
         public static async Task Registry_AsResolver_EmptyWhenNoMatch()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var sub = MakeSub(EventFilter.ByType("com.example.other"), "other");
             var registry = new EventSubscriptionRegistry([sub]);
 
             IEventSubscriptionResolver resolver = registry;
 
-            var matches = await resolver.ResolveSubscriptionsAsync(MakeEvent("com.example.order.placed"));
+            var matches = await resolver.ResolveSubscriptionsAsync(MakeEvent("com.example.order.placed"), cancellationToken: cancellationToken);
             Assert.Empty(matches);
         }
 
         [Fact]
         public static async Task Registry_AsResolver_WithContextOverload_Works()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var sub = MakeSub(EventFilter.ByType("com.example.order.placed"), "order");
             var registry = new EventSubscriptionRegistry([sub]);
 
@@ -84,7 +87,8 @@ namespace Hermodr
 
             var matches = await resolver.ResolveSubscriptionsAsync(
                 MakeEvent("com.example.order.placed"),
-                context: null);
+                context: null,
+                cancellationToken: cancellationToken);
 
             Assert.Single(matches);
             Assert.Same(sub, matches[0]);
@@ -95,6 +99,7 @@ namespace Hermodr
         [Fact]
         public static async Task ReadOnlyResolver_CanBeUsedWithPublisherPipeline()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var handled = new List<string>();
 
             var sub = new EventSubscription(
@@ -113,7 +118,7 @@ namespace Hermodr
             var provider = services.BuildServiceProvider();
             var publisher = provider.GetRequiredService<EventPublisher>().UseDispatcher();
 
-            await publisher.PublishEventAsync(MakeEvent("com.example.order.placed"));
+            await publisher.PublishEventAsync(MakeEvent("com.example.order.placed"), cancellationToken: cancellationToken);
 
             Assert.Single(handled);
             Assert.Equal("com.example.order.placed", handled[0]);
@@ -133,6 +138,7 @@ namespace Hermodr
         [Fact]
         public static async Task MultipleResolvers_AllMatchingSubscriptionsAreDispatched()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var invoked = new List<string>();
 
             var sub1 = new EventSubscription(
@@ -155,7 +161,7 @@ namespace Hermodr
             var provider = services.BuildServiceProvider();
             var publisher = provider.GetRequiredService<EventPublisher>().UseDispatcher();
 
-            await publisher.PublishEventAsync(MakeEvent("com.example.order.placed"));
+            await publisher.PublishEventAsync(MakeEvent("com.example.order.placed"), cancellationToken: cancellationToken);
 
             Assert.Equal(["resolver-1", "resolver-2"], invoked);
         }
@@ -163,6 +169,7 @@ namespace Hermodr
         [Fact]
         public static async Task MultipleResolvers_OnlyMatchingSubscriptionsFromEachAreDispatched()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var invoked = new List<string>();
 
             var orderSub = new EventSubscription(
@@ -186,7 +193,7 @@ namespace Hermodr
             var publisher = provider.GetRequiredService<EventPublisher>().UseDispatcher();
 
             // Only the order resolver should match.
-            await publisher.PublishEventAsync(MakeEvent("com.example.order.placed"));
+            await publisher.PublishEventAsync(MakeEvent("com.example.order.placed"), cancellationToken: cancellationToken);
 
             Assert.Single(invoked);
             Assert.Equal("order", invoked[0]);
@@ -195,6 +202,7 @@ namespace Hermodr
         [Fact]
         public static async Task MultipleResolvers_NoMatchAcrossAllResolvers_NothingInvoked()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var invoked = false;
 
             var sub = new EventSubscription(
@@ -211,7 +219,7 @@ namespace Hermodr
             var provider = services.BuildServiceProvider();
             var publisher = provider.GetRequiredService<EventPublisher>().UseDispatcher();
 
-            await publisher.PublishEventAsync(MakeEvent("com.example.order.placed"));
+            await publisher.PublishEventAsync(MakeEvent("com.example.order.placed"), cancellationToken: cancellationToken);
 
             Assert.False(invoked);
         }
@@ -219,6 +227,7 @@ namespace Hermodr
         [Fact]
         public static async Task MultipleResolvers_OrderIsPreserved()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var order = new List<string>();
 
             var services = new ServiceCollection();
@@ -239,7 +248,7 @@ namespace Hermodr
             var provider = services.BuildServiceProvider();
             var publisher = provider.GetRequiredService<EventPublisher>().UseDispatcher();
 
-            await publisher.PublishEventAsync(MakeEvent());
+            await publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken);
 
             Assert.Equal(["A", "B", "C"], order);
         }
@@ -255,6 +264,7 @@ namespace Hermodr
         [Fact]
         public static async Task Resolver_ReceivesContext_WithServicesFromEventContext()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var services = new ServiceCollection();
             services.AddLogging();
             services.AddSingleton<CapturingResolver>();
@@ -267,7 +277,7 @@ namespace Hermodr
             var publisher = provider.GetRequiredService<EventPublisher>()
                 .UseDispatcher();
 
-            await publisher.PublishEventAsync(MakeEvent());
+            await publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken);
 
             Assert.NotNull(resolver.ReceivedContext);
             // ResolvedInstance is set by CapturingResolver while the scope is alive;
@@ -279,6 +289,7 @@ namespace Hermodr
         [Fact]
         public static async Task Resolver_ReceivesContext_WhenDispatchedViaPublisher()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var services = new ServiceCollection();
             services.AddLogging();
             services.AddSingleton<CapturingResolver>();
@@ -290,7 +301,7 @@ namespace Hermodr
             var resolver = provider.GetRequiredService<CapturingResolver>();
             var publisher = provider.GetRequiredService<EventPublisher>().UseDispatcher();
 
-            await publisher.PublishEventAsync(MakeEvent());
+            await publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken);
 
             Assert.NotNull(resolver.ReceivedContext);
         }
@@ -300,6 +311,7 @@ namespace Hermodr
         [Fact]
         public static async Task AddSubscriptionResolver_IsQueriedByDispatcher()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var invoked = new List<string>();
 
             var services = new ServiceCollection();
@@ -327,7 +339,7 @@ namespace Hermodr
                 Source = new Uri("https://example.com"),
                 Id = Guid.NewGuid().ToString("N"),
                 Time = DateTimeOffset.UtcNow
-            });
+            }, cancellationToken: cancellationToken);
 
             // Both the registry subscription and the custom resolver's subscription must fire.
             Assert.Equal(2, invoked.Count);

@@ -15,6 +15,7 @@ public class InMemoryAuditTrailTests
     [Fact]
     public async Task AppendAsync_ShouldAddEntryToBag()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var cloudEvent = new CloudEvent
         {
             Id = "test-id",
@@ -22,7 +23,7 @@ public class InMemoryAuditTrailTests
             Source = new Uri("https://test.com")
         };
 
-        await _auditTrail.AppendAsync(cloudEvent);
+        await _auditTrail.AppendAsync(cloudEvent, cancellationToken: cancellationToken);
 
         var entries = _bag.GetAll();
         Assert.Single(entries);
@@ -33,6 +34,7 @@ public class InMemoryAuditTrailTests
     [Fact]
     public async Task ReadAsync_ShouldReturnAllEntries()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var cloudEvent1 = new CloudEvent
         {
             Id = "event-1",
@@ -46,11 +48,11 @@ public class InMemoryAuditTrailTests
             Source = new Uri("https://test.com")
         };
 
-        await _auditTrail.AppendAsync(cloudEvent1);
-        await _auditTrail.AppendAsync(cloudEvent2);
+        await _auditTrail.AppendAsync(cloudEvent1, cancellationToken: cancellationToken);
+        await _auditTrail.AppendAsync(cloudEvent2, cancellationToken: cancellationToken);
 
         var results = new List<AuditTrailEntry>();
-        await foreach (var entry in _auditTrail.ReadAsync())
+        await foreach (var entry in _auditTrail.ReadAsync(cancellationToken: cancellationToken))
         {
             results.Add(entry);
         }
@@ -61,6 +63,7 @@ public class InMemoryAuditTrailTests
     [Fact]
     public async Task ReadAsync_WithEventTypeFilter_ShouldReturnMatchingEntries()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var cloudEvent1 = new CloudEvent
         {
             Id = "event-1",
@@ -74,12 +77,12 @@ public class InMemoryAuditTrailTests
             Source = new Uri("https://test.com")
         };
 
-        await _auditTrail.AppendAsync(cloudEvent1);
-        await _auditTrail.AppendAsync(cloudEvent2);
+        await _auditTrail.AppendAsync(cloudEvent1, cancellationToken: cancellationToken);
+        await _auditTrail.AppendAsync(cloudEvent2, cancellationToken: cancellationToken);
 
         var query = new AuditTrailStreamQuery { EventType = "order.created" };
         var results = new List<AuditTrailEntry>();
-        await foreach (var entry in _auditTrail.ReadAsync(query))
+        await foreach (var entry in _auditTrail.ReadAsync(query, cancellationToken: cancellationToken))
         {
             results.Add(entry);
         }
@@ -91,6 +94,7 @@ public class InMemoryAuditTrailTests
     [Fact]
     public async Task ReadAsync_WithSourceFilter_ShouldReturnMatchingEntries()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var cloudEvent1 = new CloudEvent
         {
             Id = "event-1",
@@ -104,12 +108,12 @@ public class InMemoryAuditTrailTests
             Source = new Uri("https://service-b.com/")
         };
 
-        await _auditTrail.AppendAsync(cloudEvent1);
-        await _auditTrail.AppendAsync(cloudEvent2);
+        await _auditTrail.AppendAsync(cloudEvent1, cancellationToken: cancellationToken);
+        await _auditTrail.AppendAsync(cloudEvent2, cancellationToken: cancellationToken);
 
         var query = new AuditTrailStreamQuery { Source = "https://service-a.com/" };
         var results = new List<AuditTrailEntry>();
-        await foreach (var entry in _auditTrail.ReadAsync(query))
+        await foreach (var entry in _auditTrail.ReadAsync(query, cancellationToken: cancellationToken))
         {
             results.Add(entry);
         }
@@ -121,6 +125,7 @@ public class InMemoryAuditTrailTests
     [Fact]
     public async Task ReadAsync_ShouldReturnEntriesInChronologicalOrder()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var cloudEvent1 = new CloudEvent
         {
             Id = "event-1",
@@ -136,11 +141,11 @@ public class InMemoryAuditTrailTests
             Time = DateTimeOffset.UtcNow.AddMinutes(-10)
         };
 
-        await _auditTrail.AppendAsync(cloudEvent1);
-        await _auditTrail.AppendAsync(cloudEvent2);
+        await _auditTrail.AppendAsync(cloudEvent1, cancellationToken: cancellationToken);
+        await _auditTrail.AppendAsync(cloudEvent2, cancellationToken: cancellationToken);
 
         var results = new List<AuditTrailEntry>();
-        await foreach (var entry in _auditTrail.ReadAsync())
+        await foreach (var entry in _auditTrail.ReadAsync(cancellationToken: cancellationToken))
         {
             results.Add(entry);
         }

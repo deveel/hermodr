@@ -111,6 +111,8 @@ namespace Hermodr
         [Fact]
         public async Task PublishCloudEvent_WithPublisherConfirmsEnabled_IsBrokerAcknowledged()
         {
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             var cloudEvent = new CloudEvent
             {
                 Subject         = "confirms-test",
@@ -123,8 +125,8 @@ namespace Hermodr
             };
 
             // Exchange and routing key come entirely from channel options.
-            await Publisher.PublishEventAsync(cloudEvent);
-            var received = await _receivedTcs.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            await Publisher.PublishEventAsync(cloudEvent, cancellationToken: cancellationToken);
+            var received = await _receivedTcs.Task.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken);
 
             Assert.NotNull(received);
             Assert.Equal(cloudEvent.Id,   received.Id);
@@ -136,6 +138,8 @@ namespace Hermodr
         [Fact]
         public async Task PublishCloudEvent_UsingOptionsRouting_DeliveredToCorrectQueue()
         {
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             // The CloudEvent carries NO amqpexchange / amqproutingkey extension attributes.
             // The channel must fall back to ExchangeName and RoutingKey from options.
             var cloudEvent = new CloudEvent
@@ -149,8 +153,8 @@ namespace Hermodr
                 Id              = Guid.NewGuid().ToString("N"),
             };
 
-            await Publisher.PublishEventAsync(cloudEvent);
-            var received = await _receivedTcs.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            await Publisher.PublishEventAsync(cloudEvent, cancellationToken: cancellationToken);
+            var received = await _receivedTcs.Task.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken);
 
             Assert.NotNull(received);
             Assert.Equal(cloudEvent.Id, received.Id);
@@ -161,6 +165,8 @@ namespace Hermodr
         [Fact]
         public async Task PublishCloudEvent_WithPerCallNonPersistentOverride_IsDelivered()
         {
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             // Exchange and routing key are null in the per-call override so they fall
             // through to the channel defaults via MergeOptions.
             var channel = Channel;
@@ -182,7 +188,7 @@ namespace Hermodr
             };
 
             await channel.PublishAsync(cloudEvent, perCallOptions, CancellationToken.None);
-            var received = await _receivedTcs.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            var received = await _receivedTcs.Task.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken);
 
             Assert.NotNull(received);
             Assert.Equal(cloudEvent.Id, received.Id);
@@ -193,6 +199,8 @@ namespace Hermodr
         [Fact]
         public async Task PublishCloudEvent_WithPerCallClientNameOverride_IsDelivered()
         {
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             var channel = Channel;
 
             var cloudEvent = new CloudEvent
@@ -212,7 +220,7 @@ namespace Hermodr
             };
 
             await channel.PublishAsync(cloudEvent, perCallOptions, CancellationToken.None);
-            var received = await _receivedTcs.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            var received = await _receivedTcs.Task.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken);
 
             Assert.NotNull(received);
             Assert.Equal(cloudEvent.Id, received.Id);
@@ -223,6 +231,8 @@ namespace Hermodr
         [Fact]
         public async Task PublishTypedEvent_ViaTypedChannel_IsDeliveredToCorrectQueue()
         {
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             // Build a provider that registers both the generic channel AND a typed channel
             // for OrderCreated bound to the same exchange/routing key.
             var services = new ServiceCollection();
@@ -249,8 +259,8 @@ namespace Hermodr
             var publisher = provider.GetRequiredService<EventPublisher>();
             var order = new OrderCreated { OrderId = "X-999", Total = 49.99m };
 
-            await publisher.PublishAsync(order);
-            var received = await _receivedTcs.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            await publisher.PublishAsync(order, cancellationToken: cancellationToken);
+            var received = await _receivedTcs.Task.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken);
 
             Assert.NotNull(received);
             Assert.Equal("order.created", received.Type);

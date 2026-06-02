@@ -81,11 +81,12 @@ public class InMemorySharedBagTests
     [Fact]
     public void ConcurrentAdd_ShouldBeThreadSafe()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var bag = new InMemorySharedBag<AuditTrailEntry>();
         var tasks = Enumerable.Range(0, 100).Select(i =>
             Task.Run(() => bag.Add(new AuditTrailEntry { Id = i.ToString(), EventType = $"type{i}" })));
 
-        Task.WaitAll(tasks.ToArray());
+        Task.WaitAll(tasks.ToArray(), cancellationToken);
 
         var all = bag.GetAll();
         Assert.Equal(100, all.Count);

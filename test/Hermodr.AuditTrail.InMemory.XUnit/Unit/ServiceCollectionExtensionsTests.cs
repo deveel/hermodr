@@ -99,6 +99,7 @@ public class InMemoryServiceCollectionExtensionsTests
     [Fact]
     public async Task AddInMemoryAuditTrail_Integration_ShouldWriteAndRead()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var services = new ServiceCollection();
         services.AddInMemoryAuditTrail();
         var provider = services.BuildServiceProvider();
@@ -113,10 +114,10 @@ public class InMemoryServiceCollectionExtensionsTests
             Source = new Uri("https://test.com")
         };
 
-        await writer.AppendAsync(cloudEvent);
+        await writer.AppendAsync(cloudEvent, cancellationToken: cancellationToken);
 
         var entries = new List<AuditTrailEntry>();
-        await foreach (var entry in reader.ReadAsync())
+        await foreach (var entry in reader.ReadAsync(cancellationToken: cancellationToken))
         {
             entries.Add(entry);
         }

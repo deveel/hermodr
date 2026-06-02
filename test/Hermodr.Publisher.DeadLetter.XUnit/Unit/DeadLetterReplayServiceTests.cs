@@ -46,6 +46,7 @@ public class DeadLetterReplayServiceTests
     [Fact]
     public async Task WithReplayWorker_ProcessorInvokedAtLeastOnce_When_StoreHasMessages()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var services2 = new ServiceCollection();
         services2.AddLogging();
         services2.AddEventPublisher(o => o.Source = new Uri("https://example.com/publisher"))
@@ -60,13 +61,13 @@ public class DeadLetterReplayServiceTests
             Event = MakeEvent("first"),
             PublisherName = "test-publisher",
             Status = DeadLetterMessageStatus.Pending,
-        });
+        }, cancellationToken);
         await store.AddAsync(new DeadLetterMessage
         {
             Event = MakeEvent("second"),
             PublisherName = "test-publisher",
             Status = DeadLetterMessageStatus.Pending,
-        });
+        }, cancellationToken);
 
         var hosted = sp.GetServices<IHostedService>().First(h => h.GetType().Name == "DeadLetterReplayService");
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));

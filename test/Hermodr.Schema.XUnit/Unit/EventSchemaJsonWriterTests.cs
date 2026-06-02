@@ -7,6 +7,7 @@ namespace Hermodr {
 
 		[Fact]
 		public static async Task WriteSimpleSchemaToJson() {
+			var cancellationToken = TestContext.Current.CancellationToken;
 			var schema = new EventSchema("test", "1.0", "binary");
 			schema.Properties.Add(new EventProperty("id", "string"));
 			schema.Properties.Add(new EventProperty("name", "string"));
@@ -14,11 +15,11 @@ namespace Hermodr {
 
 			var writer = new EventSchemaJsonWriter();
 			using var stream = new MemoryStream();
-			await writer.WriteToAsync(stream, schema);
+			await writer.WriteToAsync(stream, schema, cancellationToken);
 
 			stream.Position = 0;
 			using var reader = new StreamReader(stream);
-			var json = await reader.ReadToEndAsync();
+			var json = await reader.ReadToEndAsync(cancellationToken);
 
 			var obj = JsonSerializer.Deserialize<JsonNode>(json)!;
 			Assert.NotNull(obj);
@@ -37,6 +38,7 @@ namespace Hermodr {
 
 		[Fact]
 		public static async Task WriteSchemaWithConstraintsToJson() {
+			var cancellationToken = TestContext.Current.CancellationToken;
 			var schema = new EventSchema("test", "1.0", "binary");
 			schema.Properties.Add(new EventProperty("id", "string"));
 			schema.Properties.Add(new EventProperty("name", "string"));
@@ -49,10 +51,10 @@ namespace Hermodr {
 
 			var writer = new EventSchemaJsonWriter();
 			using var stream = new MemoryStream();
-			await writer.WriteToAsync(stream, schema);
+			await writer.WriteToAsync(stream, schema, cancellationToken);
 
 			stream.Position = 0;
-			var json = await new StreamReader(stream).ReadToEndAsync();
+			var json = await new StreamReader(stream).ReadToEndAsync(cancellationToken);
 			var obj = JsonSerializer.Deserialize<JsonNode>(json)!;
 			var properties = obj["properties"]!.AsObject();
 
@@ -170,14 +172,15 @@ namespace Hermodr {
 
 		[Fact]
 		public static async Task WriteSchema_IndentedOutput_ValidJson() {
+			var cancellationToken = TestContext.Current.CancellationToken;
 			var schema = new EventSchema("test", "1.0", "application/json");
 			schema.Properties.Add(new EventProperty("id", "guid"));
 
 			var writer = new EventSchemaJsonWriter(new JsonWriterOptions { Indented = true });
 			using var stream = new MemoryStream();
-			await writer.WriteToAsync(stream, schema);
+			await writer.WriteToAsync(stream, schema, cancellationToken);
 			stream.Position = 0;
-			var json = await new StreamReader(stream).ReadToEndAsync();
+			var json = await new StreamReader(stream).ReadToEndAsync(cancellationToken);
 
 			// indented JSON contains newlines
 			Assert.Contains('\n', json);
