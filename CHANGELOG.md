@@ -1,18 +1,81 @@
 # Changelog
 
-## Unreleased
+## v1.2.5 (2026-06-04)
 
 ### 🚀 Features
 
-- **NDJson Audit Trail**: New `Hermodr.AuditTrail.NDJson` package providing a newline-delimited JSON (NDJSON) file storage backend for the audit trail, with automatic file rolling by size or time interval, retention policies, and a **pluggable filesystem abstraction** built on top of `System.IO.Abstractions`. By registering a different `IFileSystem` implementation, the local disk can be replaced with Azure Blob Storage, Amazon S3, or any other compatible storage backend without touching the storage code.
-  - `NdJsonAuditTrail` — implements both `IAuditTrailWriter` and `IAuditTrailReader<AuditTrailEntry>` on a single class (mirrors `InMemoryAuditTrail`)
-  - `NdJsonAuditTrailOptions` — `DirectoryPath`, `MaxFileSizeBytes`, `RollInterval`, `MaxFileCount`, `FileNamePrefix`, `FileExtension`, `ReadBufferSize`
-  - `AuditTrailBuilder.UseNDJson(...)` — fluent builder extension for the publisher integration
-  - `AddNDJsonAuditTrail(...)` and `AddNDJsonAuditTrailQuerying(...)` — top-level `IServiceCollection` extensions
-  - **Async streaming reads**: `ReadAsync` now opens files with `FileShare.ReadWrite` and `FileOptions.Asynchronous | SequentialScan`, reads each NDJSON file line-by-line via `StreamReader.ReadLineAsync`, applies the `AuditTrailStreamQuery` filter while streaming (no full pre-read), and yields matched entries in chronological order. Concurrent writers are never blocked by an in-progress read, and the file content is never fully buffered in memory. Mid-read file deletion / directory deletion is handled gracefully (logged and skipped, the read completes).
-  - 54 unit tests covering construction, append/read round-trip, file rolling, retention cleanup, all `AuditTrailStreamQuery` filters, cancellation, the `IFileSystem` abstraction (using `MockFileSystem` from `System.IO.Abstractions.TestingHelpers`), `ProviderName` and `IDisposable` contracts, async streaming yield, concurrent read/write non-blocking, file/directory deletion resilience, and custom `ReadBufferSize`
-  - New sample: [`samples/audit-trail-ndjson/AuditTrail.NDJson.Sample`](https://github.com/deveel/hermodr/tree/main/samples/audit-trail-ndjson/AuditTrail.NDJson.Sample)
-  - New docs: [`docs/samples/audit-trail-ndjson.md`](https://github.com/deveel/hermodr/blob/main/docs/samples/audit-trail-ndjson.md) and package details in [`docs/packages.md`](https://github.com/deveel/hermodr/blob/main/docs/packages.md)
+- **Audit Trail Subsystem**: Five new packages providing an append-only event audit trail with multiple storage backends and publisher integration (#82)
+  - `Hermodr.AuditTrail` — core interfaces and types for writing, reading, and querying audit trail entries
+  - `Hermodr.AuditTrail.InMemory` — in-memory audit trail backend for testing and lightweight scenarios
+  - `Hermodr.AuditTrail.EntityFramework` — EF Core backend for persisting audit trail entries to relational databases
+  - `Hermodr.AuditTrail.NDJson` — file-based backend using newline-delimited JSON with automatic file rolling, retention policies, and a pluggable filesystem abstraction
+  - `Hermodr.Publisher.AuditTrail` — publisher integration channel that transparently records events to any configured audit trail backend
+
+### 🧪 Tests
+
+- 202 unit and integration tests across all five packages
+- NDJson backend: 54 tests covering append/read, file rolling, retention, filtering, and concurrent I/O
+- EF Core backend: SQLite integration tests for the full entry lifecycle
+- Publisher channel: tests for recording, bypass, and typed/untyped routing
+
+### 📖 Documentation
+
+- New NDJson audit trail sample with REST query endpoints
+- Comprehensive package reference in `docs/packages.md`
+- README and ROADMAP updated with compliance and audit trail features
+
+### Change Log
+_(Detailed breakdown of every file and type added in this release)_
+
+#### Hermodr.AuditTrail (Core)
+- `IAuditTrailWriter`, `IAuditTrailReader<TEntry>`, `IAuditTrailEntry` interfaces
+- `AuditTrailEntry` — default implementation with `FromCloudEvent()` factory
+- `AuditTrailBuilder` — fluent DI registration builder
+- `AuditTrailStreamQuery` — filter criteria (type, source, time range, attributes)
+- `AuditTrailPageQueryExtensions` — 7 LINQ-style filter methods for paged queries
+
+#### Hermodr.AuditTrail.InMemory
+- `InMemoryAuditTrail` — concurrent in-memory storage (writer + reader)
+- `InMemorySharedBag<TEntry>` — thread-safe shared entry store
+- `UseInMemory()` / `AddInMemoryAuditTrail()` / `AddAuditTrailQuerying()` extensions
+
+#### Hermodr.AuditTrail.EntityFramework
+- `AuditTrailDbContext` — EF Core DbContext with audit trail entity sets
+- `DbAuditTrailEntry` / `DbAuditTrailAttribute` — EF entities with converters
+- `EntityAuditTrailRepository` — filtered streaming via `IQueryable`
+- `EntityAuditTrail` — EF Core writer + reader implementation
+- `UseEntityFramework()` / `AddEntityFrameworkAuditTrail()` extensions
+
+#### Hermodr.AuditTrail.NDJson
+- `NdJsonAuditTrail` — NDJSON file storage (writer + reader + IDisposable)
+  - Auto file rolling by size (`MaxFileSizeBytes`, default 10MB) or time interval (`RollInterval`)
+  - Retention cleanup (`MaxFileCount`, default 30 files)
+  - Pluggable `IFileSystem` (backed by `System.IO.Abstractions`)
+  - Async streaming reads with concurrent writer support
+- `NdJsonAuditTrailOptions` — configurable directory, file naming, buffer size
+- `UseNDJson()` / `AddNDJsonAuditTrail()` / `AddNDJsonAuditTrailQuerying()` extensions
+
+#### Hermodr.Publisher.AuditTrail
+- `AuditTrailPublishChannel` / `AuditTrailPublishChannel<TEvent>` — records published events to audit trail
+- `BypassAuditTrailOptions` — prevents infinite loops during replay/relay
+- 4 overloads of `AddAuditTrail()` on `EventPublisherBuilder`
+
+#### Tests
+- **Hermodr.AuditTrail.XUnit**: 44 tests (builder, entries, page queries, stream queries, edge cases)
+- **Hermodr.AuditTrail.InMemory.XUnit**: 43 tests (integration, shared bag, edge cases, DI registration)
+- **Hermodr.AuditTrail.EntityFramework.XUnit**: 32 tests (EF entities, repository, SQLite integration)
+- **Hermodr.AuditTrail.NDJson.XUnit**: 54 tests (append/read, rolling, retention, pluggable filesystem, cancellation, concurrent I/O)
+- **Hermodr.Publisher.AuditTrail.XUnit**: 29 tests (channels, typed routing, builder, bypass scenarios)
+
+#### Samples
+- `samples/audit-trail/` — EF Core with SQLite, order processing scenario, 6 REST endpoints
+- `samples/audit-trail-ndjson/` — NDJson with file rolling, order processing scenario, 4 REST endpoints
+
+#### Documentation
+- New: `docs/samples/audit-trail-ndjson.md`
+- Updated: `docs/packages.md`, `docs/SUMMARY.md`, `README.md`, `ROADMAP.md`
+
+**Full Changelog**: https://github.com/deveel/hermodr/compare/v1.2.4...v1.2.5
 
 ---
 
