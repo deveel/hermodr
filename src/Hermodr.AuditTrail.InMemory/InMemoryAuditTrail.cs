@@ -87,11 +87,13 @@ public class InMemoryAuditTrail : IAuditTrailWriter, IAuditTrailReader<AuditTrai
             if (query.Subject != null)
                 entries = entries.Where(e => e.Subject == query.Subject);
 
-            if (query.From.HasValue)
-                entries = entries.Where(e => e.Timestamp >= query.From.Value);
+            var from = query.From;
+            if (from is not null)
+                entries = entries.Where(e => e.Timestamp >= from.Value);
 
-            if (query.To.HasValue)
-                entries = entries.Where(e => e.Timestamp <= query.To.Value);
+            var to = query.To;
+            if (to is not null)
+                entries = entries.Where(e => e.Timestamp <= to.Value);
 
             if (query.Attributes != null)
             {
