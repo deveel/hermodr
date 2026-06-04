@@ -76,7 +76,10 @@ public class DeadLetterReplayServiceTests
         {
             await Task.Delay(400, cts.Token);
         }
-        catch (OperationCanceledException) { }
+        catch (OperationCanceledException)
+        {
+            // expected if the delay outlives the test cancellation
+        }
         await hosted.StopAsync(CancellationToken.None);
     }
 

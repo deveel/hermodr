@@ -21,7 +21,7 @@ public class NdJsonAuditTrailTests : IDisposable
 
     public NdJsonAuditTrailTests()
     {
-        _tempDir = Path.Combine(Path.GetTempPath(), $"ndjson-audit-{Guid.NewGuid():N}");
+        _tempDir = Path.Join(Path.GetTempPath(), $"ndjson-audit-{Guid.NewGuid():N}");
         _createdDirs.Add(_tempDir);
     }
 
@@ -374,7 +374,7 @@ public class NdJsonAuditTrailTests : IDisposable
     [Fact]
     public async Task Should_ReturnEmpty_When_DirectoryDoesNotExist()
     {
-        var dir = Path.Combine(Path.GetTempPath(), $"ndjson-audit-empty-{Guid.NewGuid():N}");
+        var dir = Path.Join(Path.GetTempPath(), $"ndjson-audit-empty-{Guid.NewGuid():N}");
         var options = CreateOptions();
         options.DirectoryPath = dir;
         using var store = new NdJsonAuditTrail(Options.Create(options));

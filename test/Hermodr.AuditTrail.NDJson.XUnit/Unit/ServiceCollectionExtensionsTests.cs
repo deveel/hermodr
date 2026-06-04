@@ -112,7 +112,7 @@ public class NDJsonServiceCollectionExtensionsTests
     [Fact]
     public async Task AddNDJsonAuditTrail_Integration_ShouldWriteAndRead()
     {
-        var dir = Path.Combine(Path.GetTempPath(), $"ndjson-di-{Guid.NewGuid():N}");
+        var dir = Path.Join(Path.GetTempPath(), $"ndjson-di-{Guid.NewGuid():N}");
         try
         {
             var services = new ServiceCollection();

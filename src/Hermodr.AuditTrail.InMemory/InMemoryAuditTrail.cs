@@ -101,7 +101,7 @@ public class InMemoryAuditTrail : IAuditTrailWriter, IAuditTrailReader<AuditTrai
                 {
                     var key = attr.Key;
                     var value = attr.Value;
-                    entries = entries.Where(e => e.ExtensionAttributes != null && e.ExtensionAttributes.ContainsKey(key) && e.ExtensionAttributes[key] == value);
+                    entries = entries.Where(e => e.ExtensionAttributes != null && e.ExtensionAttributes.TryGetValue(key, out var actual) && actual == value);
                 }
             }
         }

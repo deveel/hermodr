@@ -64,8 +64,8 @@ public class AuditTrailEntryTests
         var entry = AuditTrailEntry.FromCloudEvent(cloudEvent);
 
         Assert.NotNull(entry.ExtensionAttributes);
-        Assert.True(entry.ExtensionAttributes.ContainsKey("customkey"));
-        Assert.Equal("customvalue", entry.ExtensionAttributes["customkey"]);
+        Assert.True(entry.ExtensionAttributes.TryGetValue("customkey", out var customValue));
+        Assert.Equal("customvalue", customValue);
     }
 
     [Fact]
