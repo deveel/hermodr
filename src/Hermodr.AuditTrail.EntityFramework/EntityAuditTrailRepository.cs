@@ -38,7 +38,10 @@ public class EntityAuditTrailRepository : EntityRepository<DbAuditTrailEntry>
             queryable = queryable.Where(e => e.Timestamp >= query.From.Value);
 
         if (query.To.HasValue)
-            queryable = queryable.Where(e => e.Timestamp <= query.To.Value);
+        {
+            var to = query.To.Value;
+            queryable = queryable.Where(e => e.Timestamp <= to);
+        }
 
         if (query.Attributes != null)
         {
