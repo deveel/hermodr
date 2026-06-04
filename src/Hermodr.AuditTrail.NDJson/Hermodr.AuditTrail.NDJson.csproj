@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Title>Hermodr Audit Trail - NDJson</Title>
+    <Description>Provides a newline-delimited JSON (NDJSON) file storage backend for the audit trail, with automatic file rolling and a pluggable filesystem abstraction (System.IO.Abstractions) that allows the local disk to be replaced with Azure Blob Storage, Amazon S3, or any other compatible filesystem.</Description>
+    <PackageTags>deveel;events;audit;trail;ndjson;file;filesystem;compliance</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Hermodr.AuditTrail\Hermodr.AuditTrail.csproj" />
+    <ProjectReference Include="..\Hermodr.Publisher\Hermodr.Publisher.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.IO.Abstractions" Version="22.1.1" />
+  </ItemGroup>
+
+</Project>

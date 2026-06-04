@@ -35,6 +35,16 @@ The framework is split into focused NuGet packages so you only take what you nee
 |---------|-------------|
 | [`Hermodr.Publisher.OpenTelemetry`](#hermodr-publisher-opentelemetry) | Distributed tracing with W3C trace context propagation via CloudEvents extensions |
 
+## Audit Trail packages
+
+| Package | Description |
+|---------|-------------|
+| [`Hermodr.AuditTrail`](#hermodr-audittrail) | Core contracts for an append-only audit trail (`IAuditTrailWriter`, `IAuditTrailReader<T>`, `AuditTrailBuilder`, `AuditTrailStreamQuery`) |
+| [`Hermodr.Publisher.AuditTrail`](#hermodr-publisher-audittrail) | Publisher integration: `AuditTrailPublishChannel` and `AddAuditTrail()` extension method |
+| [`Hermodr.AuditTrail.InMemory`](#hermodr-audittrail-inmemory) | In-memory storage backend for testing and development |
+| [`Hermodr.AuditTrail.EntityFramework`](#hermodr-audittrail-entityframework) | Entity Framework Core storage backend (SQL Server, PostgreSQL, SQLite) |
+| [`Hermodr.AuditTrail.NDJson`](#hermodr-audittrail-ndjson) | NDJson file storage backend with pluggable filesystem (Azure Blob, S3, local disk) |
+
 ## Schema packages
 
 | Package | Description |
@@ -258,4 +268,83 @@ An in-memory publish channel for use in unit and integration tests.  Invokes a u
 ```bash
 dotnet add package Hermodr.TestPublisher
 ```
+
+---
+
+### `Hermodr.AuditTrail`
+
+[![NuGet](https://img.shields.io/nuget/v/Hermodr.AuditTrail.svg)](https://www.nuget.org/packages/Hermodr.AuditTrail)
+[![GitHub pre-release](https://img.shields.io/badge/nuget-prerelease-yellow.svg?logo=nuget)](https://github.com/deveel/hermodr/pkgs/nuget/Hermodr.AuditTrail)
+
+Core contracts for an append-only audit trail. Provides `IAuditTrailWriter`, `IAuditTrailReader<TEntry>`, `AuditTrailEntry`, `AuditTrailStreamQuery`, and the `AuditTrailBuilder` used by the publisher integration.
+
+```bash
+dotnet add package Hermodr.AuditTrail
+```
+
+---
+
+### `Hermodr.Publisher.AuditTrail`
+
+[![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.AuditTrail.svg)](https://www.nuget.org/packages/Hermodr.Publisher.AuditTrail)
+[![GitHub pre-release](https://img.shields.io/badge/nuget-prerelease-yellow.svg?logo=nuget)](https://github.com/deveel/hermodr/pkgs/nuget/Hermodr.Publisher.AuditTrail)
+
+Publisher integration: `AuditTrailPublishChannel` and the `AddAuditTrail()` extension method. Use it together with one of the audit trail storage backends (`Hermodr.AuditTrail.InMemory`, `Hermodr.AuditTrail.EntityFramework`, or `Hermodr.AuditTrail.NDJson`).
+
+```bash
+dotnet add package Hermodr.Publisher.AuditTrail
+```
+
+---
+
+### `Hermodr.AuditTrail.InMemory`
+
+[![NuGet](https://img.shields.io/nuget/v/Hermodr.AuditTrail.InMemory.svg)](https://www.nuget.org/packages/Hermodr.AuditTrail.InMemory)
+[![GitHub pre-release](https://img.shields.io/badge/nuget-prerelease-yellow.svg?logo=nuget)](https://github.com/deveel/hermodr/pkgs/nuget/Hermodr.AuditTrail.InMemory)
+
+In-memory storage backend for the audit trail. Suitable for testing and development.
+
+```bash
+dotnet add package Hermodr.AuditTrail.InMemory
+```
+
+---
+
+### `Hermodr.AuditTrail.EntityFramework`
+
+[![NuGet](https://img.shields.io/nuget/v/Hermodr.AuditTrail.EntityFramework.svg)](https://www.nuget.org/packages/Hermodr.AuditTrail.EntityFramework)
+[![GitHub pre-release](https://img.shields.io/badge/nuget-prerelease-yellow.svg?logo=nuget)](https://github.com/deveel/hermodr/pkgs/nuget/Hermodr.AuditTrail.EntityFramework)
+
+Entity Framework Core storage backend for the audit trail. Supports SQL Server, PostgreSQL, and SQLite.
+
+```bash
+dotnet add package Hermodr.AuditTrail.EntityFramework
+```
+
+---
+
+### `Hermodr.AuditTrail.NDJson`
+
+[![NuGet](https://img.shields.io/nuget/v/Hermodr.AuditTrail.NDJson.svg)](https://www.nuget.org/packages/Hermodr.AuditTrail.NDJson)
+[![GitHub pre-release](https://img.shields.io/badge/nuget-prerelease-yellow.svg?logo=nuget)](https://github.com/deveel/hermodr/pkgs/nuget/Hermodr.AuditTrail.NDJson)
+
+Newline-delimited JSON (NDJSON) file storage backend for the audit trail, with automatic file rolling by size or time interval and retention policies. All I/O is performed through the `IFileSystem` abstraction from [`System.IO.Abstractions`](https://www.nuget.org/packages/System.IO.Abstractions), so the local disk can be replaced with Azure Blob Storage, Amazon S3, or any other compatible filesystem by registering a different `IFileSystem` implementation. Reads are **asynchronous and non-blocking**: files are opened with `FileShare.ReadWrite` and streamed line-by-line, so a concurrent writer is never blocked and the full file content is never loaded into memory.
+
+```csharp
+builder.Services.AddEventPublisher(o => o.Source = new Uri("https://example.com"))
+    .AddAuditTrail(audit => audit.UseNDJson(o =>
+    {
+        o.DirectoryPath = "./audit-trail";
+        o.MaxFileSizeBytes = 10 * 1024 * 1024;
+        o.RollInterval = TimeSpan.FromHours(1);
+        o.MaxFileCount = 100;
+        o.ReadBufferSize = 65_536;  // optional: tune for large files
+    }));
+```
+
+```bash
+dotnet add package Hermodr.AuditTrail.NDJson
+```
+
+See the [Audit Trail with NDJson Files](samples/audit-trail-ndjson.md) sample for a full walkthrough.
 
