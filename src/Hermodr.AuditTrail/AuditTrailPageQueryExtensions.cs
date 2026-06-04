@@ -165,7 +165,9 @@ public static class AuditTrailPageQueryExtensions
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
         ArgumentException.ThrowIfNullOrWhiteSpace(value);
+#pragma warning disable CA1853 // Expression tree limitation prevents using TryGetValue
         return query.Where(e => e.ExtensionAttributes != null && e.ExtensionAttributes.ContainsKey(key) && e.ExtensionAttributes[key] == value);
+#pragma warning restore CA1853
     }
 
     /// <summary>

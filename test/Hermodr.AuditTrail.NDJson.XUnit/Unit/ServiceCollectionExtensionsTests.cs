@@ -144,7 +144,7 @@ public class NDJsonServiceCollectionExtensionsTests
         {
             if (Directory.Exists(dir))
             {
-                try { Directory.Delete(dir, true); } catch { /* best-effort */ }
+                try { Directory.Delete(dir, true); } catch (IOException) { /* best-effort */ } catch (UnauthorizedAccessException) { /* best-effort */ }
             }
         }
     }

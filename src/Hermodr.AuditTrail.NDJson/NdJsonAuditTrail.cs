@@ -332,16 +332,11 @@ public class NdJsonAuditTrail : IAuditTrailWriter, IAuditTrailReader<AuditTrailE
             return false;
         if (query.To.HasValue && entry.Timestamp > query.To.Value)
             return false;
-        if (query.Attributes is not null)
-        {
-            foreach (var attr in query.Attributes)
-            {
-                if (entry.ExtensionAttributes is null
-                    || !entry.ExtensionAttributes.TryGetValue(attr.Key, out var v)
-                    || v != attr.Value)
-                    return false;
-            }
-        }
+        if (query.Attributes is not null && !query.Attributes.All(attr =>
+                entry.ExtensionAttributes is not null
+                && entry.ExtensionAttributes.TryGetValue(attr.Key, out var v)
+                && v == attr.Value))
+            return false;
         return true;
     }
 
