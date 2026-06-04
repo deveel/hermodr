@@ -181,7 +181,8 @@ namespace Hermodr {
 			using var stream = new MemoryStream();
 			await writer.WriteToAsync(stream, schema, cancellationToken);
 			stream.Position = 0;
-			var json = await new StreamReader(stream).ReadToEndAsync(cancellationToken);
+			using var reader = new StreamReader(stream);
+			var json = await reader.ReadToEndAsync(cancellationToken);
 
 			// indented JSON contains newlines
 			Assert.Contains('\n', json);
@@ -197,7 +198,8 @@ namespace Hermodr {
 			using var stream = new MemoryStream();
 			await writer.WriteToAsync(stream, schema);
 			stream.Position = 0;
-			return await new StreamReader(stream).ReadToEndAsync();
+			using var reader = new StreamReader(stream);
+			return await reader.ReadToEndAsync();
 		}
 	}
 }
