@@ -205,6 +205,13 @@ The framework is still evolving. See the [ROADMAP](ROADMAP.md) for the full desc
 - [ ] **Schema Registration Source Generator** — generator that pre-constructs all `EventSchema` instances at build time and emits an `AddGeneratedEventSchemas(IServiceCollection)` DI extension, eliminating startup reflection and enabling schema export without a running host
 - [ ] **Typed Domain Publisher Generator** — generator that produces a strongly-typed `IXxxEventPublisher` interface and implementation per domain group, so services depend on a focused, mockable contract rather than the catch-all `IEventPublisher`
 
+### v1.7 — Compliance
+
+- [ ] **Data Compliance & Redaction Framework** — pluggable redaction pipeline built on `Microsoft.Extensions.Compliance.*` with schema-aware classification lookup, pluggable `IEventRedactor` (JSON in v1), and the `datasensitivity` CloudEvents extension attribute as the single sensitivity signal
+- [ ] **Audit Trail Compliance Support** — opt-in `Hermodr.AuditTrail.Compliance` package that decorates `IAuditTrailWriter` with a redacting writer, configured via a nested `Compliance` options block on the audit-trail publish options
+- [ ] **Delivery Log Compliance Support** — opt-in `Hermodr.Publisher.DeliveryLog.Compliance` package that decorates `IEventPublishDeliveryLog` with a redacting delivery log, enabled through `UseCompliance()` on the delivery-log builder
+- [ ] **In-Transit Event Redaction** — opt-in `Hermodr.Publisher.Compliance` package adding a redaction middleware to the publish pipeline and per-channel redaction profiles, so teams can choose where redaction happens in the publish flow (boundary-only by default, in-transit when enabled)
+
 ### v2.0 — Event Consumers
 
 - [ ] **Webhook Consumer for ASP.NET Core** — receive inbound CloudEvents over HTTP with HMAC signature verification and automatic routing
