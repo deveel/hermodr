@@ -15,7 +15,7 @@ namespace Hermodr;
 /// </summary>
 public class EntityAuditTrail : IAuditTrailWriter, IAuditTrailReader<DbAuditTrailEntry>
 {
-    private readonly AuditTrailDbContext _context;
+    private readonly EntityAuditTrailRepository _context;
     private readonly ILogger _logger;
 
     /// <summary>
@@ -28,10 +28,10 @@ public class EntityAuditTrail : IAuditTrailWriter, IAuditTrailReader<DbAuditTrai
     /// An optional logger.
     /// </param>
     public EntityAuditTrail(
-        AuditTrailDbContext context,
+        EntityAuditTrailRepository repository,
         ILogger<EntityAuditTrail>? logger = null)
     {
-        _context = context ?? throw new ArgumentNullException(nameof(context));
+        _context = repository ?? throw new ArgumentNullException(nameof(repository));
         _logger = logger ?? NullLogger<EntityAuditTrail>.Instance;
     }
 
@@ -55,10 +55,9 @@ public class EntityAuditTrail : IAuditTrailWriter, IAuditTrailReader<DbAuditTrai
 
         var entry = AuditTrailEntry.FromCloudEvent(@event);
         var dbEntry = DbAuditTrailEntry.FromEntry(entry);
-
-        _context.AuditTrailEntries.Add(dbEntry);
-        await _context.SaveChangesAsync(cancellationToken);
-
+        
+        await _context.AddAsync(dbEntry, cancellationToken);
+        
         _logger.LogAuditTrailEntrySavedToDatabase(dbEntry.EventId, dbEntry.EventType);
     }
 
@@ -74,50 +73,9 @@ public class EntityAuditTrail : IAuditTrailWriter, IAuditTrailReader<DbAuditTrai
     /// <returns>
     /// An asynchronous enumerable of audit trail entries matching the query.
     /// </returns>
-    public async IAsyncEnumerable<DbAuditTrailEntry> ReadAsync(
-        AuditTrailStreamQuery? query = null,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    public IAsyncEnumerable<DbAuditTrailEntry> ReadAsync(
+        AuditTrailStreamQuery? query = null, CancellationToken cancellationToken = default)
     {
-        IQueryable<DbAuditTrailEntry> queryable = _context.AuditTrailEntries
-            .Include(e => e.Attributes)
-            .AsNoTracking();
-
-        if (query != null)
-        {
-            if (query.EventType != null)
-                queryable = queryable.Where(e => e.EventType == query.EventType);
-
-            if (query.EventDataClassName != null)
-                queryable = queryable.Where(e => e.EventDataClassName == query.EventDataClassName);
-
-            if (query.Source != null)
-                queryable = queryable.Where(e => e.Source == query.Source);
-
-            if (query.Subject != null)
-                queryable = queryable.Where(e => e.Subject == query.Subject);
-
-            if (query.From.HasValue)
-                queryable = queryable.Where(e => e.Timestamp >= query.From.Value);
-
-            if (query.To.HasValue)
-                queryable = queryable.Where(e => e.Timestamp <= query.To.Value);
-
-            if (query.Attributes != null)
-            {
-                foreach (var attr in query.Attributes)
-                {
-                    var key = attr.Key;
-                    var value = attr.Value;
-                    queryable = queryable.Where(e => e.Attributes.Any(a => a.Key == key && a.Value == value));
-                }
-            }
-        }
-
-        queryable = queryable.OrderBy(e => e.Timestamp);
-
-        await foreach (var dbEntry in queryable.AsAsyncEnumerable().WithCancellation(cancellationToken))
-        {
-            yield return dbEntry;
-        }
+        return _context.StreamEntiesAsync(query ?? new AuditTrailStreamQuery(), cancellationToken);
     }
 }

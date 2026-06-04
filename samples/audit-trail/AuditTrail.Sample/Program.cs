@@ -23,7 +23,7 @@ builder.Services.AddEventPublisher(o =>
         options.UseSqlite($"Data Source={dbPath}")));
 
 // Register the reader infrastructure (uses TryAdd to share DbContext with publisher)
-builder.Services.AddAuditTrailQuerying(options =>
+builder.Services.AddEntityFrameworkAuditTrail(options =>
     options.UseSqlite($"Data Source={dbPath}"));
 
 var app = builder.Build();

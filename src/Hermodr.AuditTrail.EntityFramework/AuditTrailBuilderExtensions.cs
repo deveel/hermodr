@@ -1,6 +1,7 @@
+using Kista;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Hermodr;
 
@@ -32,12 +33,9 @@ public static class AuditTrailBuilderExtensions
         ServiceLifetime lifetime = ServiceLifetime.Scoped)
     {
         ArgumentNullException.ThrowIfNull(builder);
-
-        builder.Services.AddDbContext<AuditTrailDbContext>(configure ?? (_ => { }), lifetime);
-        builder.Services.TryAdd(new ServiceDescriptor(typeof(EntityAuditTrail), typeof(EntityAuditTrail), lifetime));
-        builder.Services.TryAdd(new ServiceDescriptor(typeof(IAuditTrailWriter), sp => sp.GetRequiredService<EntityAuditTrail>(), lifetime));
-        builder.Services.TryAdd(new ServiceDescriptor(typeof(IAuditTrailReader<DbAuditTrailEntry>), sp => sp.GetRequiredService<EntityAuditTrail>(), lifetime));
-
+        
+        builder.Services.AddEntityFrameworkAuditTrail(configure, lifetime);
+        
         return builder;
     }
 }

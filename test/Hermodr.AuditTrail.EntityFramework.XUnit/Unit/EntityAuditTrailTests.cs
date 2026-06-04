@@ -55,23 +55,7 @@ public class EntityAuditTrailTests
         var writerDescriptors = services.Where(d => d.ServiceType == typeof(IAuditTrailWriter)).ToList();
         Assert.Single(writerDescriptors);
     }
-
-    [Fact]
-    public void AddAuditTrailQuerying_ShouldRegisterReaderButNotWriter()
-    {
-        var services = new ServiceCollection();
-        services.AddAuditTrailQuerying(options =>
-            options.UseSqlite("Data Source=:memory:"));
-
-        var provider = services.BuildServiceProvider();
-
-        var writer = provider.GetService<IAuditTrailWriter>();
-        var reader = provider.GetService<IAuditTrailReader<DbAuditTrailEntry>>();
-
-        Assert.Null(writer);
-        Assert.NotNull(reader);
-    }
-
+    
     [Fact]
     public void AddAuditTrailQuerying_WhenDbContextAlreadyRegistered_ShouldNotReRegister()
     {
@@ -83,7 +67,7 @@ public class EntityAuditTrailTests
 
         var dbContextCountBefore = services.Count(d => d.ServiceType == typeof(DbContextOptions<AuditTrailDbContext>));
 
-        services.AddAuditTrailQuerying(options =>
+        services.AddEntityFrameworkAuditTrail(options =>
             options.UseSqlite("Data Source=:memory:"));
 
         var dbContextCountAfter = services.Count(d => d.ServiceType == typeof(DbContextOptions<AuditTrailDbContext>));
@@ -95,9 +79,9 @@ public class EntityAuditTrailTests
     public void AddAuditTrailQuerying_CalledTwice_ShouldNotRegisterDuplicates()
     {
         var services = new ServiceCollection();
-        services.AddAuditTrailQuerying(options =>
+        services.AddEntityFrameworkAuditTrail(options =>
             options.UseSqlite("Data Source=:memory:"));
-        services.AddAuditTrailQuerying(options =>
+        services.AddEntityFrameworkAuditTrail(options =>
             options.UseSqlite("Data Source=:memory:"));
 
         var readerDescriptors = services.Where(d => d.ServiceType == typeof(IAuditTrailReader<DbAuditTrailEntry>)).ToList();

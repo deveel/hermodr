@@ -11,7 +11,6 @@ public class DbAuditTrailEntryConfiguration : IEntityTypeConfiguration<DbAuditTr
     /// <inheritdoc/>
     public void Configure(EntityTypeBuilder<DbAuditTrailEntry> builder)
     {
-        builder.ToTable("audit_trail_entries");
         builder.HasKey(e => e.Id);
         builder.Property(e => e.Id).IsRequired().HasMaxLength(256).ValueGeneratedNever();
         builder.Property(e => e.EventId).IsRequired().HasMaxLength(256);
@@ -27,12 +26,12 @@ public class DbAuditTrailEntryConfiguration : IEntityTypeConfiguration<DbAuditTr
         builder.Property(e => e.StoredAt).IsRequired()
             .HasConversion(dto => dto.UtcDateTime, dt => new DateTimeOffset(dt, TimeSpan.Zero));
 
-        builder.HasIndex(e => e.EventId).HasDatabaseName("IX_AuditTrailEntries_EventId");
-        builder.HasIndex(e => e.EventType).HasDatabaseName("IX_AuditTrailEntries_EventType");
-        builder.HasIndex(e => e.EventDataClassName).HasDatabaseName("IX_AuditTrailEntries_EventDataClassName");
-        builder.HasIndex(e => e.Source).HasDatabaseName("IX_AuditTrailEntries_Source");
-        builder.HasIndex(e => e.Subject).HasDatabaseName("IX_AuditTrailEntries_Subject");
-        builder.HasIndex(e => e.Timestamp).HasDatabaseName("IX_AuditTrailEntries_Timestamp");
-        builder.HasIndex(e => e.StoredAt).HasDatabaseName("IX_AuditTrailEntries_StoredAt");
+        builder.HasIndex(e => e.EventId);
+        builder.HasIndex(e => e.EventType);
+        builder.HasIndex(e => e.EventDataClassName);
+        builder.HasIndex(e => e.Source);
+        builder.HasIndex(e => e.Subject);
+        builder.HasIndex(e => e.Timestamp);
+        builder.HasIndex(e => e.StoredAt);
     }
 }
