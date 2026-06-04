@@ -3,46 +3,25 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 //
 
+using System.Diagnostics.CodeAnalysis;
+
 using Microsoft.Extensions.Logging;
 
 namespace Hermodr
 {
-    internal static class LoggerExtensions
+    [ExcludeFromCodeCoverage]
+    internal static partial class LoggerExtensions
     {
-        private static readonly Action<ILogger, string, Exception?> _tracePublishSpanNotEnabled =
-            LoggerMessage.Define<string>(
-                LogLevel.Trace,
-                new EventId(1, "TracePublishSpanNotEnabled"),
-                "OpenTelemetry publish span not active for event type '{EventType}' (no listener configured)");
+        [LoggerMessage(EventId = 35001, Level = LogLevel.Trace, Message = "OpenTelemetry publish span not active for event type '{EventType}' (no listener configured)")]
+        public static partial void TracePublishSpanNotEnabled(this ILogger logger, string eventType);
 
-        private static readonly Action<ILogger, string, Exception?> _traceConsumeSpanNotEnabled =
-            LoggerMessage.Define<string>(
-                LogLevel.Trace,
-                new EventId(2, "TraceConsumeSpanNotEnabled"),
-                "OpenTelemetry consume span not active for event type '{EventType}' (no listener configured)");
+        [LoggerMessage(EventId = 35002, Level = LogLevel.Trace, Message = "OpenTelemetry consume span not active for event type '{EventType}' (no listener configured)")]
+        public static partial void TraceConsumeSpanNotEnabled(this ILogger logger, string eventType);
 
-        private static readonly Action<ILogger, string, string, Exception?> _traceExtracted =
-            LoggerMessage.Define<string, string>(
-                LogLevel.Trace,
-                new EventId(3, "TraceExtracted"),
-                "Extracted trace context from event type '{EventType}' with trace ID '{TraceId}'");
+        [LoggerMessage(EventId = 35003, Level = LogLevel.Trace, Message = "Extracted trace context from event type '{EventType}' with trace ID '{TraceId}'")]
+        public static partial void TraceExtracted(this ILogger logger, string eventType, string traceId);
 
-        private static readonly Action<ILogger, string, Exception?> _metricsNotEnabled =
-            LoggerMessage.Define<string>(
-                LogLevel.Trace,
-                new EventId(4, "MetricsNotEnabled"),
-                "Metrics not enabled for event type '{EventType}'");
-
-        public static void TracePublishSpanNotEnabled(this ILogger logger, string eventType) =>
-            _tracePublishSpanNotEnabled(logger, eventType, null);
-
-        public static void TraceConsumeSpanNotEnabled(this ILogger logger, string eventType) =>
-            _traceConsumeSpanNotEnabled(logger, eventType, null);
-
-        public static void TraceExtracted(this ILogger logger, string eventType, string traceId) =>
-            _traceExtracted(logger, eventType, traceId, null);
-
-        public static void MetricsNotEnabled(this ILogger logger, string eventType) =>
-            _metricsNotEnabled(logger, eventType, null);
+        [LoggerMessage(EventId = 35004, Level = LogLevel.Trace, Message = "Metrics not enabled for event type '{EventType}'")]
+        public static partial void MetricsNotEnabled(this ILogger logger, string eventType);
     }
 }

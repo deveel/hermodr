@@ -219,6 +219,7 @@ namespace Hermodr
         [Fact]
         public static async Task Dispatcher_NestedBodyFilter_RoutesOnlyMatchingEvents()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var goldDeliveries = new List<string>();
             var usDeliveries   = new List<string>();
 
@@ -250,10 +251,10 @@ namespace Hermodr
             var goldDe   = EventWithData(MakeOrder(tier: "gold",   country: "DE"));
             var silverDe = EventWithData(MakeOrder(tier: "silver", country: "DE"));
 
-            await publisher.PublishEventAsync(goldUs);
-            await publisher.PublishEventAsync(silverUs);
-            await publisher.PublishEventAsync(goldDe);
-            await publisher.PublishEventAsync(silverDe);
+            await publisher.PublishEventAsync(goldUs, cancellationToken: cancellationToken);
+            await publisher.PublishEventAsync(silverUs, cancellationToken: cancellationToken);
+            await publisher.PublishEventAsync(goldDe, cancellationToken: cancellationToken);
+            await publisher.PublishEventAsync(silverDe, cancellationToken: cancellationToken);
 
             // gold-handler: goldUs + goldDe
             Assert.Equal(2, goldDeliveries.Count);
@@ -269,6 +270,7 @@ namespace Hermodr
         [Fact]
         public static async Task Dispatcher_NestedNumericComparison_RoutesCorrectly()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var matched = new List<double>();
 
             var services = new ServiceCollection();
@@ -290,10 +292,10 @@ namespace Hermodr
             var publisher = provider.GetRequiredService<EventPublisher>()
                 .UseDispatcher();
 
-            await publisher.PublishEventAsync(EventWithData(MakeOrder(amount: 600,  isPaid: true)));   // match
-            await publisher.PublishEventAsync(EventWithData(MakeOrder(amount: 499,  isPaid: true)));   // amount too low
-            await publisher.PublishEventAsync(EventWithData(MakeOrder(amount: 500,  isPaid: false)));  // not paid
-            await publisher.PublishEventAsync(EventWithData(MakeOrder(amount: 1000, isPaid: true)));   // match
+            await publisher.PublishEventAsync(EventWithData(MakeOrder(amount: 600,  isPaid: true)), cancellationToken: cancellationToken);   // match
+            await publisher.PublishEventAsync(EventWithData(MakeOrder(amount: 499,  isPaid: true)), cancellationToken: cancellationToken);   // amount too low
+            await publisher.PublishEventAsync(EventWithData(MakeOrder(amount: 500,  isPaid: false)), cancellationToken: cancellationToken);  // not paid
+            await publisher.PublishEventAsync(EventWithData(MakeOrder(amount: 1000, isPaid: true)), cancellationToken: cancellationToken);   // match
 
             Assert.Equal(2, matched.Count);
             Assert.Contains(600d,  matched);

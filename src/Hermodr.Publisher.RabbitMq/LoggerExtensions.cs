@@ -3,10 +3,13 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 //
 
+using System.Diagnostics.CodeAnalysis;
+
 using Microsoft.Extensions.Logging;
 
 namespace Hermodr
 {
+    [ExcludeFromCodeCoverage]
     static partial class LoggerExtensions
     {
         [LoggerMessage(30001, LogLevel.Debug, "Event of type {EventType} to be published")]

@@ -3,9 +3,12 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 //
 
+using System.Diagnostics.CodeAnalysis;
+
 using Microsoft.Extensions.Logging;
 
 namespace Hermodr {
+	[ExcludeFromCodeCoverage]
 	static partial class LoggerExtensions {
 		[LoggerMessage(-30001, LogLevel.Error, "Could not create the event of type '{EventType}'")]
 		public static partial void LogEventCreateError(this ILogger logger, Exception ex, Type eventType);

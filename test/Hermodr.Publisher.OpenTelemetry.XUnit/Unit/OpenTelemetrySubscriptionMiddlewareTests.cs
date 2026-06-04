@@ -19,10 +19,11 @@ public class OpenTelemetrySubscriptionMiddlewareTests
     [Fact]
     public async Task Subscribe_HandlerParticipatesInConsumerSpan()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var fixture = new TestFixture();
         var publisher = fixture.CreatePublisher();
 
-        await publisher.PublishEventAsync(MakeEvent());
+        await publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken);
 
         Assert.NotNull(fixture.HandlerActivity);
         Assert.Equal(ActivityKind.Consumer, fixture.HandlerActivity!.Kind);
@@ -31,6 +32,7 @@ public class OpenTelemetrySubscriptionMiddlewareTests
     [Fact]
     public async Task Subscribe_ExtractsTraceContext_FromEventExtensions()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var fixture = new TestFixture();
         var publisher = fixture.CreatePublisher();
 
@@ -38,7 +40,7 @@ public class OpenTelemetrySubscriptionMiddlewareTests
         var traceparentAttr = CloudEventAttribute.CreateExtension(TraceParentKey, CloudEventAttributeType.String);
         cloudEvent[traceparentAttr] = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01";
 
-        await publisher.PublishEventAsync(cloudEvent);
+        await publisher.PublishEventAsync(cloudEvent, cancellationToken: cancellationToken);
 
         var activity = fixture.SingleConsumerActivity;
         Assert.Equal(ActivityTraceId.CreateFromString("4bf92f3577b34da6a3ce929d0e0e4736".AsSpan()), activity.TraceId);
@@ -47,10 +49,11 @@ public class OpenTelemetrySubscriptionMiddlewareTests
     [Fact]
     public async Task Subscribe_CreatesConsumerSpan()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var fixture = new TestFixture();
         var publisher = fixture.CreatePublisher();
 
-        await publisher.PublishEventAsync(MakeEvent("com.test.order"));
+        await publisher.PublishEventAsync(MakeEvent("com.test.order"), cancellationToken: cancellationToken);
 
         var activity = fixture.SingleConsumerActivity;
         Assert.Equal("handle com.test.order", activity.DisplayName);
@@ -59,6 +62,7 @@ public class OpenTelemetrySubscriptionMiddlewareTests
     [Fact]
     public async Task Subscribe_InvokesEnrichWithEvent_Callback()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         Activity? enrichedActivity = null;
         CloudEvent? enrichedEvent = null;
 
@@ -72,7 +76,7 @@ public class OpenTelemetrySubscriptionMiddlewareTests
         });
         var publisher = fixture.CreatePublisher();
 
-        await publisher.PublishEventAsync(MakeEvent());
+        await publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken);
 
         Assert.NotNull(enrichedActivity);
         Assert.NotNull(enrichedEvent);
@@ -82,12 +86,13 @@ public class OpenTelemetrySubscriptionMiddlewareTests
     [Fact]
     public async Task Subscribe_SetsEventIdTag()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var fixture = new TestFixture();
         var publisher = fixture.CreatePublisher();
 
         var evt = MakeEvent();
         evt.Id = "my-event-id";
-        await publisher.PublishEventAsync(evt);
+        await publisher.PublishEventAsync(evt, cancellationToken: cancellationToken);
 
         Assert.Equal("my-event-id", fixture.SingleConsumerActivity.GetTagItem("event.id"));
     }
@@ -95,10 +100,11 @@ public class OpenTelemetrySubscriptionMiddlewareTests
     [Fact]
     public async Task Subscribe_SetsMessagingSystemTag()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var fixture = new TestFixture();
         var publisher = fixture.CreatePublisher();
 
-        await publisher.PublishEventAsync(MakeEvent());
+        await publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken);
 
         var activity = fixture.SingleConsumerActivity;
         Assert.Equal("hermodr", activity.GetTagItem("messaging.system"));
@@ -109,6 +115,7 @@ public class OpenTelemetrySubscriptionMiddlewareTests
     [Fact]
     public async Task Subscribe_PropagatesTraceState_FromEventExtensions()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var fixture = new TestFixture();
         var publisher = fixture.CreatePublisher();
 
@@ -118,7 +125,7 @@ public class OpenTelemetrySubscriptionMiddlewareTests
         cloudEvent[traceparentAttr] = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01";
         cloudEvent[traceStateAttr] = "tenant=abc,env=prod";
 
-        await publisher.PublishEventAsync(cloudEvent);
+        await publisher.PublishEventAsync(cloudEvent, cancellationToken: cancellationToken);
 
         var activity = fixture.SingleConsumerActivity;
         Assert.Equal("tenant=abc,env=prod", activity.TraceStateString);
@@ -127,6 +134,7 @@ public class OpenTelemetrySubscriptionMiddlewareTests
     [Fact]
     public async Task Subscribe_CreatesChildSpan_WhenTraceParentPresent()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var fixture = new TestFixture();
         var publisher = fixture.CreatePublisher();
 
@@ -134,7 +142,7 @@ public class OpenTelemetrySubscriptionMiddlewareTests
         var traceparentAttr = CloudEventAttribute.CreateExtension(TraceParentKey, CloudEventAttributeType.String);
         cloudEvent[traceparentAttr] = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01";
 
-        await publisher.PublishEventAsync(cloudEvent);
+        await publisher.PublishEventAsync(cloudEvent, cancellationToken: cancellationToken);
 
         var activity = fixture.SingleConsumerActivity;
         Assert.Equal("00f067aa0ba902b7", activity.ParentSpanId.ToHexString());
@@ -143,10 +151,11 @@ public class OpenTelemetrySubscriptionMiddlewareTests
     [Fact]
     public async Task Subscribe_CompletesSpan_WhenHandlerThrows()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var fixture = new TestFixtureWithThrowingHandler();
         var publisher = fixture.CreatePublisher();
 
-        await publisher.PublishEventAsync(MakeEvent());
+        await publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken);
 
         var activity = fixture.SingleConsumerActivity;
         Assert.Equal(ActivityKind.Consumer, activity.Kind);

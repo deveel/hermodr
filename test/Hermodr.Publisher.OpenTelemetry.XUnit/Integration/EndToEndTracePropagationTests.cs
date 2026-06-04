@@ -19,10 +19,11 @@ public class EndToEndTracePropagationTests
     [Fact]
     public async Task PublishAndSubscribe_TraceContextPropagatesEndToEnd()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var fixture = new TestFixture();
         var publisher = fixture.CreatePublisher();
 
-        await publisher.PublishEventAsync(MakeEvent("com.test.order.created"));
+        await publisher.PublishEventAsync(MakeEvent("com.test.order.created"), cancellationToken: cancellationToken);
 
         Assert.Equal(2, fixture.CapturedActivities.Count);
 
@@ -39,10 +40,11 @@ public class EndToEndTracePropagationTests
     [Fact]
     public async Task PublishAndSubscribe_ProducesCorrectParentChain()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var fixture = new TestFixture();
         var publisher = fixture.CreatePublisher();
 
-        await publisher.PublishEventAsync(MakeEvent());
+        await publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken);
 
         var publishActivity = fixture.CapturedActivities[0];
         var consumeActivity = fixture.CapturedActivities[1];
@@ -54,10 +56,11 @@ public class EndToEndTracePropagationTests
     [Fact]
     public async Task PublishAndSubscribe_MultipleHandlers_ShareSameTrace()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var fixture = new TestFixture();
         var publisher = fixture.CreatePublisher();
 
-        await publisher.PublishEventAsync(MakeEvent());
+        await publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken);
 
         var producerActivities = fixture.CapturedActivities.Where(a => a.Kind == ActivityKind.Producer).ToList();
         var consumerActivities = fixture.CapturedActivities.Where(a => a.Kind == ActivityKind.Consumer).ToList();
@@ -74,6 +77,7 @@ public class EndToEndTracePropagationTests
     [Fact]
     public async Task PublishAndSubscribe_TraceStatePropagatesEndToEnd()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var fixture = new TestFixture();
         var publisher = fixture.CreatePublisher();
 
@@ -83,7 +87,7 @@ public class EndToEndTracePropagationTests
         cloudEvent[traceparentAttr] = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01";
         cloudEvent[traceStateAttr] = "tenant=abc";
 
-        await publisher.PublishEventAsync(cloudEvent);
+        await publisher.PublishEventAsync(cloudEvent, cancellationToken: cancellationToken);
 
         var consumeActivity = fixture.CapturedActivities.Single(a => a.Kind == ActivityKind.Consumer);
         Assert.Equal("tenant=abc", consumeActivity.TraceStateString);
@@ -93,10 +97,11 @@ public class EndToEndTracePropagationTests
     [Fact]
     public async Task PublishAndSubscribe_PublisherOnly_NoConsumerSpan()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var fixture = new TestFixturePublisherOnly();
         var publisher = fixture.CreatePublisher();
 
-        await publisher.PublishEventAsync(MakeEvent());
+        await publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken);
 
         Assert.Single(fixture.CapturedActivities);
         Assert.Equal(ActivityKind.Producer, fixture.CapturedActivities[0].Kind);
@@ -105,10 +110,11 @@ public class EndToEndTracePropagationTests
     [Fact]
     public async Task PublishAndSubscribe_SubscriptionOnly_NoProducerSpan()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var fixture = new TestFixtureSubscriptionOnly();
         var publisher = fixture.CreatePublisher();
 
-        await publisher.PublishEventAsync(MakeEvent());
+        await publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken);
 
         Assert.Single(fixture.CapturedActivities);
         Assert.Equal(ActivityKind.Consumer, fixture.CapturedActivities[0].Kind);
@@ -117,11 +123,12 @@ public class EndToEndTracePropagationTests
     [Fact]
     public async Task PublishAndSubscribe_MultiplePublishs_CreatesSeparateTraces()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var fixture = new TestFixture();
         var publisher = fixture.CreatePublisher();
 
-        await publisher.PublishEventAsync(MakeEvent("com.test.first"));
-        await publisher.PublishEventAsync(MakeEvent("com.test.second"));
+        await publisher.PublishEventAsync(MakeEvent("com.test.first"), cancellationToken: cancellationToken);
+        await publisher.PublishEventAsync(MakeEvent("com.test.second"), cancellationToken: cancellationToken);
 
         var producerActivities = fixture.CapturedActivities.Where(a => a.Kind == ActivityKind.Producer).ToList();
         var consumerActivities = fixture.CapturedActivities.Where(a => a.Kind == ActivityKind.Consumer).ToList();

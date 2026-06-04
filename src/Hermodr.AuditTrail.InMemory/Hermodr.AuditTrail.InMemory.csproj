@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Title>Hermodr Audit Trail - In-Memory</Title>
+    <Description>Provides an in-memory implementation of the audit trail storage for testing and development.</Description>
+    <PackageTags>deveel;events;audit;trail;in-memory;testing</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Hermodr.AuditTrail\Hermodr.AuditTrail.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Kista.InMemory" Version="1.6.4" />
+  </ItemGroup>
+
+</Project>

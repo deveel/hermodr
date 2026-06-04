@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Title>Hermodr Audit Trail - Entity Framework</Title>
+    <Description>Provides an Entity Framework Core persistence layer for the audit trail, supporting SQL Server, PostgreSQL, and SQLite.</Description>
+    <PackageTags>deveel;events;audit;trail;entityframework;efcore;compliance</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Hermodr.AuditTrail\Hermodr.AuditTrail.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Kista.EntityFramework" Version="1.6.4" />
+  </ItemGroup>
+</Project>

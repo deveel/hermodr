@@ -68,6 +68,7 @@
 * [OrderService — Split Outbox + MassTransit RabbitMQ](samples/outbox-relay-masstransit.md)
 * [OrderService — In-Process Dead-Letter Replay](samples/deadletter-inproc.md)
 * [OrderService — Split Dead-Letter Replay with Entity Framework](samples/deadletter-relay-entityframework.md)
+* [OrderService — Audit Trail with NDJson Files](samples/audit-trail-ndjson.md)
 
 ## Project
 

@@ -3,10 +3,13 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 //
 
+using System.Diagnostics.CodeAnalysis;
+
 using Microsoft.Extensions.Logging;
 
 namespace Hermodr;
 
+[ExcludeFromCodeCoverage]
 static partial class LoggerExtensions
 {
     [LoggerMessage(32001, LogLevel.Debug, "Saving dead-letter event of type '{EventType}' with id '{MessageId}'")]

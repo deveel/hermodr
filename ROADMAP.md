@@ -127,22 +127,26 @@ The table below maps each roadmap item to the release milestone in which it is p
 
 ---
 
-### 7. Event Store & Audit Log Channel
+### 7. Audit Trail Channel
 
-> *An append-only channel that persists every published domain event for auditing, debugging, or read-model rebuilding.*
+> *An append-only channel that persists every published domain event for compliance auditing and debugging.*
 
-**The problem today:** Once an event is dispatched to a broker it is gone from the application's perspective. Reproducing what happened at a given point in time requires access to broker logs or custom instrumentation.
+**The problem today:** Once an event is dispatched to a broker it is gone from the application's perspective. Reproducing what happened at a given point in time requires access to broker logs or custom instrumentation. Regulated industries (finance, healthcare, government) need an immutable record of all domain events without relying on broker retention policies.
 
-**What we will build:** A `Hermodr.Publisher.EventStore` channel that writes every event to an append-only store (database table or blob storage, with a provider abstraction). The store supports querying by `type`, `source`, `subject`, time range, and custom attributes, and exposes a streaming API for replaying stored events in chronological order.
+**What we will build:**
+- `Hermodr.AuditTrail` — Core package with `IAuditTrailEntry`, `IAuditTrailWriter`, `IAuditTrailReader<T>`, `AuditTrailStreamQuery`, and `AuditTrailBuilder`.
+- `Hermodr.AuditTrail.InMemory` — In-memory storage backend for testing and development.
+- `Hermodr.AuditTrail.EntityFramework` — Entity Framework Core storage backend supporting SQL Server, PostgreSQL, and SQLite.
+- `Hermodr.Publisher.AuditTrail` — Publisher integration: `AuditTrailPublishChannel` and `AddAuditTrail()` extension method following the same pattern as RabbitMQ, Azure Service Bus, and other channel adapters.
 
-> **Scope note:** The Event Store records *domain facts* — the event payload, metadata, and CloudEvents attributes — not the operational outcome of the delivery attempt itself. For tracking delivery attempts, retries, error codes, and latency, see item 9 (Publish Delivery Log) below.
+> **Scope note:** The Audit Trail records *domain facts* — the event payload, metadata, and CloudEvents attributes — not the operational outcome of the delivery attempt itself. For tracking delivery attempts, retries, error codes, and latency, see item 9 (Publish Delivery Log) below.
 
 **Benefits:**
-- Provides a complete audit trail of all domain events without relying on broker retention policies.
-- Enables event-sourcing-style read-model reconstruction by replaying the stored stream.
+- Provides a complete, immutable audit trail of all domain events without relying on broker retention policies.
 - Useful in regulated industries where an immutable record of domain facts is a compliance requirement.
 - Can be combined with the dead-letter and replay features to correlate failures with their originating events.
-- Shares its storage provider abstraction with the Publish Delivery Log (item 9), so a single backend configuration covers both concerns.
+- Follows the existing channel adapter pattern — supports typed channels (`AddAuditTrail<TEvent>()`) and named channels for per-event-type recording.
+- Query capabilities are provided by each storage implementation, with `PageQuery<T>` extensions for composable filtering.
 
 ---
 

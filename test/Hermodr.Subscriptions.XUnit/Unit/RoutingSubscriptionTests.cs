@@ -99,13 +99,14 @@ namespace Hermodr
         [Fact]
         public async Task HandleAsync_RepublishesEventThroughPublisher()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var (sp, recording) = BuildRecordingProvider();
 
             var filter = FilterExpression.Constant(true);
             var sub    = new RoutingEventSubscription(filter, sp);
 
             var @event = MakeEvent();
-            await sub.HandleAsync(@event);
+            await sub.HandleAsync(@event, cancellationToken);
 
             Assert.Single(recording.Published);
             Assert.Same(@event, recording.Published[0]);
@@ -115,6 +116,7 @@ namespace Hermodr
         [Fact]
         public async Task HandleAsync_ForwardsRoutingOptions()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var opts = new NamedChannelPublishOptions("target-channel");
 
             var (sp, recording) = BuildRecordingProvider();
@@ -122,7 +124,7 @@ namespace Hermodr
             var sub = new RoutingEventSubscription(FilterExpression.Constant(true), sp, opts);
 
             var @event = MakeEvent();
-            await sub.HandleAsync(@event);
+            await sub.HandleAsync(@event, cancellationToken);
 
             Assert.Same(opts, recording.LastOptions);
         }
@@ -158,13 +160,14 @@ namespace Hermodr
             // Test the routing end-to-end using a RecordingPublisher so there's no
             // infinite loop: the routing subscription re-publishes via the recording
             // publisher, which simply records and does not loop back.
+            var cancellationToken = TestContext.Current.CancellationToken;
             var (sp, recording) = BuildRecordingProvider();
 
             var filter = EventFilter.ByType("com.example.route");
             var sub = new RoutingEventSubscription(filter, sp, null, "route-sub");
 
             var matchingEvent = MakeEvent("com.example.route");
-            await sub.HandleAsync(matchingEvent);
+            await sub.HandleAsync(matchingEvent, cancellationToken);
 
             Assert.Single(recording.Published);
             Assert.Same(matchingEvent, recording.Published[0]);
@@ -174,13 +177,14 @@ namespace Hermodr
         public static async Task RouteToChannel_Filter_NonMatchingEvent_SubscriptionNotInvoked()
         {
             // Verify the routing subscription is not selected when the filter does not match.
+            var cancellationToken = TestContext.Current.CancellationToken;
             var (sp, recording) = BuildRecordingProvider();
 
             var filter = EventFilter.ByType("com.example.specific");
             var sub = new RoutingEventSubscription(filter, sp);
 
             var registry = new EventSubscriptionRegistry([sub]);
-            var matches = await registry.ResolveSubscriptionsAsync(MakeEvent("com.example.other"));
+            var matches = await registry.ResolveSubscriptionsAsync(MakeEvent("com.example.other"), cancellationToken: cancellationToken);
 
             Assert.Empty(matches);
             Assert.Empty(recording.Published);
@@ -209,6 +213,7 @@ namespace Hermodr
         [Fact]
         public async Task RouteToChannel_TypePattern_WithRoutingOptions_ForwardsOptions()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var opts = new NamedChannelPublishOptions("output-channel");
 
             var (sp, recording) = BuildRecordingProvider();
@@ -219,7 +224,7 @@ namespace Hermodr
                 opts,
                 "pattern-sub");
 
-            await sub.HandleAsync(MakeEvent("com.example.order"));
+            await sub.HandleAsync(MakeEvent("com.example.order"), cancellationToken);
 
             Assert.Single(recording.Published);
             Assert.Same(opts, recording.LastOptions);

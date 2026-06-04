@@ -268,6 +268,7 @@ namespace Hermodr
         [Fact]
         public async Task Publish_WithDispatcher_InvokesMatchingHandler()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var handled = new List<CloudEvent>();
 
             var services = new ServiceCollection();
@@ -282,7 +283,7 @@ namespace Hermodr
             var provider = services.BuildServiceProvider();
             var publisher = provider.GetRequiredService<EventPublisher>().UseDispatcher();
             var @event = MakeEvent();
-            await publisher.PublishEventAsync(@event);
+            await publisher.PublishEventAsync(@event, cancellationToken: cancellationToken);
 
             Assert.Single(handled);
             Assert.Same(@event, handled[0]);
@@ -291,6 +292,7 @@ namespace Hermodr
         [Fact]
         public async Task Publish_WithDispatcher_DoesNotInvokeNonMatchingHandler()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var handled = false;
 
             var services = new ServiceCollection();
@@ -304,7 +306,7 @@ namespace Hermodr
             var provider = services.BuildServiceProvider();
             var publisher = provider.GetRequiredService<EventPublisher>().UseDispatcher();
 
-            await publisher.PublishEventAsync(MakeEvent("com.example.test"));
+            await publisher.PublishEventAsync(MakeEvent("com.example.test"), cancellationToken: cancellationToken);
 
             Assert.False(handled);
         }
@@ -312,6 +314,7 @@ namespace Hermodr
         [Fact]
         public async Task Publish_WithDispatcher_DefaultOptions_DoesNotThrowOnHandlerError()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var services = new ServiceCollection();
             services.AddLogging();
             services.AddEventPublisher(opt => opt.Source = new Uri("https://example.com"))
@@ -323,12 +326,13 @@ namespace Hermodr
             var provider = services.BuildServiceProvider();
             var publisher = provider.GetRequiredService<EventPublisher>().UseDispatcher();
 
-            await publisher.PublishEventAsync(MakeEvent());
+            await publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken);
         }
 
         [Fact]
         public async Task Publish_WithDispatcher_ThrowOnHandlerError_PropagatesException()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var services = new ServiceCollection();
             services.AddLogging();
             services.AddEventPublisher(opt => opt.Source = new Uri("https://example.com"))
@@ -342,12 +346,13 @@ namespace Hermodr
             var publisher = provider.GetRequiredService<EventPublisher>().UseDispatcher();
 
             await Assert.ThrowsAsync<InvalidOperationException>(() =>
-                publisher.PublishEventAsync(MakeEvent()));
+                publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken));
         }
 
         [Fact]
         public async Task Publish_WithDispatcher_MultipleSubscribers_AllInvoked()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var invoked = new List<string>();
 
             var services = new ServiceCollection();
@@ -365,7 +370,7 @@ namespace Hermodr
 
             var provider = services.BuildServiceProvider();
             var publisher = provider.GetRequiredService<EventPublisher>().UseDispatcher();
-            await publisher.PublishEventAsync(MakeEvent());
+            await publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken);
 
             Assert.Equal(["sub1", "sub2"], invoked);
         }
@@ -373,6 +378,7 @@ namespace Hermodr
         [Fact]
         public async Task AsMiddleware_DispatchesEvent()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var handled = false;
 
             var services = new ServiceCollection();
@@ -386,7 +392,7 @@ namespace Hermodr
             var publisher = provider.GetRequiredService<EventPublisher>()
                 .UseDispatcher();
 
-            await publisher.PublishEventAsync(MakeEvent());
+            await publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken);
 
             Assert.True(handled);
         }
@@ -394,6 +400,7 @@ namespace Hermodr
         [Fact]
         public async Task Publish_WithDispatcher_RespectsCancellation()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             using var cts = new CancellationTokenSource();
             var handlerStarted = new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -415,7 +422,7 @@ namespace Hermodr
             var task = publisher.PublishEventAsync(MakeEvent(), cancellationToken: cts.Token);
 
             // Wait for the handler to start before cancelling
-            await handlerStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await handlerStarted.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken);
             cts.Cancel();
 
             await Assert.ThrowsAnyAsync<OperationCanceledException>(() => task);
@@ -438,6 +445,7 @@ namespace Hermodr
         [Fact]
         public static async Task AddSubscriptions_WithDispatcherOptions_ThrowOnHandlerError_Propagates()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var services = new ServiceCollection();
             services.AddLogging();
             services.AddEventPublisher(opt => opt.Source = new Uri("https://example.com"))
@@ -454,12 +462,13 @@ namespace Hermodr
                     Type   = "com.example.test",
                     Source = new Uri("https://example.com"),
                     Id     = Guid.NewGuid().ToString("N"),
-                }));
+                }, cancellationToken: cancellationToken));
         }
 
         [Fact]
         public static async Task PublishEventAsync_NullEvent_Throws()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var services = new ServiceCollection();
             services.AddLogging();
             services.AddEventPublisher().AddSubscriptions();
@@ -468,7 +477,7 @@ namespace Hermodr
             var publisher = provider.GetRequiredService<EventPublisher>().UseDispatcher();
 
             await Assert.ThrowsAsync<ArgumentNullException>(() =>
-                publisher.PublishEventAsync(null!));
+                publisher.PublishEventAsync(null!, cancellationToken: cancellationToken));
         }
 
         [Fact]
@@ -488,6 +497,7 @@ namespace Hermodr
         [Fact]
         public static async Task AddSubscriptions_WithInlineSubscription_RoutesEvent()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var handled = new List<string>();
 
             var services = new ServiceCollection();
@@ -509,7 +519,7 @@ namespace Hermodr
             var @event = MakeEvent();
             @event.Time = DateTimeOffset.UtcNow;
 
-            await publisher.PublishEventAsync(@event);
+            await publisher.PublishEventAsync(@event, cancellationToken: cancellationToken);
 
             Assert.Single(handled);
             Assert.Equal("com.example.test", handled[0]);
@@ -518,6 +528,7 @@ namespace Hermodr
         [Fact]
         public static async Task AddSubscriptions_WithPatternSubscription_RoutesMatchingEvents()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var handled = new List<string>();
 
             var services = new ServiceCollection();
@@ -539,9 +550,9 @@ namespace Hermodr
                 Time = DateTimeOffset.UtcNow
             };
 
-            await publisher.PublishEventAsync(Evt("com.example.order.placed"));
-            await publisher.PublishEventAsync(Evt("com.example.user.created"));
-            await publisher.PublishEventAsync(Evt("org.other.irrelevant"));
+            await publisher.PublishEventAsync(Evt("com.example.order.placed"), cancellationToken: cancellationToken);
+            await publisher.PublishEventAsync(Evt("com.example.user.created"), cancellationToken: cancellationToken);
+            await publisher.PublishEventAsync(Evt("org.other.irrelevant"), cancellationToken: cancellationToken);
 
             Assert.Equal(2, handled.Count);
             Assert.Contains("com.example.order.placed", handled);
@@ -551,6 +562,7 @@ namespace Hermodr
         [Fact]
         public static async Task AddSubscriptions_WithFilterBuilder_RoutesMatchingEvents()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var handled = false;
 
             var services = new ServiceCollection();
@@ -574,7 +586,7 @@ namespace Hermodr
                 Source = new Uri("https://example.com"),
                 Id = Guid.NewGuid().ToString("N"),
                 Time = DateTimeOffset.UtcNow
-            });
+            }, cancellationToken: cancellationToken);
 
             Assert.True(handled);
         }
@@ -582,6 +594,7 @@ namespace Hermodr
         [Fact]
         public static async Task AddSubscriptions_WithHandlerClass_RoutesEvents()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var services = new ServiceCollection();
             services.AddLogging();
             services.AddEventPublisher(opt => opt.Source = new Uri("https://example.com"))
@@ -599,7 +612,7 @@ namespace Hermodr
                 Source = new Uri("https://example.com"),
                 Id = Guid.NewGuid().ToString("N"),
                 Time = DateTimeOffset.UtcNow
-            });
+            }, cancellationToken: cancellationToken);
 
             Assert.True(subscription.WasInvoked);
         }
@@ -758,6 +771,7 @@ namespace Hermodr
         [Fact]
         public static async Task DataFilter_RoutesViaDispatcher_WhenBodyMatches()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var invoked = false;
 
             var services = new ServiceCollection();
@@ -782,7 +796,7 @@ namespace Hermodr
                 Time = DateTimeOffset.UtcNow,
                 DataContentType = "application/json",
                 Data = new { tier = "gold" }
-            });
+            }, cancellationToken: cancellationToken);
 
             Assert.True(invoked);
         }
@@ -790,6 +804,7 @@ namespace Hermodr
         [Fact]
         public static async Task DataFilter_DoesNotRouteWhenBodyDoesNotMatch()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var invoked = false;
 
             var services = new ServiceCollection();
@@ -814,7 +829,7 @@ namespace Hermodr
                 Time = DateTimeOffset.UtcNow,
                 DataContentType = "application/json",
                 Data = new { tier = "silver" }
-            });
+            }, cancellationToken: cancellationToken);
 
             Assert.False(invoked);
         }

@@ -101,13 +101,14 @@ namespace Hermodr
         [Fact]
         public static async Task Register_ThenGetMatchingSubscriptionsAsync_ReturnsSameResult()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var registry = new EventSubscriptionRegistry();
             var sub = MakeSub(EventFilter.ByType("com.example.order.placed"));
 
             registry.Register(sub);
 
             // Retrieve via async path after sync registration.
-            var matches = await registry.ResolveSubscriptionsAsync(MakeEvent("com.example.order.placed"));
+            var matches = await registry.ResolveSubscriptionsAsync(MakeEvent("com.example.order.placed"), cancellationToken: cancellationToken);
 
             Assert.Single(matches);
             Assert.Same(sub, matches[0]);
@@ -131,9 +132,10 @@ namespace Hermodr
         [Fact]
         public static async Task RegisterAsync_NullSubscription_ThrowsArgumentNullException()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var registry = new EventSubscriptionRegistry();
             await Assert.ThrowsAsync<ArgumentNullException>(
-                () => registry.RegisterAsync(null!));
+                () => registry.RegisterAsync(null!, cancellationToken: cancellationToken));
         }
 
         [Fact]
@@ -152,12 +154,13 @@ namespace Hermodr
         [Fact]
         public static async Task RegisterAsync_SingleSubscription_IsRetrievable()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var registry = new EventSubscriptionRegistry();
             var sub = MakeSub(EventFilter.ByType("com.example.order.placed"), "async-sub");
 
-            await registry.RegisterAsync(sub);
+            await registry.RegisterAsync(sub, cancellationToken: cancellationToken);
 
-            var matches = await registry.ResolveSubscriptionsAsync(MakeEvent("com.example.order.placed"));
+            var matches = await registry.ResolveSubscriptionsAsync(MakeEvent("com.example.order.placed"), cancellationToken: cancellationToken);
             Assert.Single(matches);
             Assert.Same(sub, matches[0]);
         }
@@ -165,12 +168,13 @@ namespace Hermodr
         [Fact]
         public static async Task RegisterAsync_SubscriptionWithName_NameIsPreserved()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var registry = new EventSubscriptionRegistry();
             var sub = MakeSub(name: "named-async-sub");
 
-            await registry.RegisterAsync(sub);
+            await registry.RegisterAsync(sub, cancellationToken: cancellationToken);
 
-            var matches = await registry.ResolveSubscriptionsAsync(MakeEvent());
+            var matches = await registry.ResolveSubscriptionsAsync(MakeEvent(), cancellationToken: cancellationToken);
             Assert.Single(matches);
             Assert.Equal("named-async-sub", matches[0].Name);
         }
@@ -178,13 +182,14 @@ namespace Hermodr
         [Fact]
         public static async Task RegisterAsync_EmptyFilter_MatchesAnyEvent()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var registry = new EventSubscriptionRegistry();
             var sub = MakeSub(FilterExpression.Constant(true));  // empty = match all
 
-            await registry.RegisterAsync(sub);
+            await registry.RegisterAsync(sub, cancellationToken: cancellationToken);
 
-            var matchesA = await registry.ResolveSubscriptionsAsync(MakeEvent("com.example.a"));
-            var matchesB = await registry.ResolveSubscriptionsAsync(MakeEvent("com.example.b"));
+            var matchesA = await registry.ResolveSubscriptionsAsync(MakeEvent("com.example.a"), cancellationToken: cancellationToken);
+            var matchesB = await registry.ResolveSubscriptionsAsync(MakeEvent("com.example.b"), cancellationToken: cancellationToken);
 
             Assert.Single(matchesA);
             Assert.Single(matchesB);
@@ -193,23 +198,25 @@ namespace Hermodr
         [Fact]
         public static async Task RegisterAsync_SameInstanceTwice_AppearsTwiceInMatches()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var registry = new EventSubscriptionRegistry();
             var sub = MakeSub();
 
-            await registry.RegisterAsync(sub);
-            await registry.RegisterAsync(sub);
+            await registry.RegisterAsync(sub, cancellationToken: cancellationToken);
+            await registry.RegisterAsync(sub, cancellationToken: cancellationToken);
 
-            var matches = await registry.ResolveSubscriptionsAsync(MakeEvent());
+            var matches = await registry.ResolveSubscriptionsAsync(MakeEvent(), cancellationToken: cancellationToken);
             Assert.Equal(2, matches.Count);
         }
 
         [Fact]
         public static async Task RegisterAsync_ThenGetMatchingSubscriptionsSync_ReturnsSameResult()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var registry = new EventSubscriptionRegistry();
             var sub = MakeSub(EventFilter.ByType("com.example.order.placed"));
 
-            await registry.RegisterAsync(sub);
+            await registry.RegisterAsync(sub, cancellationToken: cancellationToken);
 
             // Retrieve via sync path after async registration.
             var matches = registry.GetMatchingSubscriptions(MakeEvent("com.example.order.placed"));
@@ -220,40 +227,44 @@ namespace Hermodr
         [Fact]
         public static async Task RegisterAsync_DoesNotMatchFilteredOutEvent()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var registry = new EventSubscriptionRegistry();
             var sub = MakeSub(EventFilter.ByType("com.example.specific"));
 
-            await registry.RegisterAsync(sub);
+            await registry.RegisterAsync(sub, cancellationToken: cancellationToken);
 
-            var matches = await registry.ResolveSubscriptionsAsync(MakeEvent("com.example.other"));
+            var matches = await registry.ResolveSubscriptionsAsync(MakeEvent("com.example.other"), cancellationToken: cancellationToken);
             Assert.Empty(matches);
         }
 
         [Fact]
         public static async Task RegisterAsync_AfterPreSeeding_AddsToExistingSubscriptions()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var seeded = MakeSub(EventFilter.ByType("com.example.seeded"), "seeded");
             var registry = new EventSubscriptionRegistry([seeded]);
 
             var newSub = MakeSub(EventFilter.ByType("com.example.new"), "new");
-            await registry.RegisterAsync(newSub);
+            await registry.RegisterAsync(newSub, cancellationToken: cancellationToken);
 
-            Assert.Single(await registry.ResolveSubscriptionsAsync(MakeEvent("com.example.seeded")));
-            Assert.Single(await registry.ResolveSubscriptionsAsync(MakeEvent("com.example.new")));
+            Assert.Single(await registry.ResolveSubscriptionsAsync(MakeEvent("com.example.seeded"), cancellationToken: cancellationToken));
+            Assert.Single(await registry.ResolveSubscriptionsAsync(MakeEvent("com.example.new"), cancellationToken: cancellationToken));
         }
 
         [Fact]
         public static async Task RegisterAsync_WithContext_IsRetrievableViaContextOverload()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var registry = new EventSubscriptionRegistry();
             var sub = MakeSub(EventFilter.ByType("com.example.order.placed"));
 
-            await registry.RegisterAsync(sub);
+            await registry.RegisterAsync(sub, cancellationToken: cancellationToken);
 
             // Use the context-aware overload (context=null means no DI services needed).
             var matches = await registry.ResolveSubscriptionsAsync(
                 MakeEvent("com.example.order.placed"),
-                context: null);
+                context: null,
+                cancellationToken: cancellationToken);
 
             Assert.Single(matches);
             Assert.Same(sub, matches[0]);
@@ -264,16 +275,17 @@ namespace Hermodr
         [Fact]
         public static async Task MixedRegistration_SyncAndAsync_BothSubscriptionsArePresent()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             var registry = new EventSubscriptionRegistry();
 
             var syncSub = MakeSub(EventFilter.ByType("com.example.sync"), "sync");
             var asyncSub = MakeSub(EventFilter.ByType("com.example.async"), "async");
 
             registry.Register(syncSub);
-            await registry.RegisterAsync(asyncSub);
+            await registry.RegisterAsync(asyncSub, cancellationToken: cancellationToken);
 
-            var matchSync = await registry.ResolveSubscriptionsAsync(MakeEvent("com.example.sync"));
-            var matchAsync = await registry.ResolveSubscriptionsAsync(MakeEvent("com.example.async"));
+            var matchSync = await registry.ResolveSubscriptionsAsync(MakeEvent("com.example.sync"), cancellationToken: cancellationToken);
+            var matchAsync = await registry.ResolveSubscriptionsAsync(MakeEvent("com.example.async"), cancellationToken: cancellationToken);
 
             Assert.Single(matchSync);
             Assert.Same(syncSub, matchSync[0]);
@@ -302,15 +314,16 @@ namespace Hermodr
         [Fact]
         public static async Task RegisterAsync_ConcurrentCalls_AllSubscriptionsAreStored()
         {
+            var cancellationToken = TestContext.Current.CancellationToken;
             const int count = 100;
             var registry = new EventSubscriptionRegistry();
             var subs = Enumerable.Range(0, count)
                 .Select(i => MakeSub(name: $"async-sub-{i}"))
                 .ToList();
 
-            await Task.WhenAll(subs.Select(s => registry.RegisterAsync(s)));
+            await Task.WhenAll(subs.Select(s => registry.RegisterAsync(s, cancellationToken: cancellationToken)));
 
-            var matches = await registry.ResolveSubscriptionsAsync(MakeEvent());
+            var matches = await registry.ResolveSubscriptionsAsync(MakeEvent(), cancellationToken: cancellationToken);
             Assert.Equal(count, matches.Count);
         }
     }

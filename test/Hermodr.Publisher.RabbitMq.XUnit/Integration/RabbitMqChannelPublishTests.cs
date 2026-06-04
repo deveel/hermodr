@@ -82,6 +82,8 @@ namespace Hermodr
         [Fact]
         public async Task PublishCloudEventToRabbitMq()
         {
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             var cloudEvent = new CloudNative.CloudEvents.CloudEvent
             {
                 Subject = "test",
@@ -97,9 +99,9 @@ namespace Hermodr
             cloudEvent["amqproutingkey"] = "test.event1";
             cloudEvent["amqpexchange"] = "test";
 
-            await Publisher.PublishEventAsync(cloudEvent);
+            await Publisher.PublishEventAsync(cloudEvent, cancellationToken: cancellationToken);
 
-            var received = await _receivedTcs.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            var received = await _receivedTcs.Task.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken);
 
             Assert.NotNull(received);
             Assert.Equal(cloudEvent.Id, received.Id);
@@ -111,15 +113,17 @@ namespace Hermodr
         [Fact]
         public async Task PublishEventDataToRabbitMq()
         {
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             var personCreated = new PersonCreated
             {
                 Name = "John Doe",
                 Age = 30
             };
 
-            await Publisher.PublishAsync(personCreated);
+            await Publisher.PublishAsync(personCreated, cancellationToken: cancellationToken);
 
-            var received = await _receivedTcs.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            var received = await _receivedTcs.Task.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken);
 
             Assert.NotNull(received);
 

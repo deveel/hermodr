@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+### 🚀 Features
+
+- **NDJson Audit Trail**: New `Hermodr.AuditTrail.NDJson` package providing a newline-delimited JSON (NDJSON) file storage backend for the audit trail, with automatic file rolling by size or time interval, retention policies, and a **pluggable filesystem abstraction** built on top of `System.IO.Abstractions`. By registering a different `IFileSystem` implementation, the local disk can be replaced with Azure Blob Storage, Amazon S3, or any other compatible storage backend without touching the storage code.
+  - `NdJsonAuditTrail` — implements both `IAuditTrailWriter` and `IAuditTrailReader<AuditTrailEntry>` on a single class (mirrors `InMemoryAuditTrail`)
+  - `NdJsonAuditTrailOptions` — `DirectoryPath`, `MaxFileSizeBytes`, `RollInterval`, `MaxFileCount`, `FileNamePrefix`, `FileExtension`, `ReadBufferSize`
+  - `AuditTrailBuilder.UseNDJson(...)` — fluent builder extension for the publisher integration
+  - `AddNDJsonAuditTrail(...)` and `AddNDJsonAuditTrailQuerying(...)` — top-level `IServiceCollection` extensions
+  - **Async streaming reads**: `ReadAsync` now opens files with `FileShare.ReadWrite` and `FileOptions.Asynchronous | SequentialScan`, reads each NDJSON file line-by-line via `StreamReader.ReadLineAsync`, applies the `AuditTrailStreamQuery` filter while streaming (no full pre-read), and yields matched entries in chronological order. Concurrent writers are never blocked by an in-progress read, and the file content is never fully buffered in memory. Mid-read file deletion / directory deletion is handled gracefully (logged and skipped, the read completes).
+  - 54 unit tests covering construction, append/read round-trip, file rolling, retention cleanup, all `AuditTrailStreamQuery` filters, cancellation, the `IFileSystem` abstraction (using `MockFileSystem` from `System.IO.Abstractions.TestingHelpers`), `ProviderName` and `IDisposable` contracts, async streaming yield, concurrent read/write non-blocking, file/directory deletion resilience, and custom `ReadBufferSize`
+  - New sample: [`samples/audit-trail-ndjson/AuditTrail.NDJson.Sample`](https://github.com/deveel/hermodr/tree/main/samples/audit-trail-ndjson/AuditTrail.NDJson.Sample)
+  - New docs: [`docs/samples/audit-trail-ndjson.md`](https://github.com/deveel/hermodr/blob/main/docs/samples/audit-trail-ndjson.md) and package details in [`docs/packages.md`](https://github.com/deveel/hermodr/blob/main/docs/packages.md)
+
+---
+
 ## v1.2.4 (2026-05-24)
 
 ### ⚠ Breaking Changes

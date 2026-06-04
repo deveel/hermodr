@@ -67,6 +67,8 @@ namespace Hermodr
         [Fact]
         public static async Task AddChannel_Instance_EventDelivered()
         {
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             var received = new List<CloudEvent>();
             var channel  = new CallbackChannel(e => received.Add(e));
 
@@ -76,7 +78,7 @@ namespace Hermodr
             var publisher = services.BuildServiceProvider()
                                     .GetRequiredService<EventPublisher>();
 
-            await publisher.PublishEventAsync(ValidEvent());
+            await publisher.PublishEventAsync(ValidEvent(), cancellationToken: cancellationToken);
 
             Assert.Single(received);
         }
@@ -84,6 +86,8 @@ namespace Hermodr
         [Fact]
         public static async Task AddChannel_Instance_MultipleInstancesAllReceive()
         {
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             var ch1Events = new List<CloudEvent>();
             var ch2Events = new List<CloudEvent>();
 
@@ -95,7 +99,7 @@ namespace Hermodr
             var publisher = services.BuildServiceProvider()
                                     .GetRequiredService<EventPublisher>();
 
-            await publisher.PublishEventAsync(ValidEvent());
+            await publisher.PublishEventAsync(ValidEvent(), cancellationToken: cancellationToken);
 
             Assert.Single(ch1Events);
             Assert.Single(ch2Events);
@@ -106,6 +110,8 @@ namespace Hermodr
         [Fact]
         public static async Task AddChannel_TypedInstance_EventDelivered()
         {
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             var received = new List<CloudEvent>();
             var channel  = new TypedCallbackChannel<TestEventData>(e => received.Add(e));
 
@@ -119,7 +125,7 @@ namespace Hermodr
             var publisher = services.BuildServiceProvider()
                                     .GetRequiredService<EventPublisher>();
 
-            await publisher.PublishAsync(typeof(TestEventData), new TestEventData());
+            await publisher.PublishAsync(typeof(TestEventData), new TestEventData(), cancellationToken: cancellationToken);
 
             Assert.Single(received);
         }

@@ -111,12 +111,14 @@ namespace Hermodr
         [Fact]
         public async Task PublishAsync_HmacSha1Algorithm_SetsCorrectHeaders()
         {
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             HttpRequestMessage? captured = null;
             var handler = new FakeHandler(req => { captured = req; return OK(); });
 
 #pragma warning disable CS0618
             await BuildChannel(handler, o => o.SignatureAlgorithm = WebhookSignatureAlgorithm.HmacSha1)
-                  .PublishAsync(MakeEvent());
+                  .PublishAsync(MakeEvent(), cancellationToken: cancellationToken);
 #pragma warning restore CS0618
 
             var sig = captured!.Headers.GetValues(WebhookDefaults.SignatureHeaderName).First();
@@ -131,6 +133,8 @@ namespace Hermodr
         [Fact]
         public async Task PublishAsync_Returns429_IsRetriedByDefault()
         {
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             var count   = 0;
             var handler = new FakeHandler(_ =>
             {
@@ -144,7 +148,7 @@ namespace Hermodr
             {
                 o.MaxRetryCount = 3;
                 o.RetryDelay    = TimeSpan.FromMilliseconds(10);
-            }).PublishAsync(MakeEvent());
+            }).PublishAsync(MakeEvent(), cancellationToken: cancellationToken);
 
             Assert.Equal(2, count); // 1 failed + 1 success
         }
@@ -152,6 +156,8 @@ namespace Hermodr
         [Fact]
         public async Task PublishAsync_Returns429_ThenExhausted_ThrowsStatusCodeException()
         {
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             var handler = new FakeHandler(_ => new HttpResponseMessage(HttpStatusCode.TooManyRequests));
 
             await Assert.ThrowsAsync<WebhookStatusCodeException>(
@@ -159,7 +165,7 @@ namespace Hermodr
                 {
                     o.MaxRetryCount = 1;
                     o.RetryDelay    = TimeSpan.FromMilliseconds(1);
-                }).PublishAsync(MakeEvent()));
+                }).PublishAsync(MakeEvent(), cancellationToken: cancellationToken));
         }
 
         // ── Custom retryable status codes ────────────────────────────────────
@@ -167,6 +173,8 @@ namespace Hermodr
         [Fact]
         public async Task PublishAsync_CustomRetryableStatusCode_IsRetried()
         {
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             var count   = 0;
             var handler = new FakeHandler(_ =>
             {
@@ -181,7 +189,7 @@ namespace Hermodr
                 o.MaxRetryCount        = 3;
                 o.RetryDelay           = TimeSpan.FromMilliseconds(1);
                 o.RetryableStatusCodes = new HashSet<int> { 418 };
-            }).PublishAsync(MakeEvent());
+            }).PublishAsync(MakeEvent(), cancellationToken: cancellationToken);
 
             Assert.Equal(2, count);
         }
@@ -189,6 +197,8 @@ namespace Hermodr
         [Fact]
         public async Task PublishAsync_NonCustomRetryableStatusCode_DoesNotRetry()
         {
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             var count   = 0;
             var handler = new FakeHandler(_ =>
             {
@@ -203,7 +213,7 @@ namespace Hermodr
                     o.MaxRetryCount = 3;
                     o.RetryDelay    = TimeSpan.FromMilliseconds(1);
                     // Leave RetryableStatusCodes at default (which doesn't include 418)
-                }).PublishAsync(MakeEvent()));
+                }).PublishAsync(MakeEvent(), cancellationToken: cancellationToken));
 
             Assert.Equal(1, count);
         }
@@ -213,6 +223,8 @@ namespace Hermodr
         [Fact]
         public async Task PublishAsync_SignatureAlgorithmHeaderNameNull_HeaderSuppressed()
         {
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             HttpRequestMessage? captured = null;
             var handler = new FakeHandler(req => { captured = req; return OK(); });
 
@@ -220,7 +232,7 @@ namespace Hermodr
             {
                 o.SigningSecret               = "secret";
                 o.SignatureAlgorithmHeaderName = null;
-            }).PublishAsync(MakeEvent());
+            }).PublishAsync(MakeEvent(), cancellationToken: cancellationToken);
 
             // SignatureAlgorithmHeaderName is null → the algorithm header must NOT be sent
             Assert.False(captured!.Headers.Contains(WebhookDefaults.SignatureAlgorithmHeaderName));
@@ -233,6 +245,8 @@ namespace Hermodr
         [Fact]
         public async Task PublishBatchAsync_RetriesOnTransientFailure()
         {
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             var count   = 0;
             var handler = new FakeHandler(_ =>
             {
@@ -249,7 +263,7 @@ namespace Hermodr
             });
 
             await channel.PublishBatchAsync(
-                [MakeEvent("event.a"), MakeEvent("event.b")]);
+                [MakeEvent("event.a"), MakeEvent("event.b")], cancellationToken: cancellationToken);
 
             Assert.Equal(2, count);
         }
@@ -257,6 +271,8 @@ namespace Hermodr
         [Fact]
         public async Task PublishBatchAsync_ThrowsAfterExhaustedRetries()
         {
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             var handler = new FakeHandler(_ => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
 
             var channel = BuildChannel(handler, o =>
@@ -267,12 +283,14 @@ namespace Hermodr
 
             await Assert.ThrowsAsync<WebhookStatusCodeException>(
                 () => channel.PublishBatchAsync(
-                    [MakeEvent("event.a"), MakeEvent("event.b")]));
+                    [MakeEvent("event.a"), MakeEvent("event.b")], cancellationToken: cancellationToken));
         }
 
         [Fact]
         public async Task PublishBatchAsync_ExceptionBased_ThrowsAfterExhausted()
         {
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             var handler = new FakeHandler(_ => throw new HttpRequestException("connection reset"));
 
             var channel = BuildChannel(handler, o =>
@@ -282,7 +300,7 @@ namespace Hermodr
             });
 
             await Assert.ThrowsAsync<WebhookTransportException>(
-                () => channel.PublishBatchAsync([MakeEvent()]));
+                () => channel.PublishBatchAsync([MakeEvent()], cancellationToken: cancellationToken));
         }
 
         // ── PublishBatchAsync CloudEventsXml format ──────────────────────────
@@ -337,6 +355,8 @@ namespace Hermodr
         [Fact]
         public async Task PublishAsync_PerCallOverride_CannotChangeStructuralHeaders()
         {
+            // Arrange
+            var cancellationToken = TestContext.Current.CancellationToken;
             HttpRequestMessage? captured = null;
             var handler = new FakeHandler(req => { captured = req; return OK(); });
 
@@ -350,7 +370,7 @@ namespace Hermodr
             await channel.PublishAsync(MakeEvent(), new WebhookPublishOptions
             {
                 SignatureHeaderName = "X-Should-Be-Ignored",
-            });
+            }, cancellationToken: cancellationToken);
 
             // The structural header name from the channel defaults must be used
             Assert.True(captured!.Headers.Contains("X-Custom-Sig"),
