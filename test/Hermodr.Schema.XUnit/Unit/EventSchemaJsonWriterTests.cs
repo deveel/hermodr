@@ -54,7 +54,8 @@ namespace Hermodr {
 			await writer.WriteToAsync(stream, schema, cancellationToken);
 
 			stream.Position = 0;
-			var json = await new StreamReader(stream).ReadToEndAsync(cancellationToken);
+			using var reader = new StreamReader(stream);
+			var json = await reader.ReadToEndAsync(cancellationToken);
 			var obj = JsonSerializer.Deserialize<JsonNode>(json)!;
 			var properties = obj["properties"]!.AsObject();
 
