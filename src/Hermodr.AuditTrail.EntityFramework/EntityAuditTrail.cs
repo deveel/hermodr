@@ -59,7 +59,7 @@ public class EntityAuditTrail : IAuditTrailWriter, IAuditTrailReader<DbAuditTrai
         _context.AuditTrailEntries.Add(dbEntry);
         await _context.SaveChangesAsync(cancellationToken);
 
-        _logger.LogDebug("Audit trail entry saved to database: EventId={EventId}, EventType={EventType}", dbEntry.EventId, dbEntry.EventType);
+        _logger.LogAuditTrailEntrySavedToDatabase(dbEntry.EventId, dbEntry.EventType);
     }
 
     /// <summary>

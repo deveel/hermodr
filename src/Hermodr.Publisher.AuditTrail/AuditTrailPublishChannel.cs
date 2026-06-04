@@ -58,18 +58,18 @@ public class AuditTrailPublishChannel : EventPublishChannel<AuditTrailPublishOpt
     {
         if (options is BypassAuditTrailOptions)
         {
-            _logger.LogDebug("Skipping audit trail record for event type {EventType} (bypass signal)", @event.Type);
+            _logger.LogAuditTrailRecordSkipped(@event.Type);
             return;
         }
 
         try
         {
             await Writer.AppendAsync(@event, cancellationToken);
-            _logger.LogDebug("Audit trail record appended for event type {EventType}", @event.Type);
+            _logger.LogAuditTrailRecordAppended(@event.Type);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to append audit trail record for event type {EventType}", @event.Type);
+            _logger.LogAuditTrailRecordFailed(ex, @event.Type);
             throw;
         }
     }

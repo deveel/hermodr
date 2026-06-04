@@ -143,21 +143,21 @@ public class NdJsonEventDeliveryLogRepository : IEventDeliveryLogRepository, IDi
                 }
                 catch (IOException ex)
                 {
-                    _logger.LogWarning(ex, "Failed to delete old delivery log file: {FilePath}", file);
+                    _logger.LogFailedToDeleteOldDeliveryLogFile(ex, file);
                 }
                 catch (UnauthorizedAccessException ex)
                 {
-                    _logger.LogWarning(ex, "Failed to delete old delivery log file: {FilePath}", file);
+                    _logger.LogFailedToDeleteOldDeliveryLogFile(ex, file);
                 }
             }
         }
         catch (IOException ex)
         {
-            _logger.LogWarning(ex, "Failed to clean up old delivery log files.");
+            _logger.LogFailedToCleanUpOldDeliveryLogFiles(ex);
         }
         catch (UnauthorizedAccessException ex)
         {
-            _logger.LogWarning(ex, "Failed to clean up old delivery log files.");
+            _logger.LogFailedToCleanUpOldDeliveryLogFiles(ex);
         }
     }
 

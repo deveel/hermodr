@@ -50,7 +50,7 @@ public class InMemoryAuditTrail : IAuditTrailWriter, IAuditTrailReader<AuditTrai
         var entry = AuditTrailEntry.FromCloudEvent(@event);
         _bag.Add(entry);
 
-        _logger.LogDebug("Audit trail entry appended: EventId={EventId}, EventType={EventType}", entry.EventId, entry.EventType);
+        _logger.LogAuditTrailEntryAppended(entry.EventId, entry.EventType);
 
         return Task.CompletedTask;
     }
