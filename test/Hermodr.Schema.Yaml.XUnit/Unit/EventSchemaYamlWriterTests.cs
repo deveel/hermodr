@@ -136,7 +136,8 @@ namespace Hermodr {
             using var stream = new MemoryStream();
             await writer.WriteToAsync(stream, schema, cancellationToken);
             stream.Position = 0;
-            var yaml = await new StreamReader(stream).ReadToEndAsync(cancellationToken);
+            using var reader = new StreamReader(stream);
+            var yaml = await reader.ReadToEndAsync(cancellationToken);
 
             Assert.NotEmpty(yaml);
             Assert.Contains("type:", yaml);
