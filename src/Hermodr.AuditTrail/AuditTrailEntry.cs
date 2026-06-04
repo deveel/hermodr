@@ -108,12 +108,9 @@ public class AuditTrailEntry : IAuditTrailEntry
         }
 
         var extensionAttributes = new Dictionary<string, string>();
-        foreach (var attr in cloudEvent.GetPopulatedAttributes())
+        foreach (var attr in cloudEvent.GetPopulatedAttributes().Where(attr => !StandardCloudEventAttributes.IsStandard(attr.Key.Name)))
         {
-            if (!StandardCloudEventAttributes.IsStandard(attr.Key.Name))
-            {
-                extensionAttributes[attr.Key.ToString()] = attr.Value?.ToString() ?? string.Empty;
-            }
+            extensionAttributes[attr.Key.ToString()] = attr.Value?.ToString() ?? string.Empty;
         }
 
         return new AuditTrailEntry

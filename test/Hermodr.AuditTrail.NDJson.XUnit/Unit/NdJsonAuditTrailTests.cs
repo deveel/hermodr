@@ -63,14 +63,11 @@ public class NdJsonAuditTrailTests : IDisposable
 
     public void Dispose()
     {
-        foreach (var dir in _createdDirs)
+        foreach (var dir in _createdDirs.Where(Directory.Exists))
         {
-            if (Directory.Exists(dir))
-            {
-                try { Directory.Delete(dir, true); }
-                catch (IOException) { /* cleanup best-effort */ }
-                catch (UnauthorizedAccessException) { /* cleanup best-effort */ }
-            }
+            try { Directory.Delete(dir, true); }
+            catch (IOException) { /* cleanup best-effort */ }
+            catch (UnauthorizedAccessException) { /* cleanup best-effort */ }
         }
     }
 
@@ -426,6 +423,7 @@ public class NdJsonAuditTrailTests : IDisposable
         {
             await foreach (var _ in store.ReadAsync(cancellationToken: cts.Token))
             {
+                // enumeration force-feed to trigger cancellation
             }
         });
     }

@@ -10,8 +10,6 @@ public class AuditTrailPageQueryExtensionsTests
     public void OfType_ShouldAddFilter()
     {
         var query = CreateQuery().OfType("order.created");
-        var entry = new AuditTrailEntry { EventType = "order.created" };
-        var other = new AuditTrailEntry { EventType = "order.shipped" };
 
         // PageQuery applies filters via the Query property
         Assert.NotNull(query.Query);

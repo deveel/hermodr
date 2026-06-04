@@ -111,7 +111,7 @@ public class InMemoryAuditTrailEdgeCaseTests
         {
             return Task.Run(async () =>
             {
-                await foreach (var entry in auditTrail.ReadAsync(cancellationToken: cts.Token))
+                await foreach (var _ in auditTrail.ReadAsync(cancellationToken: cts.Token))
                 {
                     // Should not reach here
                 }
