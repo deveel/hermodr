@@ -1,0 +1,16 @@
+{
+  "index_name": "hermodr",
+  "start_urls": ["https://hermodr.deveel.org/docs/"],
+  "sitemap_urls": ["https://hermodr.deveel.org/sitemap.xml"],
+  "selectors": {
+    "lvl0": {
+      "selector": "",
+      "default_value": "Documentation"
+    },
+    "lvl1": "header h1",
+    "lvl2": "article h2",
+    "lvl3": "article h3",
+    "lvl4": "article h4",
+    "text": "article p, article li, article td"
+  }
+}

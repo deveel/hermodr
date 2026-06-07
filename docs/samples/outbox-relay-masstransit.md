@@ -170,7 +170,7 @@ cd samples/outbox-relay
 docker compose up -d
 ```
 
-The RabbitMQ management UI is available at <http://localhost:15672> (`guest` / `guest`).
+The RabbitMQ management UI is available at `http://localhost:15672` (`guest` / `guest`).
 
 **2. Start the API** (terminal 1)
 
