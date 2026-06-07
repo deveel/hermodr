@@ -1,0 +1,16 @@
+.features {
+  display: flex;
+  align-items: center;
+  padding: 3rem 0;
+  width: 100%;
+}
+
+.featureSvg {
+  height: 72px;
+  width: 72px;
+  color: var(--ifm-color-primary);
+}
+
+[data-theme='dark'] .featureSvg {
+  color: var(--ifm-color-primary-light);
+}
