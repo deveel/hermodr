@@ -3,6 +3,10 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 //
 
+
+
+using System.Diagnostics;
+
 using CloudNative.CloudEvents;
 
 using Microsoft.Extensions.Logging;
@@ -41,6 +45,7 @@ namespace Hermodr
         EventPublishChannel<RabbitMqPublishOptions>,
         IAsyncDisposable, IDisposable
     {
+        private readonly RabbitMqTransportTelemetry _telemetry = new();
         private readonly IRabbitMqMessageFactory _messageFactory;
         private readonly IEventSystemTime _systemTime;
         private readonly ILogger _logger;
@@ -210,14 +215,13 @@ namespace Hermodr
                 var channel = await GetOrCreateChannelAsync(options, cancellationToken);
 
                 var publisherConfirms = options.PublisherConfirms ?? DefaultPublisherConfirms;
-                // When PublisherConfirms + tracking is on, BasicPublishAsync blocks until
-                // the broker ACKs (or throws on NACK). We apply an additional timeout to
-                // guarantee the call does not hang indefinitely.
                 using var publishCts = publisherConfirms
                     ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken)
                     : null;
                 publishCts?.CancelAfter(options.ConfirmTimeout ?? DefaultConfirmTimeout);
                 var publishToken = publishCts?.Token ?? cancellationToken;
+
+                using var activity = _telemetry.StartPublishActivity(@event.Type ?? "unknown", exchangeName, routingKey);
 
                 await channel.BasicPublishAsync(
                     exchange: exchangeName,
@@ -227,14 +231,13 @@ namespace Hermodr
                     body: message.Body,
                     cancellationToken: publishToken);
 
-                // When PublisherConfirmationTrackingEnabled = true, BasicPublishAsync already
-                // waits for the broker ACK before completing. A broker NACK raises an exception.
                 if (publisherConfirms)
                     _logger.LogEventConfirmed(@event.Type);
+
+                activity?.SetStatus(ActivityStatusCode.Ok);
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
-                // The publish CT timed out (confirm timeout exceeded), not the caller's token.
                 throw new TimeoutException(
                     $"RabbitMQ broker did not confirm the message within {(options.ConfirmTimeout ?? DefaultConfirmTimeout).TotalSeconds}s.");
             }

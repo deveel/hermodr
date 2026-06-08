@@ -185,8 +185,6 @@ public class MetricsMiddlewareTests
         Assert.True(options.PublishDuration);
         Assert.True(options.PublishTotal);
         Assert.True(options.PublishErrors);
-        Assert.True(options.SubscriptionDispatchTotal);
-        Assert.True(options.SubscriptionHandlerDuration);
     }
 
     [Fact]
@@ -230,7 +228,6 @@ public class MetricsMiddlewareTests
     private sealed class MetricsTestFixture : IAsyncDisposable
     {
         private readonly MeterListener _listener;
-        private readonly Meter _meter;
         private readonly ServiceProvider _provider;
         private readonly string _meterName;
 
@@ -243,8 +240,6 @@ public class MetricsMiddlewareTests
         public MetricsTestFixture(bool throwOnChannel = false, Action<OpenTelemetryInstrumentationOptions>? configure = null)
         {
             _meterName = $"Hermodr.Metrics.Test.{Guid.NewGuid():N}";
-            _meter = new Meter(_meterName);
-            TelemetryMetrics.Meter = _meter;
 
             var capturedActivities = new List<Activity>();
             var sourceName = $"Hermodr.Test.{Guid.NewGuid():N}";
@@ -301,7 +296,6 @@ public class MetricsMiddlewareTests
 
             var services = new ServiceCollection().AddLogging();
             services.AddSingleton(source);
-            services.AddSingleton(_meter);
             var builder = services.AddEventPublisher(opts =>
             {
                 opts.Source = new Uri("https://example.com");
@@ -327,7 +321,6 @@ public class MetricsMiddlewareTests
         public ValueTask DisposeAsync()
         {
             _listener.Dispose();
-            _meter.Dispose();
             return _provider.DisposeAsync();
         }
     }

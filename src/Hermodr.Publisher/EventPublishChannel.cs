@@ -3,46 +3,19 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 //
 
+using System.ComponentModel.DataAnnotations;
+using System.Diagnostics;
+
 using CloudNative.CloudEvents;
 
 using Microsoft.Extensions.Options;
 
-using System.ComponentModel.DataAnnotations;
-
 namespace Hermodr
 {
-    /// <summary>
-    /// Provides a base implementation of <see cref="IEventPublishChannel"/> that
-    /// merges per-call <see cref="EventPublishOptions"/> overrides with the
-    /// channel-level defaults, validates the effective options, and then delegates to
-    /// the concrete channel delivery logic.
-    /// </summary>
-    /// <typeparam name="TOptions">
-    /// The concrete <see cref="EventPublishOptions"/> subtype that carries the
-    /// channel-level defaults and any per-call overrides.
-    /// When a call-specific instance is not supplied the channel-level defaults are
-    /// used as-is; when one is supplied the two are merged via <see cref="MergeOptions"/>
-    /// and then validated via <see cref="ValidateOptions"/>.
-    /// </typeparam>
-    /// <remarks>
-    /// Validation is performed in two steps:
-    /// <list type="number">
-    ///   <item>
-    ///     If one or more <see cref="IValidateOptions{TOptions}"/> services were registered
-    ///     in the DI container and injected through the constructor those are called in
-    ///     order.  Any failure messages are collected and surfaced as a single
-    ///     <see cref="OptionsValidationException"/>.
-    ///   </item>
-    ///   <item>
-    ///     When no <see cref="IValidateOptions{TOptions}"/> are present the method falls
-    ///     back to <see cref="Validator.ValidateObject"/> (DataAnnotations), which honours
-    ///     attributes such as <c>[Required]</c>, <c>[Range]</c>, <c>[Url]</c>, etc.
-    ///   </item>
-    /// </list>
-    /// </remarks>
     public abstract class EventPublishChannel<TOptions> : INamedEventPublishChannel
         where TOptions : EventPublishOptions
     {
+        private readonly ChannelTelemetry _telemetry = new();
         private readonly TOptions _defaultOptions;
         private readonly IEnumerable<IValidateOptions<TOptions>> _validators;
 
@@ -167,7 +140,17 @@ namespace Hermodr
             ArgumentNullException.ThrowIfNull(@event);
             var effectiveOptions = MergeOptions(_defaultOptions, options);
             ValidateOptions(effectiveOptions);
-            await PublishCoreAsync(@event, effectiveOptions, cancellationToken);
+
+            var sw = Stopwatch.StartNew();
+            try
+            {
+                await PublishCoreAsync(@event, effectiveOptions, cancellationToken);
+            }
+            finally
+            {
+                sw.Stop();
+                _telemetry.RecordChannelPublishDuration(sw.Elapsed.TotalSeconds, @event.Type ?? "unknown", GetType().Name);
+            }
         }
 
         /// <summary>

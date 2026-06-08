@@ -29,6 +29,9 @@ namespace Hermodr
         /// <summary>
         /// Creates a new instance of <see cref="OpenTelemetrySubscriptionMiddleware"/>.
         /// </summary>
+        /// <param name="activitySource">The Hermodr <see cref="ActivitySource"/> to create spans.</param>
+        /// <param name="options">Optional instrumentation options.</param>
+        /// <param name="logger">Optional logger.</param>
         public OpenTelemetrySubscriptionMiddleware(
             ActivitySource activitySource,
             IOptions<OpenTelemetryInstrumentationOptions>? options = null,
@@ -60,15 +63,16 @@ namespace Hermodr
                 _logger.TraceExtracted(eventType, extracted.TraceId.ToString());
             }
 
+            var ctx = parentContext ?? Activity.Current?.Context ?? default;
             using var activity = _activitySource.StartActivity(
                 TelemetryConstants.ConsumerSpanName(eventType),
                 ActivityKind.Consumer,
-                parentContext: parentContext ?? default,
-                tags: new ActivityTagsCollection
+                ctx,
+                new ActivityTagsCollection
                 {
-                    ["event.type"] = eventType,
-                    ["messaging.system"] = TelemetryConstants.MessagingSystem,
-                    ["messaging.operation"] = "receive",
+                    { TelemetryTags.EventType, eventType },
+                    { TelemetryTags.MessagingSystem, TelemetryConstants.MessagingSystem },
+                    { TelemetryTags.MessagingOperation, "receive" },
                 });
 
             if (activity == null)

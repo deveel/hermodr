@@ -3,16 +3,15 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 //
 
-using CloudNative.CloudEvents;
+using System.Collections.Concurrent;
+using System.Diagnostics;
 
-using System.Linq;
+using CloudNative.CloudEvents;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-
-using System.Collections.Concurrent;
 
 namespace Hermodr
 {
@@ -22,6 +21,7 @@ namespace Hermodr
     /// </summary>
     public class EventPublisher : IEventPublisher
     {
+        private readonly PublisherTelemetry _telemetry = new();
         private readonly IEnumerable<IEventPublishChannel> _channels;
         private readonly ILogger _logger;
         private readonly EventPublisherPipeline? _pipeline;
@@ -265,12 +265,22 @@ namespace Hermodr
         private CloudEvent EnsureEvent(CloudEvent @event)
         {
             ArgumentNullException.ThrowIfNull(@event);
-            var eventToPublish = @event;
-            eventToPublish = SetEventId(eventToPublish);
-            eventToPublish = SetTimeStamp(eventToPublish);
-            eventToPublish = SetSource(eventToPublish);
-            eventToPublish = SetAttributes(eventToPublish);
-            return eventToPublish;
+
+            var sw = Stopwatch.StartNew();
+            try
+            {
+                var eventToPublish = @event;
+                eventToPublish = SetEventId(eventToPublish);
+                eventToPublish = SetTimeStamp(eventToPublish);
+                eventToPublish = SetSource(eventToPublish);
+                eventToPublish = SetAttributes(eventToPublish);
+                return eventToPublish;
+            }
+            finally
+            {
+                sw.Stop();
+                _telemetry.RecordEventEnrichDuration(sw.Elapsed.TotalSeconds, @event.Type ?? "unknown");
+            }
         }
 
 
@@ -372,9 +382,14 @@ namespace Hermodr
             var pipeline = bypassPipeline ? terminal : _pipelineFactory.Value(terminal);
 
             if (bypassPipeline)
+            {
                 _logger.TracePipelineExecuting(@event.Type + " [pipeline bypassed]");
+                _telemetry.AddPipelineBypass(@event.Type ?? "unknown");
+            }
             else
+            {
                 _logger.TracePipelineExecuting(@event.Type);
+            }
 
             await pipeline(context);
             _logger.TracePipelineCompleted(@event.Type);

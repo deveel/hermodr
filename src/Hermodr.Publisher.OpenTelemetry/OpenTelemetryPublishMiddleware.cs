@@ -24,6 +24,9 @@ namespace Hermodr
         /// <summary>
         /// Creates a new instance of <see cref="OpenTelemetryPublishMiddleware"/>.
         /// </summary>
+        /// <param name="activitySource">The Hermodr <see cref="ActivitySource"/> to create spans.</param>
+        /// <param name="options">Optional instrumentation options.</param>
+        /// <param name="logger">Optional logger.</param>
         public OpenTelemetryPublishMiddleware(
             ActivitySource activitySource,
             IOptions<OpenTelemetryInstrumentationOptions>? options = null,
@@ -51,12 +54,12 @@ namespace Hermodr
             var activity = _activitySource.StartActivity(
                 TelemetryConstants.PublisherSpanName(eventType),
                 ActivityKind.Producer,
-                parentContext: default,
-                tags: new ActivityTagsCollection
+                Activity.Current?.Context ?? default,
+                new ActivityTagsCollection
                 {
-                    ["event.type"] = eventType,
-                    ["messaging.system"] = TelemetryConstants.MessagingSystem,
-                    ["messaging.operation"] = "publish",
+                    { TelemetryTags.EventType, eventType },
+                    { TelemetryTags.MessagingSystem, TelemetryConstants.MessagingSystem },
+                    { TelemetryTags.MessagingOperation, "publish" },
                 });
 
             if (activity == null)

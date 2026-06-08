@@ -141,7 +141,7 @@ public class OpenTelemetryPublishMiddlewareTests
     [Fact]
     public void Middleware_Constructor_UsesNullLogger_WhenNotProvided()
     {
-        using var source = new ActivitySource("test-null-logger");
+        var source = HermodrDiagnostics.ActivitySource;
         var middleware = new OpenTelemetryPublishMiddleware(source);
 
         Assert.NotNull(middleware);
@@ -150,7 +150,7 @@ public class OpenTelemetryPublishMiddlewareTests
     [Fact]
     public void Middleware_Constructor_UsesDefaultOptions_WhenNotProvided()
     {
-        using var source = new ActivitySource("test-default-opts");
+        var source = HermodrDiagnostics.ActivitySource;
         var middleware = new OpenTelemetryPublishMiddleware(source);
 
         Assert.NotNull(middleware);

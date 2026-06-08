@@ -3,6 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 //
 
+using System.Diagnostics;
 using System.Runtime.Serialization;
 
 using Azure.Messaging.ServiceBus;
@@ -21,6 +22,7 @@ namespace Hermodr {
         EventPublishChannel<ServiceBusPublishOptions>,
 						IScheduledEventPublishChannel,
         IAsyncDisposable, IDisposable {
+		private readonly ServiceBusTransportTelemetry telemetry = new();
 		private ServiceBusSender? sender;
 		private ServiceBusClient? client;
 		private readonly ServiceBusMessageFactory messageCreator;
@@ -109,16 +111,22 @@ namespace Hermodr {
 
             logger.TracePublishingEvent(@event.Type);
 
+			using var activity = telemetry.StartPublishActivity(@event.Type ?? "unknown", options.QueueName);
+
 			try {
 				await sender!.SendMessageAsync(messageCreator.CreateMessage(@event, options), cancellationToken);
+				activity?.SetStatus(ActivityStatusCode.Ok);
 			} catch (ServiceBusException ex) {
 				logger.LogErrorPublishingEvent(ex, @event.Type);
+				activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
 				throw new ServiceBusTransportException("The ServiceBus service caused an error", ex);
 			} catch (SerializationException ex) {
 				logger.LogErrorPublishingEvent(ex, @event.Type);
+				activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
 				throw new ServiceBusSerializationException("It was not possible to serialize the message", ex);
 			} catch (Exception ex) {
 				logger.LogErrorPublishingEvent(ex, @event.Type);
+				activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
 				throw;
 			}
 		}

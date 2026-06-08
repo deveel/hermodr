@@ -3,6 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 //
 
+
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -12,6 +14,7 @@ namespace Hermodr;
 
 internal sealed class DeadLetterReplayProcessor : IDeadLetterReplayProcessor
 {
+    private readonly DeadLetterTelemetry _telemetry = new();
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IDeadLetterMessageReplayer _replayer;
     private readonly DeadLetterReplayOptions _options;
@@ -42,6 +45,7 @@ internal sealed class DeadLetterReplayProcessor : IDeadLetterReplayProcessor
         }
 
         _logger.LogProcessingPendingDeadLetterMessages(pending.Count);
+        _telemetry.RecordQueueDepth(pending.Count);
 
         foreach (var message in pending)
         {

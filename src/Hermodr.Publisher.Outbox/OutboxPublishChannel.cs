@@ -3,6 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 //
 
+using System.Diagnostics;
+
 using CloudNative.CloudEvents;
 
 using Deveel;
@@ -14,47 +16,10 @@ using Microsoft.Extensions.Options;
 
 namespace Hermodr;
 
-/// <summary>
-/// An <see cref="EventPublishChannel{TOptions}"/> implementation that persists events
-/// to a transactional outbox store rather than dispatching them immediately.
-/// </summary>
-/// <typeparam name="TMessage">
-/// The outbox message entity type created and stored by this channel.
-/// Must be a reference type and implement <see cref="IOutboxMessage"/>.
-/// </typeparam>
-/// <remarks>
-/// <para>
-/// This channel implements the <em>Transactional Outbox</em> pattern: instead of
-/// publishing a <see cref="CloudEvent"/> directly to a broker, it serialises the event
-/// into a <typeparamref name="TMessage"/> record and writes it atomically to the same
-/// transactional store as the business data.  A separate relay process (e.g., a hosted
-/// service or a Change Data Capture listener) then reads the pending messages and
-/// forwards them to the actual broker.
-/// </para>
-/// <para>
-/// The channel relies on two collaborators supplied through the DI container:
-/// <list type="bullet">
-///   <item>
-///     An <see cref="IOutboxMessageFactory{TMessage}"/> that turns a
-///     <see cref="CloudEvent"/> into a <typeparamref name="TMessage"/> entity.
-///   </item>
-///   <item>
-///     An <see cref="IOutboxMessageRepository{TMessage}"/> that persists the entity.
-///   </item>
-/// </list>
-/// </para>
-/// <para>
-/// Because the channel is registered as a singleton (publisher channels are always
-/// singletons) and <see cref="OutboxMessageManager{TMessage}"/> may be scoped (e.g.
-/// when the underlying repository wraps a scoped EF Core <c>DbContext</c>), the channel
-/// resolves the manager from a fresh <see cref="IServiceScope"/> on every publish call
-/// rather than capturing it at construction time.  This is the same pattern used by
-/// <see cref="OutboxRelayProcessor{TMessage}"/>.
-/// </para>
-/// </remarks>
 internal sealed class OutboxPublishChannel<TMessage> : EventPublishChannel<OutboxPublishOptions>
     where TMessage : class, IOutboxMessage
 {
+    private readonly OutboxTelemetry _telemetry = new();
     private readonly IOutboxMessageFactory<TMessage> _messageFactory;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IEventSystemTime _systemTime;
@@ -123,11 +88,11 @@ internal sealed class OutboxPublishChannel<TMessage> : EventPublishChannel<Outbo
 
         _logger.LogSavingEventToOutbox(@event.Type);
 
+        var sw = Stopwatch.StartNew();
+        using var activity = _telemetry.StartStoreActivity(@event.Type ?? "unknown");
+
         try
         {
-            // Resolve the manager from a fresh scope so the channel (singleton) does not
-            // capture a scoped dependency.  Singleton repositories (in-memory fakes, etc.)
-            // are returned as-is by the DI container regardless of the scope lifetime.
             await using var scope = _scopeFactory.CreateAsyncScope();
             var manager = scope.ServiceProvider.GetRequiredService<OutboxMessageManager<TMessage>>();
 
@@ -147,11 +112,19 @@ internal sealed class OutboxPublishChannel<TMessage> : EventPublishChannel<Outbo
             }
 
             _logger.LogEventSavedToOutbox(@event.Type);
+            activity?.SetStatus(ActivityStatusCode.Ok);
+            _telemetry.AddMessageAdded(@event.Type ?? "unknown");
         }
         catch (Exception ex)
         {
             _logger.LogErrorSavingEventToOutbox(ex, @event.Type);
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             throw;
+        }
+        finally
+        {
+            sw.Stop();
+            _telemetry.RecordStoreDuration(sw.Elapsed.TotalSeconds, @event.Type ?? "unknown");
         }
     }
 }
