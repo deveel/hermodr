@@ -1,5 +1,5 @@
 .heroBanner {
-  padding: 5rem 0;
+  padding: 2.5rem 0;
   text-align: center;
   position: relative;
   overflow: hidden;
@@ -18,15 +18,15 @@
 }
 
 .heroLogo {
-  max-width: 400px;
-  width: 90%;
-  margin-bottom: 1.5rem;
+  max-width: 300px;
+  width: 80%;
+  margin-bottom: 1rem;
 }
 
 .heroTagline {
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   color: #FFFFFF;
-  margin-bottom: 2rem;
+  margin-bottom: 1.25rem;
   opacity: 0.9;
 }
 
@@ -43,11 +43,11 @@
 
 @media screen and (max-width: 996px) {
   .heroBanner {
-    padding: 2rem 0;
+    padding: 1.5rem 0;
   }
 
   .heroLogo {
-    max-width: 300px;
+    max-width: 250px;
   }
 
   .heroTagline {
