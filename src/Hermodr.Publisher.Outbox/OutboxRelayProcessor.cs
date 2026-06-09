@@ -3,6 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 //
 
+using System.Diagnostics;
+
 using CloudNative.CloudEvents;
 
 using Deveel;
@@ -55,6 +57,7 @@ namespace Hermodr;
 internal sealed class OutboxRelayProcessor<TMessage> : IOutboxRelayProcessor
     where TMessage : class, IOutboxMessage
 {
+    private readonly OutboxTelemetry _telemetry = new();
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly OutboxRelayOptions _options;
     private readonly ILogger _logger;
@@ -106,6 +109,8 @@ internal sealed class OutboxRelayProcessor<TMessage> : IOutboxRelayProcessor
             : pending;
 
         _logger.LogProcessingOutboxMessages(pending.Count);
+        _telemetry.RecordQueueDepth(pending.Count);
+        _telemetry.RecordRelayBatchSize(batch.Count());
 
         foreach (var message in batch)
         {
@@ -123,13 +128,11 @@ internal sealed class OutboxRelayProcessor<TMessage> : IOutboxRelayProcessor
     {
         _logger.LogRelayingOutboxMessage(message.Event.Type);
 
+        var sw = Stopwatch.StartNew();
+        using var activity = _telemetry.StartRelayActivity(message.Event.Type ?? "unknown");
+
         try
         {
-            // Bypass the middleware pipeline for this relay publish call so that other
-            // middlewares (e.g. the subscription dispatcher) do not re-run.  The inner
-            // OutboxRelayPublishOptions is forwarded to channel resolution so that any
-            // OutboxPublishChannel present in the same pipeline can recognise the relay
-            // signal and short-circuit without re-persisting the event.
             await publisher.PublishEventAsync(
                 message.Event,
                 EventPublishOptions.BypassPipeline(new OutboxRelayPublishOptions()),
@@ -140,6 +143,9 @@ internal sealed class OutboxRelayProcessor<TMessage> : IOutboxRelayProcessor
                 _logger.LogCouldNotMarkOutboxMessageDelivered(result.Error);
             else
                 _logger.LogOutboxMessageDelivered(message.Event.Type);
+
+            activity?.SetStatus(ActivityStatusCode.Ok);
+            _telemetry.AddRelayDelivered(message.Event.Type ?? "unknown");
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -148,6 +154,7 @@ internal sealed class OutboxRelayProcessor<TMessage> : IOutboxRelayProcessor
         catch (Exception ex)
         {
             _logger.LogErrorRelayingOutboxMessage(ex, message.Event.Type);
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
 
             try
             {
@@ -159,6 +166,13 @@ internal sealed class OutboxRelayProcessor<TMessage> : IOutboxRelayProcessor
             {
                 _logger.LogErrorMarkingOutboxMessageFailed(repoEx, message.Event.Type);
             }
+
+            _telemetry.AddRelayFailed(message.Event.Type ?? "unknown");
+        }
+        finally
+        {
+            sw.Stop();
+            _telemetry.RecordRelayDuration(sw.Elapsed.TotalSeconds, message.Event.Type ?? "unknown");
         }
     }
 }

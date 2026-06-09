@@ -7,6 +7,10 @@ using System.Diagnostics;
 
 using CloudNative.CloudEvents;
 
+using OpenTelemetry;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Trace;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -282,6 +286,38 @@ public class OpenTelemetryBuilderExtensionsTests
         var meter = provider.GetService<System.Diagnostics.Metrics.Meter>();
         Assert.NotNull(meter);
         Assert.Equal("custom-meter", meter.Name);
+    }
+
+    [Fact]
+    public void AddHermodrInstrumentation_Tracing_ReturnsSameBuilder()
+    {
+        var builder = Sdk.CreateTracerProviderBuilder();
+        var result = builder.AddHermodrInstrumentation();
+        Assert.Same(builder, result);
+    }
+
+    [Fact]
+    public void AddHermodrInstrumentation_Tracing_WithCustomName()
+    {
+        var builder = Sdk.CreateTracerProviderBuilder();
+        var result = builder.AddHermodrInstrumentation("custom-name");
+        Assert.Same(builder, result);
+    }
+
+    [Fact]
+    public void AddHermodrInstrumentation_Metrics_ReturnsSameBuilder()
+    {
+        var builder = Sdk.CreateMeterProviderBuilder();
+        var result = builder.AddHermodrInstrumentation();
+        Assert.Same(builder, result);
+    }
+
+    [Fact]
+    public void AddHermodrInstrumentation_Metrics_WithCustomName()
+    {
+        var builder = Sdk.CreateMeterProviderBuilder();
+        var result = builder.AddHermodrInstrumentation("custom-meter");
+        Assert.Same(builder, result);
     }
 
     private static ActivityListener CreateListener(ActivitySource source, List<Activity> captured)

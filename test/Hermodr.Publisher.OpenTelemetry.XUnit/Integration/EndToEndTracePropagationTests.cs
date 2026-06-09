@@ -139,6 +139,25 @@ public class EndToEndTracePropagationTests
         Assert.NotEqual(producerActivities[0].TraceId, producerActivities[1].TraceId);
     }
 
+    [Fact]
+    public async Task PublishEventAsync_CreatesChildSpan_WhenCallerHasActiveActivity()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await using var fixture = new TestFixture();
+        var publisher = fixture.CreatePublisher();
+
+        using var parentActivity = new Activity("caller.operation")
+            .SetStartTime(DateTime.UtcNow)
+            .Start();
+
+        await publisher.PublishEventAsync(MakeEvent(), cancellationToken: cancellationToken);
+
+        var publishActivity = fixture.CapturedActivities.Single(a => a.Kind == ActivityKind.Producer);
+
+        Assert.Equal(parentActivity.TraceId, publishActivity.TraceId);
+        Assert.Equal(parentActivity.SpanId.ToHexString(), publishActivity.ParentSpanId.ToHexString());
+    }
+
     private static CloudEvent MakeEvent(string type = "com.test.event")
     {
         return new CloudEvent

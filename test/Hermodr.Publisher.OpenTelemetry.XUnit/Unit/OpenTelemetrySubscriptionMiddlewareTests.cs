@@ -166,7 +166,7 @@ public class OpenTelemetrySubscriptionMiddlewareTests
     [Fact]
     public void Middleware_Constructor_UsesNullLogger_WhenNotProvided()
     {
-        using var source = new ActivitySource("test-null-logger");
+        var source = new ActivitySource("test");
         var middleware = new OpenTelemetrySubscriptionMiddleware(source);
 
         Assert.NotNull(middleware);
@@ -175,7 +175,7 @@ public class OpenTelemetrySubscriptionMiddlewareTests
     [Fact]
     public void Middleware_Constructor_UsesDefaultOptions_WhenNotProvided()
     {
-        using var source = new ActivitySource("test-default-opts");
+        var source = new ActivitySource("test");
         var middleware = new OpenTelemetrySubscriptionMiddleware(source);
 
         Assert.NotNull(middleware);

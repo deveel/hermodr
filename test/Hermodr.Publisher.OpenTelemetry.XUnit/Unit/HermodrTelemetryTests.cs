@@ -4,13 +4,31 @@
 //
 
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 
 using CloudNative.CloudEvents;
 
 namespace Hermodr;
 
-public class HermodrTelemetryTests
+public class HermodrTelemetryTests : IDisposable
 {
+    private readonly ActivitySource _originalSource;
+    private readonly Meter _originalMeter;
+
+    public HermodrTelemetryTests()
+    {
+        _originalSource = HermodrDiagnostics.ActivitySource;
+        _originalMeter = HermodrDiagnostics.Meter;
+        HermodrDiagnostics.ActivitySource = new ActivitySource("Hermodr");
+        HermodrDiagnostics.Meter = new Meter("Hermodr");
+    }
+
+    public void Dispose()
+    {
+        HermodrDiagnostics.ActivitySource = _originalSource;
+        HermodrDiagnostics.Meter = _originalMeter;
+    }
+
     private const string TraceParentKey = "traceparent";
     private const string TraceStateKey = "tracestate";
 
@@ -238,7 +256,8 @@ public class HermodrTelemetryTests
         var traceparentAttr = CloudEventAttribute.CreateExtension(TraceParentKey, CloudEventAttributeType.String);
         cloudEvent[traceparentAttr] = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-XX";
 
-        Assert.Throws<FormatException>(() => HermodrTelemetry.TryExtractTraceContext(cloudEvent, out _));
+        var result = HermodrTelemetry.TryExtractTraceContext(cloudEvent, out _);
+        Assert.False(result);
     }
 
     [Fact]
@@ -262,33 +281,16 @@ public class HermodrTelemetryTests
     }
 
     [Fact]
-    public void ActivitySource_CanBeSetAndRetrieved()
-    {
-        var original = HermodrTelemetry.ActivitySource;
-        try
-        {
-            var customSource = new ActivitySource("custom-test");
-            HermodrTelemetry.ActivitySource = customSource;
-            Assert.Same(customSource, HermodrTelemetry.ActivitySource);
-        }
-        finally
-        {
-            HermodrTelemetry.ActivitySource = original;
-        }
-    }
-
-    [Fact]
     public void CreatePublisherActivity_SetsCorrectTags()
     {
-        using var source = new ActivitySource("test-tags");
         using var listener = new ActivityListener
         {
-            ShouldListenTo = s => s.Name == "test-tags",
+            ShouldListenTo = s => s.Name == "Hermodr",
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
         };
         ActivitySource.AddActivityListener(listener);
 
-        var activity = HermodrTelemetry.CreatePublisherActivity(source, "com.test.order");
+        var activity = HermodrTelemetry.CreatePublisherActivity("com.test.order");
 
         Assert.NotNull(activity);
         Assert.Equal("publish com.test.order", activity.DisplayName);
@@ -301,15 +303,14 @@ public class HermodrTelemetryTests
     [Fact]
     public void CreateConsumerActivity_SetsCorrectTags()
     {
-        using var source = new ActivitySource("test-tags");
         using var listener = new ActivityListener
         {
-            ShouldListenTo = s => s.Name == "test-tags",
+            ShouldListenTo = s => s.Name == "Hermodr",
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
         };
         ActivitySource.AddActivityListener(listener);
 
-        var activity = HermodrTelemetry.CreateConsumerActivity(source, "com.test.order");
+        var activity = HermodrTelemetry.CreateConsumerActivity("com.test.order");
 
         Assert.NotNull(activity);
         Assert.Equal("handle com.test.order", activity.DisplayName);
@@ -320,12 +321,146 @@ public class HermodrTelemetryTests
     }
 
     [Fact]
-    public void CreateConsumerActivity_UsesParentContext_WhenProvided()
+    public void CreatePublisherActivity_ReturnsNull_WhenNoListener()
     {
-        using var source = new ActivitySource("test-tags");
+        var activity = HermodrTelemetry.CreatePublisherActivity("com.test.no-listener");
+        Assert.Null(activity);
+    }
+
+    [Fact]
+    public void CreateConsumerActivity_ReturnsNull_WhenNoListener()
+    {
+        var activity = HermodrTelemetry.CreateConsumerActivity("com.test.no-listener");
+        Assert.Null(activity);
+    }
+
+    [Fact]
+    public void CreatePublisherActivity_HandlesNullEventType()
+    {
         using var listener = new ActivityListener
         {
-            ShouldListenTo = s => s.Name == "test-tags",
+            ShouldListenTo = s => s.Name == "Hermodr",
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        var activity = HermodrTelemetry.CreatePublisherActivity(null!);
+        Assert.NotNull(activity);
+        Assert.Equal("publish ", activity.DisplayName);
+        Assert.Null(activity.GetTagItem("event.type"));
+    }
+
+    [Fact]
+    public void CreateConsumerActivity_HandlesNullEventType()
+    {
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = s => s.Name == "Hermodr",
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        var activity = HermodrTelemetry.CreateConsumerActivity(null!);
+        Assert.NotNull(activity);
+        Assert.Equal("handle ", activity.DisplayName);
+        Assert.Null(activity.GetTagItem("event.type"));
+    }
+
+    [Fact]
+    public void CreatePublisherActivity_HasNoParent_WhenNoCurrentActivity()
+    {
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = s => s.Name == "Hermodr",
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        var activity = HermodrTelemetry.CreatePublisherActivity("com.test.noparent");
+        Assert.NotNull(activity);
+        Assert.Equal(default, activity.Parent);
+    }
+
+    [Fact]
+    public void CreateConsumerActivity_HasNoParent_WhenNoCurrentActivityAndNoParentContext()
+    {
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = s => s.Name == "Hermodr",
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        var activity = HermodrTelemetry.CreateConsumerActivity("com.test.noparent");
+        Assert.NotNull(activity);
+        Assert.Equal(default, activity.Parent);
+    }
+
+    [Fact]
+    public void CreatePublisherActivity_LinksToCurrentActivity()
+    {
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = s => s.Name == "Hermodr",
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        using var parent = new Activity("parent").SetStartTime(DateTime.UtcNow).Start();
+        var activity = HermodrTelemetry.CreatePublisherActivity("com.test.child");
+        Assert.NotNull(activity);
+        Assert.Equal(parent.TraceId, activity.TraceId);
+        Assert.Equal(parent.SpanId, activity.ParentSpanId);
+        parent.Stop();
+    }
+
+    [Fact]
+    public void CreateConsumerActivity_NoParentContext_FallsBackToCurrentActivity()
+    {
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = s => s.Name == "Hermodr",
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        using var parent = new Activity("parent").SetStartTime(DateTime.UtcNow).Start();
+        var activity = HermodrTelemetry.CreateConsumerActivity("com.test.child");
+        Assert.NotNull(activity);
+        Assert.Equal(parent.TraceId, activity.TraceId);
+        parent.Stop();
+    }
+
+    [Fact]
+    public void CreateConsumerActivity_Precedence_ParentContextOverCurrentActivity()
+    {
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = s => s.Name == "Hermodr",
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        var explicitParent = new ActivityContext(
+            ActivityTraceId.CreateRandom(),
+            ActivitySpanId.CreateRandom(),
+            ActivityTraceFlags.Recorded);
+
+        using var current = new Activity("current").SetStartTime(DateTime.UtcNow).Start();
+
+        var activity = HermodrTelemetry.CreateConsumerActivity("com.test.precedence", explicitParent);
+        Assert.NotNull(activity);
+        Assert.Equal(explicitParent.TraceId, activity.TraceId);
+        Assert.NotEqual(current.TraceId, activity.TraceId);
+        current.Stop();
+    }
+
+    [Fact]
+    public void CreateConsumerActivity_UsesParentContext_WhenProvided()
+    {
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = s => s.Name == "Hermodr",
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
         };
         ActivitySource.AddActivityListener(listener);
@@ -335,29 +470,9 @@ public class HermodrTelemetryTests
             ActivitySpanId.CreateRandom(),
             ActivityTraceFlags.Recorded);
 
-        var activity = HermodrTelemetry.CreateConsumerActivity(source, "com.test.order", parentContext);
+        var activity = HermodrTelemetry.CreateConsumerActivity("com.test.order", parentContext);
 
         Assert.NotNull(activity);
         Assert.Equal(parentContext.TraceId, activity.TraceId);
-    }
-
-    [Fact]
-    public void CreatePublisherActivity_ReturnsNull_WhenNoListener()
-    {
-        using var source = new ActivitySource("no-listener-pub");
-
-        var activity = HermodrTelemetry.CreatePublisherActivity(source, "com.test");
-
-        Assert.Null(activity);
-    }
-
-    [Fact]
-    public void CreateConsumerActivity_ReturnsNull_WhenNoListener()
-    {
-        using var source = new ActivitySource("no-listener-con");
-
-        var activity = HermodrTelemetry.CreateConsumerActivity(source, "com.test");
-
-        Assert.Null(activity);
     }
 }

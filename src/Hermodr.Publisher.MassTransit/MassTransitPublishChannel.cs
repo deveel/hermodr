@@ -3,6 +3,10 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 //
 
+
+
+using System.Diagnostics;
+
 using CloudNative.CloudEvents;
 using CloudNative.CloudEvents.SystemTextJson;
 
@@ -21,6 +25,7 @@ namespace Hermodr
     internal class MassTransitPublishChannel :
         EventPublishChannel<MassTransitPublishOptions>
     {
+        private readonly MassTransitTransportTelemetry _telemetry = new();
         private readonly IPublishEndpoint _publishEndpoint;
         private readonly ISendEndpointProvider _sendEndpointProvider;
         private readonly ILogger _logger;
@@ -93,6 +98,8 @@ namespace Hermodr
 
             _logger.TracePublishingEvent(@event.Type);
 
+            using var activity = _telemetry.StartPublishActivity(@event.Type ?? "unknown");
+
             try
             {
                 var body = JsonFormatter.EncodeStructuredModeMessage(@event, out var contentType);
@@ -113,10 +120,13 @@ namespace Hermodr
                         ctx => MapHeaders(ctx, @event, options),
                         cancellationToken);
                 }
+
+                activity?.SetStatus(ActivityStatusCode.Ok);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 _logger.LogErrorPublishingEvent(ex, @event.Type);
+                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
                 throw new MassTransitPublishException("An error occurred while publishing the event via MassTransit", ex);
             }
         }

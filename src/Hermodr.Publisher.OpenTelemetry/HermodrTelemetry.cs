@@ -14,17 +14,6 @@ namespace Hermodr
     /// </summary>
     public static class HermodrTelemetry
     {
-        private static ActivitySource? _activitySource;
-
-        /// <summary>
-        /// Gets or creates the shared <see cref="ActivitySource"/> for Hermodr instrumentation.
-        /// </summary>
-        public static ActivitySource ActivitySource
-        {
-            get => _activitySource ??= new ActivitySource(TelemetryConstants.DefaultActivitySourceName);
-            set => _activitySource = value;
-        }
-
         /// <summary>
         /// Injects W3C trace context from the current <see cref="Activity"/> into the
         /// <see cref="CloudEvent"/> as extension attributes.
@@ -73,10 +62,13 @@ namespace Hermodr
             ActivityTraceId traceId;
             ActivitySpanId spanId;
 
+            ActivityTraceFlags traceFlags;
+
             try
             {
                 traceId = ActivityTraceId.CreateFromString(parts[1].AsSpan());
                 spanId = ActivitySpanId.CreateFromString(parts[2].AsSpan());
+                traceFlags = (ActivityTraceFlags)byte.Parse(parts[3], System.Globalization.NumberStyles.HexNumber);
             }
             catch (FormatException)
             {
@@ -86,7 +78,6 @@ namespace Hermodr
             {
                 return false;
             }
-            var traceFlags = (ActivityTraceFlags)byte.Parse(parts[3], System.Globalization.NumberStyles.HexNumber);
 
             var traceStateAttr = CloudEventAttribute.CreateExtension(TelemetryConstants.TraceStateExtensionName, CloudEventAttributeType.String);
             var traceState = @event[traceStateAttr] as string;
@@ -96,36 +87,40 @@ namespace Hermodr
         }
 
         /// <summary>
-        /// Creates a producer <see cref="Activity"/> for publishing an event.
+        /// Creates a producer <see cref="Activity"/> for publishing an event,
+        /// linked to <see cref="Activity.Current"/> as the parent.
         /// </summary>
-        public static Activity? CreatePublisherActivity(ActivitySource activitySource, string eventType)
+        public static Activity? CreatePublisherActivity(string eventType)
         {
-            return activitySource.StartActivity(
+            return HermodrDiagnostics.ActivitySource.StartActivity(
                 TelemetryConstants.PublisherSpanName(eventType),
                 ActivityKind.Producer,
-                parentContext: default,
-                tags: new ActivityTagsCollection
+                Activity.Current?.Context ?? default,
+                new ActivityTagsCollection
                 {
-                    ["event.type"] = eventType,
-                    ["messaging.system"] = TelemetryConstants.MessagingSystem,
-                    ["messaging.operation"] = "publish",
+                    { TelemetryTags.EventType, eventType },
+                    { TelemetryTags.MessagingSystem, TelemetryConstants.MessagingSystem },
+                    { TelemetryTags.MessagingOperation, "publish" },
                 });
         }
 
         /// <summary>
-        /// Creates a consumer <see cref="Activity"/> for handling an event, optionally linked to a remote parent.
+        /// Creates a consumer <see cref="Activity"/> for handling an event,
+        /// optionally linked to a remote parent. Falls back to
+        /// <see cref="Activity.Current"/> when no remote parent is provided.
         /// </summary>
-        public static Activity? CreateConsumerActivity(ActivitySource activitySource, string eventType, ActivityContext? parentContext = null)
+        public static Activity? CreateConsumerActivity(string eventType, ActivityContext? parentContext = null)
         {
-            return activitySource.StartActivity(
+            var ctx = parentContext ?? Activity.Current?.Context ?? default;
+            return HermodrDiagnostics.ActivitySource.StartActivity(
                 TelemetryConstants.ConsumerSpanName(eventType),
                 ActivityKind.Consumer,
-                parentContext: parentContext ?? default,
-                tags: new ActivityTagsCollection
+                ctx,
+                new ActivityTagsCollection
                 {
-                    ["event.type"] = eventType,
-                    ["messaging.system"] = TelemetryConstants.MessagingSystem,
-                    ["messaging.operation"] = "receive",
+                    { TelemetryTags.EventType, eventType },
+                    { TelemetryTags.MessagingSystem, TelemetryConstants.MessagingSystem },
+                    { TelemetryTags.MessagingOperation, "receive" },
                 });
         }
     }

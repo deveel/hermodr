@@ -3,6 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 //
 
+using System.Diagnostics;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -15,6 +17,7 @@ namespace Hermodr;
 /// </summary>
 public class DeadLetterMessageReplayer : IDeadLetterMessageReplayer
 {
+    private readonly DeadLetterTelemetry _telemetry = new();
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly DeadLetterReplayOptions _options;
     private readonly IEventSystemTime _systemTime;
@@ -49,6 +52,9 @@ public class DeadLetterMessageReplayer : IDeadLetterMessageReplayer
 
         _logger.LogReplayingDeadLetterEvent(message.Event.Type, message.Id);
 
+        var sw = Stopwatch.StartNew();
+        using var activity = _telemetry.StartReplayActivity(message.Event.Type ?? "unknown", message.Id);
+
         try
         {
             await store.SetReplayingAsync(message, cancellationToken);
@@ -58,6 +64,8 @@ public class DeadLetterMessageReplayer : IDeadLetterMessageReplayer
                 cancellationToken);
             await store.SetReplayedAsync(message, cancellationToken);
             _logger.LogDeadLetterEventReplayed(message.Event.Type, message.Id);
+            activity?.SetStatus(ActivityStatusCode.Ok);
+            _telemetry.AddReplaySuccess(message.Event.Type ?? "unknown");
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -66,6 +74,7 @@ public class DeadLetterMessageReplayer : IDeadLetterMessageReplayer
         catch (Exception ex)
         {
             _logger.LogErrorReplayingDeadLetterEvent(ex, message.Event.Type, message.Id);
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
 
             if (_options.MaxRetryCount > 0 && message.ReplayCount < _options.MaxRetryCount)
             {
@@ -80,7 +89,13 @@ public class DeadLetterMessageReplayer : IDeadLetterMessageReplayer
                 await store.SetFailedAsync(message, ex.Message, cancellationToken);
             }
 
+            _telemetry.AddReplayFailure(message.Event.Type ?? "unknown");
             throw;
+        }
+        finally
+        {
+            sw.Stop();
+            _telemetry.RecordReplayDuration(sw.Elapsed.TotalSeconds, message.Event.Type ?? "unknown");
         }
     }
 

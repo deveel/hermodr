@@ -3,6 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 //
 
+using System.Diagnostics;
+
 using CloudNative.CloudEvents;
 
 using Microsoft.Extensions.Logging;
@@ -11,32 +13,9 @@ using Microsoft.Extensions.Options;
 
 namespace Hermodr
 {
-    /// <summary>
-    /// Internal middleware that routes published events to matching subscriptions.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// When enabled in the publish pipeline (via
-    /// <see cref="EventPublisherBuilderExtensions.AddSubscriptions"/>), the dispatcher receives
-    /// every published <see cref="CloudEvent"/> and routes it to the matching
-    /// <see cref="IEventSubscription"/> instances by querying <em>all</em> registered
-    /// <see cref="IEventSubscriptionResolver"/> instances in order.
-    /// </para>
-    /// <para>
-    /// Multiple <see cref="IEventSubscriptionResolver"/> implementations can be registered with the
-    /// DI container (e.g. an in-memory <see cref="IEventSubscriptionRegistry"/> plus a
-    /// read-only remote resolver). The dispatcher aggregates matching subscriptions from every
-    /// resolver before invoking handlers.
-    /// </para>
-    /// <para>
-    /// Exceptions thrown by individual subscription handlers are caught and logged; by default
-    /// they do not propagate so that a single failing subscriber cannot prevent other subscribers
-    /// from receiving the event. Set <see cref="EventDispatcherOptions.ThrowOnHandlerError"/> to
-    /// <c>true</c> to change this behaviour.
-    /// </para>
-    /// </remarks>
     internal class EventDispatcher : IEventMiddleware
     {
+        private readonly SubscriptionTelemetry _telemetry = new();
         private readonly IReadOnlyList<IEventSubscriptionResolver> _resolvers;
         private readonly EventDispatcherOptions _options;
         private readonly ILogger _logger;
@@ -80,12 +59,16 @@ namespace Hermodr
                 return;
             }
 
+            _telemetry.RecordMatched(subscriptions.Count, @event.Type ?? "unknown");
+
             foreach (var subscription in subscriptions)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
                 var name = subscription.Name ?? "<anonymous>";
                 _logger.LogDispatching(@event.Type, name);
+
+                var sw = Stopwatch.StartNew();
 
                 try
                 {
@@ -99,9 +82,15 @@ namespace Hermodr
                 catch (Exception ex)
                 {
                     _logger.LogSubscriptionHandlerError(ex, name, @event.Type);
+                    _telemetry.AddError(@event.Type ?? "unknown", name);
 
                     if (_options.ThrowOnHandlerError)
                         throw;
+                }
+                finally
+                {
+                    sw.Stop();
+                    _telemetry.RecordHandleDuration(sw.Elapsed.TotalSeconds, @event.Type ?? "unknown", name);
                 }
             }
         }

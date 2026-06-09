@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 using CloudNative.CloudEvents;
 
 using Microsoft.Extensions.Logging;
@@ -17,6 +19,8 @@ namespace Hermodr;
 /// </remarks>
 public class AuditTrailPublishChannel : EventPublishChannel<AuditTrailPublishOptions>
 {
+    private readonly AuditTrailTelemetry _telemetry = new();
+
     /// <summary>
     /// The audit trail writer used to append events.
     /// </summary>
@@ -62,15 +66,25 @@ public class AuditTrailPublishChannel : EventPublishChannel<AuditTrailPublishOpt
             return;
         }
 
+        var sw = Stopwatch.StartNew();
+        using var activity = _telemetry.StartAppendActivity(@event.Type ?? "unknown");
+
         try
         {
             await Writer.AppendAsync(@event, cancellationToken);
             _logger.LogAuditTrailRecordAppended(@event.Type);
+            activity?.SetStatus(ActivityStatusCode.Ok);
         }
         catch (Exception ex)
         {
             _logger.LogAuditTrailRecordFailed(ex, @event.Type);
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             throw;
+        }
+        finally
+        {
+            sw.Stop();
+            _telemetry.RecordAppendDuration(sw.Elapsed.TotalSeconds, @event.Type ?? "unknown");
         }
     }
 }

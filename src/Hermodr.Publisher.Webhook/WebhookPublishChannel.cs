@@ -3,6 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 //
 
+using System.Diagnostics;
+using System.Net.Http.Headers;
+
 using CloudNative.CloudEvents;
 
 using Microsoft.Extensions.Logging;
@@ -11,8 +14,6 @@ using Microsoft.Extensions.Options;
 
 using Polly;
 using Polly.Retry;
-
-using System.Net.Http.Headers;
 
 namespace Hermodr
 {
@@ -46,6 +47,7 @@ namespace Hermodr
         private static readonly ResiliencePropertyKey<string> DeliveryIdKey =
             new("webhook.deliveryId");
 
+        private readonly WebhookTransportTelemetry _telemetry = new();
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IEventSystemTime _systemTime;
         private readonly ILogger _logger;
@@ -241,6 +243,8 @@ namespace Hermodr
             CancellationToken cancellationToken)
         {
             var endpointUrl            = options.EndpointUrl!;
+
+            using var activity = _telemetry.StartPublishActivity(eventType, endpointUrl);
             var maxRetryCount          = options.MaxRetryCount          ?? 3;
             var retryDelay             = options.RetryDelay             ?? TimeSpan.FromSeconds(1);
             var retryBackoffMultiplier = options.RetryBackoffMultiplier ?? 2.0;
@@ -297,6 +301,7 @@ namespace Hermodr
                       && !cancellationToken.IsCancellationRequested)
             {
                 _logger.LogDeliveryFailed(deliveryId, maxRetryCount + 1);
+                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
                 throw new WebhookTransportException(
                     $"Webhook delivery {deliveryId} failed after {maxRetryCount + 1} attempt(s).", ex);
             }
@@ -308,6 +313,7 @@ namespace Hermodr
             if (response.IsSuccessStatusCode)
             {
                 _logger.LogDeliverySucceeded(deliveryId, (int)response.StatusCode);
+                activity?.SetStatus(ActivityStatusCode.Ok);
                 return;
             }
 
