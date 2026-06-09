@@ -20,7 +20,7 @@ public class PipelineDiagnosticsTelemetryTests
     [Fact]
     public void Middleware_Constructor_UsesNullLogger()
     {
-        var meter = new Meter("Hermodr");
+        using var meter = new Meter("Hermodr");
         var options = Options.Create(new OpenTelemetryInstrumentationOptions());
         var middleware = new PipelineDiagnosticsMiddleware(meter, options, null);
         Assert.NotNull(middleware);
@@ -29,7 +29,7 @@ public class PipelineDiagnosticsTelemetryTests
     [Fact]
     public void Middleware_Constructor_UsesDefaultOptions()
     {
-        var meter = new Meter("Hermodr");
+        using var meter = new Meter("Hermodr");
         var middleware = new PipelineDiagnosticsMiddleware(meter);
         Assert.NotNull(middleware);
     }

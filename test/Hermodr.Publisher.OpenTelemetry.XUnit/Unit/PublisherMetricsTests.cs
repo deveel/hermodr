@@ -167,12 +167,12 @@ public class PublisherMetricsTests
 
             var sourceName = $"Hermodr.Publisher.Test.{Guid.NewGuid():N}";
             using var source = new System.Diagnostics.ActivitySource(sourceName);
-            var activityListener = new System.Diagnostics.ActivityListener
+            _activityListener = new System.Diagnostics.ActivityListener
             {
                 ShouldListenTo = s => s.Name == sourceName,
                 Sample = (ref System.Diagnostics.ActivityCreationOptions<System.Diagnostics.ActivityContext> _) => System.Diagnostics.ActivitySamplingResult.AllData,
             };
-            System.Diagnostics.ActivitySource.AddActivityListener(activityListener);
+            System.Diagnostics.ActivitySource.AddActivityListener(_activityListener);
 
             var services = new ServiceCollection().AddLogging();
             services.AddSingleton(source);
@@ -194,6 +194,7 @@ public class PublisherMetricsTests
             HermodrDiagnostics.Meter = _originalMeter;
             _testMeter.Dispose();
             _listener.Dispose();
+            _activityListener.Dispose();
             return _provider.DisposeAsync();
         }
     }

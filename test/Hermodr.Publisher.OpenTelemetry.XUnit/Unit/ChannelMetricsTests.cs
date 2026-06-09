@@ -19,7 +19,7 @@ public class ChannelMetricsTests
     [Fact]
     public void ChannelTelemetry_Constructor_CreatesHistogram()
     {
-        var meter = new Meter("test.channel");
+        using var meter = new Meter("test.channel");
         var telemetry = new ChannelTelemetry(meter);
         Assert.NotNull(telemetry);
     }
@@ -29,7 +29,7 @@ public class ChannelMetricsTests
     {
         var values = new List<double>();
         var tags = new List<IReadOnlyList<KeyValuePair<string, object?>>>();
-        var listener = new MeterListener();
+        using var listener = new MeterListener();
         listener.InstrumentPublished = (instrument, l) =>
         {
             if (instrument.Meter.Name == "test.channel" && instrument.Name == TelemetryConstants.MetricChannelPublishDuration)
@@ -42,7 +42,7 @@ public class ChannelMetricsTests
         });
         listener.Start();
 
-        var meter = new Meter("test.channel");
+        using var meter = new Meter("test.channel");
         var telemetry = new ChannelTelemetry(meter);
         telemetry.RecordChannelPublishDuration(1.5, "com.test.order", "TestChannel");
 
@@ -50,16 +50,16 @@ public class ChannelMetricsTests
         Assert.Equal(1.5, values[0]);
         Assert.Contains(tags[0], kvp => kvp.Key == "event.type" && kvp.Value?.Equals("com.test.order") == true);
         Assert.Contains(tags[0], kvp => kvp.Key == "channel.type" && kvp.Value?.Equals("TestChannel") == true);
-        listener.Dispose();
     }
 
     [Fact]
     public void ChannelTelemetry_Constructor_UsesGlobalMeter()
     {
         var originalMeter = HermodrDiagnostics.Meter;
+        using var testMeter = new Meter("Hermodr");
         try
         {
-            HermodrDiagnostics.Meter = new Meter("Hermodr");
+            HermodrDiagnostics.Meter = testMeter;
             var telemetry = new ChannelTelemetry();
             Assert.NotNull(telemetry);
         }
