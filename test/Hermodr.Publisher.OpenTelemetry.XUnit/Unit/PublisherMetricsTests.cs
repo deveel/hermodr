@@ -123,6 +123,7 @@ public class PublisherMetricsTests
         private readonly MeterListener _listener;
         private readonly ServiceProvider _provider;
         private readonly Meter _originalMeter;
+        private readonly System.Diagnostics.ActivityListener? _activityListener;
 
         public List<double> EnrichDurationValues { get; } = new();
         public List<IReadOnlyList<KeyValuePair<string, object?>>> EnrichDurationTags { get; } = new();
