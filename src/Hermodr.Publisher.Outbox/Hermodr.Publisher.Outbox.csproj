@@ -10,11 +10,7 @@
       <ProjectReference Include="..\Hermodr.Publisher\Hermodr.Publisher.csproj" />
     </ItemGroup>
 
-    <ItemGroup>
-      <PackageReference Include="Deveel.Repository.Manager" Version="1.4.3" />
-    </ItemGroup>
-
-    <ItemGroup Condition="$(TargetFramework) == 'net8.0'">
+  <ItemGroup Condition="$(TargetFramework) == 'net8.0'">
       <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />
     </ItemGroup>
     <ItemGroup Condition="$(TargetFramework) == 'net9.0'">

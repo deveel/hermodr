@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 //
 
-using Deveel.Data;
+using Kista;
 
 namespace Hermodr;
 

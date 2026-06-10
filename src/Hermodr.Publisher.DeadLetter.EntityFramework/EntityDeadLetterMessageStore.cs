@@ -3,7 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 //
 
-using Deveel.Data;
+using Deveel;
+using Kista;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -27,7 +28,7 @@ public class EntityDeadLetterMessageStore<TMessage>
         DeadLetterDbContext context,
         IEventSystemTime? systemTime = null,
         ILogger<EntityDeadLetterMessageStore<TMessage>>? logger = null)
-        : base(context, logger)
+        : base(context, null, logger)
     {
         _systemTime = systemTime ?? EventSystemTime.Instance;
     }
@@ -90,24 +91,34 @@ public class EntityDeadLetterMessageStore<TMessage>
         return eligible.ToList().AsReadOnly();
     }
 
-    Task IDeadLetterMessageStore.AddAsync(IDeadLetterMessage entity, CancellationToken cancellationToken)
-        => AddAsync(GetTypedMessage(entity), cancellationToken);
+    async Task IDeadLetterMessageStore.AddAsync(IDeadLetterMessage entity, CancellationToken cancellationToken)
+    {
+        await AddAsync(GetTypedMessage(entity), cancellationToken);
+    }
 
-    Task IDeadLetterMessageStore.SetReplayingAsync(IDeadLetterMessage message, CancellationToken cancellationToken)
-        => SetReplayingAsync(GetTypedMessage(message), cancellationToken);
+    async Task IDeadLetterMessageStore.SetReplayingAsync(IDeadLetterMessage message, CancellationToken cancellationToken)
+    {
+        await SetReplayingAsync(GetTypedMessage(message), cancellationToken);
+    }
 
-    Task IDeadLetterMessageStore.SetReplayedAsync(IDeadLetterMessage message, CancellationToken cancellationToken)
-        => SetReplayedAsync(GetTypedMessage(message), cancellationToken);
+    async Task IDeadLetterMessageStore.SetReplayedAsync(IDeadLetterMessage message, CancellationToken cancellationToken)
+    {
+        await SetReplayedAsync(GetTypedMessage(message), cancellationToken);
+    }
 
-    Task IDeadLetterMessageStore.SetRetryAsync(
+    async Task IDeadLetterMessageStore.SetRetryAsync(
         IDeadLetterMessage message,
         string errorMessage,
         DateTimeOffset nextReplayAt,
         CancellationToken cancellationToken)
-        => SetRetryAsync(GetTypedMessage(message), errorMessage, nextReplayAt, cancellationToken);
+    {
+        await SetRetryAsync(GetTypedMessage(message), errorMessage, nextReplayAt, cancellationToken);
+    }
 
-    Task IDeadLetterMessageStore.SetFailedAsync(IDeadLetterMessage message, string errorMessage, CancellationToken cancellationToken)
-        => SetFailedAsync(GetTypedMessage(message), errorMessage, cancellationToken);
+    async Task IDeadLetterMessageStore.SetFailedAsync(IDeadLetterMessage message, string errorMessage, CancellationToken cancellationToken)
+    {
+        await SetFailedAsync(GetTypedMessage(message), errorMessage, cancellationToken);
+    }
 
     async Task<IReadOnlyList<IDeadLetterMessage>> IDeadLetterMessageStore.GetPendingMessagesAsync(int? limit, CancellationToken cancellationToken)
         => (await GetPendingMessagesAsync(limit, cancellationToken)).Cast<IDeadLetterMessage>().ToList();

@@ -1,7 +1,8 @@
-using Deveel.Data;
+using Kista;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Hermodr;
 
@@ -34,8 +35,13 @@ public static class DeliveryLogBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        builder.Services.AddDbContext<DeliveryLogDbContext>(configure ?? (_ => { }), lifetime);
-        builder.Services.AddRepository<EntityEventDeliveryLogRepository>(lifetime);
+        builder.Services.AddRepositoryContext()
+            .UseEntityFramework<DeliveryLogDbContext>(b => b
+                .ConfigureDbContext(configure ?? (_ => { }))
+                .WithLifetime(lifetime))
+            .AddRepository<EntityEventDeliveryLogRepository>(lifetime);
+
+        builder.Services.TryAddSingleton<IEventDeliveryRecordFactory<DbEventDeliveryRecord>, EventDeliveryRecordFactory>();
         return builder.UseStore<EntityEventDeliveryLogRepository>(lifetime);
     }
 }

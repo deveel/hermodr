@@ -1,5 +1,105 @@
 # Changelog
 
+## v1.2.6 - OpenTelemetry Enhancements
+
+### 🚀 Features
+
+- **Unified Diagnostics Infrastructure**: New centralized telemetry and diagnostics system spanning all publisher and subscription components (#89)
+  - `HermodrDiagnostics` — central `ActivitySource` and `Meter` for the entire pipeline
+  - `PublisherTelemetry`, `ChannelTelemetry`, `SubscriptionTelemetry` — per-component telemetry wrappers
+  - `PipelineDiagnosticsMiddleware` / `PipelineDiagnosticsTelemetry` — pipeline-level diagnostics middleware
+  - `TelemetryConstants` promoted from `Hermodr.Publisher.OpenTelemetry` to core `Hermodr.Publisher` for cross-project reuse
+- **Per-Transport Instrumentation**: Every transport channel now emits consistent OpenTelemetry traces and metrics
+  - New telemetry classes: `AuditTrailTelemetry`, `ServiceBusTransportTelemetry`, `DeadLetterTelemetry`, `MassTransitTransportTelemetry`, `OutboxTelemetry`, `RabbitMqTransportTelemetry`, `WebhookTransportTelemetry`
+  - All existing publish channels instrumented: `AuditTrailPublishChannel`, `ServiceBusPublishChannel`, `DeadLetterMessageReplayer`, `DeadLetterReplayProcessor`, `DeadLetterStorageHandler`, `MassTransitPublishChannel`, `OutboxPublishChannel`, `OutboxRelayProcessor`, `RabbitMqPublishChannel`, `WebhookPublishChannel`
+- **New `OpenTelemetryBuilderExtensions`** — fluent extensions for configuring diagnostics on the event pipeline
+
+### 🧪 Tests
+
+- 15 new test files and significant extensions to existing tests covering the full telemetry surface:
+  - `ChannelMetricsTests`, `HermodrDiagnosticsTests`, `OpenTelemetryBuilderExtensionsTests`
+  - `PipelineDiagnosticsMiddlewareTests`, `PipelineDiagnosticsTelemetryTests`
+  - `PublisherMetricsTests`, `SubscriptionMetricsTests`
+  - `TelemetryConstantsTests`, `TelemetryEdgeCasesTests`, `TelemetryMetricsTests`, `TelemetryTagsTests`
+  - Extended: `HermodrTelemetryTests`, `EndToEndTracePropagationTests`
+  - Removed obsolete `MetricsMiddlewareTests`
+
+### Change Log
+_(Detailed breakdown of every file and type changed in this release)_
+
+#### Hermodr.Publisher (Core)
+- `HermodrDiagnostics` — new central `ActivitySource` and `Meter` for publisher diagnostics
+- `PublisherTelemetry` — new publisher-level telemetry wrapper
+- `ChannelTelemetry` — new channel-level telemetry wrapper
+- `TelemetryConstants` — moved from `Hermodr.Publisher.OpenTelemetry` to core; defines activity source names, meter names, and tag keys
+- `EventPublisher` — refactored to emit diagnostics through `HermodrDiagnostics`
+- `EventPublishChannel` — refactored to emit channel-level traces and metrics
+
+#### Hermodr.Subscriptions
+- `SubscriptionTelemetry` — new subscription-level telemetry wrapper
+- `EventDispatcher` — refactored to emit dispatch traces and metrics through `SubscriptionTelemetry`
+
+#### Hermodr.Publisher.OpenTelemetry
+- `OpenTelemetryBuilderExtensions` — new fluent extensions for wiring diagnostics
+- `PipelineDiagnosticsMiddleware` / `PipelineDiagnosticsTelemetry` — new middleware for pipeline-level diagnostics
+- `HermodrTelemetry` — refactored to delegate to core diagnostics
+- `TelemetryMetrics` — refactored to use core meter
+- `MetricsOptions` — modified to align with new diagnostics
+- `OpenTelemetryPublishMiddleware`, `OpenTelemetrySubscriptionMiddleware` — refactored for new diagnostics pipeline
+- `TelemetryConstants` — removed (moved to core `Hermodr.Publisher`)
+
+#### Hermodr.Publisher.AuditTrail
+- `AuditTrailTelemetry` — new telemetry class
+- `AuditTrailPublishChannel` — instrumented with `AuditTrailTelemetry`
+
+#### Hermodr.Publisher.AzureServiceBus
+- `ServiceBusTransportTelemetry` — new telemetry class
+- `ServiceBusPublishChannel` — instrumented with `ServiceBusTransportTelemetry`
+
+#### Hermodr.Publisher.DeadLetter
+- `DeadLetterTelemetry` — new telemetry class
+- `DeadLetterMessageReplayer` — instrumented with `DeadLetterTelemetry`
+- `DeadLetterReplayProcessor` — instrumented with `DeadLetterTelemetry`
+- `DeadLetterStorageHandler` — refactored to use `DeadLetterTelemetry`
+
+#### Hermodr.Publisher.MassTransit
+- `MassTransitTransportTelemetry` — new telemetry class
+- `MassTransitPublishChannel` — instrumented with `MassTransitTransportTelemetry`
+
+#### Hermodr.Publisher.Outbox
+- `OutboxTelemetry` — new telemetry class
+- `OutboxPublishChannel` — refactored to use `OutboxTelemetry`
+- `OutboxRelayProcessor` — refactored to use `OutboxTelemetry`
+
+#### Hermodr.Publisher.RabbitMq
+- `RabbitMqTransportTelemetry` — new telemetry class
+- `RabbitMqPublishChannel` — instrumented with `RabbitMqTransportTelemetry`
+
+#### Hermodr.Publisher.Webhook
+- `WebhookTransportTelemetry` — new telemetry class
+- `WebhookPublishChannel` — instrumented with `WebhookTransportTelemetry`
+
+#### Tests (Hermodr.Publisher.OpenTelemetry.XUnit)
+- `ChannelMetricsTests` — channel-level metrics validation
+- `HermodrDiagnosticsTests` — diagnostics source and meter tests
+- `HermodrTelemetryTests` — extended telemetry coverage
+- `OpenTelemetryBuilderExtensionsTests` — builder extension validation
+- `PipelineDiagnosticsMiddlewareTests` — middleware behavior tests
+- `PipelineDiagnosticsTelemetryTests` — pipeline telemetry validation
+- `PublisherMetricsTests` — publisher-level metrics tests
+- `SubscriptionMetricsTests` — subscription-level metrics tests
+- `TelemetryConstantsTests` — constant and tag key validation
+- `TelemetryEdgeCasesTests` — edge case coverage for telemetry
+- `TelemetryMetricsTests` — metrics recording validation
+- `TelemetryTagsTests` — tag propagation tests
+- `EndToEndTracePropagationTests` — extended to include new diagnostics paths
+- `MetricsMiddlewareTests` — removed (superseded by new diagnostics)
+- AssemblyInfo and project file updates
+
+**Full Changelog**: https://github.com/deveel/hermodr/compare/v1.2.5...v1.2.6
+
+---
+
 ## v1.2.5 (2026-06-04)
 
 ### 🚀 Features

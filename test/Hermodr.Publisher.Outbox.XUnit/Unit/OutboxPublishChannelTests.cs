@@ -13,7 +13,7 @@ namespace Hermodr
 {
     /// <summary>
     /// Tests that verify the <see cref="OutboxPublishChannel{TMessage}"/> persists
-    /// events correctly through the factory/repository pair.
+    /// events correctly through the factory/store pair.
     /// </summary>
     [Trait("Category", "Unit")]
     [Trait("Layer", "Infrastructure")]
@@ -49,7 +49,7 @@ namespace Hermodr
             // Replace registrations with pre-built instances so tests share the
             // same objects and can inspect them afterward.
             services.AddSingleton<IOutboxMessageFactory<FakeOutboxMessage>>(factory);
-            services.AddSingleton<IOutboxMessageRepository<FakeOutboxMessage>>(repository);
+            services.AddSingleton<IOutboxMessageStore<FakeOutboxMessage>>(repository);
 
             return services.BuildServiceProvider();
         }
@@ -154,7 +154,7 @@ namespace Hermodr
                     .WithRepository<FakeOutboxMessageRepository>();
 
             services.AddSingleton<IOutboxMessageFactory<FakeOutboxMessage>>(factory);
-            services.AddSingleton<IOutboxMessageRepository<FakeOutboxMessage>>(repository);
+            services.AddSingleton<IOutboxMessageStore<FakeOutboxMessage>>(repository);
 
             var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
 
@@ -165,22 +165,22 @@ namespace Hermodr
             Assert.Empty(repository.Store);
         }
 
-        // ── PublishAsync: repository error ───────────────────────────────────
+        // ── PublishAsync: store error ────────────────────────────────────────
 
         [Fact]
         public async Task PublishAsync_WhenRepositoryThrows_ExceptionPropagates()
         {
             var factory    = new FakeOutboxMessageFactory();
-            var repository = new ThrowingRepository();
+            var repository = new ThrowingStore();
 
             var services = new ServiceCollection();
             services.AddEventPublisher(o => o.ThrowOnErrors = true)
                     .AddOutbox<FakeOutboxMessage>()
                     .WithFactory<FakeOutboxMessageFactory>()
-                    .WithRepository<ThrowingRepository>();
+                    .WithRepository<ThrowingStore>();
 
             services.AddSingleton<IOutboxMessageFactory<FakeOutboxMessage>>(factory);
-            services.AddSingleton<IOutboxMessageRepository<FakeOutboxMessage>>(repository);
+            services.AddSingleton<IOutboxMessageStore<FakeOutboxMessage>>(repository);
 
             var publisher = services.BuildServiceProvider().GetRequiredService<EventPublisher>();
 
@@ -202,7 +202,7 @@ namespace Hermodr
                     // factory deliberately omitted
                     .WithRepository<FakeOutboxMessageRepository>();
 
-            services.AddSingleton<IOutboxMessageRepository<FakeOutboxMessage>, FakeOutboxMessageRepository>();
+            services.AddSingleton<IOutboxMessageStore<FakeOutboxMessage>, FakeOutboxMessageRepository>();
 
             var provider = services.BuildServiceProvider();
 
@@ -214,7 +214,7 @@ namespace Hermodr
         [Fact]
         public async Task Resolve_WithoutRepository_ThrowsOnPublish()
         {
-            // The manager (and repository) are resolved lazily inside PublishCoreAsync, so
+            // The manager (and store) are resolved lazily inside PublishCoreAsync, so
             // service-resolution succeeds but the first publish call throws because no
             // OutboxMessageManager<FakeOutboxMessage> is registered.
             var services = new ServiceCollection();
@@ -238,22 +238,11 @@ namespace Hermodr
                 => throw new InvalidOperationException("Factory is deliberately broken.");
         }
 
-        private sealed class ThrowingRepository : IOutboxMessageRepository<FakeOutboxMessage>
+        private sealed class ThrowingStore : IOutboxMessageStore<FakeOutboxMessage>
         {
-            public string GetEntityKey(FakeOutboxMessage entity) => entity.Id;
+            public Task AddAsync(FakeOutboxMessage message, CancellationToken cancellationToken = default)
+                => throw new InvalidOperationException("Store is deliberately broken.");
             public Task<OutboxMessageStatus> GetStatusAsync(FakeOutboxMessage message, CancellationToken ct = default)
-                => throw new NotImplementedException();
-            public Task AddAsync(FakeOutboxMessage entity, CancellationToken ct = default)
-                => throw new InvalidOperationException("Repository is deliberately broken.");
-            public Task AddRangeAsync(IEnumerable<FakeOutboxMessage> entities, CancellationToken ct = default)
-                => throw new NotImplementedException();
-            public Task<bool> UpdateAsync(FakeOutboxMessage entity, CancellationToken ct = default)
-                => throw new NotImplementedException();
-            public Task<bool> RemoveAsync(FakeOutboxMessage entity, CancellationToken ct = default)
-                => throw new NotImplementedException();
-            public Task RemoveRangeAsync(IEnumerable<FakeOutboxMessage> entities, CancellationToken ct = default)
-                => throw new NotImplementedException();
-            public Task<FakeOutboxMessage?> FindAsync(string key, CancellationToken ct = default)
                 => throw new NotImplementedException();
             public Task SetSendingAsync(FakeOutboxMessage message, CancellationToken ct = default)
                 => throw new NotImplementedException();
@@ -270,10 +259,3 @@ namespace Hermodr
         }
     }
 }
-
-
-
-
-
-
-

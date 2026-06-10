@@ -8,6 +8,7 @@ namespace Hermodr;
 public class DbEventDeliveryRecordTests
 {
     private static readonly Faker Faker = new("en");
+    private static readonly EventDeliveryRecordFactory Factory = new();
 
     private static EventDeliveryRecord CreateRecord()
     {
@@ -36,7 +37,7 @@ public class DbEventDeliveryRecordTests
     public void Should_MapFromRecord_ToEntity()
     {
         var record = CreateRecord();
-        var entity = DbEventDeliveryRecord.FromRecord(record);
+        var entity = Factory.CreateRecord(record);
 
         Assert.Equal(record.Id, entity.Id);
         Assert.Equal(record.Event!.Id, entity.EventId);
@@ -51,67 +52,6 @@ public class DbEventDeliveryRecordTests
         Assert.Equal(record.ErrorCode, entity.ErrorCode);
         Assert.Equal(record.ErrorMessage, entity.ErrorMessage);
         Assert.Equal(record.ElapsedTime.Ticks, entity.ElapsedTimeTicks);
-    }
-
-    [Fact]
-    public void Should_MapFromEntity_ToRecord()
-    {
-        var record = CreateRecord();
-        var entity = DbEventDeliveryRecord.FromRecord(record);
-        var mapped = entity.ToRecord();
-
-        Assert.Equal(record.Id, mapped.Id);
-        Assert.NotNull(mapped.Event);
-        Assert.Equal(record.Event!.Id, mapped.Event.Id);
-        Assert.Equal(record.Event.Type, mapped.Event.Type);
-        Assert.Equal(record.PublisherName, mapped.PublisherName);
-        Assert.Equal(record.ChannelName, mapped.ChannelName);
-        Assert.Equal(record.ChannelType, mapped.ChannelType);
-        Assert.Equal(record.AttemptNumber, mapped.AttemptNumber);
-        Assert.Equal(record.Timestamp, mapped.Timestamp);
-        Assert.Equal(record.Outcome, mapped.Outcome);
-        Assert.Equal(record.ErrorCode, mapped.ErrorCode);
-        Assert.Equal(record.ErrorMessage, mapped.ErrorMessage);
-        Assert.Equal(record.ElapsedTime, mapped.ElapsedTime);
-    }
-
-    [Fact]
-    public void Should_Roundtrip_AllOutcomes()
-    {
-        foreach (EventDeliveryOutcome outcome in Enum.GetValues<EventDeliveryOutcome>())
-        {
-            var record = CreateRecord();
-            record.Outcome = outcome;
-
-            var entity = DbEventDeliveryRecord.FromRecord(record);
-            var mapped = entity.ToRecord();
-
-            Assert.Equal(outcome, mapped.Outcome);
-        }
-    }
-
-    [Fact]
-    public void Should_Roundtrip_ZeroElapsedTime()
-    {
-        var record = CreateRecord();
-        record.ElapsedTime = TimeSpan.Zero;
-
-        var entity = DbEventDeliveryRecord.FromRecord(record);
-        var mapped = entity.ToRecord();
-
-        Assert.Equal(TimeSpan.Zero, mapped.ElapsedTime);
-    }
-
-    [Fact]
-    public void Should_Roundtrip_MaxElapsedTime()
-    {
-        var record = CreateRecord();
-        record.ElapsedTime = TimeSpan.MaxValue;
-
-        var entity = DbEventDeliveryRecord.FromRecord(record);
-        var mapped = entity.ToRecord();
-
-        Assert.Equal(TimeSpan.MaxValue, mapped.ElapsedTime);
     }
 
     [Fact]
@@ -131,14 +71,13 @@ public class DbEventDeliveryRecordTests
             ElapsedTime = TimeSpan.Zero
         };
 
-        var entity = DbEventDeliveryRecord.FromRecord(record);
-        var mapped = entity.ToRecord();
+        var entity = Factory.CreateRecord(record);
 
-        Assert.Null(mapped.PublisherName);
-        Assert.Null(mapped.ChannelName);
-        Assert.Null(mapped.ChannelType);
-        Assert.Null(mapped.ErrorCode);
-        Assert.Null(mapped.ErrorMessage);
+        Assert.Null(entity.PublisherName);
+        Assert.Null(entity.ChannelName);
+        Assert.Null(entity.ChannelType);
+        Assert.Null(entity.ErrorCode);
+        Assert.Null(entity.ErrorMessage);
     }
 
     [Fact]
@@ -153,19 +92,17 @@ public class DbEventDeliveryRecordTests
             ElapsedTime = TimeSpan.Zero
         };
 
-        var entity = DbEventDeliveryRecord.FromRecord(record);
-        var mapped = entity.ToRecord();
+        var entity = Factory.CreateRecord(record);
 
-        Assert.Null(mapped.Event);
+        Assert.Null(entity.EventData);
         Assert.Equal(string.Empty, entity.EventId);
         Assert.Null(entity.EventType);
-        Assert.Null(entity.EventData);
     }
 
     [Fact]
     public void Should_ThrowArgumentNullException_When_RecordIsNull()
     {
         Assert.Throws<ArgumentNullException>(
-            () => DbEventDeliveryRecord.FromRecord(null!));
+            () => Factory.CreateRecord(null!));
     }
 }

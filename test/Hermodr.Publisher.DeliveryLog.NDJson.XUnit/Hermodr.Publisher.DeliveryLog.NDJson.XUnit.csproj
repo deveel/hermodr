@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Hermodr.Publisher.DeliveryLog\Hermodr.Publisher.DeliveryLog.csproj" />
+    <ProjectReference Include="..\..\src\Hermodr.Publisher.DeliveryLog.NDJson\Hermodr.Publisher.DeliveryLog.NDJson.csproj" />
+    <ProjectReference Include="..\..\src\Hermodr.TestPublisher\Hermodr.TestPublisher.csproj" />
+  </ItemGroup>
+
+</Project>

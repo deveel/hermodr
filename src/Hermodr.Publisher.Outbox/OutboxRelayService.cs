@@ -28,7 +28,7 @@ namespace Hermodr;
 /// </para>
 /// <para>
 /// The service is registered via
-/// <see cref="OutboxChannelBuilder{TMessage}.WithRelay(Action{OutboxRelayOptions}?)"/>.
+/// <see cref="OutboxChannelBuilder.WithRelay(Action{OutboxRelayOptions}?)"/>.
 /// </para>
 /// </remarks>
 internal sealed class OutboxRelayService<TMessage> : OutboxRelayServiceBase

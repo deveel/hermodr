@@ -51,12 +51,10 @@ public class NdJsonEventDeliveryLogRepositoryTests : IDisposable
         if (Directory.Exists(_tempDir))
         {
             try { Directory.Delete(_tempDir, true); }
-            catch (IOException) { /* cleanup best-effort */ }
-            catch (UnauthorizedAccessException) { /* cleanup best-effort */ }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
         }
     }
-
-    // ── Constructor ─────────────────────────────────────────────────────────
 
     [Fact]
     public void Should_CreateDirectory_When_NotExists()
@@ -75,8 +73,6 @@ public class NdJsonEventDeliveryLogRepositoryTests : IDisposable
         Assert.Throws<ArgumentNullException>(
             () => new NdJsonEventDeliveryLogRepository(null!));
     }
-
-    // ── RecordAsync ─────────────────────────────────────────────────────────
 
     [Fact]
     public async Task Should_RecordDelivery_ToFile()
@@ -98,7 +94,7 @@ public class NdJsonEventDeliveryLogRepositoryTests : IDisposable
             Options.Create(CreateOptions()));
 
         await Assert.ThrowsAsync<ArgumentNullException>(
-            () => store.RecordAsync(null!, TestContext.Current.CancellationToken));
+            () => store.RecordAsync(null!, TestContext.Current.CancellationToken).AsTask());
     }
 
     [Fact]
@@ -118,8 +114,6 @@ public class NdJsonEventDeliveryLogRepositoryTests : IDisposable
         var lines = await File.ReadAllLinesAsync(files[0], TestContext.Current.CancellationToken);
         Assert.Equal(10, lines.Length);
     }
-
-    // ── Query ───────────────────────────────────────────────────────────────
 
     [Fact]
     public async Task Should_QueryByEventId()
@@ -188,8 +182,6 @@ public class NdJsonEventDeliveryLogRepositoryTests : IDisposable
         Assert.Single(results);
     }
 
-    // ── Storage backend ─────────────────────────────────────────────────────
-
     [Fact]
     public void Should_Implement_IStorageBackend()
     {
@@ -199,15 +191,12 @@ public class NdJsonEventDeliveryLogRepositoryTests : IDisposable
         Assert.Equal("NDJson", store.ProviderName);
     }
 
-    // ── Dispose ─────────────────────────────────────────────────────────────
-
     [Fact]
     public void Should_Implement_IDisposable()
     {
         using var store = new NdJsonEventDeliveryLogRepository(
             Options.Create(CreateOptions()));
 
-        // Should not throw
         store.Dispose();
     }
 }

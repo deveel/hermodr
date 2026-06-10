@@ -13,6 +13,8 @@ public interface IDeadLetterMessageFactory
     /// <summary>
     /// Creates a new persisted dead-letter message from the given failure context.
     /// </summary>
+    /// <param name="context">The context describing the failed event delivery.</param>
+    /// <returns>The created dead-letter message.</returns>
     IDeadLetterMessage Create(DeadLetterContext context);
 }
 
@@ -26,5 +28,7 @@ public interface IDeadLetterMessageFactory<TMessage>
     /// <summary>
     /// Creates a new persisted dead-letter message from the given failure context.
     /// </summary>
+    /// <param name="context">The context describing the failed event delivery.</param>
+    /// <returns>The created dead-letter message.</returns>
     TMessage Create(DeadLetterContext context);
 }

@@ -5,10 +5,9 @@ using CloudNative.CloudEvents;
 namespace Hermodr;
 
 /// <summary>
-/// The default implementation of <see cref="IEventDeliveryRecord"/> that represents
-/// a record of an event delivery attempt.
+/// Represents a record of an event delivery attempt to a publish channel.
 /// </summary>
-public class EventDeliveryRecord : IEventDeliveryRecord
+public class EventDeliveryRecord
 {
     /// <summary>
     /// Gets or sets the unique identifier of the delivery record.
@@ -66,32 +65,4 @@ public class EventDeliveryRecord : IEventDeliveryRecord
     /// Gets or sets the elapsed time of the delivery attempt.
     /// </summary>
     public TimeSpan ElapsedTime { get; set; }
-
-    /// <summary>
-    /// Creates a new <see cref="EventDeliveryRecord"/> by copying the values from
-    /// an existing <see cref="IEventDeliveryRecord"/>.
-    /// </summary>
-    /// <param name="record">
-    /// The source record to copy from.
-    /// </param>
-    /// <returns>
-    /// A new <see cref="EventDeliveryRecord"/> with the same property values as the source.
-    /// </returns>
-    public static EventDeliveryRecord FromRecord(IEventDeliveryRecord record)
-    {
-        return new EventDeliveryRecord
-        {
-            Id = record.Id,
-            Event = record.Event,
-            PublisherName = record.PublisherName,
-            ChannelName = record.ChannelName,
-            ChannelType = record.ChannelType,
-            AttemptNumber = record.AttemptNumber,
-            Timestamp = record.Timestamp,
-            Outcome = record.Outcome,
-            ErrorCode = record.ErrorCode,
-            ErrorMessage = record.ErrorMessage,
-            ElapsedTime = record.ElapsedTime
-        };
-    }
 }

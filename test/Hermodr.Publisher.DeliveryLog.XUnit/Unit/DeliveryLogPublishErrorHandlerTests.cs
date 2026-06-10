@@ -19,9 +19,8 @@ public class DeliveryLogPublishErrorHandlerTests
     [Fact]
     public async Task Should_RecordFailedDelivery_When_ChannelThrows()
     {
-        var store = new InMemoryEventDeliveryLogRepository();
+        var store = new InMemoryDeliveryStore();
         var services = new ServiceCollection().AddLogging();
-        services.AddSingleton<IEventDeliveryLogRepository>(store);
         services.AddSingleton<IEventPublishDeliveryLog>(store);
 
         services.AddEventPublisher(opts =>
@@ -47,9 +46,8 @@ public class DeliveryLogPublishErrorHandlerTests
     [Fact]
     public async Task Should_SetOutcomeToFailed()
     {
-        var store = new InMemoryEventDeliveryLogRepository();
+        var store = new InMemoryDeliveryStore();
         var services = new ServiceCollection().AddLogging();
-        services.AddSingleton<IEventDeliveryLogRepository>(store);
         services.AddSingleton<IEventPublishDeliveryLog>(store);
 
         services.AddEventPublisher(opts =>
@@ -72,9 +70,8 @@ public class DeliveryLogPublishErrorHandlerTests
     [Fact]
     public async Task Should_RecordChannelName()
     {
-        var store = new InMemoryEventDeliveryLogRepository();
+        var store = new InMemoryDeliveryStore();
         var services = new ServiceCollection().AddLogging();
-        services.AddSingleton<IEventDeliveryLogRepository>(store);
         services.AddSingleton<IEventPublishDeliveryLog>(store);
 
         services.AddEventPublisher(opts =>
@@ -97,11 +94,8 @@ public class DeliveryLogPublishErrorHandlerTests
     [Fact]
     public async Task Should_NotRecord_When_WithThrowOnErrors_IsFalse()
     {
-        // With ThrowOnErrors = false (default), the middleware records a Succeeded record
-        // and the error handler adds failure records per-channel
-        var store = new InMemoryEventDeliveryLogRepository();
+        var store = new InMemoryDeliveryStore();
         var services = new ServiceCollection().AddLogging();
-        services.AddSingleton<IEventDeliveryLogRepository>(store);
         services.AddSingleton<IEventPublishDeliveryLog>(store);
 
         services.AddEventPublisher(opts =>
@@ -115,7 +109,6 @@ public class DeliveryLogPublishErrorHandlerTests
 
         await publisher.PublishEventAsync(evt, cancellationToken: TestContext.Current.CancellationToken);
 
-        // Should have both a middleware record (Succeeded) and an error handler record (Failed)
         var records = await store.GetByEventIdAsync(evt.Id!, TestContext.Current.CancellationToken);
         Assert.Equal(2, records.Count);
         Assert.Contains(records, r => r.Outcome == EventDeliveryOutcome.Succeeded);
@@ -123,7 +116,7 @@ public class DeliveryLogPublishErrorHandlerTests
     }
 
     [Fact]
-    public async Task Should_ThrowOnNullDeliveryLog_InConstructor()
+    public void Should_ThrowOnNullDeliveryLog_InConstructor()
     {
         Assert.Throws<ArgumentNullException>(
             () => new DeliveryLogPublishErrorHandler(null!));

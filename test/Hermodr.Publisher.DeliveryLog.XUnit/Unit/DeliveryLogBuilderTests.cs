@@ -19,43 +19,10 @@ public class DeliveryLogBuilderTests
     // ── AddDeliveryLog on EventPublisherBuilder ──────────────────────────────
 
     [Fact]
-    public async Task Should_RegisterInMemoryStore_ByDefault()
-    {
-        var services = new ServiceCollection().AddLogging();
-        services.AddEventPublisher(opts =>
-                opts.Source = new Uri("https://example.com"))
-            .AddDeliveryLog()
-            .AddTestChannel(_ => { });
-
-        await using var provider = services.BuildServiceProvider();
-        var store = provider.GetService<IEventDeliveryLogRepository>();
-
-        Assert.NotNull(store);
-        Assert.IsType<InMemoryEventDeliveryLogRepository>(store);
-    }
-
-    [Fact]
-    public async Task Should_RegisterDeliveryLog_AsSingleton()
-    {
-        var services = new ServiceCollection().AddLogging();
-        services.AddEventPublisher(opts =>
-                opts.Source = new Uri("https://example.com"))
-            .AddDeliveryLog()
-            .AddTestChannel(_ => { });
-
-        await using var provider = services.BuildServiceProvider();
-        var store1 = provider.GetRequiredService<IEventDeliveryLogRepository>();
-        var store2 = provider.GetRequiredService<IEventDeliveryLogRepository>();
-
-        Assert.Same(store1, store2);
-    }
-
-    [Fact]
     public async Task Should_RegisterMiddleware_ThatRecordsDeliveries()
     {
-        var store = new InMemoryEventDeliveryLogRepository();
+        var store = new InMemoryDeliveryStore();
         var services = new ServiceCollection().AddLogging();
-        services.AddSingleton<IEventDeliveryLogRepository>(store);
         services.AddSingleton<IEventPublishDeliveryLog>(store);
 
         services.AddEventPublisher(opts =>
@@ -73,7 +40,7 @@ public class DeliveryLogBuilderTests
         Assert.NotEmpty(records);
     }
 
-    // ── UseInMemory ─────────────────────────────────────────────────────────
+    // ── UseStore ──────────────────────────────────────────────────────────
 
     [Fact]
     public async Task Should_ResolveAsWriteInterface()
@@ -81,7 +48,7 @@ public class DeliveryLogBuilderTests
         var services = new ServiceCollection().AddLogging();
         services.AddEventPublisher(opts =>
                 opts.Source = new Uri("https://example.com"))
-            .AddDeliveryLog()
+            .AddDeliveryLog(log => log.UseStore<InMemoryDeliveryStore>())
             .AddTestChannel(_ => { });
 
         await using var provider = services.BuildServiceProvider();
@@ -90,29 +57,13 @@ public class DeliveryLogBuilderTests
         Assert.NotNull(writeLog);
     }
 
-    [Fact]
-    public async Task Should_ResolveAsQueryInterface()
-    {
-        var services = new ServiceCollection().AddLogging();
-        services.AddEventPublisher(opts =>
-                opts.Source = new Uri("https://example.com"))
-            .AddDeliveryLog()
-            .AddTestChannel(_ => { });
-
-        await using var provider = services.BuildServiceProvider();
-        var queryStore = provider.GetRequiredService<IEventDeliveryLogRepository>();
-
-        Assert.NotNull(queryStore);
-    }
-
     // ── UseErrorHandler ─────────────────────────────────────────────────────
 
     [Fact]
     public async Task Should_RegisterErrorHandler_When_UseErrorHandlerCalled()
     {
-        var store = new InMemoryEventDeliveryLogRepository();
+        var store = new InMemoryDeliveryStore();
         var services = new ServiceCollection().AddLogging();
-        services.AddSingleton<IEventDeliveryLogRepository>(store);
         services.AddSingleton<IEventPublishDeliveryLog>(store);
 
         services.AddEventPublisher(opts =>
@@ -136,7 +87,7 @@ public class DeliveryLogBuilderTests
     [Fact]
     public async Task Should_AcceptCustomStoreInstance()
     {
-        var customStore = new InMemoryEventDeliveryLogRepository();
+        var customStore = new InMemoryDeliveryStore();
         var services = new ServiceCollection().AddLogging();
 
         services.AddEventPublisher(opts =>
@@ -145,13 +96,13 @@ public class DeliveryLogBuilderTests
             .AddTestChannel(_ => { });
 
         await using var provider = services.BuildServiceProvider();
-        var resolved = provider.GetRequiredService<IEventDeliveryLogRepository>();
+        var resolved = provider.GetRequiredService<IEventPublishDeliveryLog>();
 
         Assert.Same(customStore, resolved);
     }
 
     [Fact]
-    public async Task Should_ThrowArgumentNullException_When_StoreIsNull()
+    public void Should_ThrowArgumentNullException_When_StoreIsNull()
     {
         var services = new ServiceCollection().AddLogging();
 
@@ -159,7 +110,7 @@ public class DeliveryLogBuilderTests
         {
             services.AddEventPublisher(opts =>
                     opts.Source = new Uri("https://example.com"))
-                .AddDeliveryLog(log => log.UseStore((IEventDeliveryLogRepository)null!));
+                .AddDeliveryLog(log => log.UseStore((IEventPublishDeliveryLog)null!));
         });
 
         Assert.Contains("store", ex.Message);
@@ -168,26 +119,22 @@ public class DeliveryLogBuilderTests
     // ── Standalone AddDeliveryLog ────────────────────────────────────────────
 
     [Fact]
-    public async Task Should_RegisterStandaloneDeliveryLog()
+    public void Should_NotRegisterDefaultStore()
     {
         var services = new ServiceCollection().AddLogging();
         services.AddDeliveryLog();
 
-        await using var provider = services.BuildServiceProvider();
-        var writeLog = provider.GetRequiredService<IEventPublishDeliveryLog>();
-        var queryStore = provider.GetRequiredService<IEventDeliveryLogRepository>();
+        using var provider = services.BuildServiceProvider();
+        var store = provider.GetService<IEventPublishDeliveryLog>();
 
-        Assert.NotNull(writeLog);
-        Assert.NotNull(queryStore);
-        Assert.IsType<InMemoryEventDeliveryLogRepository>(writeLog);
-        Assert.Same(writeLog, queryStore);
+        Assert.Null(store);
     }
 
     [Fact]
-    public async Task Should_RecordThroughStandaloneDeliveryLog()
+    public async Task Should_RecordThroughConfiguredStore()
     {
         var services = new ServiceCollection().AddLogging();
-        services.AddDeliveryLog();
+        services.AddDeliveryLog(log => log.UseStore<InMemoryDeliveryStore>());
 
         await using var provider = services.BuildServiceProvider();
         var log = provider.GetRequiredService<IEventPublishDeliveryLog>();
@@ -208,8 +155,6 @@ public class DeliveryLogBuilderTests
 
         await log.RecordAsync(record, TestContext.Current.CancellationToken);
 
-        var store = provider.GetRequiredService<IEventDeliveryLogRepository>();
-        var results = await store.GetByEventIdAsync(record.Event!.Id, TestContext.Current.CancellationToken);
-        Assert.Single(results);
+        Assert.NotNull(record.Id);
     }
 }

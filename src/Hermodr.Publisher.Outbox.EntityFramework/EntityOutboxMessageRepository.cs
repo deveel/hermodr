@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 //
 
-using Deveel.Data;
+using Kista;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -12,9 +12,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Hermodr;
 
 /// <summary>
-/// An <see cref="IOutboxMessageRepository{TMessage}"/> backed by Entity Framework Core,
-/// built on top of <see cref="EntityRepository{TEntity,TKey}"/> from
-/// <c>Deveel.Repository.EntityFramework</c>.
+/// An <see cref="IOutboxMessageStore{TMessage}"/> backed by Entity Framework Core,
+/// built on top of <see cref="EntityRepository{TEntity,TKey}"/>.
 /// </summary>
 /// <typeparam name="TMessage">
 /// The outbox message entity type.  Must be a reference type and implement
@@ -46,7 +45,7 @@ namespace Hermodr;
 /// </para>
 /// </remarks>
 public class EntityOutboxMessageRepository<TMessage>
-    : EntityRepository<TMessage, string>, IOutboxMessageRepository<TMessage>
+    : EntityRepository<TMessage, string>, IOutboxMessageStore<TMessage>
     where TMessage : DbOutboxMessage
 {
     /// <summary>
@@ -71,7 +70,7 @@ public class EntityOutboxMessageRepository<TMessage>
     /// automatically.
     /// </param>
     public EntityOutboxMessageRepository(OutboxDbContext context, ISystemTime? systemTime = null, ILogger<EntityOutboxMessageRepository<TMessage>>? logger = null)
-        : base(context, logger)
+        : base(context, null, logger)
     {
         _systemTime = systemTime ?? SystemTime.Default;
     }
@@ -84,7 +83,12 @@ public class EntityOutboxMessageRepository<TMessage>
     protected new OutboxDbContext Context => (OutboxDbContext)base.Context;
 
     
-    // ── IOutboxMessageRepository<TMessage> ───────────────────────────
+    // ── IOutboxMessageStore<TMessage> ────────────────────────────
+
+    async Task IOutboxMessageStore<TMessage>.AddAsync(TMessage message, CancellationToken cancellationToken)
+    {
+        await base.AddAsync(message, cancellationToken);
+    }
 
     public Task<OutboxMessageStatus> GetStatusAsync(TMessage message, CancellationToken cancellationToken = default)
     {
@@ -92,27 +96,27 @@ public class EntityOutboxMessageRepository<TMessage>
     }
 
     /// <inheritdoc/>
-    public Task SetSendingAsync(TMessage message, CancellationToken cancellationToken = default)
+    public async Task SetSendingAsync(TMessage message, CancellationToken cancellationToken = default)
     {
         Logger.LogMarkingOutboxMessageAsSending();
 
         message.Status = OutboxMessageStatus.Sending;
         message.LastStatusAt = _systemTime.UtcNow;
-        return Task.CompletedTask;
+        await Context.SaveChangesAsync(cancellationToken);
     }
 
     /// <inheritdoc/>
-    public Task SetDeliveredAsync(TMessage message, CancellationToken cancellationToken = default)
+    public async Task SetDeliveredAsync(TMessage message, CancellationToken cancellationToken = default)
     {
         Logger.LogMarkingOutboxMessageAsDelivered();
 
         message.Status = OutboxMessageStatus.Delivered;
         message.LastStatusAt = _systemTime.UtcNow;
-        return Task.CompletedTask;
+        await Context.SaveChangesAsync(cancellationToken);
     }
 
     /// <inheritdoc/>
-    public Task SetDeferredAsync(
+    public async Task SetDeferredAsync(
         TMessage message,
         DateTimeOffset scheduledAt,
         CancellationToken cancellationToken = default)
@@ -121,11 +125,11 @@ public class EntityOutboxMessageRepository<TMessage>
         message.ErrorMessage = null;
         message.NextRetryAt = scheduledAt;
         message.LastStatusAt = _systemTime.UtcNow;
-        return Task.CompletedTask;
+        await Context.SaveChangesAsync(cancellationToken);
     }
 
     /// <inheritdoc/>
-    public Task SetRetryAsync(
+    public async Task SetRetryAsync(
         TMessage message,
         string errorMessage,
         DateTimeOffset nextRetryAt,
@@ -138,11 +142,11 @@ public class EntityOutboxMessageRepository<TMessage>
         message.RetryCount += 1;
         message.NextRetryAt = nextRetryAt;
         message.LastStatusAt = _systemTime.UtcNow;
-        return Task.CompletedTask;
+        await Context.SaveChangesAsync(cancellationToken);
     }
 
     /// <inheritdoc/>
-    public Task SetFailedAsync(
+    public async Task SetFailedAsync(
         TMessage message,
         string errorMessage,
         CancellationToken cancellationToken = default)
@@ -152,7 +156,7 @@ public class EntityOutboxMessageRepository<TMessage>
         message.Status = OutboxMessageStatus.Failed;
         message.ErrorMessage = errorMessage;
         message.LastStatusAt = _systemTime.UtcNow;
-        return Task.CompletedTask;
+        await Context.SaveChangesAsync(cancellationToken);
     }
 
     /// <inheritdoc/>

@@ -53,7 +53,7 @@ public class InMemoryEventDeliveryLogRepositoryTests
             var store = new InMemoryEventDeliveryLogRepository();
 
             await Assert.ThrowsAsync<ArgumentNullException>(
-                () => store.RecordAsync(null!, cancellationToken));
+                () => store.RecordAsync(null!, cancellationToken).AsTask());
         }
 
         [Fact]
@@ -83,7 +83,7 @@ public class InMemoryEventDeliveryLogRepositoryTests
 
             await store.RecordAsync(record, cancellationToken);
 
-            var queryStore = (IEventDeliveryLogRepository)store;
+            var queryStore = (InMemoryEventDeliveryLogRepository)store;
             var results = await queryStore.GetByEventIdAsync(record.Event!.Id, cancellationToken);
             Assert.Single(results);
         }
@@ -158,12 +158,12 @@ public class InMemoryEventDeliveryLogRepositoryTests
             var cancellationToken = TestContext.Current.CancellationToken;
             var store = new InMemoryEventDeliveryLogRepository();
 
-        await Assert.ThrowsAsync<ArgumentNullException>(
-            () => store.GetByEventIdAsync(null!, cancellationToken));
-    }
+            await Assert.ThrowsAsync<ArgumentNullException>(
+                () => store.GetByEventIdAsync(null!, cancellationToken));
+        }
 
-    [Fact]
-    public async Task Should_ThrowArgumentException_When_EventIdIsEmpty()
+        [Fact]
+        public async Task Should_ThrowArgumentException_When_EventIdIsEmpty()
         {
             var cancellationToken = TestContext.Current.CancellationToken;
             var store = new InMemoryEventDeliveryLogRepository();
@@ -401,7 +401,7 @@ public class InMemoryEventDeliveryLogRepositoryTests
         for (var i = 0; i < 100; i++)
         {
             var record = CreateRecord();
-            tasks.Add(store.RecordAsync(record, cancellationToken));
+            tasks.Add(store.RecordAsync(record, cancellationToken).AsTask());
         }
 
         await Task.WhenAll(tasks);
