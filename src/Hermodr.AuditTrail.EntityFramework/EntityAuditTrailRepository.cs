@@ -7,13 +7,28 @@ using Microsoft.Extensions.Logging;
 
 namespace Hermodr;
 
+/// <summary>
+/// An Entity Framework-backed repository for audit trail entries.
+/// </summary>
 public class EntityAuditTrailRepository : EntityRepository<DbAuditTrailEntry>
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="EntityAuditTrailRepository"/> class.
+    /// </summary>
+    /// <param name="context">The <see cref="AuditTrailDbContext"/> to use for data access.</param>
+    /// <param name="services">An optional <see cref="IServiceProvider"/> for dependency resolution.</param>
+    /// <param name="logger">An optional logger for diagnostic output.</param>
     public EntityAuditTrailRepository(AuditTrailDbContext context, IServiceProvider? services = null, ILogger<EntityRepository<DbAuditTrailEntry>>? logger = null) 
         : base(context, services, logger)
     {
     }
     
+    /// <summary>
+    /// Streams audit trail entries matching the given query filters.
+    /// </summary>
+    /// <param name="query">The query defining the filters to apply.</param>
+    /// <param name="cancellationToken">A token to cancel the streaming operation.</param>
+    /// <returns>An async enumerable of matching <see cref="DbAuditTrailEntry"/> instances.</returns>
     public async IAsyncEnumerable<DbAuditTrailEntry> StreamEntiesAsync(AuditTrailStreamQuery query, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);

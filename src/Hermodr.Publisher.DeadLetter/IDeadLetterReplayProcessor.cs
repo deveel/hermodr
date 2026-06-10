@@ -10,5 +10,10 @@ namespace Hermodr;
 /// </summary>
 public interface IDeadLetterReplayProcessor
 {
+    /// <summary>
+    /// Processes all pending dead-letter messages that are eligible for replay.
+    /// </summary>
+    /// <param name="cancellationToken">A token to cancel the processing.</param>
+    /// <returns>A task that completes when all eligible messages have been processed.</returns>
     Task ProcessPendingMessagesAsync(CancellationToken cancellationToken = default);
 }

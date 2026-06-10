@@ -12,6 +12,12 @@ using Microsoft.Extensions.Options;
 
 namespace Hermodr
 {
+    /// <summary>
+    /// Provides a base class for channels that publish events to a specific transport.
+    /// </summary>
+    /// <typeparam name="TOptions">
+    /// The type of the channel-specific options that control per-delivery behaviour.
+    /// </typeparam>
     public abstract class EventPublishChannel<TOptions> : INamedEventPublishChannel
         where TOptions : EventPublishOptions
     {

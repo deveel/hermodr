@@ -28,7 +28,7 @@ public sealed class OutboxRelayOptions
     /// <remarks>
     /// A value of <c>0</c> or negative means "no limit" – every pending message
     /// returned by
-    /// <see cref="IOutboxMessageRepository{TMessage}.GetPendingMessagesAsync"/> is
+    /// <see cref="IOutboxMessageStore{TMessage}.GetPendingMessagesAsync"/> is
     /// processed in one batch.  Defaults to <c>0</c> (no limit).
     /// </remarks>
     public int MaxBatchSize { get; set; } = 0;

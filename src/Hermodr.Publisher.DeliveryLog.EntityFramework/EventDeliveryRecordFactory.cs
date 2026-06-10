@@ -5,11 +5,15 @@ using CloudNative.CloudEvents.SystemTextJson;
 
 namespace Hermodr;
 
+/// <summary>
+/// Creates <see cref="DbEventDeliveryRecord"/> instances from <see cref="EventDeliveryRecord"/> sources.
+/// </summary>
 public class EventDeliveryRecordFactory : IEventDeliveryRecordFactory<DbEventDeliveryRecord>
 {
     private static readonly JsonEventFormatter EventFormatter = new();
     private static readonly ContentType CloudEventsContentType = new("application/cloudevents+json");
 
+    /// <inheritdoc />
     public DbEventDeliveryRecord CreateRecord(EventDeliveryRecord source)
     {
         ArgumentNullException.ThrowIfNull(source);

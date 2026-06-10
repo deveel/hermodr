@@ -3,8 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 //
 
-using Deveel.Data;
-
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -93,38 +91,33 @@ public sealed class OutboxChannelBuilder
     // ─────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Registers a concrete <see cref="IOutboxMessageRepository{TMessage}"/>
+    /// Registers a concrete <see cref="IOutboxMessageStore{TMessage}"/>
     /// implementation that the channel uses to persist outbox messages.
     /// </summary>
-    /// <typeparam name="TRepository">
-    /// The repository implementation type.  It must implement
-    /// <see cref="IOutboxMessageRepository{TMessage}"/>.
+    /// <typeparam name="TStore">
+    /// The store implementation type.  It must implement
+    /// <see cref="IOutboxMessageStore{TMessage}"/>.
     /// </typeparam>
     /// <param name="lifetime">
-    /// The DI service lifetime for the repository registration.
-    /// Defaults to <see cref="ServiceLifetime.Scoped"/> because repositories
+    /// The DI service lifetime for the store registration.
+    /// Defaults to <see cref="ServiceLifetime.Scoped"/> because stores
     /// typically wrap a scoped database context.
     /// </param>
     /// <returns>This builder instance for chaining.</returns>
-    public OutboxChannelBuilder WithRepository<TRepository>(
+    public OutboxChannelBuilder WithRepository<TStore>(
         ServiceLifetime lifetime = ServiceLifetime.Scoped)
+        where TStore : class
     {
-        var repositoryType = typeof(IOutboxMessageRepository<>).MakeGenericType(MessageType);
-        if (!repositoryType.IsAssignableFrom(typeof(TRepository)))
-            throw new ArgumentException($"Repository type must implement {repositoryType.FullName}", nameof(TRepository));
+        var storeType = typeof(IOutboxMessageStore<>).MakeGenericType(MessageType);
+        if (!storeType.IsAssignableFrom(typeof(TStore)))
+            throw new ArgumentException($"Store type must implement {storeType.FullName}", nameof(TStore));
         
-        Services.AddRepository(typeof(TRepository), lifetime);
+        Services.TryAdd(ServiceDescriptor.Describe(typeof(TStore), typeof(TStore), lifetime));
         Services.TryAdd(ServiceDescriptor.Describe(
-            repositoryType,
-            sp => sp.GetRequiredService<TRepository>(),
+            storeType,
+            sp => sp.GetRequiredService<TStore>(),
             lifetime));
 
-        var managerType = typeof(OutboxMessageManager<>).MakeGenericType(MessageType);
-        Services.TryAdd(ServiceDescriptor.Describe(managerType, managerType, lifetime));
-
-        var validatorType = typeof(OutboxMessageValidator<>).MakeGenericType(MessageType);
-        Services.TryAdd(ServiceDescriptor.Describe(validatorType, validatorType, lifetime));
-        
         return this;
     }
     
@@ -189,7 +182,7 @@ public sealed class OutboxChannelBuilder
     /// channel is registered and the signal is harmless.
     /// </para>
     /// <para>
-    /// Because the <see cref="IOutboxMessageRepository{TMessage}"/> is typically scoped,
+    /// Because the <see cref="IOutboxMessageStore{TMessage}"/> is typically scoped,
     /// the relay creates a fresh DI scope on every polling tick.
     /// </para>
     /// </remarks>

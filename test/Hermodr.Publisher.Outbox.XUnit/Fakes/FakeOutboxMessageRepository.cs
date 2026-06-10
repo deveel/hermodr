@@ -1,12 +1,12 @@
-using Deveel.Data;
+using System.Collections;
 
 namespace Hermodr.Fakes;
 
 /// <summary>
-/// An in-memory <see cref="IOutboxMessageRepository{TMessage}"/> that records
+/// An in-memory <see cref="IOutboxMessageStore{TMessage}"/> that records
 /// every outbox operation, suitable for unit testing.
 /// </summary>
-internal sealed class FakeOutboxMessageRepository : IOutboxMessageRepository<FakeOutboxMessage>
+internal sealed class FakeOutboxMessageRepository : IOutboxMessageStore<FakeOutboxMessage>
 {
     private readonly List<FakeOutboxMessage> _store = new();
 
@@ -20,46 +20,13 @@ internal sealed class FakeOutboxMessageRepository : IOutboxMessageRepository<Fak
     public void SeedAsync(params FakeOutboxMessage[] messages)
         => _store.AddRange(messages);
 
-    // ── IRepository<FakeOutboxMessage, string> ───────────────────────
+    // ── IOutboxMessageStore<FakeOutboxMessage> ─────────────────────
 
-    public string GetEntityKey(FakeOutboxMessage entity) => entity.Id;
-
-    public Task AddAsync(FakeOutboxMessage entity, CancellationToken cancellationToken = default)
+    public Task AddAsync(FakeOutboxMessage message, CancellationToken cancellationToken = default)
     {
-        _store.Add(entity);
+        _store.Add(message);
         return Task.CompletedTask;
     }
-
-    public Task AddRangeAsync(
-        IEnumerable<FakeOutboxMessage> entities,
-        CancellationToken cancellationToken = default)
-    {
-        _store.AddRange(entities);
-        return Task.CompletedTask;
-    }
-
-    public Task<bool> UpdateAsync(FakeOutboxMessage entity, CancellationToken cancellationToken = default)
-        => Task.FromResult(true);
-
-    public Task<bool> RemoveAsync(FakeOutboxMessage entity, CancellationToken cancellationToken = default)
-    {
-        var removed = _store.Remove(entity);
-        return Task.FromResult(removed);
-    }
-
-    public Task RemoveRangeAsync(
-        IEnumerable<FakeOutboxMessage> entities,
-        CancellationToken cancellationToken = default)
-    {
-        foreach (var e in entities)
-            _store.Remove(e);
-        return Task.CompletedTask;
-    }
-
-    public Task<FakeOutboxMessage?> FindAsync(string key, CancellationToken cancellationToken = default)
-        => Task.FromResult(_store.FirstOrDefault(m => m.Id == key));
-
-    // ── IOutboxMessageRepository<FakeOutboxMessage> ──────────────────
 
     public Task<OutboxMessageStatus> GetStatusAsync(FakeOutboxMessage message, CancellationToken cancellationToken = default)
         => Task.FromResult(message.Status);

@@ -6,6 +6,10 @@ using CloudNative.CloudEvents.SystemTextJson;
 
 namespace Hermodr;
 
+/// <summary>
+/// A custom JSON converter for serializing and deserializing <see cref="CloudEvent"/> instances
+/// using the CloudEvents structured-mode JSON format.
+/// </summary>
 public class CloudEventJsonConverter : JsonConverter<CloudEvent>
 {
     private static readonly JsonEventFormatter Formatter = new();

@@ -8,6 +8,9 @@ using Microsoft.Extensions.Options;
 
 namespace Hermodr;
 
+/// <summary>
+/// An NDJson file-backed repository for event delivery log records.
+/// </summary>
 public class NdJsonEventDeliveryLogRepository : IEventPublishDeliveryLog, IDisposable
 {
     private readonly NdJsonDeliveryLogOptions _options;
@@ -27,6 +30,12 @@ public class NdJsonEventDeliveryLogRepository : IEventPublishDeliveryLog, IDispo
         Converters = { new CloudEventJsonConverter() }
     };
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="NdJsonEventDeliveryLogRepository"/> class.
+    /// </summary>
+    /// <param name="options">The NDJson delivery log options.</param>
+    /// <param name="systemTime">An optional clock abstraction for timestamping.</param>
+    /// <param name="logger">An optional logger for diagnostic output.</param>
     public NdJsonEventDeliveryLogRepository(
         IOptions<NdJsonDeliveryLogOptions> options,
         IEventSystemTime? systemTime = null,
@@ -39,6 +48,7 @@ public class NdJsonEventDeliveryLogRepository : IEventPublishDeliveryLog, IDispo
         EnsureDirectoryExists();
     }
 
+    /// <inheritdoc />
     public string ProviderName => "NDJson";
 
     private void EnsureDirectoryExists()
@@ -47,6 +57,7 @@ public class NdJsonEventDeliveryLogRepository : IEventPublishDeliveryLog, IDispo
             Directory.CreateDirectory(_options.DirectoryPath);
     }
 
+    /// <inheritdoc />
     public async ValueTask RecordAsync(EventDeliveryRecord record, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(record);
@@ -131,6 +142,7 @@ public class NdJsonEventDeliveryLogRepository : IEventPublishDeliveryLog, IDispo
         }
     }
 
+    /// <inheritdoc />
     public Task<IReadOnlyList<EventDeliveryRecord>> GetByEventIdAsync(string eventId, CancellationToken cancellationToken = default)
     {
         var results = ReadAllRecords()
@@ -141,6 +153,7 @@ public class NdJsonEventDeliveryLogRepository : IEventPublishDeliveryLog, IDispo
         return Task.FromResult<IReadOnlyList<EventDeliveryRecord>>(results);
     }
 
+    /// <inheritdoc />
     public Task<IReadOnlyList<EventDeliveryRecord>> GetByChannelAsync(string channelName, CancellationToken cancellationToken = default)
     {
         var results = ReadAllRecords()
@@ -151,6 +164,7 @@ public class NdJsonEventDeliveryLogRepository : IEventPublishDeliveryLog, IDispo
         return Task.FromResult<IReadOnlyList<EventDeliveryRecord>>(results);
     }
 
+    /// <inheritdoc />
     public Task<IReadOnlyList<EventDeliveryRecord>> GetByOutcomeAsync(EventDeliveryOutcome outcome, CancellationToken cancellationToken = default)
     {
         var results = ReadAllRecords()
@@ -161,6 +175,7 @@ public class NdJsonEventDeliveryLogRepository : IEventPublishDeliveryLog, IDispo
         return Task.FromResult<IReadOnlyList<EventDeliveryRecord>>(results);
     }
 
+    /// <inheritdoc />
     public Task<IReadOnlyList<EventDeliveryRecord>> GetByTimeRangeAsync(DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken = default)
     {
         var results = ReadAllRecords()
@@ -212,6 +227,7 @@ public class NdJsonEventDeliveryLogRepository : IEventPublishDeliveryLog, IDispo
         }
     }
 
+    /// <inheritdoc />
     public void Dispose()
     {
         _writeLock.Dispose();

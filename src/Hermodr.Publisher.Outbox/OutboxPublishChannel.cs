@@ -7,8 +7,6 @@ using System.Diagnostics;
 
 using CloudNative.CloudEvents;
 
-using Deveel;
-
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -26,7 +24,7 @@ internal sealed class OutboxPublishChannel<TMessage> : EventPublishChannel<Outbo
     private readonly ILogger _logger;
 
     /// <summary>
-    /// Initialises the channel with its dependencies.
+    /// Initializes the channel with its dependencies.
     /// </summary>
     /// <param name="options">
     /// The channel-level default options resolved from the DI container via
@@ -38,8 +36,8 @@ internal sealed class OutboxPublishChannel<TMessage> : EventPublishChannel<Outbo
     /// </param>
     /// <param name="scopeFactory">
     /// Used to create a fresh DI scope on each publish call so that a scoped
-    /// <see cref="OutboxMessageManager{TMessage}"/> (and its underlying repository)
-    /// can be resolved without causing a scoped-in-singleton lifetime violation.
+    /// <see cref="IOutboxMessageStore{TMessage}"/> can be resolved without causing
+    /// a scoped-in-singleton lifetime violation.
     /// </param>
     /// <param name="systemTime">
     /// The clock abstraction used to evaluate whether a scheduled publish time is
@@ -94,21 +92,14 @@ internal sealed class OutboxPublishChannel<TMessage> : EventPublishChannel<Outbo
         try
         {
             await using var scope = _scopeFactory.CreateAsyncScope();
-            var manager = scope.ServiceProvider.GetRequiredService<OutboxMessageManager<TMessage>>();
+            var store = scope.ServiceProvider.GetRequiredService<IOutboxMessageStore<TMessage>>();
 
             var message = _messageFactory.Create(@event, options);
-            var result = await manager.AddAsync(message, cancellationToken);
-
-            if (!result.IsSuccess())
-                throw new InvalidOperationException(
-                    $"Failed to save event '{@event.Type}' to outbox: {result.Error}");
+            await store.AddAsync(message, cancellationToken);
 
             if (options.ScheduleDeliveryAt is { } scheduleDeliveryAt && scheduleDeliveryAt > _systemTime.UtcNow)
             {
-                var deferred = await manager.ScheduleDeferredDeliveryAsync(message, scheduleDeliveryAt);
-                if (!deferred.IsSuccess())
-                    throw new InvalidOperationException(
-                        $"Failed to schedule event '{@event.Type}' in outbox: {deferred.Error}");
+                await store.SetDeferredAsync(message, scheduleDeliveryAt, cancellationToken);
             }
 
             _logger.LogEventSavedToOutbox(@event.Type);

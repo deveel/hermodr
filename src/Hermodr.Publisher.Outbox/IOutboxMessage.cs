@@ -14,7 +14,7 @@ namespace Hermodr;
 /// <remarks>
 /// Implementations must be concrete, persistable entities; they are created by an
 /// <see cref="IOutboxMessageFactory{TMessage}"/> from a <see cref="Event"/> and stored
-/// via an <see cref="IOutboxMessageRepository{TMessage}"/>.
+/// via an <see cref="IOutboxMessageStore{TMessage}"/>.
 /// </remarks>
 public interface IOutboxMessage
 {
@@ -38,7 +38,7 @@ public interface IOutboxMessage
     /// <summary>
     /// Gets the number of delivery attempts that have been made for this message.
     /// Starts at <c>0</c> and is incremented each time a transient failure is recorded
-    /// via <see cref="IOutboxMessageRepository{TMessage}.SetRetryAsync"/>.
+    /// via <see cref="IOutboxMessageStore{TMessage}.SetRetryAsync"/>.
     /// </summary>
     int RetryCount { get; }
 

@@ -7,7 +7,7 @@ using Bogus;
 
 using CloudNative.CloudEvents;
 
-using Deveel.Data;
+using Kista;
 
 using Microsoft.EntityFrameworkCore;
 

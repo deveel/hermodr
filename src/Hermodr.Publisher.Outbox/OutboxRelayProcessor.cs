@@ -7,8 +7,6 @@ using System.Diagnostics;
 
 using CloudNative.CloudEvents;
 
-using Deveel;
-
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -19,7 +17,7 @@ namespace Hermodr;
 /// <summary>
 /// Implements the relay half of the Transactional Outbox pattern for
 /// <typeparamref name="TMessage"/> entities: it reads all pending messages from the
-/// <see cref="IOutboxMessageRepository{TMessage}"/>, forwards their
+/// <see cref="IOutboxMessageStore{TMessage}"/>, forwards their
 /// <see cref="CloudEvent"/> payloads through the configured <see cref="IEventPublisher"/>
 /// pipeline using an <see cref="OutboxRelayPublishOptions"/> skip signal, and updates
 /// each message status to <see cref="OutboxMessageStatus.Delivered"/> or
@@ -49,7 +47,7 @@ namespace Hermodr;
 /// <see cref="OutboxRelayOptions.TransportPublisherName"/> (empty string = default pipeline).
 /// </para>
 /// <para>
-/// Because <see cref="IOutboxMessageRepository{TMessage}"/> is typically registered with
+    /// Because <see cref="IOutboxMessageStore{TMessage}"/> is typically registered with
 /// a scoped lifetime (wrapping a scoped database context), the processor creates a fresh
 /// DI scope on every <see cref="ProcessPendingMessagesAsync"/> invocation.
 /// </para>
@@ -86,7 +84,7 @@ internal sealed class OutboxRelayProcessor<TMessage> : IOutboxRelayProcessor
         await using var scope = _scopeFactory.CreateAsyncScope();
         var sp = scope.ServiceProvider;
 
-        var manager = sp.GetRequiredService<OutboxMessageManager<TMessage>>();
+        var store = sp.GetRequiredService<IOutboxMessageStore<TMessage>>();
 
         // Resolve the publisher to use for forwarding dequeued messages to transport.
         // When a name is specified in the options, resolve the keyed pipeline; otherwise
@@ -95,7 +93,7 @@ internal sealed class OutboxRelayProcessor<TMessage> : IOutboxRelayProcessor
             ? sp.GetRequiredKeyedService<IEventPublisher>(_options.TransportPublisherName)
             : sp.GetRequiredService<IEventPublisher>();
 
-        var pending = await manager.GetPendingMessagesAsync();
+        var pending = await store.GetPendingMessagesAsync();
 
         if (pending.Count == 0)
         {
@@ -114,14 +112,14 @@ internal sealed class OutboxRelayProcessor<TMessage> : IOutboxRelayProcessor
 
         foreach (var message in batch)
         {
-            await RelayMessageAsync(manager, publisher, message, cancellationToken);
+            await RelayMessageAsync(store, publisher, message, cancellationToken);
         }
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private async Task RelayMessageAsync(
-        OutboxMessageManager<TMessage> manager,
+        IOutboxMessageStore<TMessage> store,
         IEventPublisher publisher,
         TMessage message,
         CancellationToken cancellationToken)
@@ -138,11 +136,8 @@ internal sealed class OutboxRelayProcessor<TMessage> : IOutboxRelayProcessor
                 EventPublishOptions.BypassPipeline(new OutboxRelayPublishOptions()),
                 cancellationToken);
 
-            var result = await manager.MarkDeliveredAsync(message);
-            if (!result.IsSuccess())
-                _logger.LogCouldNotMarkOutboxMessageDelivered(result.Error);
-            else
-                _logger.LogOutboxMessageDelivered(message.Event.Type);
+            await store.SetDeliveredAsync(message, cancellationToken);
+            _logger.LogOutboxMessageDelivered(message.Event.Type);
 
             activity?.SetStatus(ActivityStatusCode.Ok);
             _telemetry.AddRelayDelivered(message.Event.Type ?? "unknown");
@@ -158,9 +153,7 @@ internal sealed class OutboxRelayProcessor<TMessage> : IOutboxRelayProcessor
 
             try
             {
-                var result = await manager.MarkFailedAsync(message, ex.Message);
-                if (!result.IsSuccess())
-                    _logger.LogCouldNotMarkOutboxMessageFailed(result.Error);
+                await store.SetFailedAsync(message, ex.Message, cancellationToken);
             }
             catch (Exception repoEx)
             {

@@ -3,22 +3,26 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 //
 
-using Deveel.Data;
-
 namespace Hermodr;
 
 /// <summary>
-/// Provides persistence operations for <typeparamref name="TMessage"/> outbox entities,
-/// extending the standard <see cref="IRepository{TEntity,TKey}"/> CRUD surface with
-/// outbox-specific state-transition operations.
+/// Provides persistence operations for <typeparamref name="TMessage"/> outbox messages,
+/// including recording new messages and advancing their delivery state.
 /// </summary>
 /// <typeparam name="TMessage">
 /// The outbox message entity type.  Must be a reference type and implement
 /// <see cref="IOutboxMessage"/>.
 /// </typeparam>
-public interface IOutboxMessageRepository<TMessage> : IRepository<TMessage, string>
+public interface IOutboxMessageStore<TMessage>
      where TMessage : class, IOutboxMessage
 {
+    /// <summary>
+    /// Persists a new outbox <paramref name="message"/> to the store.
+    /// </summary>
+    /// <param name="message">The message to persist.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    Task AddAsync(TMessage message, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Returns the current <see cref="OutboxMessageStatus"/> of the given
     /// <paramref name="message"/> as stored in the underlying persistence layer.

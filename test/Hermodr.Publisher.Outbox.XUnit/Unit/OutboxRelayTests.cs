@@ -71,7 +71,7 @@ namespace Hermodr
 
             // Replace factory/repository with pre-built instances.
             services.AddSingleton<IOutboxMessageFactory<FakeOutboxMessage>>(factory);
-            services.AddSingleton<IOutboxMessageRepository<FakeOutboxMessage>>(repository);
+            services.AddSingleton<IOutboxMessageStore<FakeOutboxMessage>>(repository);
 
             var provider = services.BuildServiceProvider();
             return (provider, repository, relayChannel);
@@ -189,7 +189,7 @@ namespace Hermodr
                     .AddChannel(failChannel);
 
             services.AddSingleton<IOutboxMessageFactory<FakeOutboxMessage>>(factory);
-            services.AddSingleton<IOutboxMessageRepository<FakeOutboxMessage>>(repository);
+            services.AddSingleton<IOutboxMessageStore<FakeOutboxMessage>>(repository);
 
             var provider = services.BuildServiceProvider();
 
@@ -221,7 +221,7 @@ namespace Hermodr
                     .AddChannel(failChannel);
 
             services.AddSingleton<IOutboxMessageFactory<FakeOutboxMessage>>(factory);
-            services.AddSingleton<IOutboxMessageRepository<FakeOutboxMessage>>(repository);
+            services.AddSingleton<IOutboxMessageStore<FakeOutboxMessage>>(repository);
 
             var provider = services.BuildServiceProvider();
 
@@ -297,7 +297,7 @@ namespace Hermodr
                             .AddChannel(relayChannel);
 
                     services.AddSingleton<IOutboxMessageFactory<FakeOutboxMessage>>(factory);
-                    services.AddSingleton<IOutboxMessageRepository<FakeOutboxMessage>>(repository);
+                    services.AddSingleton<IOutboxMessageStore<FakeOutboxMessage>>(repository);
                 });
 
             using var host = builder.Build();
@@ -351,7 +351,7 @@ namespace Hermodr
                     .WithRelay(opts => opts.Interval = TimeSpan.FromSeconds(60));
 
             services.AddSingleton<IOutboxMessageFactory<FakeOutboxMessage>, FakeOutboxMessageFactory>();
-            services.AddSingleton<IOutboxMessageRepository<FakeOutboxMessage>, FakeOutboxMessageRepository>();
+            services.AddSingleton<IOutboxMessageStore<FakeOutboxMessage>, FakeOutboxMessageRepository>();
 
             var provider = services.BuildServiceProvider();
             var opts = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<OutboxRelayOptions>>();
