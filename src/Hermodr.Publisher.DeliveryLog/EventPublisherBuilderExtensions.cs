@@ -1,5 +1,3 @@
-using Deveel.Data;
-
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -29,22 +27,11 @@ public static class EventPublisherBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        ServicesTryAddInMemory(builder.Services);
-
         builder.Use<DeliveryLogMiddleware>();
 
         var logBuilder = new DeliveryLogBuilder(builder.Services, builder.Name);
         configure?.Invoke(logBuilder);
 
         return builder;
-    }
-
-    private static void ServicesTryAddInMemory(IServiceCollection services)
-    {
-        services.TryAddSingleton<InMemoryEventDeliveryLogRepository>();
-        services.TryAddSingleton<IEventDeliveryLogRepository>(
-            sp => sp.GetRequiredService<InMemoryEventDeliveryLogRepository>());
-        services.TryAddSingleton<IEventPublishDeliveryLog>(
-            sp => sp.GetRequiredService<InMemoryEventDeliveryLogRepository>());
     }
 }

@@ -1,7 +1,6 @@
-using System.Collections.Concurrent;
 using System.Text.Json;
 
-using Deveel.Data;
+using Hermodr.NDJson;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -9,12 +8,7 @@ using Microsoft.Extensions.Options;
 
 namespace Hermodr;
 
-/// <summary>
-/// An implementation of <see cref="IEventDeliveryLogRepository"/> that stores delivery
-/// records as newline-delimited JSON (NDJSON) files on disk, with automatic file rolling
-/// and cleanup.
-/// </summary>
-public class NdJsonEventDeliveryLogRepository : IEventDeliveryLogRepository, IDisposable
+public class NdJsonEventDeliveryLogRepository : IEventPublishDeliveryLog, IDisposable
 {
     private readonly NdJsonDeliveryLogOptions _options;
     private readonly IEventSystemTime _systemTime;
@@ -33,18 +27,6 @@ public class NdJsonEventDeliveryLogRepository : IEventDeliveryLogRepository, IDi
         Converters = { new CloudEventJsonConverter() }
     };
 
-    /// <summary>
-    /// Creates a new instance of <see cref="NdJsonEventDeliveryLogRepository"/>.
-    /// </summary>
-    /// <param name="options">
-    /// The options used to configure the NDJSON storage backend.
-    /// </param>
-    /// <param name="systemTime">
-    /// An optional service for obtaining the current UTC time; defaults to <see cref="EventSystemTime.Instance"/>.
-    /// </param>
-    /// <param name="logger">
-    /// An optional logger for diagnostic output.
-    /// </param>
     public NdJsonEventDeliveryLogRepository(
         IOptions<NdJsonDeliveryLogOptions> options,
         IEventSystemTime? systemTime = null,
@@ -57,9 +39,6 @@ public class NdJsonEventDeliveryLogRepository : IEventDeliveryLogRepository, IDi
         EnsureDirectoryExists();
     }
 
-    /// <summary>
-    /// Gets the name of this provider.
-    /// </summary>
     public string ProviderName => "NDJson";
 
     private void EnsureDirectoryExists()
@@ -68,16 +47,7 @@ public class NdJsonEventDeliveryLogRepository : IEventDeliveryLogRepository, IDi
             Directory.CreateDirectory(_options.DirectoryPath);
     }
 
-    /// <summary>
-    /// Records a delivery attempt by appending a JSON line to the current NDJSON file.
-    /// </summary>
-    /// <param name="record">
-    /// The record of the event delivery to be stored.
-    /// </param>
-    /// <param name="cancellationToken">
-    /// A token to cancel the operation.
-    /// </param>
-    public async Task RecordAsync(IEventDeliveryRecord record, CancellationToken cancellationToken = default)
+    public async ValueTask RecordAsync(EventDeliveryRecord record, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(record);
 
@@ -161,14 +131,6 @@ public class NdJsonEventDeliveryLogRepository : IEventDeliveryLogRepository, IDi
         }
     }
 
-    /// <summary>
-    /// Retrieves all delivery records associated with the given event identifier.
-    /// </summary>
-    /// <param name="eventId">The identifier of the event.</param>
-    /// <param name="cancellationToken">A token to cancel the operation.</param>
-    /// <returns>
-    /// A read-only list of delivery records for the specified event.
-    /// </returns>
     public Task<IReadOnlyList<EventDeliveryRecord>> GetByEventIdAsync(string eventId, CancellationToken cancellationToken = default)
     {
         var results = ReadAllRecords()
@@ -179,14 +141,6 @@ public class NdJsonEventDeliveryLogRepository : IEventDeliveryLogRepository, IDi
         return Task.FromResult<IReadOnlyList<EventDeliveryRecord>>(results);
     }
 
-    /// <summary>
-    /// Retrieves all delivery records for the given channel name.
-    /// </summary>
-    /// <param name="channelName">The name of the channel.</param>
-    /// <param name="cancellationToken">A token to cancel the operation.</param>
-    /// <returns>
-    /// A read-only list of delivery records for the specified channel.
-    /// </returns>
     public Task<IReadOnlyList<EventDeliveryRecord>> GetByChannelAsync(string channelName, CancellationToken cancellationToken = default)
     {
         var results = ReadAllRecords()
@@ -197,14 +151,6 @@ public class NdJsonEventDeliveryLogRepository : IEventDeliveryLogRepository, IDi
         return Task.FromResult<IReadOnlyList<EventDeliveryRecord>>(results);
     }
 
-    /// <summary>
-    /// Retrieves all delivery records matching the specified outcome.
-    /// </summary>
-    /// <param name="outcome">The delivery outcome to filter by.</param>
-    /// <param name="cancellationToken">A token to cancel the operation.</param>
-    /// <returns>
-    /// A read-only list of delivery records with the specified outcome.
-    /// </returns>
     public Task<IReadOnlyList<EventDeliveryRecord>> GetByOutcomeAsync(EventDeliveryOutcome outcome, CancellationToken cancellationToken = default)
     {
         var results = ReadAllRecords()
@@ -215,15 +161,6 @@ public class NdJsonEventDeliveryLogRepository : IEventDeliveryLogRepository, IDi
         return Task.FromResult<IReadOnlyList<EventDeliveryRecord>>(results);
     }
 
-    /// <summary>
-    /// Retrieves all delivery records within the specified time range.
-    /// </summary>
-    /// <param name="from">The start of the time range.</param>
-    /// <param name="to">The end of the time range.</param>
-    /// <param name="cancellationToken">A token to cancel the operation.</param>
-    /// <returns>
-    /// A read-only list of delivery records within the specified time range.
-    /// </returns>
     public Task<IReadOnlyList<EventDeliveryRecord>> GetByTimeRangeAsync(DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken = default)
     {
         var results = ReadAllRecords()
@@ -239,7 +176,7 @@ public class NdJsonEventDeliveryLogRepository : IEventDeliveryLogRepository, IDi
         var directory = _options.DirectoryPath;
         if (!Directory.Exists(directory))
             yield break;
-        
+
         var files = Directory.GetFiles(directory, "delivery-log-*.ndjson")
             .OrderBy(f => f);
 
@@ -275,31 +212,6 @@ public class NdJsonEventDeliveryLogRepository : IEventDeliveryLogRepository, IDi
         }
     }
 
-    async Task IRepository<EventDeliveryRecord, object>.AddAsync(EventDeliveryRecord entity, CancellationToken cancellationToken)
-    {
-        await RecordAsync(entity, cancellationToken);
-    }
-
-    Task IRepository<EventDeliveryRecord, object>.AddRangeAsync(IEnumerable<EventDeliveryRecord> entities, CancellationToken cancellationToken)
-        => throw new NotSupportedException("Bulk add is not supported by the NDJson delivery log store.");
-
-    Task<bool> IRepository<EventDeliveryRecord, object>.UpdateAsync(EventDeliveryRecord entity, CancellationToken cancellationToken)
-        => throw new NotSupportedException("Update is not supported by the NDJson delivery log store.");
-
-    Task<bool> IRepository<EventDeliveryRecord, object>.RemoveAsync(EventDeliveryRecord entity, CancellationToken cancellationToken)
-        => throw new NotSupportedException("Remove is not supported by the NDJson delivery log store.");
-
-    Task IRepository<EventDeliveryRecord, object>.RemoveRangeAsync(IEnumerable<EventDeliveryRecord> entities, CancellationToken cancellationToken)
-        => throw new NotSupportedException("Bulk remove is not supported by the NDJson delivery log store.");
-
-    Task<EventDeliveryRecord?> IRepository<EventDeliveryRecord, object>.FindAsync(object key, CancellationToken cancellationToken)
-        => Task<EventDeliveryRecord?>.FromResult((EventDeliveryRecord?)null);
-
-    object? IRepository<EventDeliveryRecord, object>.GetEntityKey(EventDeliveryRecord entity) => entity.Id;
-
-    /// <summary>
-    /// Releases the write lock semaphore used by the repository.
-    /// </summary>
     public void Dispose()
     {
         _writeLock.Dispose();

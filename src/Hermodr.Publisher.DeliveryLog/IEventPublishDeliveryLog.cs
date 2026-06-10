@@ -14,5 +14,5 @@ public interface IEventPublishDeliveryLog
     /// <param name="cancellationToken">
     /// A token to cancel the operation.
     /// </param>
-    Task RecordAsync(IEventDeliveryRecord record, CancellationToken cancellationToken = default);
+    ValueTask RecordAsync(EventDeliveryRecord record, CancellationToken cancellationToken = default);
 }

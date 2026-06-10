@@ -1,10 +1,6 @@
 using Bogus;
 using CloudNative.CloudEvents;
 
-using Deveel.Data;
-
-using Microsoft.Extensions.DependencyInjection;
-
 namespace Hermodr;
 
 [Trait("Category", "Integration")]
@@ -56,11 +52,9 @@ public class EntityEventDeliveryLogRepositoryIntegrationTests : IClassFixture<Sq
     public async Task Should_ResolveServices_ThroughPipeline()
     {
         var writeLog = _db.GetService<IEventPublishDeliveryLog>();
-        var queryStore = _db.GetService<IEventDeliveryLogRepository>();
         var context = _db.GetService<DeliveryLogDbContext>();
 
         Assert.NotNull(writeLog);
-        Assert.NotNull(queryStore);
         Assert.NotNull(context);
         Assert.IsType<EntityEventDeliveryLogRepository>(writeLog);
     }
@@ -76,12 +70,12 @@ public class EntityEventDeliveryLogRepositoryIntegrationTests : IClassFixture<Sq
         var results = await repo.GetByEventIdAsync(record.Event!.Id, TestContext.Current.CancellationToken);
         var found = Assert.Single(results);
         Assert.Equal(record.Id, found.Id);
-        Assert.Equal(record.Event.Type, found.Event!.Type);
-        Assert.Equal(record.Outcome, found.Outcome);
+        Assert.Equal(record.Event.Type, found.EventType);
+        Assert.Equal(record.Outcome.ToString(), found.Outcome);
         Assert.Equal(record.ChannelName, found.ChannelName);
         Assert.Equal(record.AttemptNumber, found.AttemptNumber);
         Assert.Equal(record.Timestamp, found.Timestamp);
-        Assert.Equal(record.ElapsedTime, found.ElapsedTime);
+        Assert.Equal(record.ElapsedTime.Ticks, found.ElapsedTimeTicks);
     }
 
     [Fact]
@@ -109,7 +103,7 @@ public class EntityEventDeliveryLogRepositoryIntegrationTests : IClassFixture<Sq
         var results = await repo.GetByOutcomeAsync(EventDeliveryOutcome.Failed, TestContext.Current.CancellationToken);
         var found = Assert.Single(results);
         Assert.Equal(record.Id, found.Id);
-        Assert.Equal(EventDeliveryOutcome.Failed, found.Outcome);
+        Assert.Equal(nameof(EventDeliveryOutcome.Failed), found.Outcome);
     }
 
     [Fact]
@@ -197,55 +191,6 @@ public class EntityEventDeliveryLogRepositoryIntegrationTests : IClassFixture<Sq
     }
 
     [Fact]
-    public async Task Should_RecordAndRetrieve_ThroughRepositoryInterface()
-    {
-        var repo = _db.CreateRepository();
-
-        var record = CreateRecord();
-        var repoInterface = (IRepository<EventDeliveryRecord, object>)repo;
-        await repoInterface.AddAsync(record, TestContext.Current.CancellationToken);
-
-        var found = await repoInterface.FindAsync(record.Id, TestContext.Current.CancellationToken);
-        Assert.NotNull(found);
-        Assert.Equal(record.Id, found.Id);
-        Assert.Equal(record.Event!.Id, found.Event!.Id);
-    }
-
-    [Fact]
-    public async Task Should_UpdateRecord_ThroughRepositoryInterface()
-    {
-        var repo = _db.CreateRepository();
-        var repoInterface = (IRepository<EventDeliveryRecord, object>)repo;
-
-        var record = CreateRecord();
-        await repoInterface.AddAsync(record, TestContext.Current.CancellationToken);
-
-        var updatedRecord = await repoInterface.FindAsync(record.Id, TestContext.Current.CancellationToken);
-        Assert.NotNull(updatedRecord);
-
-        var ctx = _db.CreateContext();
-        var dbEntity = await ctx.DeliveryRecords.FindAsync([record.Id], TestContext.Current.CancellationToken);
-        Assert.NotNull(dbEntity);
-        Assert.Equal(record.Event!.Id, dbEntity.EventId);
-    }
-
-    [Fact]
-    public async Task Should_RemoveRecord_ThroughRepositoryInterface()
-    {
-        var repo = _db.CreateRepository();
-        var repoInterface = (IRepository<EventDeliveryRecord, object>)repo;
-
-        var record = CreateRecord();
-        await repoInterface.AddAsync(record, TestContext.Current.CancellationToken);
-
-        var removed = await repoInterface.RemoveAsync(record, TestContext.Current.CancellationToken);
-        Assert.True(removed);
-
-        var found = await repoInterface.FindAsync(record.Id, TestContext.Current.CancellationToken);
-        Assert.Null(found);
-    }
-
-    [Fact]
     public async Task Should_ReturnEmpty_WhenNoMatchingRecords()
     {
         var repo = _db.CreateRepository();
@@ -320,17 +265,17 @@ public class EntityEventDeliveryLogRepositoryIntegrationTests : IClassFixture<Sq
         var found = Assert.Single(results);
 
         Assert.Equal(record.Id, found.Id);
-        Assert.Equal(record.Event.Id, found.Event!.Id);
-        Assert.Equal(record.Event.Type, found.Event.Type);
+        Assert.Equal(record.Event.Id, found.EventId);
+        Assert.Equal(record.Event.Type, found.EventType);
         Assert.Equal(record.PublisherName, found.PublisherName);
         Assert.Equal(record.ChannelName, found.ChannelName);
         Assert.Equal(record.ChannelType, found.ChannelType);
         Assert.Equal(record.AttemptNumber, found.AttemptNumber);
         Assert.Equal(record.Timestamp, found.Timestamp);
-        Assert.Equal(record.Outcome, found.Outcome);
+        Assert.Equal(record.Outcome.ToString(), found.Outcome);
         Assert.Equal(record.ErrorCode, found.ErrorCode);
         Assert.Equal(record.ErrorMessage, found.ErrorMessage);
-        Assert.Equal(record.ElapsedTime, found.ElapsedTime);
+        Assert.Equal(record.ElapsedTime.Ticks, found.ElapsedTimeTicks);
     }
 
     [Fact]
@@ -352,7 +297,7 @@ public class EntityEventDeliveryLogRepositoryIntegrationTests : IClassFixture<Sq
         var repo = _db.CreateRepository();
 
         await Assert.ThrowsAsync<ArgumentNullException>(
-            () => repo.RecordAsync(null!, TestContext.Current.CancellationToken));
+            () => repo.RecordAsync(null!, TestContext.Current.CancellationToken).AsTask());
     }
 
     [Fact]

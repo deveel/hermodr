@@ -6,7 +6,7 @@ using CloudNative.CloudEvents.SystemTextJson;
 
 namespace Hermodr;
 
-internal class CloudEventJsonConverter : JsonConverter<CloudEvent>
+public class CloudEventJsonConverter : JsonConverter<CloudEvent>
 {
     private static readonly JsonEventFormatter Formatter = new();
     private static readonly ContentType CloudEventsContentType = new("application/cloudevents+json");

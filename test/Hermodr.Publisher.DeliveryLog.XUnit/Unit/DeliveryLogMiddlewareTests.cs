@@ -17,13 +17,12 @@ public class DeliveryLogMiddlewareTests
             Time = DateTimeOffset.UtcNow,
         };
 
-    private static (IServiceProvider Provider, InMemoryEventDeliveryLogRepository Store, List<CloudEvent> Received) BuildProvider(
+    private static (IServiceProvider Provider, InMemoryDeliveryStore Store, List<CloudEvent> Received) BuildProvider(
         Action<EventPublisherBuilder>? configure = null)
     {
         var received = new List<CloudEvent>();
-        var store = new InMemoryEventDeliveryLogRepository();
+        var store = new InMemoryDeliveryStore();
         var services = new ServiceCollection().AddLogging();
-        services.AddSingleton<IEventDeliveryLogRepository>(store);
         services.AddSingleton<IEventPublishDeliveryLog>(store);
 
         var builder = services.AddEventPublisher(opts =>
@@ -157,15 +156,12 @@ public class DeliveryLogMiddlewareTests
         var publisher = provider.GetRequiredService<IEventPublisher>();
         var evt = MakeEvent();
 
-        // The first publish always starts at attempt 1
         await publisher.PublishEventAsync(evt, cancellationToken: TestContext.Current.CancellationToken);
 
         var records1 = await store.GetByEventIdAsync(evt.Id!, TestContext.Current.CancellationToken);
         var first = records1.OrderBy(r => r.Timestamp).First();
         Assert.Equal(1, first.AttemptNumber);
 
-        // A second publish with the same event advances the attempt counter
-        // (each middleware instance tracks via EventContext.Items)
         await publisher.PublishEventAsync(evt, cancellationToken: TestContext.Current.CancellationToken);
 
         var records2 = await store.GetByEventIdAsync(evt.Id!, TestContext.Current.CancellationToken);
@@ -178,9 +174,8 @@ public class DeliveryLogMiddlewareTests
     public async Task Should_RecordChannelName_When_NamedChannelPublishOptionsUsed()
     {
         var received = new List<CloudEvent>();
-        var store = new InMemoryEventDeliveryLogRepository();
+        var store = new InMemoryDeliveryStore();
         var services = new ServiceCollection().AddLogging();
-        services.AddSingleton<IEventDeliveryLogRepository>(store);
         services.AddSingleton<IEventPublishDeliveryLog>(store);
 
         services.AddEventPublisher(opts =>
@@ -214,8 +209,7 @@ public class DeliveryLogMiddlewareTests
         await publisher.PublishEventAsync(evt1, cancellationToken: TestContext.Current.CancellationToken);
         await publisher.PublishEventAsync(evt2, cancellationToken: TestContext.Current.CancellationToken);
 
-        var store2 = (IEventDeliveryLogRepository)store;
-        var all = await store2.GetByTimeRangeAsync(
+        var all = await store.GetByTimeRangeAsync(
             DateTimeOffset.MinValue, DateTimeOffset.MaxValue, TestContext.Current.CancellationToken);
         Assert.Equal(2, all.Count);
         Assert.NotEqual(all[0].Id, all[1].Id);
@@ -226,9 +220,8 @@ public class DeliveryLogMiddlewareTests
     [Fact]
     public async Task Should_RecordFailedOutcome_When_ChannelThrows()
     {
-        var store = new InMemoryEventDeliveryLogRepository();
+        var store = new InMemoryDeliveryStore();
         var services = new ServiceCollection().AddLogging();
-        services.AddSingleton<IEventDeliveryLogRepository>(store);
         services.AddSingleton<IEventPublishDeliveryLog>(store);
 
         services.AddEventPublisher(opts =>
@@ -255,9 +248,8 @@ public class DeliveryLogMiddlewareTests
     [Fact]
     public async Task Should_RecordElapsedTime_EvenOnFailure()
     {
-        var store = new InMemoryEventDeliveryLogRepository();
+        var store = new InMemoryDeliveryStore();
         var services = new ServiceCollection().AddLogging();
-        services.AddSingleton<IEventDeliveryLogRepository>(store);
         services.AddSingleton<IEventPublishDeliveryLog>(store);
 
         services.AddEventPublisher(opts =>
@@ -285,9 +277,8 @@ public class DeliveryLogMiddlewareTests
     [Fact]
     public async Task Should_NotSwallowException_WhenThrowOnErrorsIsTrue()
     {
-        var store = new InMemoryEventDeliveryLogRepository();
+        var store = new InMemoryDeliveryStore();
         var services = new ServiceCollection().AddLogging();
-        services.AddSingleton<IEventDeliveryLogRepository>(store);
         services.AddSingleton<IEventPublishDeliveryLog>(store);
 
         services.AddEventPublisher(opts =>

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Title>Hermodr Publisher Delivery Log - In-Memory</Title>
+    <Description>Provides an in-memory implementation of the delivery log store for testing and development.</Description>
+    <PackageTags>deveel;events;publisher;delivery;log;in-memory;testing</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Hermodr.Publisher.DeliveryLog\Hermodr.Publisher.DeliveryLog.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Kista.InMemory" Version="1.6.6" />
+  </ItemGroup>
+
+</Project>

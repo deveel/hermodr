@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Title>Hermodr Publisher Delivery Log - NDJson</Title>
+    <Description>Provides a newline-delimited JSON (NDJSON) file storage backend for the delivery log, with automatic file rolling and cleanup.</Description>
+    <PackageTags>deveel;events;publisher;delivery;log;ndjson;file;telemetry</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Hermodr.Publisher.DeliveryLog\Hermodr.Publisher.DeliveryLog.csproj" />
+  </ItemGroup>
+
+</Project>

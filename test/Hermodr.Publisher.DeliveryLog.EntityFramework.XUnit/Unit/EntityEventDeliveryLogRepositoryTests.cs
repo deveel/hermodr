@@ -1,5 +1,6 @@
 using Bogus;
 using CloudNative.CloudEvents;
+using Kista;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -29,7 +30,9 @@ public class EntityEventDeliveryLogRepositoryTests : IAsyncDisposable
         _context.Database.EnsureCreated();
 
         _repository = new EntityEventDeliveryLogRepository(_context,
-            logger: NullLogger<EntityEventDeliveryLogRepository>.Instance);
+            new EventDeliveryRecordFactory(),
+            services: null,
+            logger: NullLogger<EntityRepository<DbEventDeliveryRecord, string>>.Instance);
     }
 
     public async ValueTask DisposeAsync()
@@ -72,7 +75,7 @@ public class EntityEventDeliveryLogRepositoryTests : IAsyncDisposable
     public async Task Should_ThrowArgumentNullException_When_RecordIsNull()
     {
         await Assert.ThrowsAsync<ArgumentNullException>(
-            () => _repository.RecordAsync(null!, TestContext.Current.CancellationToken));
+            () => _repository.RecordAsync(null!, TestContext.Current.CancellationToken).AsTask());
     }
 
     [Fact]
@@ -176,7 +179,7 @@ public class EntityEventDeliveryLogRepositoryTests : IAsyncDisposable
 
         var results = await _repository.GetByOutcomeAsync(EventDeliveryOutcome.Failed, TestContext.Current.CancellationToken);
         Assert.Single(results);
-        Assert.Equal(EventDeliveryOutcome.Failed, results[0].Outcome);
+        Assert.Equal(nameof(EventDeliveryOutcome.Failed), results[0].Outcome);
     }
 
     [Fact]

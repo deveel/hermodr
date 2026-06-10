@@ -1,6 +1,3 @@
-using Deveel.Data;
-using Hermodr;
-
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -29,12 +26,6 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         Action<DeliveryLogBuilder>? configure = null)
     {
-        services.TryAddSingleton<InMemoryEventDeliveryLogRepository>();
-        services.TryAddSingleton<IEventDeliveryLogRepository>(
-            sp => sp.GetRequiredService<InMemoryEventDeliveryLogRepository>());
-        services.TryAddSingleton<IEventPublishDeliveryLog>(
-            sp => sp.GetRequiredService<InMemoryEventDeliveryLogRepository>());
-
         if (configure != null)
         {
             var builder = new DeliveryLogBuilder(services);
