@@ -131,18 +131,18 @@ public class OrderOutboxMessageFactory : IOutboxMessageFactory<OrderOutboxMessag
 
 The `options` parameter carries any per-call publish options (channel name, content-type overrides, etc.) in case you need to store them alongside the entity.
 
-### Repository
+### Message store
 
-`IOutboxMessageRepository<TMessage>` extends the standard `IRepository<TMessage, string>` CRUD surface with outbox-specific state-transition methods.  The CRUD methods (`AddAsync`, `UpdateAsync`, `RemoveAsync`, `FindAsync`, `AddRangeAsync`, `RemoveRangeAsync`) are straightforward persistence operations that you implement using your ORM or data-access library of choice.
-
-The outbox-specific methods handle the delivery lifecycle:
+`IOutboxMessageStore<TMessage>` provides persistence operations for outbox messages, including recording new messages and advancing their delivery state through the lifecycle.
 
 | Method | When called | What to do |
 |--------|-------------|------------|
+| `AddAsync(msg, ct)` | On publish | Persist a new `Pending` outbox record |
 | `GetStatusAsync(msg, ct)` | On-demand status check | Return the current `OutboxMessageStatus` of the message as stored |
 | `GetPendingMessagesAsync(limit?, ct)` | Every relay tick | Return `Pending` records whose `NextRetryAt` is `null` or in the past; apply `limit` if provided |
 | `SetSendingAsync(msg, ct)` | Before each delivery attempt | Set `Status = Sending` so concurrent relay instances skip this record |
 | `SetDeliveredAsync(msg, ct)` | After successful delivery | Set `Status = Delivered`; the record may now be archived or deleted |
+| `SetDeferredAsync(msg, scheduledAt, ct)` | After initial deferral | Keep `Status = Pending` and set `NextRetryAt` to the scheduled time without incrementing `RetryCount` |
 | `SetRetryAsync(msg, error, nextRetryAt, ct)` | After a transient failure | Set `Status = Pending`, record the error, increment `RetryCount`, set `NextRetryAt` |
 | `SetFailedAsync(msg, error, ct)` | When retry limit is exceeded | Set `Status = Failed`; human intervention or a dead-letter process is required |
 
@@ -155,7 +155,7 @@ The `Hermodr.Publisher.Outbox.EntityFramework` package eliminates most of the bo
 | Type | Role |
 |------|------|
 | `DbOutboxMessage` | A **complete, ready-to-use** `IOutboxMessage` implementation and EF entity — use it directly or subclass it to add columns |
-| `EntityOutboxMessageRepository<TMessage>` | A ready-made `IOutboxMessageRepository<TMessage>` backed by EF Core |
+| `EntityOutboxMessageRepository<TMessage>` | A ready-made `IOutboxMessageStore<TMessage>` backed by EF Core |
 | `OutboxDbContext` | A minimal `DbContext` that exposes `DbSet<DbOutboxMessage>` and `DbSet<DbCloudEventAttribute>` |
 | `WithEntityFramework()` | An `OutboxChannelBuilder` extension that wires all of the above in one call |
 
@@ -187,7 +187,7 @@ builder.Services
     .WithRelay();
 ```
 
-> **Note:** When you call the .WithEntityFramework() method, the framework automatically registers the `EntityOutboxMessageRepository<DbOutboxMessage>` implementation for you, so you do not need to call `.WithRepository<…>()` separately. It also registers the IOutboxMessageFactory implementation that constructs `DbOutboxMessage` instances.
+> **Note:** When you call the `.WithEntityFramework()` method, the framework automatically registers the `EntityOutboxMessageRepository<DbOutboxMessage>` implementation for you, so you do not need to call `.WithStore<…>()` separately. It also registers the `IOutboxMessageFactory` implementation that constructs `DbOutboxMessage` instances.
 
 #### Subclassing for application-specific columns
 
@@ -255,7 +255,7 @@ When using a derived context, pass its own `DbContextOptions<AppDbContext>` thro
 
 ### Registration with `WithEntityFramework`
 
-The `.WithEntityFramework()` extension on `OutboxChannelBuilder` registers `OutboxDbContext`, `EntityOutboxMessageRepository<TMessage>`, and supporting services in one call, replacing the need for a separate `.WithRepository<T>()` call:
+The `.WithEntityFramework()` extension on `OutboxChannelBuilder` registers `OutboxDbContext`, `EntityOutboxMessageRepository<TMessage>`, and supporting services in one call, replacing the need for a separate `.WithStore<T>()` call:
 
 ```csharp
 builder.Services
@@ -281,13 +281,13 @@ builder.Services
 
 Once your components are ready, wire them up in `Program.cs` using the fluent `EventPublisherBuilder` chain.  The `.AddOutbox<TMessage>()` call registers the `OutboxPublishChannel`, and the subsequent calls bind your implementations.
 
-### Minimal setup (custom repository)
+### Minimal setup (custom store)
 
 ```csharp
 builder.Services
     .AddEventPublisher()
     .AddOutbox<OrderOutboxMessage>()
-    .WithRepository<EfOrderOutboxRepository>()
+    .WithStore<MyOutboxMessageStore>()
     .WithFactory<OrderOutboxMessageFactory>();
 ```
 
@@ -322,7 +322,7 @@ builder.Services
     {
         options.ChannelName = "outbox";
     })
-    .WithRepository<EfOrderOutboxRepository>()
+    .WithStore<MyOutboxMessageStore>()
     .WithFactory<OrderOutboxMessageFactory>();
 ```
 
@@ -332,7 +332,7 @@ builder.Services
 builder.Services
     .AddEventPublisher()
     .AddOutbox<OrderOutboxMessage>("Events:Outbox")
-    .WithRepository<EfOrderOutboxRepository>()
+    .WithStore<MyOutboxMessageStore>()
     .WithFactory<OrderOutboxMessageFactory>();
 ```
 

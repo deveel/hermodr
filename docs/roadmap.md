@@ -111,13 +111,18 @@ The table below maps each roadmap item to the release milestone in which it is p
 
 ## Observability
 
-### 6. OpenTelemetry & Distributed Tracing Integration
+### 6. OpenTelemetry & Distributed Tracing Integration ✅
 
 > *Propagate and extract W3C trace context as CloudEvents extensions, enabling end-to-end traces across service boundaries.*
 
-**The problem today:** Events cross process boundaries but carry no trace context, making it impossible to correlate a published event with the originating request in a distributed trace.
+**What was built:** `Hermodr.Publisher.OpenTelemetry` — a package that instruments `EventPublisher` with `Activity` spans, injects W3C `traceparent`/`tracestate` as CloudEvents extension attributes on publish, and extracts them on the subscription/consumer side to continue the trace. A unified diagnostics infrastructure (`HermodrDiagnostics`, `PublisherTelemetry`, `ChannelTelemetry`) now spans all publisher and subscription components.
 
-**What we will build:** A `Hermodr.Publisher.OpenTelemetry` package that instruments `EventPublisher` with Activity spans, injects W3C `traceparent`/`tracestate` as CloudEvents extension attributes on publish, and extracts them on the subscription/consumer side to continue the trace.
+**What was delivered:**
+- `OpenTelemetryPublishMiddleware` / `OpenTelemetrySubscriptionMiddleware` — middleware that injects/extracts trace context on every event
+- `PipelineDiagnosticsMiddleware` — pipeline-level diagnostics
+- Per-transport telemetry classes for all channels (Azure Service Bus, RabbitMQ, MassTransit, Webhook, Outbox, Dead-Letter, Audit Trail)
+- `OpenTelemetryBuilderExtensions` — fluent extensions for wiring diagnostics
+- Full end-to-end trace correlation across service boundaries
 
 **Benefits:**
 - Publishers and consumers appear as linked spans in tools like Jaeger, Zipkin, or Azure Monitor.
@@ -127,16 +132,17 @@ The table below maps each roadmap item to the release milestone in which it is p
 
 ---
 
-### 7. Audit Trail Channel
+### 7. Audit Trail Channel ✅
 
 > *An append-only channel that persists every published domain event for compliance auditing and debugging.*
 
-**The problem today:** Once an event is dispatched to a broker it is gone from the application's perspective. Reproducing what happened at a given point in time requires access to broker logs or custom instrumentation. Regulated industries (finance, healthcare, government) need an immutable record of all domain events without relying on broker retention policies.
+**What was built:** Five new packages providing an append-only event audit trail with multiple storage backends and publisher integration.
 
-**What we will build:**
+**What was delivered:**
 - `Hermodr.AuditTrail` — Core package with `IAuditTrailEntry`, `IAuditTrailWriter`, `IAuditTrailReader<T>`, `AuditTrailStreamQuery`, and `AuditTrailBuilder`.
 - `Hermodr.AuditTrail.InMemory` — In-memory storage backend for testing and development.
 - `Hermodr.AuditTrail.EntityFramework` — Entity Framework Core storage backend supporting SQL Server, PostgreSQL, and SQLite.
+- `Hermodr.AuditTrail.NDJson` — NDJson file storage backend with pluggable filesystem (Azure Blob, S3, local disk), auto file rolling by size or time interval, and retention policies.
 - `Hermodr.Publisher.AuditTrail` — Publisher integration: `AuditTrailPublishChannel` and `AddAuditTrail()` extension method following the same pattern as RabbitMQ, Azure Service Bus, and other channel adapters.
 
 > **Scope note:** The Audit Trail records *domain facts* — the event payload, metadata, and CloudEvents attributes — not the operational outcome of the delivery attempt itself. For tracking delivery attempts, retries, error codes, and latency, see item 9 (Publish Delivery Log) below.
@@ -168,18 +174,19 @@ The table below maps each roadmap item to the release milestone in which it is p
 
 ---
 
-### 9. Publish Delivery Log
+### 9. Publish Delivery Log ✅
 
 > *Record the operational outcome of every event publish attempt — channel, timestamp, attempt count, latency, and error details — across pluggable storage backends.*
 
-**The problem today:** There is no built-in way to answer questions like *"how many times did we attempt to send event X before it succeeded?"*, *"which channel is producing the most failures?"*, or *"what was the average delivery latency last week?"*. The dead-letter channel (item 3) captures only failed events for replay, and the Event Store (item 7) records domain facts, not infrastructure telemetry. Ops teams must rely on generic APM tooling or custom logging to reconstruct delivery history.
+**What was built:** A `Hermodr.Publisher.DeliveryLog` package with separate backend packages for in-memory, NDJSON rolling files, and Entity Framework Core storage.
 
-**What we will build:** A `Hermodr.Publisher.DeliveryLog` package providing:
-- An `IPublishDeliveryLog` abstraction that receives a `DeliveryRecord` after every publish attempt (whether successful or not), containing: event ID, channel name, attempt number, UTC timestamp, outcome (`Succeeded` / `Failed` / `Retried`), HTTP/AMQP error code, exception message, and elapsed time.
-- A middleware component (see item 2) that intercepts each publish call and writes a record before and after the channel invocation.
-- Provider implementations for common storage backends: **relational database** (EF Core, supporting SQL Server, PostgreSQL, SQLite), **file system** (NDJSON rolling files), and **in-memory** (for tests and local development).
-- A shared `Hermodr.Storage` provider abstraction that is also used by the Event Store (item 7), so applications that need both can configure a single backend.
-- A lightweight query API to retrieve delivery records by event ID, channel, outcome, or time range.
+**What was delivered:**
+- `DeliveryLogMiddleware` — intercepts each publish call and records the outcome before and after channel invocation
+- `IEventPublishDeliveryLog` — write-only interface that decouples the middleware from query capabilities
+- `DeliveryLogBuilder` — fluent configuration with `UseStore<T>()`, `UseErrorHandler()`, and backend-specific extensions
+- `Hermodr.Publisher.DeliveryLog.InMemory` — in-memory storage for tests and local development
+- `Hermodr.Publisher.DeliveryLog.NDJson` — rolling-file backend with configurable size/time thresholds and retention policies
+- `Hermodr.Publisher.DeliveryLog.EntityFramework` — relational database backend via `Kista.EntityFramework`
 
 **Benefits:**
 - Gives operations teams full visibility into publishing health without relying on broker-specific dashboards.

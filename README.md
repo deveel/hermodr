@@ -52,21 +52,27 @@ Hermodr provides a single, consistent way to publish events across any transport
 
 Hermodr does not try to compete with other messaging frameworks in the .NET ecosystem: these frameworks solve different problems and can be complementary in the same architecture. The table below is a quick positioning guide, not a ranking.
 
-| Feature | `Hermodr` | `MassTransit` | `Wolverine` | `NServiceBus` | `Rebus` |
-|---------|-----------|---------------|--------------|---------------|-----------|
-| Event contract model | CloudEvents-first publish pipeline | Framework-native message contracts; CloudEvents not natively provided by the framework core | Framework-native message contracts; CloudEvents not natively provided by the framework core | Framework-native message contracts; CloudEvents not natively provided by the framework core | Framework-native message contracts; CloudEvents not natively provided by the framework core |
-| Event metadata annotations | Built-in attributes (`Hermodr.Annotations`, AMQP extensions) | Event metadata annotations not natively provided by the framework core | Event metadata annotations not natively provided by the framework core | Event metadata annotations not natively provided by the framework core | Event metadata annotations not natively provided by the framework core |
-| Schema export formats | JSON Schema, YAML, AsyncAPI packages | Schema export not natively provided by the framework core | Schema export not natively provided by the framework core | Schema export not natively provided by the framework core | Schema export not natively provided by the framework core |
-| AsyncAPI generation focus | Dedicated package (`Hermodr.Schema.AsyncApi`) | AsyncAPI generation not natively provided by the framework core | AsyncAPI generation not natively provided by the framework core | AsyncAPI generation not natively provided by the framework core | AsyncAPI generation not natively provided by the framework core |
-| Transport adapters included | Azure Service Bus, RabbitMQ, MassTransit, Webhook, Outbox, Dead-Letter | Native multi-transport broker integrations | Native multi-transport messaging endpoints | Native transport support via transport packages | Native transport integrations |
-| Transactional outbox support | Built-in channel + EF integration packages | Natively supported | Natively supported | Natively supported | Natively supported |
-| Dead-letter capture and replay | Dedicated dead-letter packages + replay worker model | Dead-letter handling available; replay workflow not natively standardized by the framework core | Dead-letter handling available; replay workflow not natively standardized by the framework core | Dead-letter handling available; replay workflow not natively standardized by the framework core | Dead-letter handling available; replay workflow not natively standardized by the framework core |
-| Deferred/scheduled delivery | Planned (`Event Scheduler & Deferred Publishing` on roadmap) | Natively supported (transport/scheduler dependent) | Natively supported (runtime/transport dependent) | Natively supported (transport dependent) | Natively supported (transport dependent) |
-| In-process subscription routing | Built-in subscriptions package (`Hermodr.Subscriptions`) | Native consumer/handler pipeline | Native local and remote handlers | Native message handler pipeline | Native message handler pipeline |
-| Middleware/extensibility pipeline | Built-in event middleware pipeline | Native filters/middleware/observers | Native middleware and handler pipeline extensions | Native pipeline behaviors and extensibility points | Native pipeline steps and extensibility points |
-| Testing support for publish flow | Dedicated in-memory test publisher package | Native test harness support | Native testing utilities | Native testing support | Native testing support |
+| Icon | Meaning |
+| :---: | :--- |
+| ✅ | Full native support |
+| ⚠️ | Available but not a standardised or first-class feature |
+| ❌ | Not natively provided |
 
-Capabilities evolve quickly across all projects, so validate details against each framework's current documentation.
+| Feature | `Hermodr` | `MassTransit` | `Wolverine` | `NServiceBus` | `Rebus` |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| CloudEvents‑first contract model | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Event metadata annotations | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Schema export (JSON/YAML/AsyncAPI) | ✅ | ❌ | ❌ | ❌ | ❌ |
+| AsyncAPI document generation | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Multi‑transport adapters | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Transactional outbox | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Dead‑letter + replay | ✅ | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
+| Deferred / scheduled delivery | ⚠️ | ✅ | ✅ | ✅ | ✅ |
+| In‑process subscription routing | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Middleware / extensibility pipeline | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Testing utilities | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+Capabilities evolve quickly across all projects, so validate details against each framework's current documentation. See [Frameworks Comparison](docs/frameworks-comparison.md) for a detailed walkthrough and selection guidance.
 
 ## CloudEvents Standard
 
@@ -95,16 +101,24 @@ Every package requires the **Microsoft Dependency Injection** infrastructure (`M
 | `Hermodr.Publisher.RabbitMq` | `RabbitMQ.Client` ≥ 7.2 · `Hermodr.Amqp.Annotations` |
 | `Hermodr.Publisher.MassTransit` | `MassTransit` ≥ 9.1 |
 | `Hermodr.Publisher.Webhook` | `Microsoft.Extensions.Http.Resilience` ≥ 9.6 |
-| `Hermodr.Publisher.Outbox` | `Deveel.Repository.Manager` · `Microsoft.Extensions.Hosting.Abstractions` |
-| `Hermodr.Publisher.Outbox.EntityFramework` | `Hermodr.Publisher.Outbox` · `Deveel.Repository.EntityFramework` · `Microsoft.EntityFrameworkCore.Relational` |
+| `Hermodr.Publisher.Outbox` | `Kista` · `Microsoft.Extensions.Hosting.Abstractions` |
+| `Hermodr.Publisher.Outbox.EntityFramework` | `Hermodr.Publisher.Outbox` · `Kista.EntityFramework` · `Microsoft.EntityFrameworkCore.Relational` |
 | `Hermodr.Publisher.DeliveryLog` | `Hermodr.Publisher` · `Microsoft.Extensions.Hosting.Abstractions` |
-| `Hermodr.Publisher.DeliveryLog.EntityFramework` | `Hermodr.Publisher.DeliveryLog` · `Microsoft.EntityFrameworkCore` |
+| `Hermodr.Publisher.DeliveryLog.InMemory` | `Hermodr.Publisher.DeliveryLog` · `Kista.InMemory` |
+| `Hermodr.Publisher.DeliveryLog.NDJson` | `Hermodr.Publisher.DeliveryLog` |
+| `Hermodr.Publisher.DeliveryLog.EntityFramework` | `Hermodr.Publisher.DeliveryLog` · `Kista.EntityFramework` |
 | `Hermodr.Publisher.OpenTelemetry` | `OpenTelemetry.API` · `Hermodr.Publisher` |
-| `Hermodr.Subscriptions` | `Hermodr.Publisher` · `Deveel.Filters` · `Microsoft.Extensions.Logging.Abstractions` |
+| `Hermodr.Subscriptions` | `Hermodr.Publisher` · `Microsoft.Extensions.Logging.Abstractions` |
 | `Hermodr.Schema` | `CloudNative.CloudEvents` |
 | `Hermodr.Schema.Yaml` | `YamlDotNet` ≥ 16.3 |
 | `Hermodr.Schema.AsyncApi` | `Saunter` ≥ 0.13 · `YamlDotNet` ≥ 16.3 · ASP.NET Core shared framework |
 | `Hermodr.TestPublisher` | `Hermodr.Publisher` |
+
+| `Hermodr.Publisher.AuditTrail` | `Hermodr.Publisher` · `Hermodr.AuditTrail` |
+| `Hermodr.AuditTrail` | `CloudNative.CloudEvents` · `CloudNative.CloudEvents.SystemTextJson` · `Kista` |
+| `Hermodr.AuditTrail.EntityFramework` | `Hermodr.AuditTrail` · `Kista.EntityFramework` |
+| `Hermodr.AuditTrail.InMemory` | `Hermodr.AuditTrail` · `Kista.InMemory` |
+| `Hermodr.AuditTrail.NDJson` | `Hermodr.AuditTrail` · `Hermodr.Publisher` · `System.IO.Abstractions` |
 
 ## Packages
 
@@ -124,6 +138,8 @@ Every package requires the **Microsoft Dependency Injection** infrastructure (`M
 | `Hermodr.Publisher.Outbox` | Persist events in a transactional outbox for later relay | [![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.Outbox.svg)](https://www.nuget.org/packages/Hermodr.Publisher.Outbox) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Hermodr.Publisher.Outbox.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Hermodr.Publisher.Outbox) |
 | `Hermodr.Publisher.Outbox.EntityFramework` | Entity Framework Core repository and helpers for the outbox channel | [![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.Outbox.EntityFramework.svg)](https://www.nuget.org/packages/Hermodr.Publisher.Outbox.EntityFramework) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Hermodr.Publisher.Outbox.EntityFramework.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Hermodr.Publisher.Outbox.EntityFramework) |
 | `Hermodr.Publisher.DeliveryLog` | Per-attempt operational record (channel, outcome, error code, latency, retry count) with pluggable storage backends | [![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.DeliveryLog.svg)](https://www.nuget.org/packages/Hermodr.Publisher.DeliveryLog) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Hermodr.Publisher.DeliveryLog.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Hermodr.Publisher.DeliveryLog) |
+| `Hermodr.Publisher.DeliveryLog.InMemory` | In-memory storage backend for delivery log records (testing and development) | [![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.DeliveryLog.InMemory.svg)](https://www.nuget.org/packages/Hermodr.Publisher.DeliveryLog.InMemory) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Hermodr.Publisher.DeliveryLog.InMemory.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Hermodr.Publisher.DeliveryLog.InMemory) |
+| `Hermodr.Publisher.DeliveryLog.NDJson` | NDJSON rolling-file backend for delivery log records | [![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.DeliveryLog.NDJson.svg)](https://www.nuget.org/packages/Hermodr.Publisher.DeliveryLog.NDJson) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Hermodr.Publisher.DeliveryLog.NDJson.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Hermodr.Publisher.DeliveryLog.NDJson) |
 | `Hermodr.Publisher.DeliveryLog.EntityFramework` | Entity Framework Core persistence for delivery log records | [![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.DeliveryLog.EntityFramework.svg)](https://www.nuget.org/packages/Hermodr.Publisher.DeliveryLog.EntityFramework) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Hermodr.Publisher.DeliveryLog.EntityFramework.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Hermodr.Publisher.DeliveryLog.EntityFramework) |
 | `Hermodr.Publisher.OpenTelemetry` | OpenTelemetry instrumentation for distributed tracing with W3C trace context propagation | [![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.OpenTelemetry.svg)](https://www.nuget.org/packages/Hermodr.Publisher.OpenTelemetry) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Hermodr.Publisher.OpenTelemetry.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Hermodr.Publisher.OpenTelemetry) |
 
@@ -147,6 +163,16 @@ Every package requires the **Microsoft Dependency Injection** infrastructure (`M
 |---------|-------------|---------------|-------------------|
 | `Hermodr.TestPublisher` | In-memory test channel for unit and integration tests | [![NuGet](https://img.shields.io/nuget/v/Hermodr.TestPublisher.svg)](https://www.nuget.org/packages/Hermodr.TestPublisher) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Hermodr.TestPublisher.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Hermodr.TestPublisher) |
 
+### Audit Trail
+
+| Package | Description | NuGet (Stable) | GitHub (Unstable) |
+|---------|-------------|---------------|-------------------|
+| `Hermodr.Publisher.AuditTrail` | Integrates the audit trail as a publisher channel for compliance auditing | [![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.AuditTrail.svg)](https://www.nuget.org/packages/Hermodr.Publisher.AuditTrail) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Hermodr.Publisher.AuditTrail.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Hermodr.Publisher.AuditTrail) |
+| `Hermodr.AuditTrail` | Core contracts for an append-only audit trail | [![NuGet](https://img.shields.io/nuget/v/Hermodr.AuditTrail.svg)](https://www.nuget.org/packages/Hermodr.AuditTrail) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Hermodr.AuditTrail.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Hermodr.AuditTrail) |
+| `Hermodr.AuditTrail.EntityFramework` | Entity Framework Core persistence layer (SQL Server, PostgreSQL, SQLite) | [![NuGet](https://img.shields.io/nuget/v/Hermodr.AuditTrail.EntityFramework.svg)](https://www.nuget.org/packages/Hermodr.AuditTrail.EntityFramework) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Hermodr.AuditTrail.EntityFramework.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Hermodr.AuditTrail.EntityFramework) |
+| `Hermodr.AuditTrail.InMemory` | In-memory implementation for testing and development | [![NuGet](https://img.shields.io/nuget/v/Hermodr.AuditTrail.InMemory.svg)](https://www.nuget.org/packages/Hermodr.AuditTrail.InMemory) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Hermodr.AuditTrail.InMemory.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Hermodr.AuditTrail.InMemory) |
+| `Hermodr.AuditTrail.NDJson` | NDJSON file storage backend with rolling and pluggable filesystem | [![NuGet](https://img.shields.io/nuget/v/Hermodr.AuditTrail.NDJson.svg)](https://www.nuget.org/packages/Hermodr.AuditTrail.NDJson) | [![GitHub pre-release](https://img.shields.io/nuget/vpre/Hermodr.AuditTrail.NDJson.svg?label=pre-release)](https://github.com/orgs/deveel/packages/nuget/package/Hermodr.AuditTrail.NDJson) |
+
 ## Documentation
 
 The full documentation is published at **[hermodr.deveel.org](https://hermodr.deveel.org)** — including installation guides, concept references, channel adapters, schema export, and testing utilities.
@@ -160,6 +186,7 @@ The source of the documentation is also available in the [`docs/`](docs/README.m
 | [Event Subscriptions](https://hermodr.deveel.org/subscriptions/) | Event dispatcher, filters, routing, and custom resolvers |
 | [Event Schema](https://hermodr.deveel.org/schema/) | Schema definition, export (JSON / YAML / AsyncAPI), and validation |
 | [Testing](https://hermodr.deveel.org/testing/) | Unit-testing event publishing |
+| [Audit Trail](https://hermodr.deveel.org/audit-trail/) | Append-only event recording for compliance and debugging |
 
 ## Future Work
 
@@ -176,10 +203,10 @@ The framework is still evolving. See the [ROADMAP](ROADMAP.md) for the full desc
 - [x] **Outbox Pattern Integration** — guaranteed exactly-once publishing via a transactional outbox channel
 - [ ] **Event Scheduler & Deferred Publishing** — defer event publishing to a future point in time or after a delay
 
-### v1.3 — Observability
+### v1.3 — Observability ✅
 
 - [x] **OpenTelemetry & Distributed Tracing Integration** — propagate W3C trace context as CloudEvents extensions for end-to-end traces
-- [ ] **Event Store & Audit Log Channel** — append-only persistence of every domain event for auditing and read-model rebuilding
+- [x] **Audit Trail Channel** — append-only persistence of every domain event for auditing and read-model rebuilding
 - [ ] **Schema Validation at Publish Time** — validate event payloads against their registered schema before channel dispatch
 - [x] **Publish Delivery Log** — per-attempt operational record (channel, outcome, error code, latency, retry count) across pluggable storage backends
 
