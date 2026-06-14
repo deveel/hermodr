@@ -77,6 +77,7 @@ const config: Config = {
           path: '../docs',
           sidebarPath: './sidebars.ts',
           editUrl: 'https://github.com/deveel/hermodr/edit/main/docs/',
+          lastVersion: 'v1.2.7',
           versions: {
             current: {
               label: 'Next',
@@ -113,20 +114,13 @@ const config: Config = {
       },
       items: [
         {
-          type: 'docSidebar',
-          sidebarId: 'docs',
+          type: 'docsVersionDropdown',
           position: 'left',
-          label: 'Docs',
         },
         {
-          type: 'docsVersionDropdown',
+          type: 'html',
           position: 'right',
-          dropdownItemsAfter: [
-            {
-              type: 'html',
-              value: '<span class="header-right-group"><a class="header-github-link" href="https://github.com/deveel/hermodr" aria-label="GitHub repository" target="_blank" rel="noopener noreferrer"></a><a class="header-deveel-link" href="https://deveel.org" aria-label="Deveel website" target="_blank" rel="noopener noreferrer"><img src="/img/deveel-logo.svg" alt="Deveel" class="header-deveel-logo" /></a></span>',
-            },
-          ],
+          value: '<span class="header-right-group"><a class="header-github-link" href="https://github.com/deveel/hermodr" aria-label="GitHub repository" target="_blank" rel="noopener noreferrer"></a><a class="header-deveel-link" href="https://deveel.org" aria-label="Deveel website" target="_blank" rel="noopener noreferrer"><img src="/img/deveel-logo.svg" alt="Deveel" class="header-deveel-logo" /></a></span>',
         },
       ],
     },
