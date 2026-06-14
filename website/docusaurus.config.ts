@@ -77,6 +77,15 @@ const config: Config = {
           path: '../docs',
           sidebarPath: './sidebars.ts',
           editUrl: 'https://github.com/deveel/hermodr/edit/main/docs/',
+          lastVersion: 'v1.2.7',
+          versions: {
+            current: {
+              label: 'Next',
+            },
+            'v1.2.7': {
+              label: 'v1.2.7 (latest)',
+            },
+          },
         },
         blog: false,
         theme: {
@@ -108,17 +117,8 @@ const config: Config = {
       },
       items: [
         {
-          type: 'docSidebar',
-          sidebarId: 'docs',
+          type: 'docsVersionDropdown',
           position: 'left',
-          label: 'Docs',
-        },
-        {
-          type: 'doc',
-          docsPluginId: 'default',
-          position: 'left',
-          label: 'Getting Started',
-          docId: 'getting-started/installation',
         },
         {
           type: 'html',
