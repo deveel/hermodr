@@ -5,7 +5,7 @@
 ## Basic usage
 
 ```csharp
-using Hermodr;
+using Deveel.Events;
 
 var schema = EventSchema.Build("order.placed")
     .WithVersion("1.0")

@@ -82,6 +82,9 @@ const config: Config = {
             current: {
               label: 'Next',
             },
+            'v1.2.7': {
+              label: 'v1.2.7 (latest)',
+            },
           },
         },
         blog: false,

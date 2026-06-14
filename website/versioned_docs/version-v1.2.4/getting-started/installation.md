@@ -41,9 +41,9 @@ The table below lists the key NuGet packages that each library brings in as tran
 | `Hermodr.Publisher.RabbitMq` | `RabbitMQ.Client` ≥ 7.2 · `Hermodr.Amqp.Annotations` |
 | `Hermodr.Publisher.MassTransit` | `MassTransit` ≥ 9.1 |
 | `Hermodr.Publisher.Webhook` | `Microsoft.Extensions.Http.Resilience` ≥ 9.6 |
-| `Hermodr.Publisher.Outbox` | `Kista` · `Microsoft.Extensions.Hosting.Abstractions` |
-| `Hermodr.Publisher.Outbox.EntityFramework` | `Hermodr.Publisher.Outbox` · `Kista.EntityFramework` · `Microsoft.EntityFrameworkCore.Relational` |
-| `Hermodr.Subscriptions` | `Hermodr.Publisher` · `Microsoft.Extensions.Logging.Abstractions` |
+| `Hermodr.Publisher.Outbox` | `Deveel.Repository.Manager` · `Microsoft.Extensions.Hosting.Abstractions` |
+| `Hermodr.Publisher.Outbox.EntityFramework` | `Hermodr.Publisher.Outbox` · `Deveel.Repository.EntityFramework` · `Microsoft.EntityFrameworkCore.Relational` |
+| `Hermodr.Subscriptions` | `Hermodr.Publisher` · `Deveel.Filters` · `Microsoft.Extensions.Logging.Abstractions` |
 | `Hermodr.Schema` | `CloudNative.CloudEvents` |
 | `Hermodr.Schema.Yaml` | `YamlDotNet` ≥ 16.3 |
 | `Hermodr.Schema.AsyncApi` | `Saunter` ≥ 0.13 · `YamlDotNet` ≥ 16.3 · ASP.NET Core shared framework |

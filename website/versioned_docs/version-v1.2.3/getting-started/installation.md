@@ -1,12 +1,12 @@
 # Installation
 
-Hermodr is distributed as a set of NuGet packages.  Install only the packages you actually need.
+Deveel Events is distributed as a set of NuGet packages.  Install only the packages you actually need.
 
 ## Prerequisites
 
 ### Supported Runtimes
 
-All packages in the Hermodr solution multi-target the following .NET runtimes:
+All packages in the Deveel Events solution multi-target the following .NET runtimes:
 
 | Runtime | Version |
 |---------|---------|
@@ -27,7 +27,7 @@ This is already provided automatically in ASP.NET Core, Worker Service, and most
 
 ### ASP.NET Core Requirement
 
-The `Hermodr.Schema.AsyncApi` package references the **ASP.NET Core shared framework** (`Microsoft.AspNetCore.App`) because it integrates with the [Saunter](https://github.com/tehmantra/saunter) AsyncAPI middleware. It must be used in a project that targets the `Microsoft.NET.Sdk.Web` SDK or explicitly includes the `Microsoft.AspNetCore.App` framework reference.
+The `Deveel.Events.Schema.AsyncApi` package references the **ASP.NET Core shared framework** (`Microsoft.AspNetCore.App`) because it integrates with the [Saunter](https://github.com/tehmantra/saunter) AsyncAPI middleware. It must be used in a project that targets the `Microsoft.NET.Sdk.Web` SDK or explicitly includes the `Microsoft.AspNetCore.App` framework reference.
 
 ### Per-Package Dependencies
 
@@ -35,26 +35,26 @@ The table below lists the key NuGet packages that each library brings in as tran
 
 | Package | Key Transitive Dependencies |
 |---------|----------------------------|
-| `Hermodr.Annotations` | *(none — pure attribute library)* |
-| `Hermodr.Publisher` | `CloudNative.CloudEvents` · `Microsoft.Extensions.Options` · `Microsoft.Extensions.Logging.Abstractions` |
-| `Hermodr.Publisher.AzureServiceBus` | `Azure.Messaging.ServiceBus` ≥ 7.20 |
-| `Hermodr.Publisher.RabbitMq` | `RabbitMQ.Client` ≥ 7.2 · `Hermodr.Amqp.Annotations` |
-| `Hermodr.Publisher.MassTransit` | `MassTransit` ≥ 9.1 |
-| `Hermodr.Publisher.Webhook` | `Microsoft.Extensions.Http.Resilience` ≥ 9.6 |
-| `Hermodr.Publisher.Outbox` | `Kista` · `Microsoft.Extensions.Hosting.Abstractions` |
-| `Hermodr.Publisher.Outbox.EntityFramework` | `Hermodr.Publisher.Outbox` · `Kista.EntityFramework` · `Microsoft.EntityFrameworkCore.Relational` |
-| `Hermodr.Subscriptions` | `Hermodr.Publisher` · `Microsoft.Extensions.Logging.Abstractions` |
-| `Hermodr.Schema` | `CloudNative.CloudEvents` |
-| `Hermodr.Schema.Yaml` | `YamlDotNet` ≥ 16.3 |
-| `Hermodr.Schema.AsyncApi` | `Saunter` ≥ 0.13 · `YamlDotNet` ≥ 16.3 · ASP.NET Core shared framework |
-| `Hermodr.TestPublisher` | `Hermodr.Publisher` |
+| `Deveel.Events.Annotations` | *(none — pure attribute library)* |
+| `Deveel.Events.Publisher` | `CloudNative.CloudEvents` · `Microsoft.Extensions.Options` · `Microsoft.Extensions.Logging.Abstractions` |
+| `Deveel.Events.Publisher.AzureServiceBus` | `Azure.Messaging.ServiceBus` ≥ 7.20 |
+| `Deveel.Events.Publisher.RabbitMq` | `RabbitMQ.Client` ≥ 7.2 · `Deveel.Events.Amqp.Annotations` |
+| `Deveel.Events.Publisher.MassTransit` | `MassTransit` ≥ 9.1 |
+| `Deveel.Events.Publisher.Webhook` | `Microsoft.Extensions.Http.Resilience` ≥ 9.6 |
+| `Deveel.Events.Publisher.Outbox` | `Deveel.Repository.Manager` · `Microsoft.Extensions.Hosting.Abstractions` |
+| `Deveel.Events.Publisher.Outbox.EntityFramework` | `Deveel.Events.Publisher.Outbox` · `Deveel.Repository.EntityFramework` · `Microsoft.EntityFrameworkCore.Relational` |
+| `Deveel.Events.Subscriptions` | `Deveel.Events.Publisher` · `Deveel.Filters` · `Microsoft.Extensions.Logging.Abstractions` |
+| `Deveel.Events.Schema` | `CloudNative.CloudEvents` |
+| `Deveel.Events.Schema.Yaml` | `YamlDotNet` ≥ 16.3 |
+| `Deveel.Events.Schema.AsyncApi` | `Saunter` ≥ 0.13 · `YamlDotNet` ≥ 16.3 · ASP.NET Core shared framework |
+| `Deveel.Events.TestPublisher` | `Deveel.Events.Publisher` |
 
 ## Core package
 
 Every application that publishes events needs the core publisher package:
 
 ```bash
-dotnet add package Hermodr.Publisher
+dotnet add package Deveel.Events.Publisher
 ```
 
 ## Channel packages
@@ -63,22 +63,22 @@ Add one or more channel packages depending on the transports you want to use:
 
 ```bash
 # Azure Service Bus
-dotnet add package Hermodr.Publisher.AzureServiceBus
+dotnet add package Deveel.Events.Publisher.AzureServiceBus
 
 # RabbitMQ
-dotnet add package Hermodr.Publisher.RabbitMq
+dotnet add package Deveel.Events.Publisher.RabbitMq
 
 # MassTransit
-dotnet add package Hermodr.Publisher.MassTransit
+dotnet add package Deveel.Events.Publisher.MassTransit
 
 # HTTP Webhooks
-dotnet add package Hermodr.Publisher.Webhook
+dotnet add package Deveel.Events.Publisher.Webhook
 
 # Transactional Outbox
-dotnet add package Hermodr.Publisher.Outbox
+dotnet add package Deveel.Events.Publisher.Outbox
 
 # Transactional Outbox + Entity Framework Core
-dotnet add package Hermodr.Publisher.Outbox.EntityFramework
+dotnet add package Deveel.Events.Publisher.Outbox.EntityFramework
 ```
 
 ## Subscriptions package
@@ -86,7 +86,7 @@ dotnet add package Hermodr.Publisher.Outbox.EntityFramework
 To add in-process event subscription and dispatching:
 
 ```bash
-dotnet add package Hermodr.Subscriptions
+dotnet add package Deveel.Events.Subscriptions
 ```
 
 ## Annotation package
@@ -94,32 +94,32 @@ dotnet add package Hermodr.Subscriptions
 If you want to annotate your data-transfer classes with event metadata:
 
 ```bash
-dotnet add package Hermodr.Annotations
+dotnet add package Deveel.Events.Annotations
 ```
 
 For AMQP-specific routing metadata (exchange name, routing key):
 
 ```bash
-dotnet add package Hermodr.Amqp.Annotations
+dotnet add package Deveel.Events.Amqp.Annotations
 ```
 
 ## Schema packages
 
 ```bash
 # Core schema model, builder, JSON writer, and validator
-dotnet add package Hermodr.Schema
+dotnet add package Deveel.Events.Schema
 
 # Export schemas as YAML
-dotnet add package Hermodr.Schema.Yaml
+dotnet add package Deveel.Events.Schema.Yaml
 
 # Export schemas as AsyncAPI 2.x documents (JSON or YAML)
-dotnet add package Hermodr.Schema.AsyncApi
+dotnet add package Deveel.Events.Schema.AsyncApi
 ```
 
 ## Test package
 
 ```bash
-dotnet add package Hermodr.TestPublisher
+dotnet add package Deveel.Events.TestPublisher
 ```
 
 ## Pre-release builds

@@ -1,6 +1,6 @@
 # Publish Delivery Log
 
-The `Hermodr.Publisher.DeliveryLog` package records operational telemetry for every event publish attempt: which channel was used, when the attempt happened, how many times it was retried, how long it took, whether it succeeded or failed, and what error occurred. The records are stored in a pluggable storage backend of your choice.
+The `Deveel.Events.Publisher.DeliveryLog` package records operational telemetry for every event publish attempt: which channel was used, when the attempt happened, how many times it was retried, how long it took, whether it succeeded or failed, and what error occurred. The records are stored in a pluggable storage backend of your choice.
 
 ## Why use the Delivery Log?
 
@@ -39,13 +39,15 @@ Channel publish
 
 ## Core types
 
-The feature is built on three types, each with a focused responsibility:
+The feature is built on six types, each with a focused responsibility:
 
-**`IEventPublishDeliveryLog`** — the write-only surface. It exposes a single method `RecordAsync(EventDeliveryRecord, CancellationToken)`. The middleware depends on this interface, which keeps it decoupled from query capabilities.
+**`IEventPublishDeliveryLog`** — the write-only surface. It exposes a single method `RecordAsync(IEventDeliveryRecord, CancellationToken)`. The middleware depends on this interface, which keeps it decoupled from query capabilities.
 
-**`EventDeliveryRecord`** — the concrete data contract for one delivery attempt. It carries the event itself, publisher metadata, attempt number, timestamp, outcome, error details, and elapsed time.
+**`IEventDeliveryRecord`** — the read-only data contract for one delivery attempt. It carries the event itself, publisher metadata, attempt number, timestamp, outcome, error details, and elapsed time. 
 
 **`EventDeliveryOutcome`** — three-state enum: `Succeeded` (delivered without exception), `Failed` (terminal failure), `Retried` (failure with retry scheduled; reserved for future retry infrastructure).
+
+**`IEventDeliveryLogRepository<TRecord>`** — the read/write repository. It extends the write interface and adds four query methods: `GetByEventIdAsync`, `GetByChannelAsync`, `GetByOutcomeAsync`, `GetByTimeRangeAsync`. It also extends `IRepository<TRecord>` from `Deveel.Repository.Core` for standard CRUD operations (though NDJSON backend throws for mutation). A non-generic alias `IEventDeliveryLogRepository` is provided, defaulting to `EventDeliveryRecord`.
 
 ## How it works
 
@@ -72,28 +74,16 @@ Use the error handler when `ThrowOnErrors = false` and you still want failures r
 
 ## Installation
 
-The core package depends on `Hermodr.Publisher` (for the middleware pipeline) and `Microsoft.Extensions.Logging.Abstractions`.
+The core package depends on `Deveel.Events.Publisher` (for the middleware pipeline), `Deveel.Repository.Core` and `Deveel.Repository.InMemory` (for storage abstractions), and `Microsoft.Extensions.Logging.Abstractions`.
 
 ```bash
-dotnet add package Hermodr.Publisher.DeliveryLog
+dotnet add package Deveel.Events.Publisher.DeliveryLog
 ```
 
-For in-memory storage (recommended for tests and local development):
+For EF Core persistence (depends on `Deveel.Repository.EntityFramework`):
 
 ```bash
-dotnet add package Hermodr.Publisher.DeliveryLog.InMemory
-```
-
-For NDJSON rolling-file storage:
-
-```bash
-dotnet add package Hermodr.Publisher.DeliveryLog.NDJson
-```
-
-For EF Core persistence:
-
-```bash
-dotnet add package Hermodr.Publisher.DeliveryLog.EntityFramework
+dotnet add package Deveel.Events.Publisher.DeliveryLog.EntityFramework
 dotnet add package Microsoft.EntityFrameworkCore.Sqlite
 ```
 
@@ -103,26 +93,19 @@ Replace `Sqlite` with your actual provider (`SqlServer`, `Npgsql`, etc.).
 
 ### Via EventPublisherBuilder
 
-`AddDeliveryLog()` is an extension on `EventPublisherBuilder`. It adds the delivery log middleware to the pipeline.
+`AddDeliveryLog()` is an extension on `EventPublisherBuilder`. It registers the in-memory store as default and adds the middleware to the pipeline.
 
 ```csharp
 builder.Services
     .AddEventPublisher(options =>
         options.Source = new Uri("https://orders.example.com"))
-    .AddDeliveryLog(log => log.UseInMemory());
+    .AddDeliveryLog();
 ```
 
-With the NDJSON backend (requires `Hermodr.Publisher.DeliveryLog.NDJson`):
+With a storage backend:
 
 ```csharp
 .AddDeliveryLog(log => log.UseNDJson())
-```
-
-With EF Core (requires `Hermodr.Publisher.DeliveryLog.EntityFramework`):
-
-```csharp
-.AddDeliveryLog(log => log.UseEntityFramework(opts =>
-    opts.UseSqlite("Data Source=delivery-log.db")))
 ```
 
 With the error handler:
@@ -142,7 +125,7 @@ Only one storage backend is active — subsequent `Use*` calls replace the previ
 
 ### Standalone (without publisher)
 
-If you only need the delivery log services independent of the publisher pipeline:
+If you only need the repository as a data store independent of the publisher pipeline:
 
 ```csharp
 services.AddDeliveryLog(log => log.UseNDJson(opts =>
@@ -152,29 +135,33 @@ services.AddDeliveryLog(log => log.UseNDJson(opts =>
 }));
 ```
 
-This registers the `IEventPublishDeliveryLog` service without a middleware pipeline.
+This registers the repository without a middleware pipeline.
 
 ## Storage backends
 
-Each backend implements `IEventPublishDeliveryLog`. The storage packages are distributed separately and must be installed explicitly. Only one storage backend is active — subsequent `Use*` calls replace the previous registration.
+Each backend implements both `IEventPublishDeliveryLog` and `IEventDeliveryLogRepository`.
 
-### In-Memory (requires `Hermodr.Publisher.DeliveryLog.InMemory`)
+### In-Memory (default)
 
-`InMemoryEventDeliveryLogRepository` holds all records in a thread-safe, volatile collection. Registered as Singleton. Suitable for tests and local development, but records are lost on process restart.
+`InMemoryEventDeliveryLogRepository` extends `InMemoryRepository<EventDeliveryRecord>`. All records are held in a thread-safe, volatile collection. Registered as Singleton. Suitable for tests and local development, but records are lost on process restart.
 
 ```csharp
 .AddDeliveryLog(log => log.UseInMemory())
 ```
 
-### NDJSON rolling files (requires `Hermodr.Publisher.DeliveryLog.NDJson`)
+### NDJSON rolling files
 
-The NDJSON implementation appends each record as a JSON line to a sequentially-named file. Files are named `delivery-log-{yyyyMMdd-HHmmss}.ndjson` in a configurable directory.
+The NDJSON implementation of the repository appends each record as a JSON line to a sequentially-named file. Files are named `delivery-log-{yyyyMMdd-HHmmss}.ndjson` in a configurable directory.
 
-The backend auto-rolls to a new file when either the current file exceeds `MaxFileSizeBytes` (default 10 MB) or the `RollInterval` has elapsed. After each write, it checks the file count and deletes the oldest files beyond `MaxFileCount` (default 30). Set `MaxFileCount <= 0` to disable cleanup.
+The repository auto-rolls to a new file when either the current file exceeds `MaxFileSizeBytes` (default 10 MB) or the `RollInterval` has elapsed. After each write, it checks the file count and deletes the oldest files beyond `MaxFileCount` (default 30). Set `MaxFileCount <= 0` to disable cleanup.
 
-- Writes are serialized through semaphores.
-- Files are opened with read/write sharing so external readers can tail them concurrently.
+- Write are serialized through semaphores. 
+- Files are opened with a read/write sharing so external readers can tail them concurrently. 
 - Records are serialized as camelCase JSON using a `CloudEventJsonConverter` that encodes the CloudEvent in structured mode.
+
+The NDJSON backend is append-only - `Update`, `Remove`, `AddRange`, `RemoveRange`, and `Find` throw `NotSupportedException`. 
+
+**Note** - Query methods scan all files linearly, so performance degrades with data volume.
 
 ```csharp
 .AddDeliveryLog(log => log.UseNDJson(opts =>
@@ -193,14 +180,49 @@ The backend auto-rolls to a new file when either the current file exceeds `MaxFi
 | `RollInterval` | `TimeSpan?` | `null` | Time threshold for rolling (null = disabled) |
 | `MaxFileCount` | `int` | `30` | Max files retained (≤0 = no cleanup) |
 
-### Entity Framework Core (requires `Hermodr.Publisher.DeliveryLog.EntityFramework`)
+### Entity Framework Core
 
-Stores records in a relational database using `Kista.EntityFramework`.
+`EntityEventDeliveryLogRepository` extends `EntityRepository<DbEventDeliveryRecord, string>` and stores records in a relational database. It supports the full `IRepository` contract including CRUD operations, with all four query methods translated to LINQ expressions.
 
 ```csharp
 .AddDeliveryLog(log => log.UseEntityFramework(opts =>
     opts.UseSqlite("Data Source=delivery-log.db")))
 ```
+
+The `DbEventDeliveryRecord` entity maps to the `delivery_records` table with the following schema:
+
+| Column | Type | Constraints |
+|---|---|---|
+| `Id` | `string(256)` | Primary key |
+| `EventId` | `string(256)` | Required, indexed |
+| `EventType` | `string(256)` | Nullable |
+| `EventData` | string (JSON) | Nullable |
+| `PublisherName` | `string(256)` | Nullable |
+| `ChannelName` | `string(256)` | Nullable, indexed |
+| `ChannelType` | `string(256)` | Nullable |
+| `AttemptNumber` | `int` | Required, default 1 |
+| `Timestamp` | `DateTimeOffset` | Required, UTC, indexed |
+| `Outcome` | `string(32)` | Required, indexed |
+| `ErrorCode` | `string(128)` | Nullable |
+| `ErrorMessage` | string | Nullable |
+| `ElapsedTimeTicks` | `long` | Required, default 0 |
+
+The `EventData` column stores the CloudEvent as structured-mode JSON using the `CloudNative.CloudEvents` SDK, enabling full event rehydration on reads. The `Outcome` enum is stored as a string. The `ElapsedTime` is stored as ticks.
+
+Create the database schema via `DeliveryLogDbContext.Database.EnsureCreatedAsync()` or EF Core migrations for production schema management.
+
+## Querying delivery records
+
+All four query methods return `IReadOnlyList<EventDeliveryRecord>` ordered by timestamp: ascending for event ID and time range queries (chronological history), descending for channel and outcome queries (most recent first).
+
+```csharp
+Task<IReadOnlyList<EventDeliveryRecord>> GetByEventIdAsync(string eventId, CancellationToken ct = default);
+Task<IReadOnlyList<EventDeliveryRecord>> GetByChannelAsync(string channelName, CancellationToken ct = default);
+Task<IReadOnlyList<EventDeliveryRecord>> GetByOutcomeAsync(EventDeliveryOutcome outcome, CancellationToken ct = default);
+Task<IReadOnlyList<EventDeliveryRecord>> GetByTimeRangeAsync(DateTimeOffset from, DateTimeOffset to, CancellationToken ct = default);
+```
+
+Inject `IEventDeliveryLogRepository` into any service for reporting, SLA monitoring, or diagnostics. The returned records include the full CloudEvent (on backends that support it), so you can inspect event metadata alongside delivery telemetry without a separate lookup.
 
 ## Relation to other features
 
@@ -209,8 +231,8 @@ Stores records in a relational database using `Kista.EntityFramework`.
 | **Delivery Log** | Attempt metadata per publish | Operational visibility into publish health |
 | **Dead-Letter** | Failed event payloads + replay | Recovering from delivery failures |
 | **Error Handling** | Pipeline error interception | Custom error policies (logging, circuit-breaker) |
-| **Audit Trail** | Domain fact audit trail | Compliance, read-model rebuilding |
-| **OpenTelemetry** | Trace context propagation | End-to-end distributed tracing |
+| **Event Store** (planned) | Domain fact audit trail | Compliance, read-model rebuilding |
+| **OpenTelemetry** (planned) | Trace context propagation | End-to-end distributed tracing |
 
 The Delivery Log and Dead-Letter are complementary: the log records *that* delivery failed and how long it took; the dead-letter preserves *what* failed so you can replay it.
 

@@ -77,6 +77,7 @@ Replace `Sqlite` with the EF Core provider you actually use.
 The lightest integration is `AddDeadLetter(...)`. It returns a `DeadLetterBuilder` that can register a callback or handler receiving `DeadLetterContext` whenever a channel throws while publishing. `UseHandler(...)` has overloads for synchronous callbacks, asynchronous callbacks, handler instances, and handler types.
 
 ```csharp
+using Deveel;
 using Hermodr;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -130,6 +131,7 @@ You can replay a dead-lettered event immediately by publishing the captured `Clo
 `DeadLetterReplayPublishOptions` marks the second publish as a **replay attempt**, so a replay failure is not stored again as a brand-new dead letter.
 
 ```csharp
+using Deveel;
 using Hermodr;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -360,6 +362,7 @@ Stored dead letters move through a small, explicit state machine:
 ### Recommended setup
 
 ```csharp
+using Deveel;
 using Hermodr;
 using Microsoft.EntityFrameworkCore;
 

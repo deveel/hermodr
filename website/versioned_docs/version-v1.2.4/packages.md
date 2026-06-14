@@ -20,11 +20,7 @@ The framework is split into focused NuGet packages so you only take what you nee
 | [`Hermodr.Publisher.MassTransit`](#hermodr-publisher-masstransit) | Publish events through a MassTransit bus |
 | [`Hermodr.Publisher.Webhook`](#hermodr-publisher-webhook) | Deliver events to HTTP webhook endpoints |
 | [`Hermodr.Publisher.Outbox`](#hermodr-publisher-outbox) | Persist events to a transactional outbox for later relay |
-| [`Hermodr.Publisher.Outbox.EntityFramework`](#hermodr-publisher-outbox-entityframework) | Entity Framework Core store and helpers for the outbox channel |
-| [`Hermodr.Publisher.DeliveryLog`](#hermodr-publisher-deliverylog) | Core delivery log middleware and storage abstractions |
-| [`Hermodr.Publisher.DeliveryLog.InMemory`](#hermodr-publisher-deliverylog-inmemory) | In-memory storage backend for delivery log records |
-| [`Hermodr.Publisher.DeliveryLog.NDJson`](#hermodr-publisher-deliverylog-ndjson) | NDJson rolling-file backend for delivery log records |
-| [`Hermodr.Publisher.DeliveryLog.EntityFramework`](#hermodr-publisher-deliverylog-entityframework) | Entity Framework Core persistence for delivery log records |
+| [`Hermodr.Publisher.Outbox.EntityFramework`](#hermodr-publisher-outbox-entityframework) | Entity Framework Core repository and helpers for the outbox channel |
 | [`Hermodr.Amqp.Annotations`](#hermodr-amqp-annotations) | AMQP-specific attributes (exchange name, routing key) |
 
 ## Subscriptions package
@@ -38,16 +34,6 @@ The framework is split into focused NuGet packages so you only take what you nee
 | Package | Description |
 |---------|-------------|
 | [`Hermodr.Publisher.OpenTelemetry`](#hermodr-publisher-opentelemetry) | Distributed tracing with W3C trace context propagation via CloudEvents extensions |
-
-## Audit Trail packages
-
-| Package | Description |
-|---------|-------------|
-| [`Hermodr.AuditTrail`](#hermodr-audittrail) | Core contracts for an append-only audit trail (`IAuditTrailWriter`, `IAuditTrailReader<T>`, `AuditTrailBuilder`, `AuditTrailStreamQuery`) |
-| [`Hermodr.Publisher.AuditTrail`](#hermodr-publisher-audittrail) | Publisher integration: `AuditTrailPublishChannel` and `AddAuditTrail()` extension method |
-| [`Hermodr.AuditTrail.InMemory`](#hermodr-audittrail-inmemory) | In-memory storage backend for testing and development |
-| [`Hermodr.AuditTrail.EntityFramework`](#hermodr-audittrail-entityframework) | Entity Framework Core storage backend (SQL Server, PostgreSQL, SQLite) |
-| [`Hermodr.AuditTrail.NDJson`](#hermodr-audittrail-ndjson) | NDJson file storage backend with pluggable filesystem (Azure Blob, S3, local disk) |
 
 ## Schema packages
 
@@ -157,7 +143,7 @@ dotnet add package Hermodr.Publisher.Webhook
 [![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.Outbox.svg)](https://www.nuget.org/packages/Hermodr.Publisher.Outbox)
 [![GitHub pre-release](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/hermodr/pkgs/nuget/Hermodr.Publisher.Outbox)
 
-Implements the transactional outbox pattern for event publishing.  It adds the `AddOutbox<TMessage>()` builder entry point, outbox relay services, the `IOutboxMessageStore<TMessage>` abstraction, and message-factory hooks for persisting events before relaying them to a transport-specific publisher pipeline.
+Implements the transactional outbox pattern for event publishing.  It adds the `AddOutbox<TMessage>()` builder entry point, outbox relay services, repository abstractions, and message-factory hooks for persisting events before relaying them to a transport-specific publisher pipeline.
 
 ```bash
 dotnet add package Hermodr.Publisher.Outbox
@@ -170,7 +156,7 @@ dotnet add package Hermodr.Publisher.Outbox
 [![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.Outbox.EntityFramework.svg)](https://www.nuget.org/packages/Hermodr.Publisher.Outbox.EntityFramework)
 [![GitHub pre-release](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/hermodr/pkgs/nuget/Hermodr.Publisher.Outbox.EntityFramework)
 
-Adds Entity Framework Core integration for the outbox channel, including `DbOutboxMessage`, `OutboxDbContext`, and the `WithEntityFramework()` registration helper that wires an `IOutboxMessageStore<TMessage>` backed by EF Core.
+Adds Entity Framework Core integration for the outbox channel, including `DbOutboxMessage`, `OutboxDbContext`, and the `WithEntityFramework()` registration helper that wires an `IOutboxMessageRepository<TMessage>` backed by EF Core.
 
 ```bash
 dotnet add package Hermodr.Publisher.Outbox.EntityFramework
@@ -224,58 +210,6 @@ See [OpenTelemetry Instrumentation](publishers/opentelemetry.md) for the full gu
 
 ---
 
-### `Hermodr.Publisher.DeliveryLog`
-
-[![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.DeliveryLog.svg)](https://www.nuget.org/packages/Hermodr.Publisher.DeliveryLog)
-[![GitHub pre-release](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/hermodr/pkgs/nuget/Hermodr.Publisher.DeliveryLog)
-
-Core delivery log package. Provides the `DeliveryLogMiddleware`, `IEventPublishDeliveryLog` abstraction, and `DeliveryLogBuilder` for configuring pluggable storage backends.
-
-```bash
-dotnet add package Hermodr.Publisher.DeliveryLog
-```
-
----
-
-### `Hermodr.Publisher.DeliveryLog.InMemory`
-
-[![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.DeliveryLog.InMemory.svg)](https://www.nuget.org/packages/Hermodr.Publisher.DeliveryLog.InMemory)
-[![GitHub pre-release](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/hermodr/pkgs/nuget/Hermodr.Publisher.DeliveryLog.InMemory)
-
-In-memory storage backend for the delivery log. All records are held in a thread-safe, volatile collection. Suitable for tests and local development, but records are lost on process restart.
-
-```bash
-dotnet add package Hermodr.Publisher.DeliveryLog.InMemory
-```
-
----
-
-### `Hermodr.Publisher.DeliveryLog.NDJson`
-
-[![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.DeliveryLog.NDJson.svg)](https://www.nuget.org/packages/Hermodr.Publisher.DeliveryLog.NDJson)
-[![GitHub pre-release](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/hermodr/pkgs/nuget/Hermodr.Publisher.DeliveryLog.NDJson)
-
-Newline-delimited JSON (NDJSON) rolling-file backend for the delivery log. Appends each record as a JSON line to sequentially-named files with automatic file rolling by size or time interval and retention policies.
-
-```bash
-dotnet add package Hermodr.Publisher.DeliveryLog.NDJson
-```
-
----
-
-### `Hermodr.Publisher.DeliveryLog.EntityFramework`
-
-[![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.DeliveryLog.EntityFramework.svg)](https://www.nuget.org/packages/Hermodr.Publisher.DeliveryLog.EntityFramework)
-[![GitHub pre-release](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/hermodr/pkgs/nuget/Hermodr.Publisher.DeliveryLog.EntityFramework)
-
-Entity Framework Core storage backend for the delivery log. Stores records in a relational database using `Kista.EntityFramework`.
-
-```bash
-dotnet add package Hermodr.Publisher.DeliveryLog.EntityFramework
-```
-
----
-
 ### `Hermodr.Schema`
 
 [![NuGet](https://img.shields.io/nuget/v/Hermodr.Schema.svg)](https://www.nuget.org/packages/Hermodr.Schema)
@@ -324,83 +258,4 @@ An in-memory publish channel for use in unit and integration tests.  Invokes a u
 ```bash
 dotnet add package Hermodr.TestPublisher
 ```
-
----
-
-### `Hermodr.AuditTrail`
-
-[![NuGet](https://img.shields.io/nuget/v/Hermodr.AuditTrail.svg)](https://www.nuget.org/packages/Hermodr.AuditTrail)
-[![GitHub pre-release](https://img.shields.io/badge/nuget-prerelease-yellow.svg?logo=nuget)](https://github.com/deveel/hermodr/pkgs/nuget/Hermodr.AuditTrail)
-
-Core contracts for an append-only audit trail. Provides `IAuditTrailWriter`, `IAuditTrailReader<TEntry>`, `AuditTrailEntry`, `AuditTrailStreamQuery`, and the `AuditTrailBuilder` used by the publisher integration.
-
-```bash
-dotnet add package Hermodr.AuditTrail
-```
-
----
-
-### `Hermodr.Publisher.AuditTrail`
-
-[![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.AuditTrail.svg)](https://www.nuget.org/packages/Hermodr.Publisher.AuditTrail)
-[![GitHub pre-release](https://img.shields.io/badge/nuget-prerelease-yellow.svg?logo=nuget)](https://github.com/deveel/hermodr/pkgs/nuget/Hermodr.Publisher.AuditTrail)
-
-Publisher integration: `AuditTrailPublishChannel` and the `AddAuditTrail()` extension method. Use it together with one of the audit trail storage backends (`Hermodr.AuditTrail.InMemory`, `Hermodr.AuditTrail.EntityFramework`, or `Hermodr.AuditTrail.NDJson`).
-
-```bash
-dotnet add package Hermodr.Publisher.AuditTrail
-```
-
----
-
-### `Hermodr.AuditTrail.InMemory`
-
-[![NuGet](https://img.shields.io/nuget/v/Hermodr.AuditTrail.InMemory.svg)](https://www.nuget.org/packages/Hermodr.AuditTrail.InMemory)
-[![GitHub pre-release](https://img.shields.io/badge/nuget-prerelease-yellow.svg?logo=nuget)](https://github.com/deveel/hermodr/pkgs/nuget/Hermodr.AuditTrail.InMemory)
-
-In-memory storage backend for the audit trail. Suitable for testing and development.
-
-```bash
-dotnet add package Hermodr.AuditTrail.InMemory
-```
-
----
-
-### `Hermodr.AuditTrail.EntityFramework`
-
-[![NuGet](https://img.shields.io/nuget/v/Hermodr.AuditTrail.EntityFramework.svg)](https://www.nuget.org/packages/Hermodr.AuditTrail.EntityFramework)
-[![GitHub pre-release](https://img.shields.io/badge/nuget-prerelease-yellow.svg?logo=nuget)](https://github.com/deveel/hermodr/pkgs/nuget/Hermodr.AuditTrail.EntityFramework)
-
-Entity Framework Core storage backend for the audit trail. Supports SQL Server, PostgreSQL, and SQLite.
-
-```bash
-dotnet add package Hermodr.AuditTrail.EntityFramework
-```
-
----
-
-### `Hermodr.AuditTrail.NDJson`
-
-[![NuGet](https://img.shields.io/nuget/v/Hermodr.AuditTrail.NDJson.svg)](https://www.nuget.org/packages/Hermodr.AuditTrail.NDJson)
-[![GitHub pre-release](https://img.shields.io/badge/nuget-prerelease-yellow.svg?logo=nuget)](https://github.com/deveel/hermodr/pkgs/nuget/Hermodr.AuditTrail.NDJson)
-
-Newline-delimited JSON (NDJSON) file storage backend for the audit trail, with automatic file rolling by size or time interval and retention policies. All I/O is performed through the `IFileSystem` abstraction from [`System.IO.Abstractions`](https://www.nuget.org/packages/System.IO.Abstractions), so the local disk can be replaced with Azure Blob Storage, Amazon S3, or any other compatible filesystem by registering a different `IFileSystem` implementation. Reads are **asynchronous and non-blocking**: files are opened with `FileShare.ReadWrite` and streamed line-by-line, so a concurrent writer is never blocked and the full file content is never loaded into memory.
-
-```csharp
-builder.Services.AddEventPublisher(o => o.Source = new Uri("https://example.com"))
-    .AddAuditTrail(audit => audit.UseNDJson(o =>
-    {
-        o.DirectoryPath = "./audit-trail";
-        o.MaxFileSizeBytes = 10 * 1024 * 1024;
-        o.RollInterval = TimeSpan.FromHours(1);
-        o.MaxFileCount = 100;
-        o.ReadBufferSize = 65_536;  // optional: tune for large files
-    }));
-```
-
-```bash
-dotnet add package Hermodr.AuditTrail.NDJson
-```
-
-See the [Audit Trail with NDJson Files](samples/audit-trail-ndjson.md) sample for a full walkthrough.
 

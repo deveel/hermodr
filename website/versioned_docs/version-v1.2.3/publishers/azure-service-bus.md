@@ -1,11 +1,11 @@
 # Azure Service Bus Channel
 
-The `Hermodr.Publisher.AzureServiceBus` package adds a publish channel that serialises `CloudEvent` instances as `ServiceBusMessage` objects and delivers them to an Azure Service Bus queue or topic.
+The `Deveel.Events.Publisher.AzureServiceBus` package adds a publish channel that serialises `CloudEvent` instances as `ServiceBusMessage` objects and delivers them to an Azure Service Bus queue or topic.
 
 ## Installation
 
 ```bash
-dotnet add package Hermodr.Publisher.AzureServiceBus
+dotnet add package Deveel.Events.Publisher.AzureServiceBus
 ```
 
 ## Registration
@@ -13,7 +13,7 @@ dotnet add package Hermodr.Publisher.AzureServiceBus
 ### Inline configuration
 
 ```csharp
-using Hermodr;
+using Deveel.Events;
 
 builder.Services
     .AddEventPublisher()
@@ -132,7 +132,7 @@ If you need to control how the `ServiceBusClient` is created (e.g. for managed i
 ```csharp
 using Azure.Identity;
 using Azure.Messaging.ServiceBus;
-using Hermodr;
+using Deveel.Events;
 
 public class ManagedIdentityServiceBusClientFactory : IServiceBusClientFactory
 {

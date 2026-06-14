@@ -110,8 +110,18 @@
         "samples/audit-trail-ndjson"
       ]
     },
-    "versioning",
-    "roadmap",
+    {
+      "type": "category",
+      "label": "Project",
+      "link": {
+        "type": "generated-index",
+        "title": "Project"
+      },
+      "items": [
+        "versioning",
+        "amqp/README"
+      ]
+    },
     "contributing"
   ]
 }

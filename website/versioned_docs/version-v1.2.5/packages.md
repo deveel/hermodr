@@ -20,11 +20,7 @@ The framework is split into focused NuGet packages so you only take what you nee
 | [`Hermodr.Publisher.MassTransit`](#hermodr-publisher-masstransit) | Publish events through a MassTransit bus |
 | [`Hermodr.Publisher.Webhook`](#hermodr-publisher-webhook) | Deliver events to HTTP webhook endpoints |
 | [`Hermodr.Publisher.Outbox`](#hermodr-publisher-outbox) | Persist events to a transactional outbox for later relay |
-| [`Hermodr.Publisher.Outbox.EntityFramework`](#hermodr-publisher-outbox-entityframework) | Entity Framework Core store and helpers for the outbox channel |
-| [`Hermodr.Publisher.DeliveryLog`](#hermodr-publisher-deliverylog) | Core delivery log middleware and storage abstractions |
-| [`Hermodr.Publisher.DeliveryLog.InMemory`](#hermodr-publisher-deliverylog-inmemory) | In-memory storage backend for delivery log records |
-| [`Hermodr.Publisher.DeliveryLog.NDJson`](#hermodr-publisher-deliverylog-ndjson) | NDJson rolling-file backend for delivery log records |
-| [`Hermodr.Publisher.DeliveryLog.EntityFramework`](#hermodr-publisher-deliverylog-entityframework) | Entity Framework Core persistence for delivery log records |
+| [`Hermodr.Publisher.Outbox.EntityFramework`](#hermodr-publisher-outbox-entityframework) | Entity Framework Core repository and helpers for the outbox channel |
 | [`Hermodr.Amqp.Annotations`](#hermodr-amqp-annotations) | AMQP-specific attributes (exchange name, routing key) |
 
 ## Subscriptions package
@@ -157,7 +153,7 @@ dotnet add package Hermodr.Publisher.Webhook
 [![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.Outbox.svg)](https://www.nuget.org/packages/Hermodr.Publisher.Outbox)
 [![GitHub pre-release](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/hermodr/pkgs/nuget/Hermodr.Publisher.Outbox)
 
-Implements the transactional outbox pattern for event publishing.  It adds the `AddOutbox<TMessage>()` builder entry point, outbox relay services, the `IOutboxMessageStore<TMessage>` abstraction, and message-factory hooks for persisting events before relaying them to a transport-specific publisher pipeline.
+Implements the transactional outbox pattern for event publishing.  It adds the `AddOutbox<TMessage>()` builder entry point, outbox relay services, repository abstractions, and message-factory hooks for persisting events before relaying them to a transport-specific publisher pipeline.
 
 ```bash
 dotnet add package Hermodr.Publisher.Outbox
@@ -170,7 +166,7 @@ dotnet add package Hermodr.Publisher.Outbox
 [![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.Outbox.EntityFramework.svg)](https://www.nuget.org/packages/Hermodr.Publisher.Outbox.EntityFramework)
 [![GitHub pre-release](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/hermodr/pkgs/nuget/Hermodr.Publisher.Outbox.EntityFramework)
 
-Adds Entity Framework Core integration for the outbox channel, including `DbOutboxMessage`, `OutboxDbContext`, and the `WithEntityFramework()` registration helper that wires an `IOutboxMessageStore<TMessage>` backed by EF Core.
+Adds Entity Framework Core integration for the outbox channel, including `DbOutboxMessage`, `OutboxDbContext`, and the `WithEntityFramework()` registration helper that wires an `IOutboxMessageRepository<TMessage>` backed by EF Core.
 
 ```bash
 dotnet add package Hermodr.Publisher.Outbox.EntityFramework
@@ -221,58 +217,6 @@ dotnet add package Hermodr.Publisher.OpenTelemetry
 ```
 
 See [OpenTelemetry Instrumentation](publishers/opentelemetry.md) for the full guide.
-
----
-
-### `Hermodr.Publisher.DeliveryLog`
-
-[![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.DeliveryLog.svg)](https://www.nuget.org/packages/Hermodr.Publisher.DeliveryLog)
-[![GitHub pre-release](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/hermodr/pkgs/nuget/Hermodr.Publisher.DeliveryLog)
-
-Core delivery log package. Provides the `DeliveryLogMiddleware`, `IEventPublishDeliveryLog` abstraction, and `DeliveryLogBuilder` for configuring pluggable storage backends.
-
-```bash
-dotnet add package Hermodr.Publisher.DeliveryLog
-```
-
----
-
-### `Hermodr.Publisher.DeliveryLog.InMemory`
-
-[![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.DeliveryLog.InMemory.svg)](https://www.nuget.org/packages/Hermodr.Publisher.DeliveryLog.InMemory)
-[![GitHub pre-release](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/hermodr/pkgs/nuget/Hermodr.Publisher.DeliveryLog.InMemory)
-
-In-memory storage backend for the delivery log. All records are held in a thread-safe, volatile collection. Suitable for tests and local development, but records are lost on process restart.
-
-```bash
-dotnet add package Hermodr.Publisher.DeliveryLog.InMemory
-```
-
----
-
-### `Hermodr.Publisher.DeliveryLog.NDJson`
-
-[![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.DeliveryLog.NDJson.svg)](https://www.nuget.org/packages/Hermodr.Publisher.DeliveryLog.NDJson)
-[![GitHub pre-release](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/hermodr/pkgs/nuget/Hermodr.Publisher.DeliveryLog.NDJson)
-
-Newline-delimited JSON (NDJSON) rolling-file backend for the delivery log. Appends each record as a JSON line to sequentially-named files with automatic file rolling by size or time interval and retention policies.
-
-```bash
-dotnet add package Hermodr.Publisher.DeliveryLog.NDJson
-```
-
----
-
-### `Hermodr.Publisher.DeliveryLog.EntityFramework`
-
-[![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.DeliveryLog.EntityFramework.svg)](https://www.nuget.org/packages/Hermodr.Publisher.DeliveryLog.EntityFramework)
-[![GitHub pre-release](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/hermodr/pkgs/nuget/Hermodr.Publisher.DeliveryLog.EntityFramework)
-
-Entity Framework Core storage backend for the delivery log. Stores records in a relational database using `Kista.EntityFramework`.
-
-```bash
-dotnet add package Hermodr.Publisher.DeliveryLog.EntityFramework
-```
 
 ---
 

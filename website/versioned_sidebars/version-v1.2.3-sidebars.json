@@ -43,7 +43,6 @@
         "publishers/masstransit",
         "publishers/webhook",
         "publishers/error-handling",
-        "publishers/opentelemetry",
         "publishers/outbox",
         "publishers/dead-letter",
         "publishers/delivery-log",
@@ -106,12 +105,21 @@
         "samples/outbox-inapp-scheduled-delivery",
         "samples/outbox-relay-masstransit",
         "samples/deadletter-inproc",
-        "samples/deadletter-relay-entityframework",
-        "samples/audit-trail-ndjson"
+        "samples/deadletter-relay-entityframework"
       ]
     },
-    "versioning",
-    "roadmap",
+    {
+      "type": "category",
+      "label": "Project",
+      "link": {
+        "type": "generated-index",
+        "title": "Project"
+      },
+      "items": [
+        "versioning",
+        "amqp/README"
+      ]
+    },
     "contributing"
   ]
 }

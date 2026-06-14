@@ -32,6 +32,32 @@
     },
     {
       "type": "category",
+      "label": "Event Schema",
+      "link": {
+        "type": "doc",
+        "id": "schema/README"
+      },
+      "items": [
+        "schema/fluent-builder",
+        "schema/from-annotations",
+        {
+          "type": "category",
+          "label": "Export Formats",
+          "link": {
+            "type": "doc",
+            "id": "schema/export/README"
+          },
+          "items": [
+            "schema/export/json",
+            "schema/export/yaml",
+            "schema/export/asyncapi"
+          ]
+        },
+        "schema/validation"
+      ]
+    },
+    {
+      "type": "category",
       "label": "Publisher Channels",
       "link": {
         "type": "doc",
@@ -44,27 +70,85 @@
         "publishers/webhook",
         "publishers/error-handling",
         "publishers/opentelemetry",
-        "publishers/outbox",
-        "publishers/dead-letter",
-        "publishers/delivery-log",
         "publishers/typed-channels",
         "publishers/named-channels"
       ]
     },
     {
       "type": "category",
-      "label": "Event Schema",
+      "label": "Reliability Patterns",
       "link": {
-        "type": "doc",
-        "id": "schema/README"
+        "type": "generated-index",
+        "title": "Reliability Patterns"
       },
       "items": [
-        "schema/fluent-builder",
-        "schema/from-annotations",
-        "schema/export-json",
-        "schema/export-yaml",
-        "schema/export-asyncapi",
-        "schema/validation"
+        {
+          "type": "category",
+          "label": "Outbox",
+          "link": {
+            "type": "doc",
+            "id": "publishers/reliability/outbox/README"
+          },
+          "items": [
+            "publishers/reliability/outbox/components",
+            "publishers/reliability/outbox/installation",
+            "publishers/reliability/outbox/registration",
+            "publishers/reliability/outbox/lifecycle",
+            "publishers/reliability/outbox/relay",
+            "publishers/reliability/outbox/ef-core-integration",
+            "publishers/reliability/outbox/example"
+          ]
+        },
+        {
+          "type": "category",
+          "label": "Dead-Letter",
+          "link": {
+            "type": "doc",
+            "id": "publishers/reliability/dead-letter/README"
+          },
+          "items": [
+            "publishers/reliability/dead-letter/persistence",
+            "publishers/reliability/dead-letter/in-process-handling",
+            "publishers/reliability/dead-letter/background-worker",
+            "publishers/reliability/dead-letter/replay",
+            "publishers/reliability/dead-letter/ef-core-integration",
+            "publishers/reliability/dead-letter/deployment"
+          ]
+        },
+        {
+          "type": "category",
+          "label": "Delivery Log",
+          "link": {
+            "type": "doc",
+            "id": "publishers/reliability/delivery-log/README"
+          },
+          "items": [
+            "publishers/reliability/delivery-log/installation",
+            "publishers/reliability/delivery-log/registration",
+            "publishers/reliability/delivery-log/middleware",
+            "publishers/reliability/delivery-log/storage-backends",
+            "publishers/reliability/delivery-log/ef-core-backend",
+            "publishers/reliability/delivery-log/ndjson-backend",
+            "publishers/reliability/delivery-log/error-handler",
+            "publishers/reliability/delivery-log/comparison"
+          ]
+        },
+        {
+          "type": "category",
+          "label": "Audit Trail",
+          "link": {
+            "type": "doc",
+            "id": "publishers/reliability/audit-trail/README"
+          },
+          "items": [
+            "publishers/reliability/audit-trail/concepts",
+            "publishers/reliability/audit-trail/installation",
+            "publishers/reliability/audit-trail/ndjson-backend",
+            "publishers/reliability/audit-trail/filesystem-abstraction",
+            "publishers/reliability/audit-trail/querying",
+            "publishers/reliability/audit-trail/examples"
+          ]
+        }
       ]
     },
     {
@@ -112,6 +196,7 @@
     },
     "versioning",
     "roadmap",
+    "frameworks-comparison",
     "contributing"
   ]
 }

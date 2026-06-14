@@ -1,12 +1,12 @@
 # Versioning Strategy
 
-This document describes how Hermodr is versioned, how version numbers are calculated automatically, and how releases are produced.
+This document describes how Deveel Events is versioned, how version numbers are calculated automatically, and how releases are produced.
 
 ---
 
 ## Semantic Versioning
 
-Hermodr follows [Semantic Versioning 2.0.0](https://semver.org/):
+Deveel Events follows [Semantic Versioning 2.0.0](https://semver.org/):
 
 ```
 MAJOR.MINOR.PATCH[-pre-release]
@@ -65,12 +65,12 @@ The number at the end of the pre-release tag is the **commit count since the las
      git tag v1.2.0
           │
           ▼
-    ┌─────────────┐    merge (any)   ┌──────────────┐    merge (any)    ┌──────────────┐
-    │  main 1.2.0 │ ───────────────► │ 1.2.1-pre.1  │ ────────────────► │ 1.2.1-pre.2  │
+    ┌─────────────┐    merge (any)    ┌──────────────┐    merge (any)    ┌──────────────┐
+    │  main 1.2.0 │ ───────────────► │ 1.2.1-pre.1  │ ───────────────► │ 1.2.1-pre.2  │
     └─────────────┘                  └──────┬───────┘                   └──────┬───────┘
-                                            │ CI → GitHub Packages             │
+                                            │ CI → GitHub Packages              │
                                             │                       git tag v1.2.1
-                                            │                                  ▼
+                                            │                                   ▼
                                             │                           ┌──────────────┐
                                             │                           │  1.2.1 ✅    │ ← NuGet.org stable
                                             │                           └──────────────┘
@@ -79,9 +79,9 @@ The number at the end of the pre-release tag is the **commit count since the las
                                     git tag v1.3.0
                                             │
                                             ▼
-                                    ┌───────────────┐
-                                    │   1.3.0 ✅    │ ← NuGet.org stable
-                                    └───────────────┘
+                                    ┌──────────────┐
+                                    │  1.3.0 ✅    │ ← NuGet.org stable
+                                    └──────────────┘
                                             │
                                      next merges → 1.3.1-pre.1, …
 ```
