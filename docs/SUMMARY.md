@@ -46,6 +46,7 @@
 * [Export as YAML](schema/export-yaml.md)
 * [Export as AsyncAPI](schema/export-asyncapi.md)
 * [Validation](schema/validation.md)
+* [Validation at Publish Time](schema/validation-at-publish.md)
 
 ## Event Subscriptions
 

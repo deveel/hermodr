@@ -308,6 +308,7 @@ public sealed class TenantRoutingMiddleware : IEventMiddleware
 | Enrichment | Add correlation IDs, tenant IDs, trace attributes to every event |
 | Conditional enrichment | Use `UseWhen` to add attributes only when a condition is met |
 | Validation / policy | Inspect `context.Event` and block selected publishes |
+| Schema validation | Validate payload against registered schemas — see [Schema Validation at Publish Time](../schema/validation-at-publish.md) |
 | Deduplication | Short-circuit when the same event ID has already been seen |
 | Observability | Log, trace, and measure latency before/after `next(context)` |
 | Distributed tracing | Built-in via `AddOpenTelemetry()` — see [OpenTelemetry Instrumentation](../publishers/opentelemetry.md) |

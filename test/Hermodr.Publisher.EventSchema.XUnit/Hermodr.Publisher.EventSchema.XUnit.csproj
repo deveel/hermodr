@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Hermodr.Publisher.EventSchema\Hermodr.Publisher.EventSchema.csproj" />
+    <ProjectReference Include="..\..\src\Hermodr.TestPublisher\Hermodr.TestPublisher.csproj" />
+  </ItemGroup>
+
+</Project>

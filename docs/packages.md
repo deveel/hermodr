@@ -56,6 +56,7 @@ The framework is split into focused NuGet packages so you only take what you nee
 | [`Hermodr.Schema`](#hermodr-schema) | Core schema model, fluent builder, JSON writer, and schema validation |
 | [`Hermodr.Schema.Yaml`](#hermodr-schema-yaml) | Export an event schema as a YAML document |
 | [`Hermodr.Schema.AsyncApi`](#hermodr-schema-asyncapi) | Export schemas as an AsyncAPI 2.x document (JSON or YAML) |
+| [`Hermodr.Publisher.EventSchema`](#hermodr-publisher-eventschema) | Automatic schema validation middleware for the publish pipeline |
 
 ## Test package
 
@@ -403,4 +404,18 @@ dotnet add package Hermodr.AuditTrail.NDJson
 ```
 
 See the [Audit Trail with NDJson Files](samples/audit-trail-ndjson.md) sample for a full walkthrough.
+
+---
+
+### `Hermodr.Publisher.EventSchema`
+
+[![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.EventSchema.svg)](https://www.nuget.org/packages/Hermodr.Publisher.EventSchema)
+
+Adds a middleware component that automatically validates every event's payload against its registered schema before dispatch. Supports format-agnostic validation (JSON, XML), version-aware schema lookup, and configurable behaviors for missing schemas and validation failures.
+
+```bash
+dotnet add package Hermodr.Publisher.EventSchema
+```
+
+See [Schema Validation at Publish Time](schema/validation-at-publish.md) for the full guide.
 

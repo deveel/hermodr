@@ -30,6 +30,7 @@ dotnet add package Hermodr.Schema
 | [Export as YAML](export-yaml.md) | Serialise a schema to a YAML document |
 | [Export as AsyncAPI](export-asyncapi.md) | Generate complete AsyncAPI 2.x documents |
 | [Validation](validation.md) | Validate `CloudEvent` instances against a schema |
+| [Validation at Publish Time](validation-at-publish.md) | Automatic schema validation via middleware |
 
 ## Schema model at a glance
 
