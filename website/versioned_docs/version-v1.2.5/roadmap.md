@@ -1,0 +1,942 @@
+# Hermodr — Roadmap
+
+This document outlines the planned evolution of the **Hermodr** framework. Items are grouped by milestone and ordered by planned delivery. All proposals are subject to community feedback — open an issue or discussion if you want to influence prioritisation.
+
+---
+
+## Version Strategy & Milestones
+
+The table below maps each roadmap item to the release milestone in which it is planned to ship. Version numbers follow [Semantic Versioning](https://semver.org/): a **minor** bump (`x.Y.0`) delivers new, backward-compatible capabilities; a **major** bump (`X.0.0`) signals a significant architectural expansion.
+
+| Milestone | Version | Theme                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Items |
+|-----------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------|
+| **Stable Publisher** | **v1.0.0** | Harden the publishing and schema packages, freeze public APIs, and ship production-ready documentation.                                                                                                                                                                                                                                                                                                                                                                               | — (current publisher + schema feature set) |
+| **Routing & Middleware** | **v1.1.0** | Introduce the foundational subscription & routing abstraction and the event middleware pipeline, enabling all later consumer-side and observability work.                                                                                                                                                                                                                                                                                                                             | 1 · 2 |
+| **Reliability** | **v1.2.0** | Add dead-letter capture and replay, the outbox pattern, and the event scheduler to make publishing robust to transient failures and deferred delivery requirements.                                                                                                                                                                                                                                                                                                                   | 3 · 4 · 5 |
+| **Observability** | **v1.3.0** | End-to-end distributed tracing via OpenTelemetry, schema validation at publish time, the append-only event store / audit log channel, and the publish delivery log for operational delivery telemetry.                                                                                                                                                                                                                                                                                | 6 · 7 · 8 · 9 |
+| **Schema Governance** | **v1.4.0** | Formal schema versioning, compatibility checking, upcasting, and AsyncAPI / schema export tooling improvements.                                                                                                                                                                                                                                                                                                                                                                       | 10 · 11 |
+| **New Transports** | **v1.5.0** | CloudEvents HTTP binding compliance for the Webhook publisher, a new lightweight HTTP CloudEvents channel, plus new channel adapters for gRPC streaming, Apache Kafka, Amazon SQS, Amazon SNS, Google Cloud Pub/Sub, and NATS/JetStream.                                                                                                                                                                                                                                              | 12 · 13 · 14 · 15 · 16 · 17 · 18 · 19 |
+| **Code Generation** | **v1.6.0** | Roslyn incremental source generators that read `[Event]` / `[EventProperty]` annotations at compile time to emit zero-reflection `IEventConvertible` implementations, pre-built schema DI registration helpers, and strongly-typed domain publisher interfaces — shifting annotation errors left to the build and eliminating startup reflection overhead. | 20 · 21 · 22 |
+| **Compliance** | **v1.7.0** | Schema-driven data classification and redaction for the regulated industries. Built on the `Microsoft.Extensions.Compliance.*` stack (no reinvented taxonomy), with storage-boundary redaction for the Audit Trail and the Delivery Log and an in-transit redaction pass for outbound publish channels — keeping clear-text confidential data out of every persistent and transported form. | 23 · 24 · 25 · 26 |
+| **Event Consumers** | **v2.0.0** | First-class consumer adapters — ASP.NET Core Webhook framework, pre-built SaaS platform adapters (Facebook, SendGrid, Twilio, Stripe, GitHub, Shopify), RabbitMQ, Azure Service Bus, and MassTransit — completing the publish / consume lifecycle. This is a **major** release because it introduces a new, independently versioned surface area (`Hermodr.Consumer.*` packages) and changes the framing of the framework from a pure publisher to a full event-driven toolkit. | 27 · 28 · 29 · 30 · 31 |
+| **Testing & DX** | **v2.1.0** | Expanded testing utilities with fluent publish assertions and an in-memory event bus, a local development console sink, .NET Aspire integration, and a `dotnet event` CLI tool with a companion standalone executable — completing the developer inner-loop and tooling story. | 32 · 33 · 34 · 35 · 36 |
+| **Subscription Management** | **v2.2.0** | Provider-agnostic subscription management framework, EF Core and MongoDB registry providers, and a secured REST management API with OpenAPI metadata and change-notification webhooks. | 37 · 38 · 39 · 40 |
+| **Framework Integrations** | **v2.3.0** | Bridges between Hermodr and the four major .NET in-process mediator / command-bus frameworks — MediatR, Wolverine, Brighter — so teams can emit CloudEvents as a natural side-effect of existing handler dispatch and route inbound CloudEvents back into each framework's handler pipeline. | 41 · 42 · 43 |
+
+---
+
+## Routing & Middleware
+
+### 1. Event Subscription & Routing
+
+> *Subscribe to an event type, optionally with attribute-based filtering, and have it automatically routed to the designated channel.*
+
+**The problem today:** Hermodr is a pure publishing framework. Consumers must implement their own demultiplexing logic on top of the raw channel primitives, leading to repeated boilerplate.
+
+**What we will build:** An `IEventSubscription` abstraction and a companion subscription registry. Subscribers declare which CloudEvents `type` (and optionally `source`, `subject`, or arbitrary extension attributes) they are interested in. An in-process dispatcher matches incoming events against the registry and invokes the appropriate handler on the correct channel. Filtering will support exact matches, prefix wildcards, and predicate delegates for advanced cases.
+
+**Benefits:**
+- Eliminates hand-rolled routing code in every consuming service.
+- Makes the event flow explicit and auditable in one place.
+- Pairs naturally with the existing schema and annotation packages — filter expressions can reference schema-declared property names.
+- Provides a foundation for all other consumer-side features below.
+
+---
+
+### 2. Event Middleware Pipeline
+
+> *A composable pipeline applied before and after every publish, analogous to ASP.NET Core middleware.*
+
+**The problem today:** Cross-cutting concerns — logging, enrichment, schema validation, correlation ID injection — have no standard hook point between `EventPublisher` and `IEventPublishChannel`. Each application wires these up ad hoc.
+
+**What we will build:** An `IEventMiddleware` interface with a `next` delegate pattern, and a `UseMiddleware<T>()` extension on `EventPublisherBuilder`. Middleware instances run in registration order on every publish call and have access to the full `CloudEvent` and the resolved channel list.
+
+**Benefits:**
+- Centralises cross-cutting concerns in reusable, independently testable units.
+- First-party middleware will be provided for logging, schema validation (see item 8), and tracing (see item 6), making them opt-in with a single line of configuration.
+- Third parties can distribute middleware as NuGet packages without forking the core.
+- Zero impact on existing code — the pipeline is an additive layer over the current publish path.
+
+---
+
+## Reliability
+
+### 3. Event Replay & Dead-Letter Handling
+
+> *Capture events that fail delivery, inspect them, and replay them without reprocessing the entire stream.*
+
+**The problem today:** `EventPublisherOptions.ThrowOnErrors = false` suppresses exceptions but discards the information entirely. There is no facility to recover failed events.
+
+**What we will build:** A dead-letter channel abstraction (`IDeadLetterChannel`) that captures failed events together with their exception, timestamp, and attempted delivery metadata. A separate replay API will allow operators or background jobs to resubmit captured events to the original channel (or a different one), with configurable retry policies and back-off strategies.
+
+**Benefits:**
+- Eliminates silent data loss when a downstream broker is temporarily unavailable.
+- Gives operators a clear inspection point for diagnosing integration failures.
+- Supports compliance scenarios where every emitted event must eventually be processed.
+- Pluggable storage backends (in-memory for tests, database or blob storage in production).
+
+---
+
+### 4. Outbox Pattern Integration
+
+> *Write events to a local database table first, then dispatch them asynchronously — guaranteeing exactly-once publishing even when the broker is down.*
+
+**The problem today:** Publishing an event in the same business transaction as the database write that triggered it is a dual-write problem. If the broker call fails, the database change has already been committed and the event is lost. If the events are published first, an application crash can cause duplicate side effects.
+
+**What we will build:** A `Hermodr.Publisher.Outbox` package providing an outbox channel that persists events to a relational store (EF Core by default, with an extensible provider model) inside the same `DbContext` transaction as the business operation. A hosted service polls the outbox table and forwards committed events to the real channel, marking them as dispatched.
+
+**Benefits:**
+- Guarantees that every committed business operation produces its corresponding events, even in the face of network failures or process crashes.
+- Fully transparent to application code — replace any other channel with the outbox channel.
+- Compatible with all existing channel adapters (RabbitMQ, Azure Service Bus, etc.).
+- Supports idempotency markers to safely handle duplicate delivery on the consumer side.
+
+---
+
+### 5. Event Scheduler & Deferred Publishing
+
+> *Schedule events to be published at a future point in time, or after a configurable delay.*
+
+**The problem today:** There is no built-in way to defer an event. Applications that need deferred semantics must implement their own timer logic or use broker-specific features (Azure Service Bus scheduled messages, RabbitMQ TTL queues) directly.
+
+**What we will build:** A scheduler abstraction (`IEventScheduler`) with `ScheduleAsync(CloudEvent, DateTimeOffset)` and `ScheduleAfterAsync(CloudEvent, TimeSpan)` signatures. The default implementation persists scheduled events to a store (reusing the outbox infrastructure) and dispatches them via a `BackgroundService` at the appropriate time. Broker-native scheduling will be used where available for higher precision.
+
+**Benefits:**
+- Decouples the business decision of *when* to notify from the infrastructure details of how to defer it.
+- Useful for reminders, SLA escalations, delayed notifications, and time-based workflow steps.
+- Leverages native broker scheduling (Azure Service Bus, RabbitMQ) when available for lower overhead.
+- Cancellation support allows scheduled events to be withdrawn before they fire.
+
+---
+
+## Observability
+
+### 6. OpenTelemetry & Distributed Tracing Integration ✅
+
+> *Propagate and extract W3C trace context as CloudEvents extensions, enabling end-to-end traces across service boundaries.*
+
+**What was built:** `Hermodr.Publisher.OpenTelemetry` — a package that instruments `EventPublisher` with `Activity` spans, injects W3C `traceparent`/`tracestate` as CloudEvents extension attributes on publish, and extracts them on the subscription/consumer side to continue the trace. A unified diagnostics infrastructure (`HermodrDiagnostics`, `PublisherTelemetry`, `ChannelTelemetry`) now spans all publisher and subscription components.
+
+**What was delivered:**
+- `OpenTelemetryPublishMiddleware` / `OpenTelemetrySubscriptionMiddleware` — middleware that injects/extracts trace context on every event
+- `PipelineDiagnosticsMiddleware` — pipeline-level diagnostics
+- Per-transport telemetry classes for all channels (Azure Service Bus, RabbitMQ, MassTransit, Webhook, Outbox, Dead-Letter, Audit Trail)
+- `OpenTelemetryBuilderExtensions` — fluent extensions for wiring diagnostics
+- Full end-to-end trace correlation across service boundaries
+
+**Benefits:**
+- Publishers and consumers appear as linked spans in tools like Jaeger, Zipkin, or Azure Monitor.
+- No code changes required in business logic — tracing is applied through a middleware registration.
+- Complies with the [CloudEvents distributed tracing extension](https://github.com/cloudevents/spec/blob/main/cloudevents/extensions/distributed-tracing.md) specification.
+- Dramatically reduces mean-time-to-diagnosis for latency and failure issues in event-driven systems.
+
+---
+
+### 7. Audit Trail Channel ✅
+
+> *An append-only channel that persists every published domain event for compliance auditing and debugging.*
+
+**What was built:** Five new packages providing an append-only event audit trail with multiple storage backends and publisher integration.
+
+**What was delivered:**
+- `Hermodr.AuditTrail` — Core package with `IAuditTrailEntry`, `IAuditTrailWriter`, `IAuditTrailReader<T>`, `AuditTrailStreamQuery`, and `AuditTrailBuilder`.
+- `Hermodr.AuditTrail.InMemory` — In-memory storage backend for testing and development.
+- `Hermodr.AuditTrail.EntityFramework` — Entity Framework Core storage backend supporting SQL Server, PostgreSQL, and SQLite.
+- `Hermodr.AuditTrail.NDJson` — NDJson file storage backend with pluggable filesystem (Azure Blob, S3, local disk), auto file rolling by size or time interval, and retention policies.
+- `Hermodr.Publisher.AuditTrail` — Publisher integration: `AuditTrailPublishChannel` and `AddAuditTrail()` extension method following the same pattern as RabbitMQ, Azure Service Bus, and other channel adapters.
+
+> **Scope note:** The Audit Trail records *domain facts* — the event payload, metadata, and CloudEvents attributes — not the operational outcome of the delivery attempt itself. For tracking delivery attempts, retries, error codes, and latency, see item 9 (Publish Delivery Log) below.
+
+**Benefits:**
+- Provides a complete, immutable audit trail of all domain events without relying on broker retention policies.
+- Useful in regulated industries where an immutable record of domain facts is a compliance requirement.
+- Can be combined with the dead-letter and replay features to correlate failures with their originating events.
+- Follows the existing channel adapter pattern — supports typed channels (`AddAuditTrail<TEvent>()`) and named channels for per-event-type recording.
+- Query capabilities are provided by each storage implementation, with `PageQuery<T>` extensions for composable filtering.
+
+---
+
+### 8. Schema Validation at Publish Time
+
+> *Validate every event against its registered schema before dispatching it to a channel.*
+
+**The problem today:** The `Hermodr.Schema` and `Hermodr.Publisher` packages are entirely separate. An event with missing required fields or out-of-range values is published without complaint, and the error only surfaces at consumer side — or not at all.
+
+> **Already shipped (patch):** `EventPublisher` now enforces the four required CloudEvents envelope attributes (`id`, `source`, `type`, `specversion`) after enrichment and before channel dispatch, throwing `InvalidCloudEventException` if any are absent. This is a minimal, envelope-only guard. Full _payload_ validation — checking the `data` field against its declared schema — is the scope of this item and remains deferred.
+
+**What we will build:** A schema validation middleware (see item 2) that looks up the schema for a CloudEvent's `type` from the registered `IEventSchemaFactory` and runs the existing `IEventSchemaValidator` before the event reaches any channel. Failed validation can be configured to throw, log, or route to the dead-letter channel.
+
+**Benefits:**
+- Shifts schema violations left to the publisher boundary, where they are cheapest to fix.
+- Reduces integration bugs caused by structurally invalid events reaching consumers.
+- Works transparently with events declared using the `[Event]` and `[EventProperty]` annotations — no extra schema authoring required.
+- Provides immediate developer feedback during local testing.
+
+---
+
+### 9. Publish Delivery Log ✅
+
+> *Record the operational outcome of every event publish attempt — channel, timestamp, attempt count, latency, and error details — across pluggable storage backends.*
+
+**What was built:** A `Hermodr.Publisher.DeliveryLog` package with separate backend packages for in-memory, NDJSON rolling files, and Entity Framework Core storage.
+
+**What was delivered:**
+- `DeliveryLogMiddleware` — intercepts each publish call and records the outcome before and after channel invocation
+- `IEventPublishDeliveryLog` — write-only interface that decouples the middleware from query capabilities
+- `DeliveryLogBuilder` — fluent configuration with `UseStore<T>()`, `UseErrorHandler()`, and backend-specific extensions
+- `Hermodr.Publisher.DeliveryLog.InMemory` — in-memory storage for tests and local development
+- `Hermodr.Publisher.DeliveryLog.NDJson` — rolling-file backend with configurable size/time thresholds and retention policies
+- `Hermodr.Publisher.DeliveryLog.EntityFramework` — relational database backend via `Kista.EntityFramework`
+
+**Benefits:**
+- Gives operations teams full visibility into publishing health without relying on broker-specific dashboards.
+- Makes retry storms and chronic failure patterns immediately visible in application-level logs.
+- The pluggable provider model means no single storage technology is mandated — use SQLite locally, PostgreSQL in staging, and a managed database in production.
+- Sharing the storage abstraction with the Event Store reduces configuration duplication and maintenance overhead.
+- Complements OpenTelemetry tracing (item 6): the delivery log captures structured operational data even when a distributed tracing backend is not available.
+- Useful for SLA reporting: query average latency and success rate per channel over any time window.
+
+---
+
+## Schema Governance
+
+### 10. Event Versioning & Compatibility
+
+> *Formal tooling for schema evolution: compatibility checking, upcasting, and version-aware routing.*
+
+**The problem today:** `IVersionedElement` exists in the schema package but is not enforced by any runtime behaviour. Breaking schema changes can silently invalidate existing consumers.
+
+**What we will build:** A compatibility checker (backward/forward/full) that compares two versions of an `EventSchema` and reports breaking changes. An upcasting pipeline will allow producers to register transformations from old schema versions to new ones, so that replayed or legacy events are automatically migrated before handling. Version-aware routing will let subscriptions optionally pin to a specific schema version range.
+
+**Benefits:**
+- Prevents accidental breaking changes from reaching consumers in production.
+- Enables smooth schema migrations without coordinated consumer deployments.
+- The compatibility checker can be integrated into CI pipelines as a quality gate.
+- Upcasting makes the event store (item 7) future-proof — stored events remain usable even after schema changes.
+
+---
+
+### 11. AsyncAPI & Schema Export Improvements
+
+> *Auto-discover event types from assemblies and enrich the exported AsyncAPI document with server, channel, and operation definitions.*
+
+**The problem today:** The `Hermodr.Schema.AsyncApi` package exports schemas but requires manual registration of each event type. Server URLs, channel bindings, and operation definitions are not populated automatically.
+
+**What we will build:** Assembly scanning to auto-register all types annotated with `[Event]`, automatic population of AsyncAPI channel and operation objects from the registered publish channels (RabbitMQ exchange name, Azure Service Bus topic, etc.), and export as OpenAPI 3.1 webhooks in addition to AsyncAPI 2.x. A dotnet global tool will allow export as a CI step without a running application.
+
+**Benefits:**
+- No manual schema registration — annotate the class and it appears in the exported document automatically.
+- The exported document becomes a living, always-up-to-date contract that can be published to a developer portal.
+- OpenAPI 3.1 webhook export makes the schema accessible to REST-centric tooling.
+- The CLI tool enables contract-first workflows and automated breaking-change detection in CI.
+
+---
+
+## Transport & Channels
+
+### 12. CloudEvents HTTP Binding Compliance for the Webhook Publisher
+
+> *Bring the existing Webhook publisher into full CloudEvents HTTP binding specification compliance — structured and binary content modes, correct `Content-Type` and `ce-*` headers — without changing its delivery semantics.*
+
+**The problem today:** `Hermodr.Publisher.Webhook` delivers events over HTTP, but sends a raw JSON payload rather than a CloudEvents-structured or binary-mode message. Receivers that expect the canonical CloudEvents envelope — correct `Content-Type: application/cloudevents+json` header in structured mode, or `ce-*` attribute headers in binary mode — must perform custom remapping before they can process the payload.
+
+**What we will build:** Targeted enhancements to `Hermodr.Publisher.Webhook`, keeping all existing delivery concerns (HMAC signing, per-subscriber retry policies, secret rotation, delivery receipts) completely unchanged:
+- **Structured content mode** (`Content-Type: application/cloudevents+json`): serialises the full CloudEvents envelope and data into a single JSON object per the spec.
+- **Binary content mode**: event attributes emitted as `ce-*` HTTP headers; the `data` field alone forms the request body with its native `datacontenttype`.
+- Per-endpoint content-mode selection (default: structured); existing webhook configurations that rely on the current raw-JSON behaviour are unaffected until explicitly opted in.
+
+**Benefits:**
+- Receivers compliant with the [CloudEvents HTTP binding specification](https://github.com/cloudevents/spec/blob/main/cloudevents/bindings/http-protocol-binding.md) — Azure Event Grid, Knative Eventing, self-hosted consumers — can receive events from the Webhook publisher without custom header/body remapping.
+- Zero breaking change: only the wire format changes when a new content-mode option is set; all signing, retrying, and subscriber-management behaviour is preserved.
+- Binary mode allows the event `data` to be any content type (e.g., `application/protobuf`) and lets attribute-based routing happen at the HTTP layer without deserialising the body.
+
+> **Scope note:** This item covers only CloudEvents wire-format compliance for the Webhook publisher. Lightweight, direct HTTP delivery to known service endpoints — without subscriber management, HMAC signing, or retry complexity — is addressed separately in item 13 below.
+
+---
+
+### 13. HTTP Publisher Channel (CloudEvents HTTP Binding)
+
+> *A lightweight channel for publishing CloudEvents directly to known HTTP endpoints using the CloudEvents structured or binary content modes — with no subscriber registry, no signing, and no delivery-tracking overhead.*
+
+**The problem today:** `Hermodr.Publisher.Webhook` is purpose-built for webhook delivery: it manages subscriber registrations, HMAC signing, per-subscriber retry policies, and delivery receipts. This machinery is valuable for fan-out webhook scenarios but is unnecessary overhead when publishing events directly to a known, trusted service endpoint — such as an internal API gateway, a sidecar, a Function app trigger URL, or an edge service. Teams needing simple HTTP delivery today must either use the full webhook publisher (dragging in unneeded complexity) or call `HttpClient` manually outside the framework pipeline.
+
+**What we will build:** A new, minimal `Hermodr.Publisher.Http` package implementing `IEventPublishChannel`:
+- Delivers events to one or more statically-configured endpoint URLs using the CloudEvents HTTP binding (structured or binary content mode, per item 12).
+- Uses `IHttpClientFactory` for connection pooling and `HttpClient` lifetime management; no subscriber registry, no signing infrastructure, no delivery-receipt model.
+- Per-endpoint authentication configurable via standard `HttpClient` handlers: Bearer token, API key header, or a custom `DelegatingHandler` — nothing beyond what `IHttpClientFactory` already provides.
+- Per-endpoint resilience via `Microsoft.Extensions.Http.Resilience` retry and circuit-breaker policies, configured through the standard `IHttpStandardResiliencePipelineBuilder`.
+- Fan-out: a single `PublishAsync` call delivers to all registered endpoints concurrently, with independent resilience policies per endpoint.
+- Full integration with the middleware pipeline (item 2) and the dead-letter channel (item 3).
+- `AddHttpEventPublisherChannel()` DI registration extension.
+
+**Benefits:**
+- Right-sized for direct service-to-service delivery: no signing secrets to manage, no subscriber state to persist, no delivery-tracking tables.
+- Statically-configured endpoints mean the full middleware and dead-letter pipeline applies — a guarantee the Webhook publisher cannot offer when endpoints are registered dynamically at runtime.
+- Useful in serverless and edge scenarios where the destination is a known Function trigger URL, an API gateway webhook receiver, or a CloudEvents-native platform endpoint (Azure Event Grid custom topics, Knative, etc.).
+- Clean separation of concerns: the Webhook publisher owns dynamic subscriber management and signed delivery; the HTTP channel owns lightweight, trusted, point-to-point CloudEvents transport.
+
+---
+
+### 14. gRPC Publisher Channel
+
+> *Stream CloudEvents over gRPC for low-latency, bidirectional service-to-service delivery.*
+
+**The problem today:** High-throughput or latency-sensitive services that already use gRPC for their inter-service communication have no CloudEvents-native gRPC publishing channel and must mix transport styles.
+
+**What we will build:** A `Hermodr.Publisher.Grpc` package providing a gRPC-based publisher channel:
+- A Protobuf service definition aligned with the [CloudEvents gRPC protocol binding](https://github.com/cloudevents/spec/blob/main/cloudevents/bindings/grpc-protocol-binding.md), using the `cloudevents.v1.CloudEvent` Protobuf message type.
+- Unary RPC publish for single events and client-streaming RPC for batched or high-throughput scenarios.
+- TLS, mTLS, and `CallCredentials`-based authentication through the standard `GrpcChannel` configuration.
+- Full integration with the middleware pipeline (item 2) and the dead-letter channel (item 3).
+- `AddGrpcEventPublisherChannel()` DI registration extension compatible with `Grpc.Net.Client` and `Grpc.AspNetCore`.
+
+**Benefits:**
+- Significantly lower per-message overhead compared to HTTP/JSON for high-frequency event streams.
+- Bidirectional streaming enables back-pressure-aware publish flows between cooperating services.
+- Conforms to the CloudEvents gRPC binding specification for cross-platform interoperability.
+- Reuses existing gRPC infrastructure (service mesh, load balancer, authentication) already in place in gRPC-native stacks.
+
+---
+
+### 15. Apache Kafka Publisher Channel
+
+> *Publish CloudEvents to Apache Kafka topics, with support for partitioning, headers, and exactly-once semantics.*
+
+**The problem today:** Apache Kafka is one of the most widely deployed event-streaming platforms, yet there is no first-party Hermodr channel adapter for it. Teams using Kafka must maintain a separate publish path alongside any other Hermodr channels.
+
+**What we will build:** A `Hermodr.Publisher.Kafka` package implementing `IEventPublishChannel` on top of `Confluent.Kafka`:
+- CloudEvents attributes mapped to Kafka message headers following the [CloudEvents Kafka protocol binding](https://github.com/cloudevents/spec/blob/main/cloudevents/bindings/kafka-protocol-binding.md).
+- Per-channel topic configuration with optional message key extraction from a CloudEvents attribute or a configurable key selector delegate (for partition affinity).
+- Producer configuration surface covering compression, batch size, `acks`, and `linger.ms` — fully accessible via options without forking the package.
+- Exactly-once delivery support via Kafka transactions, opt-in per channel.
+- Schema Registry integration (Confluent Schema Registry) for Avro or Protobuf serialisation of the event `data` field, with automatic subject registration.
+- `AddKafkaEventPublisherChannel()` DI registration extension.
+
+**Benefits:**
+- Brings the full Hermodr pipeline — enrichment, schema validation, middleware, dead-letter — to Kafka-based architectures without giving up Kafka's ordering and retention guarantees.
+- Partition key control allows producers to co-locate related events on the same partition, preserving per-aggregate ordering.
+- Schema Registry integration aligns with existing Confluent Platform governance workflows.
+- Exactly-once option satisfies compliance requirements for financial and transactional event streams.
+
+---
+
+### 16. Amazon SQS Publisher Channel
+
+> *Publish CloudEvents to Amazon SQS queues, including FIFO queues with deduplication and message-group ordering.*
+
+**The problem today:** Teams running on AWS have no first-party Hermodr adapter for SQS and must duplicate their publishing logic outside the framework, losing middleware, schema validation, and dead-letter integration.
+
+**What we will build:** A `Hermodr.Publisher.AmazonSqs` package wrapping the AWS SDK v3 `IAmazonSQS` client:
+- CloudEvents attributes carried as SQS message attributes.
+- Standard queue and FIFO queue support; FIFO mode exposes `MessageGroupId` (mapped from a configurable CloudEvents attribute) and `MessageDeduplicationId` (defaulting to the CloudEvents `id`).
+- Batch publish via `SendMessageBatchAsync` for throughput optimisation, with automatic splitting at the SQS 10-message batch limit.
+- Large-message support via Amazon SQS Extended Client / S3 offload for payloads exceeding 256 KB.
+- IAM credential resolution through the standard AWS SDK credential chain (environment variables, instance profile, assumed role).
+- `AddAmazonSqsEventPublisherChannel()` DI registration extension.
+
+**Benefits:**
+- Enables fully-managed, serverless event publishing on AWS without operating a broker.
+- FIFO queue support provides per-entity ordering and exactly-once delivery guarantees at the SQS level.
+- Batch publish reduces API calls and cost for high-volume event streams.
+- Works seamlessly alongside the existing Azure Service Bus channel in multi-cloud architectures.
+
+---
+
+### 17. Amazon SNS Publisher Channel
+
+> *Fan out CloudEvents to Amazon SNS topics for multi-subscriber delivery across SQS queues, Lambda functions, HTTP endpoints, and mobile push.*
+
+**The problem today:** Amazon SNS is the standard AWS mechanism for pub/sub fan-out to heterogeneous subscribers, yet there is no first-party Hermodr adapter, forcing teams to call the SNS SDK directly outside the framework pipeline.
+
+**What we will build:** A `Hermodr.Publisher.AmazonSns` package wrapping the AWS SDK v3 `IAmazonSimpleNotificationService` client:
+- CloudEvents attributes mapped to SNS message attributes for subscriber-side filtering.
+- SNS message filtering policy integration: the channel can be configured to set attribute values that match subscriber filter policies, enabling content-based fan-out without custom routing code.
+- FIFO SNS topic support with `MessageGroupId` and deduplication ID propagation (mirroring the SQS FIFO channel, item 16).
+- Raw message delivery mode for SQS subscriber stacks that expect the CloudEvent JSON body directly without the SNS envelope wrapper.
+- `AddAmazonSnsEventPublisherChannel()` DI registration extension.
+
+**Benefits:**
+- A single `PublishAsync` call fans the event out to all SNS subscribers — SQS queues, Lambda functions, HTTP/S endpoints, and email — without the publisher needing to know the subscriber topology.
+- SNS message attribute filtering lets the broker perform content-based routing, reducing unnecessary message delivery to uninterested subscribers.
+- Complements the SQS channel (item 16): SNS → SQS is the canonical AWS fanout-to-queue pattern and both channels share the same AWS SDK credential configuration.
+
+---
+
+### 18. Google Cloud Pub/Sub Publisher Channel
+
+> *Publish CloudEvents to Google Cloud Pub/Sub topics with attribute-based filtering and ordering key support.*
+
+**The problem today:** Teams running on Google Cloud have no first-party Hermodr adapter for Pub/Sub and must publish events outside the framework, bypassing the middleware, schema validation, and dead-letter pipeline.
+
+**What we will build:** A `Hermodr.Publisher.GooglePubSub` package wrapping the Google Cloud Pub/Sub client library (`Google.Cloud.PubSub.V1`):
+- CloudEvents attributes mapped to Pub/Sub message attributes following the [CloudEvents Pub/Sub protocol binding](https://github.com/cloudevents/spec/blob/main/cloudevents/bindings/pubsub-protocol-binding.md).
+- Ordering key support: a configurable selector maps a CloudEvents attribute (e.g., `subject` or a custom extension) to the Pub/Sub ordering key, enabling per-entity ordered delivery to subscribers with ordering enabled.
+- Batching via the `PublisherClient` flow control settings, surfaced as framework channel options.
+- Application Default Credentials (ADC) and Workload Identity support through the standard Google Auth library credential resolution chain.
+- `AddGooglePubSubEventPublisherChannel()` DI registration extension.
+
+**Benefits:**
+- Brings the full Hermodr pipeline to GCP-native workloads without a separate publish path.
+- Ordering key integration provides per-aggregate event ordering — a key correctness requirement for event-sourced systems.
+- ADC / Workload Identity credential resolution requires zero credential management code in application services.
+- Complements the AWS channels (items 16–17) for teams operating multi-cloud or migrating between providers.
+
+---
+
+### 19. NATS / NATS JetStream Publisher Channel
+
+> *Publish CloudEvents to NATS subjects or JetStream streams for ultra-low-latency, cloud-native messaging.*
+
+**The problem today:** NATS is widely used in cloud-native and edge environments for its extremely low latency and simple operational model, but there is no first-party Hermodr channel adapter for it.
+
+**What we will build:** A `Hermodr.Publisher.Nats` package wrapping the `NATS.Net` client library:
+- Core NATS mode: publishes events as NATS messages on a configurable subject derived from the CloudEvents `type` or a custom mapping function.
+- JetStream mode: publishes to a named stream with optional per-message deduplication (using the CloudEvents `id` as the `Nats-Msg-Id` header) and publish acknowledgement awaiting.
+- CloudEvents attributes carried as NATS message headers.
+- TLS and NKey / JWT credential support through the standard NATS connection options.
+- `AddNatsEventPublisherChannel()` DI registration extension with separate `UseNatsCore()` and `UseJetStream()` configuration sub-paths.
+
+**Benefits:**
+- Sub-millisecond publish latency for services where broker round-trip time is a performance constraint.
+- JetStream persistence and deduplication support enables at-least-once delivery guarantees without a heavier broker.
+- Lightweight operational footprint — NATS runs as a single binary with no external dependencies, making it ideal for edge, IoT, and sidecar deployments.
+- The subject-per-type mapping convention integrates naturally with NATS subject hierarchies and wildcard subscriptions.
+
+---
+
+## Code Generation
+
+### 20. CloudEvent Factory Source Generator
+
+> *Emit compile-time `IEventConvertible` implementations from `[Event]`-annotated classes, eliminating the runtime reflection path in `EventFactory` and shifting annotation errors left to the build.*
+
+**The problem today:** `EventFactory.CreateEventFromData()` resolves `[Event]` metadata via `Type.GetCustomAttribute<>()` on every publish call, allocating attribute objects and walking type metadata at runtime even in high-throughput paths. The `IEventConvertible` escape hatch already exists — the benchmarks show it is measurably faster — but it requires repetitive, hand-written `ToCloudEvent()` boilerplate on every event class. Annotation mistakes (missing `DataVersion`, non-public class) surface as `ArgumentException` at runtime rather than at build time.
+
+**What we will build:** A `Hermodr.Generators` package — a Roslyn **incremental source generator** (targeting `netstandard2.0` as required by the analyzer SDK) that:
+- Detects every `partial` class decorated with `[Event]` in the current compilation.
+- Emits a generated partial class body that implements `IEventConvertible.ToCloudEvent()`: all CloudEvents envelope values (`Type`, `DataSchema`, `DataContentType`) are sourced from annotation values captured at compile time; the `Data` field is populated via `System.Text.Json` serialisation — zero reflection at call time.
+- Emits compile-time **diagnostics**:
+  - `DLEVT001` — `[Event]` is applied to a non-`partial` class (generator cannot act; reflection path is used as a silent fallback).
+  - `DLEVT002` — `[Event]` specifies neither a `DataVersion` nor an absolute `DataSchema` URI.
+  - `DLEVT003` — `[Event]`-annotated class is not `public`.
+
+**Benefits:**
+- Zero reflection on the publish hot-path — all attribute lookup is resolved at build time, matching the performance of hand-coded `IEventConvertible` implementations as measured in the existing benchmarks.
+- `DLEVT001` / `DLEVT002` / `DLEVT003` shift errors that today manifest as `ArgumentException` at runtime into compile-time build failures, giving developers immediate feedback.
+- No breaking change — classes not declared `partial` continue to work via the existing reflection path; adopting the generator is a purely opt-in, incremental migration.
+- Works correctly in trimmed and ahead-of-time (AOT) compiled deployments where `GetCustomAttribute` calls on user types may be stripped.
+
+---
+
+### 21. Schema Registration Source Generator
+
+> *Scan `[Event]`-annotated types at compile time and emit a DI extension that pre-constructs all `EventSchema` instances — eliminating startup reflection and enabling schema auto-discovery without runtime assembly scanning.*
+
+**The problem today:** `EventSchemaFactory.CreateFromType()` walks every property of an event class via reflection at application startup (`GetMembers()`, `GetCustomAttribute<>()`, `NullabilityInfoContext`). The existing benchmarks confirm that reflection-based schema construction is meaningfully slower than its manual equivalent. Roadmap item 11 (AsyncAPI export tooling) also requires runtime assembly scanning to auto-discover `[Event]`-annotated types — an approach that is brittle in trimmed / AOT-compiled deployments and cannot run inside a `dotnet` CLI tool without instantiating the application host.
+
+**What we will build:** An additional generator within `Hermodr.Generators` that:
+- Scans every `[Event]`-annotated type in the current compilation.
+- Emits a `static partial class GeneratedEventSchemas` containing a pre-constructed `EventSchema` instance per type, building the complete property tree — names, data types, required / range constraints — purely from annotation metadata resolved at compile time.
+- Emits an `AddGeneratedEventSchemas(this IServiceCollection services)` extension method that registers each pre-computed schema in the DI container as part of the `IEventSchemaFactory` resolution chain, replacing startup-time reflection with direct object construction.
+- Provides the compile-time schema metadata consumed by the `dotnet` global-tool export path planned in item 11, enabling AsyncAPI / YAML export without a running application host.
+- Emits compile-time **diagnostics**:
+  - `DLEVT004` — `[EventProperty]`'s `schemaOrVersion` argument is neither a valid absolute URI nor a parseable version string (mirrors the `ArgumentException` thrown at runtime today).
+  - `DLEVT005` — two members of the same class carry conflicting `[EventProperty]` names.
+
+**Benefits:**
+- Schema construction is effectively O(1) at application startup — all reflection-equivalent work is performed at build time, regardless of the number or complexity of event types registered.
+- Directly unblocks roadmap item 11: the compile-time metadata provides an assembly-scan surrogate that works in trimmed, AOT-compiled, and tool-invoked contexts without a live host.
+- Invalid annotation configurations surface as build errors rather than startup exceptions, improving CI feedback loops.
+- Works alongside the runtime `EventSchemaFactory` — the generator supplements rather than replaces it for dynamically-loaded types that cannot be analysed at compile time.
+
+---
+
+### 22. Typed Domain Publisher Generator
+
+> *Generate a strongly-typed, domain-scoped publisher interface and its implementation for each logical group of `[Event]`-annotated classes, so services can depend on a focused contract rather than the catch-all `IEventPublisher`.*
+
+**The problem today:** Every service that publishes events depends directly on `IEventPublisher` and calls `PublishAsync<TEvent>()` with the concrete event type. In larger codebases this means any service can accidentally publish any event, there are no compile-time boundaries between publishing domains, and mocking in tests requires either a full `IEventPublisher` mock or the `TestPublisher` package. There is also no IDE auto-complete surface that lists which events a particular domain is responsible for.
+
+**What we will build:** An additional generator within `Hermodr.Generators` — activated by a new `[EventPublisher]` assembly-level or class-level attribute — that:
+- Groups `[Event]`-annotated classes by a configurable domain name (derived from a namespace prefix, an explicit `[EventPublisher("OrderDomain")]` marker, or a shared base class).
+- Emits a `public interface IOrderDomainEventPublisher` (name derived from the group) containing one `Task PublishXxxAsync(XxxEvent @event, EventPublishOptions? options = null, CancellationToken cancellationToken = default)` method per event class in the group.
+- Emits a `public sealed class OrderDomainEventPublisher : IOrderDomainEventPublisher` implementation that delegates each method to the injected `IEventPublisher`, removing all boilerplate from user code.
+- Emits `AddOrderDomainEventPublisher(this IServiceCollection)` DI registration extensions that register the interface and implementation as scoped services.
+- Integrates with the factory generator (item 20): when both generators are active, the generated publisher methods call the compile-time `ToCloudEvent()` path instead of the reflection-based factory.
+
+**Benefits:**
+- Domain services declare a precise dependency (`IOrderDomainEventPublisher`) rather than the broad `IEventPublisher`, making the publishing contract explicit and auditable.
+- Testing becomes trivial — mock only the three or four methods relevant to a given domain rather than the full `IEventPublisher` surface.
+- IDE auto-complete surfaces exactly the events a domain is authorised to publish, reducing the risk of cross-domain event leakage.
+- When combined with items 20 and 21, the entire publish path from typed interface through CloudEvent creation to schema registration involves zero runtime reflection.
+- Consistent with the framework-integration pattern (items 41–43), where the goal is to let teams adopt CloudEvents as a natural extension of their existing programming model rather than a separate concern.
+
+---
+
+## Compliance
+
+### 23. Data Compliance & Redaction Framework
+
+> *A schema-driven data classification and redaction foundation built on the `Microsoft.Extensions.Compliance.*` stack, with first-class hooks for the Hermodr event model — no reinvented taxonomy, no POCO-only assumptions.*
+
+**The problem today:** In regulated industries (PCI-DSS, healthcare, government) it is forbidden to store or transport confidential and strictly confidential data in clear form. The `Microsoft.Extensions.Compliance` library provides a solid redaction engine and a `DataClassification` taxonomy, but it is **POCO-oriented** — it redacts CLR objects by property name. Hermodr publishes `CloudEvent`s whose `Data` is an opaque byte payload (JSON, XML, Protobuf, etc.); the framework's `EventFactory` builds the envelope from an annotated CLR class, but the runtime event carries a serialised blob. As a result, neither the stock Microsoft redaction engine nor any existing Hermodr mechanism can match classification rules against the actual properties inside the `CloudEvent.Data` payload.
+
+**What we will build:** A new `Hermodr.Compliance` package that bridges the `Microsoft.Extensions.Compliance.*` stack to the Hermodr event world, composed of four building blocks:
+
+- **Annotation integration.** `Hermodr.Annotations` takes a dependency on `Microsoft.Extensions.Compliance.Abstractions` and the framework's `DataClassificationAttribute` is used directly (no wrapper). `EventSchemaFactory.CreateEventProperty` reads the attribute from each member and stamps the resulting `DataClassification` on the produced `EventProperty`, so reflection-based schema generation already knows which fields are sensitive.
+- **Schema-aware `IEventRedactor`.** The default `SchemaDrivenCloudEventRedactor` deserialises the `CloudEvent.Data` payload (JSON-compatible content types in v1; other formats delegate to a pluggable redactor) and walks the `IEventSchema` property tree in parallel, asking `IRedactorProvider.GetRedactor(DataClassificationSet)` for the configured `Redactor` and replacing the matching values. The original `CloudEvent` is never mutated; the redactor always returns a new event.
+- **`IEventSchemaRegistry` in the Schema domain.** A small registry abstraction that maps `DataSchema` URIs and `(eventType, version)` tuples to `IEventSchema` instances. The user registers schemas explicitly (`services.AddEventSchemaRegistry(r => r.Add<OrderPlaced>())`) — Compliance and Audit Trail never register it. Verified during design: `Microsoft.Extensions.Compliance` does not provide a schema registry, so this is a Hermodr concern, kept inside `Hermodr.Schema`.
+- **`IRedactionPolicy` and `datasensitivity` signal.** A cheap, allocation-light policy decides whether a given event should be redacted, driven by either the per-channel `Compliance.Redaction` mode (`Disabled`, `WhenSensitive`, `Always`) or the `datasensitivity` CloudEvent extension attribute that producers can stamp on outgoing events (or that `EventFactory` stamps automatically when a `[DataClassification]` is present on the source CLR type). Missing-schema behaviour (`Allow` / `Block` / `Fallback`) is configurable per channel.
+
+**Benefits:**
+- Reuses the canonical `Microsoft.Extensions.Compliance` taxonomy and redaction engine — no parallel classification system, no lock-in to a Hermodr-specific redaction API.
+- The schema is the single source of truth for which fields are sensitive: one annotation on the CLR class drives schema generation, runtime redaction, and the `datasensitivity` extension attribute.
+- The framework boundary is well defined: a new `Hermodr.Compliance` package depending on two Microsoft packages, plus a new `IEventSchemaRegistry` in `Hermodr.Schema`. Nothing in the publish core needs to change.
+- Pluggable `IEventRedactor` makes the framework format-agnostic — JSON in v1, XML/Avro/Protobuf via custom redactors.
+
+---
+
+### 24. Audit Trail Compliance Support
+
+> *Apply the data compliance framework to the Audit Trail so that the persisted form of any event is free of clear-text confidential data — without mutating the in-flight `CloudEvent`.*
+
+**The problem today:** `AuditTrailEntry.FromCloudEvent` serialises the entire `CloudEvent` (envelope + payload) via `JsonEventFormatter` and stores the JSON verbatim in the `EventData` field. The `InMemoryAuditTrail`, `NdJsonAuditTrail`, and `EntityAuditTrail` backends all persist this serialised form untouched. In a PCI-DSS deployment, the on-disk / in-database audit row contains the card number, the SSN, or any other `[DataClassification]`-tagged field in clear text — a compliance violation. The publish channel itself is unaware that the data is sensitive, because the `Data` is opaque bytes from its perspective.
+
+**What we will build:** A new `Hermodr.AuditTrail.Compliance` package that wires redaction into the storage boundary of the Audit Trail, with zero changes to `AuditTrailPublishChannel` or to the `InMemory` / `NDJson` / `EntityFramework` backends:
+
+- **Nested `Compliance` options.** `AuditTrailPublishOptions.Compliance` is a dedicated nested object holding `Redaction` (the mode enum), `OnMissingSchema` (`Allow` / `Block` / `Fallback`), and `FallbackMarker`. Default values leave the channel in its current clear-text behaviour; the cost when the feature is off is zero.
+- **`RedactingAuditTrailWriter` decorator.** A new `IAuditTrailWriter` implementation that wraps the existing backend writer. On `AppendAsync`, the decorator evaluates the policy against the incoming `CloudEvent`, resolves the schema from the user's `IEventSchemaRegistry` (by `DataSchema` URI, then by `(type, version)`), and calls the schema-aware redactor from item 23. The **redacted** `CloudEvent` is what reaches the inner writer — the in-flight event is never mutated.
+- **Opt-in wiring.** `AddAuditTrail()` exposes a `UseCompliance(Action<AuditTrailComplianceOptions>)` builder extension that swaps the registered `IAuditTrailWriter` for the decorator. The `InMemory` / `NDJson` / `EntityFramework` packages opt in by referencing the new compliance package; users who do not need the feature pay no dependency cost.
+- **Diagnostic-friendly behaviour.** The `Allow` / `Block` / `Fallback` strategies for missing schemas are honoured: `Block` throws `MissingSchemaForSensitiveEventException` (the audit row is skipped but the original publish is not aborted), `Fallback` replaces the whole `data` field with the configured marker, `Allow` writes the event unmodified and emits a warning log message.
+
+**Benefits:**
+- Compliance data never reaches persistent storage in clear text when the feature is enabled — the redacted form is what gets serialised by `AuditTrailEntry.FromCloudEvent`.
+- The publish channel is unchanged: developers do not need to learn a new publish-side API; they configure `UseCompliance(...)` on the audit trail builder and the rest of the pipeline keeps working.
+- A PCI-DSS reviewer can inspect the stored row and see `[REDACTED]` placeholders in the positions where `card_number` once lived — without any change to the events actually being delivered to consumers.
+- All existing audit-trail tests, `BypassAuditTrailOptions` semantics, and the typed-channel pattern (`AddAuditTrail<TEvent>()`) keep working unchanged.
+
+---
+
+### 25. Delivery Log Compliance Support
+
+> *Mirror the Audit Trail compliance story on the Delivery Log: a storage-boundary decorator redacts the `Event` on each `EventDeliveryRecord` before the repository persists it, while the original `IEventDeliveryRecord` instance seen by the channel pipeline stays untouched.*
+
+**The problem today:** `DeliveryLogMiddleware` builds an `EventDeliveryRecord` that wraps the full `CloudEvent` and forwards it to `IEventPublishDeliveryLog`. The `InMemoryEventDeliveryLogRepository` and `NdJsonEventDeliveryLogRepository` (and the EF Core variant) persist the serialised record verbatim. The same PCI-DSS concern as the audit trail applies: the `Event` field of each persisted record contains the original payload, including any `DataClassification`-tagged fields.
+
+**What we will build:** A new `Hermodr.Publisher.DeliveryLog.Compliance` package that adds a redaction seam at the delivery-log storage boundary, parallel in shape to the audit-trail one:
+
+- **Nested `DeliveryLogComplianceOptions`.** A dedicated options object exposed on `DeliveryLogBuilder`, mirroring the audit-trail options: `Redaction` mode, `OnMissingSchema` behaviour, `FallbackMarker`. Default `Disabled`, zero behaviour change when not enabled.
+- **`RedactingEventPublishDeliveryLog` decorator.** A new `IEventPublishDeliveryLog` implementation that wraps the existing repository. On `RecordAsync`, it evaluates the policy against the record's `Event`, resolves the schema from the user's `IEventSchemaRegistry`, and applies the schema-aware redactor. The redacted event is placed on a **new** `EventDeliveryRecord` obtained via `EventDeliveryRecord.FromRecord(record) with { Event = redacted }`; the original `IEventDeliveryRecord` is never mutated, so the channel pipeline, error handlers, and any code holding a reference to the original record are unaffected.
+- **`DeliveryLogBuilder.UseCompliance` extension.** Swaps the registered `IEventPublishDeliveryLog` for the decorator. `DeliveryLogMiddleware` is unchanged. The decorator participates transparently in the same DI lifetime as the original repository.
+
+**Benefits:**
+- Delivery log entries — the operational record of every publish attempt — no longer expose confidential data in clear text when redaction is enabled.
+- Symmetric to the audit-trail compliance support: one framework, two storage integrations, identical options shape, identical redactor pipeline.
+- Custom delivery-log repositories that today implement `IEventPublishDeliveryLog` directly can opt in by wrapping themselves with the decorator in their DI registration, without forking the framework.
+
+---
+
+### 26. In-Transit Event Redaction
+
+> *Extend the redaction pipeline to the publish path itself, so that the `CloudEvent` delivered to outbound channels (RabbitMQ, Azure Service Bus, Webhook, etc.) is the redacted form — for use cases where downstream consumers should not receive the clear-text payload at all.*
+
+**The problem today:** Items 24 and 25 redact at the **storage boundary** of the audit trail and the delivery log. The `CloudEvent` that flows through the publish pipeline and out to RabbitMQ, Azure Service Bus, or any other outbound channel is still the original clear-text payload. This is acceptable when consumers are trusted and need the full data, but several real-world scenarios require the opposite:
+- A consumer is a third-party SaaS integration that must not see PCI-DSS-regulated fields.
+- A partner service subscribes only to a redacted projection of an internal event.
+- A regulated deployment mandates that confidential data never leaves the originating trust boundary, period.
+
+**What we will build:** A new `Hermodr.Publisher.Compliance` package that introduces a publish-pipeline redaction pass, composed of two opt-in mechanisms:
+
+- **`RedactingEventMiddleware`.** A new `IEventMiddleware` that runs after enrichment and before channel dispatch, evaluates the redaction policy against the current `CloudEvent`, resolves the schema, applies the redactor, and **replaces** the `CloudEvent` reference on the `EventContext.Event` property. The in-flight event for the rest of the pipeline (channels, error handlers, downstream middleware) is the redacted form; the original is never observable from that point on. The middleware is fully opt-in: `builder.UseCompliance()` registers it, and the per-call options control the mode (`Disabled` / `WhenSensitive` / `Always`).
+- **Per-channel redaction profiles.** A first-class way to express that *this* outbound channel gets the redacted event and *that* one gets the full event. The mechanism reuses the existing `EventPublishOptions` / `CombinedPublishOptions` plumbing: an `IEventPublishChannelFilter` is introduced that returns `RedactionMode.Always` or `RedactionMode.Disabled` based on the resolved options for the channel, so a webhook channel to a third party can be redacted while an internal RabbitMQ exchange keeps the full event. Channels without an explicit profile inherit the publisher-level default.
+
+**Benefits:**
+- Completes the compliance story: storage-only (items 24 and 25) for the "write only redacted" case, in-transit (item 26) for the "send only redacted" case, both layered on the same redactor, the same `IEventSchemaRegistry`, and the same `Microsoft.Extensions.Compliance` engine.
+- Per-channel profiles avoid the all-or-nothing trap: a single publish call can deliver the redacted event to a SaaS partner and the full event to an internal service without code duplication.
+- Backwards compatible: when `UseCompliance()` is not called, the publish pipeline is bit-identical to today.
+
+---
+
+## Event Consumers
+
+### 27. Webhook Consumer Framework for ASP.NET Core
+
+> *A transport-agnostic foundation for receiving and dispatching inbound webhook events inside an ASP.NET Core application.*
+
+**The problem today:** Hermodr only covers the *publishing* side of the event lifecycle. Services that need to receive webhook payloads — for example, from a SaaS platform or another Hermodr publisher — must build their own endpoint, deserialisation, signature verification, and routing logic from scratch.
+
+**What we will build:** A `Hermodr.Consumer.Webhook` package providing:
+- An ASP.NET Core middleware and a minimal-API endpoint registration (`MapCloudEventWebhook(...)`) that accepts HTTP POST requests carrying CloudEvents in structured or binary content mode.
+- An `IWebhookSignatureVerifier` abstraction for pluggable signature verification, with a built-in HMAC-SHA256/384/512 implementation.
+- Deserialisation of the payload into a typed `CloudEvent` and routing through the `IEventSubscription` registry (item 1).
+- An `IWebhookPayloadMapper` extensibility point that translates arbitrary third-party JSON payloads into `CloudEvent` objects before dispatch — the foundation that service-specific adapters (item 28) build on.
+- Appropriate HTTP status codes and problem-detail responses on validation or deserialization failure.
+
+**Benefits:**
+- Turns any ASP.NET Core application into a capable CloudEvents consumer with a single `UseCloudEventWebhook()` or `MapCloudEventWebhook()` call.
+- Integrates with the existing subscription and routing infrastructure — no separate consumer-side wiring needed.
+- The pluggable `IWebhookPayloadMapper` and `IWebhookSignatureVerifier` abstractions allow any third-party webhook format and signing scheme to be supported without forking the core package.
+- Compatible with any platform that delivers events over HTTP webhooks (GitHub, Stripe, Azure Event Grid, etc.).
+
+---
+
+### 28. Pre-built Webhook Consumer Adapters
+
+> *Ready-made adapters that translate the proprietary webhook payloads of major SaaS platforms into `CloudEvent` objects and verify their signatures automatically.*
+
+**The problem today:** Even with the generic webhook consumer framework in place (item 27), teams integrating with popular SaaS platforms must still write the platform-specific payload mapping and signature verification themselves. Each platform uses a different JSON schema, a different signing mechanism (HMAC, RSA, Ed25519, shared token), and a different delivery header convention, resulting in repeated boilerplate across projects.
+
+**What we will build:** A suite of thin adapter packages — each implementing `IWebhookPayloadMapper` and `IWebhookSignatureVerifier` from item 27 — for the most widely used webhook-emitting platforms:
+
+| Package | Platform | Signature scheme |
+|---------|----------|-----------------|
+| `Hermodr.Consumer.Webhook.Facebook` | Meta / Facebook Graph API (Messenger, WhatsApp Business, Instagram) | HMAC-SHA256 (`X-Hub-Signature-256`) |
+| `Hermodr.Consumer.Webhook.SendGrid` | SendGrid Event Webhook | HMAC-SHA256 (`X-Twilio-Email-Event-Webhook-Signature`) |
+| `Hermodr.Consumer.Webhook.Twilio` | Twilio (SMS, Voice, WhatsApp) | HMAC-SHA1 (`X-Twilio-Signature`) |
+| `Hermodr.Consumer.Webhook.Stripe` | Stripe (payments, subscriptions, disputes) | HMAC-SHA256 (`Stripe-Signature` with timestamp replay protection) |
+| `Hermodr.Consumer.Webhook.GitHub` | GitHub (push, PR, release, issues) | HMAC-SHA256 (`X-Hub-Signature-256`) |
+| `Hermodr.Consumer.Webhook.Shopify` | Shopify (orders, products, customers) | HMAC-SHA256 (`X-Shopify-Hmac-Sha256`) |
+
+Each adapter package:
+- Registers with `AddFacebookWebhookConsumer()` / `AddSendGridWebhookConsumer()` etc. via `IServiceCollection` extension methods, wiring the platform-specific mapper and verifier into the framework from item 27.
+- Maps canonical platform event fields to standard CloudEvents attributes (`type`, `source`, `subject`, `id`, `time`) and preserves the original payload in `data`.
+- Exposes strongly-typed event objects (e.g., `FacebookMessagingEvent`, `StripePaymentIntentEvent`) that consumers can work with after subscription routing.
+- Includes a test helper (`FakeWebhookSender`) that generates correctly signed HTTP requests for use in unit and integration tests.
+
+**Benefits:**
+- Eliminates per-project boilerplate for the most common webhook integrations — drop in a package and register the adapter.
+- Signature verification is handled correctly out of the box for each platform's specific scheme, reducing the risk of security mistakes (missing timestamp validation, incorrect HMAC algorithm, etc.).
+- Strongly-typed event objects make handler code readable and refactor-safe.
+- Test helpers make it straightforward to write deterministic, broker-free tests for webhook-triggered flows.
+- New adapters for additional platforms can be contributed as standalone packages without touching the core framework.
+
+---
+
+### 29. RabbitMQ Consumer
+
+> *Consume CloudEvents from RabbitMQ queues and exchanges and route them through the subscription registry.*
+
+**The problem today:** `Hermodr.Publisher.RabbitMq` can publish events to RabbitMQ, but there is no companion consumer. Applications must hand-roll `IBasicConsumer` implementations, CloudEvents deserialization, and error handling separately.
+
+**What we will build:** A `Hermodr.Consumer.RabbitMq` package providing a `BackgroundService`-based hosted consumer that:
+- Declares queues and bindings from configuration or attributes.
+- Deserialises incoming AMQP messages to `CloudEvent` objects.
+- Routes them through the `IEventSubscription` registry (item 1).
+- NAcks and optionally dead-letters messages that fail deserialization or handler dispatch.
+- Supports prefetch limits, concurrent handler execution, and graceful shutdown.
+
+**Benefits:**
+- Pairs naturally with the existing RabbitMQ publisher to form a complete publish/subscribe solution.
+- Leverages the shared subscription registry so the same handler registration code works regardless of transport.
+- Dead-letter integration (item 3) provides automatic recovery and replay for failed messages.
+- Configuration-driven queue and binding setup removes broker-specific boilerplate from application code.
+
+---
+
+### 30. Azure Service Bus Consumer
+
+> *Consume CloudEvents from Azure Service Bus queues and topics/subscriptions and route them through the subscription registry.*
+
+**The problem today:** `Hermodr.Publisher.AzureServiceBus` covers publishing but not consumption. Teams using Azure Service Bus must integrate the SDK's `ServiceBusProcessor` independently, including CloudEvents mapping and error policies.
+
+**What we will build:** A `Hermodr.Consumer.AzureServiceBus` package wrapping `ServiceBusProcessor` in a `BackgroundService` that:
+- Receives messages from configurable queues or topic subscriptions.
+- Maps Azure Service Bus message properties to CloudEvents attributes.
+- Routes deserialized events through the `IEventSubscription` registry (item 1).
+- Handles dead-lettering, lock renewal, and session-aware processing.
+
+**Benefits:**
+- Completes the Azure Service Bus integration with a consistent publish/consume API.
+- Takes advantage of native Service Bus features (sessions, deferred messages, scheduled delivery) through configuration.
+- Uniform handler model means the same event handler works with RabbitMQ, Azure Service Bus, or any future consumer adapter.
+
+---
+
+### 31. MassTransit Consumer Bridge
+
+> *Expose Hermodr subscriptions as MassTransit consumers, and vice versa, to unify both programming models.*
+
+**The problem today:** `Hermodr.Publisher.MassTransit` delegates publishing to MassTransit but does not expose a complementary consumer side. Teams using MassTransit for consumption must maintain two separate routing models.
+
+**What we will build:** A `Hermodr.Consumer.MassTransit` package that registers `IEventSubscription` handlers as MassTransit `IConsumer<T>` implementations automatically, and optionally maps inbound MassTransit messages to `CloudEvent` objects before dispatching them through the registry.
+
+**Benefits:**
+- Projects already invested in MassTransit can adopt Hermodr incrementally, starting with the consumer side, without replacing their existing topology.
+- The shared handler model means a subscription declared once can be driven by MassTransit, RabbitMQ, or any other consumer adapter.
+- Reduces duplication of consumer registration boilerplate in mixed-stack services.
+
+---
+
+## Developer Experience
+
+### 32. Expanded Testing Utilities
+
+> *First-class test helpers for asserting which events were published, with what attributes, and in what order.*
+
+**The problem today:** `Hermodr.TestPublisher` provides a basic in-memory publisher, but there are no assertion helpers, no subscription testing support, and no way to assert negative cases (event was *not* published).
+
+**What we will build:** A rich `EventPublisherAssertions` API (compatible with xUnit, NUnit, and MSTest) offering fluent assertions such as `AssertPublished<TEvent>()`, `AssertPublishedWith(e => e.Source == ...)`, `AssertPublishedInOrder(...)`, and `AssertNotPublished<TEvent>()`. An in-memory event bus will allow integration tests to exercise full publish-subscribe round trips without a real broker.
+
+**Benefits:**
+- Makes event-driven behaviour a first-class testable concern alongside the domain model.
+- Fluent assertion API dramatically reduces test boilerplate.
+- The in-memory bus enables full-stack integration tests that run in milliseconds, without Docker or a real broker.
+- Negative assertions catch regressions where a previously emitted event is accidentally removed.
+
+---
+
+### 33. Local Development Console Sink
+
+> *A zero-configuration channel that pretty-prints every published CloudEvent to the console (or an `ILogger` sink) during local development, removing the need to run a real broker in the developer inner loop.*
+
+**The problem today:** To observe published events locally, developers must run a broker (RabbitMQ, Azure Service Bus emulator, etc.), configure credentials, and inspect broker-specific management UIs — a significant setup burden that slows down the development inner loop. There is no built-in way to simply print events to the terminal while iterating on domain logic.
+
+**What we will build:** A `Hermodr.Publisher.Development` package providing:
+- A `ConsoleSinkChannel` that writes a colour-coded, human-readable representation of each `CloudEvent` to `stdout` or to any `ILogger` target, including the full envelope attributes and a syntax-highlighted JSON or YAML rendering of the `data` payload.
+- An `AddDevelopmentConsoleSink()` extension on `EventPublisherBuilder` that registers the channel only when `IHostEnvironment.IsDevelopment()` is `true` (or an explicit opt-in flag is set), so the channel is automatically excluded from staging and production builds without code changes.
+- A `UseStructuredOutput()` option to emit events as NDJSON lines instead of human-readable text, for use with tools like `jq` or log aggregators in local Compose setups.
+- Integration with `IEventMiddleware` (item 2): the sink respects the full middleware pipeline, so enriched attributes (correlation ID, trace context, custom extensions) are visible in the output.
+
+**Benefits:**
+- Developers can see exactly which events their domain logic emits — including all enriched attributes — without leaving the terminal or launching a broker management UI.
+- The environment guard prevents accidental activation in production; opting in explicitly in staging is still possible via a configuration flag.
+- Structured NDJSON output makes it easy to pipe events to `jq` for ad-hoc filtering and inspection during debugging sessions.
+- Zero extra infrastructure — the channel has no external dependencies, making it usable in CI pipelines to audit the events emitted by an integration test suite.
+
+---
+
+### 34. .NET Aspire Integration
+
+> *Surface Hermodr publish channels as .NET Aspire resources, enabling dashboard visibility, structured telemetry, and one-line broker provisioning in the Aspire AppHost for the local development inner loop.*
+
+**The problem today:** Teams using .NET Aspire as their local orchestration platform must configure Hermodr channels manually and separately from their Aspire resource graph. There is no Aspire component for the framework, so published events do not appear in the Aspire dashboard, channel health is not surfaced as a resource status, and developers must provision broker containers (RabbitMQ, Azure Service Bus emulator) without the convenience of Aspire's built-in resource integrations.
+
+**What we will build:** A `Hermodr.Publisher.Aspire` package split into two assemblies following the standard Aspire pattern:
+- **AppHost component** (`Hermodr.Publisher.Aspire.Hosting`): Provides `AddEventPublisher()` and `WithRabbitMqChannel()` / `WithAzureServiceBusChannel()` / etc. extension methods on `IDistributedApplicationBuilder` that wire the framework's channel resources into the Aspire resource graph, configure connection strings, and automatically provision the matching Aspire container resources (e.g., `AddRabbitMQ()`, `AddAzureServiceBus()`) when running locally.
+- **Service component** (`Hermodr.Publisher.Aspire.Client`): Provides `AddEventPublisherFromAspire()` on `IServiceCollection` / `IHostApplicationBuilder` that resolves channel connection strings from Aspire's service-discovery mechanism (`IConfiguration["ConnectionStrings:..."]`) and registers channel statuses with names that match the Aspire dashboard's resource identifiers.
+- OpenTelemetry integration: activity spans emitted by the publisher (item 6) are automatically exported to the Aspire dashboard's trace viewer using the Aspire-configured OTLP exporter, with no manual configuration required.
+
+**Benefits:**
+- The Aspire dashboard shows each publish channel as a named resource with real-time health status, eliminating the need to open separate broker management UIs during development.
+- Broker containers (RabbitMQ, Kafka, etc.) are provisioned and torn down automatically by Aspire for each developer's local session, removing the static `docker-compose.yml` that every team maintains today.
+- Trace spans from published events appear in the Aspire dashboard's distributed-trace view alongside HTTP request spans, giving a complete picture of a domain operation in a single tool.
+- Follows the standard Aspire component split (`*.Hosting` + `*.Client`) so the integration works correctly with all Aspire deployment targets (local, Azure Container Apps, Kubernetes via Aspire manifest) without any changes to application code.
+
+---
+
+### 35. `dotnet event` CLI Extension
+
+> *A `dotnet` global tool that adds a first-class `event` command group to the .NET CLI — covering event scaffolding, schema export, schema validation, and breaking-change detection — so all event tooling is reachable from the same terminal session as the rest of the .NET toolchain.*
+
+**The problem today:** Tasks like scaffolding a new annotated event class, exporting schemas to AsyncAPI or OpenAPI, or checking whether a schema change is backwards-compatible have no standard CLI surface inside the `dotnet` ecosystem. Developers must hand-write boilerplate, invoke the application host to export schemas, and rely on ad-hoc scripts for validation — all outside the familiar `dotnet` workflow.
+
+**What we will build:** A `Hermodr.Tools` NuGet package distributable as a `dotnet` global or local tool (`dotnet tool install -g Hermodr.Tools`), adding the top-level command group `dotnet event` with the following sub-commands:
+
+- **`dotnet event new <EventName> [--namespace <ns>] [--version <ver>] [--output <path>]`** — scaffolds a new `partial` C# class pre-annotated with `[Event]`, `[EventProperty]` stubs derived from optional property definitions passed on the command line or from an interactive prompt; emits the file ready for the code generators (item 20/21) to act on.
+- **`dotnet event list [--assembly <path>] [--project <path>]`** — discovers all `[Event]`-annotated types in a compiled assembly or by building the target project, and prints a structured table of event type names, versions, property counts, and content types.
+- **`dotnet event schema export [--assembly <path>] [--format asyncapi|openapi|json-schema] [--output <file>]`** — loads the `GeneratedEventSchemas` metadata emitted by the schema generator (item 21) from the target assembly and serialises it to the requested schema format without starting the application host.
+- **`dotnet event schema validate <payload-file> --event-type <type> [--assembly <path>]`** — deserialises a JSON file and validates it against the schema of the named event type, reporting constraint violations in a structured, CI-friendly format (exit code 1 on failure).
+- **`dotnet event schema diff <before-assembly> <after-assembly> [--fail-on-breaking]`** — compares the event schemas exported from two compiled assemblies, classifying each change as backward-compatible or breaking, and optionally returning a non-zero exit code when breaking changes are detected (suitable for a CI quality gate, complementing item 10).
+- **`dotnet event channel add <transport> [--name <name>]`** — scaffolds the DI registration boilerplate for a named channel of the given transport type (e.g., `dotnet event channel add rabbitmq --name OrderEvents`) into the project's `Program.cs` or a nominated partial class.
+
+**Benefits:**
+- All event-related tasks are reachable via the single `dotnet event` entry point, consistent with the rest of the .NET CLI toolchain and discoverable via `dotnet event --help`.
+- `schema export` and `schema diff` can run as zero-dependency CI steps against a pre-built assembly, with no running application host required — a direct consequence of the compile-time metadata emitted by item 21.
+- `dotnet event schema diff --fail-on-breaking` provides an automated breaking-change gate that complements the compatibility checker planned in item 10, requiring no custom scripting.
+- `dotnet event new` bootstraps correctly-annotated event classes in seconds, reducing friction for teams onboarding to the framework.
+- Local and global tool modes allow teams to pin the tool version alongside the project (via `dotnet-tools.json`) for reproducible CI builds.
+
+---
+
+### 36. Standalone `deveel-events` CLI
+
+> *A self-contained, cross-platform command-line executable that exposes the same `event` command surface as the `dotnet` tool — but without requiring the .NET SDK, making it usable in CI images, Docker pipelines, and non-.NET environments.*
+
+**The problem today:** The `dotnet event` tool (item 35) requires the .NET SDK to be installed, which is unavailable in many CI runner images, Docker build stages, and polyglot toolchains. Teams working in Python, Go, JavaScript, or shell-only environments that consume events from a .NET service — and need to validate schemas or generate AsyncAPI documents — cannot use a `dotnet`-dependent tool. There is also no Docker-native entry point for event tooling.
+
+**What we will build:** A `deveel-events` (or `dce`) single-file, self-contained executable published for `linux-x64`, `linux-arm64`, `osx-arm64`, `win-x64`, and as a Docker image (`deveel/deveel-events:latest`) that implements the same command surface as item 35:
+- `deveel-events new`, `deveel-events list`, `deveel-events schema export|validate|diff`, `deveel-events channel add` — identical semantics to their `dotnet event` counterparts (item 35).
+- **Additional input modes** not available in the dotnet tool: `schema export --from-asyncapi <file|url>` loads an existing AsyncAPI document and re-exports it in another format; `schema validate --schema-file <json-schema>` validates a payload against an externally-supplied JSON Schema file rather than a compiled assembly.
+- **GitHub Actions action** (`deveel/events-action`) wrapping `schema diff` and `schema validate` for zero-configuration use in GitHub CI workflows.
+- Installers for common package managers: `brew install deveel/tap/deveel-events` (macOS/Linux), WinGet manifest for Windows.
+- Machine-readable output mode (`--output json` / `--output sarif`) for integration with CI dashboards, GitHub Code Scanning (SARIF schema-violation reports), and external schema registries.
+
+**Benefits:**
+- Schema export, validation, and breaking-change detection are available in any CI environment with a single binary download, regardless of the runtime stack.
+- The Docker image enables `docker run --rm -v $(pwd):/work deveel/deveel-events schema export --assembly /work/MyApp.dll --format asyncapi` pipelines in Dockerfile multi-stage builds or Compose-based CI setups.
+- The GitHub Actions action makes schema governance a one-line addition to any workflow with no manual tool installation or script authoring.
+- Machine-readable SARIF output lets `schema validate` failures appear as inline code annotations in GitHub pull requests, surfacing contract violations at review time.
+- Shares its core logic with the `dotnet event` tool via a common library, ensuring feature parity is maintained without duplicating implementation.
+
+---
+
+## Subscription Management
+
+### 37. Subscription Management Framework
+
+> *A provider-agnostic framework for persisting, querying, and lifecycle-managing event subscriptions at runtime.*
+
+**The problem today:** The subscription registry introduced in item 1 is entirely in-memory and must be re-populated from code on every application start. There is no facility to create, update, suspend, or remove subscriptions at runtime without redeploying the application, and no standard model for sharing subscription state across multiple service instances.
+
+**What we will build:** A `Hermodr.Subscriptions.Management` package providing the core framework layer:
+- An `EventSubscription` entity model enriched with lifecycle state (`Active`, `Suspended`, `Deleted`), ownership metadata (tenant ID, created-by, timestamps), and a version counter for optimistic concurrency.
+- An `ISubscriptionStore` abstraction — the single extension point that storage providers implement — with methods for `CreateAsync`, `UpdateAsync`, `DeleteAsync`, `FindByIdAsync`, `ListAsync`, and a `WatchAsync` streaming overload for change notifications.
+- An `ISubscriptionRegistry` service built on top of `ISubscriptionStore`, adding higher-level operations: `EnableAsync`, `DisableAsync`, `TransferOwnershipAsync`, and bulk registration from configuration or assembly scanning.
+- An `ISubscriptionSyncService` abstraction that bridges the durable store and the in-process routing table from item 1: implementations receive change notifications from the store and apply them to the live dispatcher without a restart.
+- A default **in-memory** `ISubscriptionStore` for local development and testing.
+- DI registration extensions (`AddSubscriptionManagement()`, `UseInMemorySubscriptionStore()`) integrated with the standard `IServiceCollection` pattern.
+
+**Benefits:**
+- Establishes a clean separation between the management framework and its storage backends, keeping the core package free of infrastructure dependencies.
+- Subscriptions become first-class, lifecycle-managed entities rather than static code registrations.
+- The in-memory default means teams can adopt the framework immediately in tests and development before choosing a persistence backend.
+- `ISubscriptionSyncService` makes cluster-aware hot-reload of routing changes possible without any restart, regardless of which storage provider is used.
+
+---
+
+### 38. Relational Registry Provider (Entity Framework Core)
+
+> *Persist subscription state in any EF Core-compatible relational database — SQL Server, PostgreSQL, or SQLite — with ready-made migrations and polling-based synchronisation.*
+
+**The problem today:** Teams running on relational databases have no first-party way to back the subscription registry with an existing database infrastructure.
+
+**What we will build:** A `Hermodr.Subscriptions.EntityFramework` package implementing `ISubscriptionStore` on top of EF Core:
+- A `SubscriptionDbContext` with full `EventSubscription` entity configuration (column mappings, indexes on `type`, `source`, `tenantId`, and `state`).
+- Bundled EF Core migrations targeting SQL Server, PostgreSQL, and SQLite; migration auto-apply option for non-production scenarios.
+- A polling-based `ISubscriptionSyncService` implementation that queries for changes since a stored high-water-mark timestamp and feeds them to the in-process routing table.
+- `UseEntityFrameworkSubscriptionStore<TContext>()` DI registration extension that works with any existing `DbContext` or the dedicated `SubscriptionDbContext`.
+
+**Benefits:**
+- Zero additional infrastructure for teams already using a relational database — the subscription table lives alongside their domain tables.
+- EF Core's provider abstraction means the same package targets SQL Server, PostgreSQL, SQLite, and any other EF Core-supported engine without code changes.
+- Bundled migrations eliminate hand-crafted DDL scripts and keep the schema in sync with code automatically.
+- Polling-based sync is operationally simple and works with any relational engine, including those that do not support change-data-capture.
+
+---
+
+### 39. Document Registry Provider (MongoDB)
+
+> *Persist subscription state as MongoDB documents with change-stream-based synchronisation for real-time, cluster-wide routing updates.*
+
+**The problem today:** Teams running on MongoDB have no first-party way to back the subscription registry without writing a custom `ISubscriptionStore` implementation from scratch.
+
+**What we will build:** A `Hermodr.Subscriptions.MongoDb` package implementing `ISubscriptionStore` on top of the official MongoDB .NET driver:
+- A document model for `EventSubscription` with BSON serialisation attributes and compound indexes on `type`, `source`, `tenantId`, and `state` for fast filtered queries.
+- A change-stream-based `ISubscriptionSyncService` implementation that opens a resume-token-aware change stream on the subscriptions collection and pushes inserts, updates, and deletes to the in-process routing table in real time — with automatic resume after network interruption.
+- `UseMongoDbSubscriptionStore()` DI registration extension accepting a connection string, `IMongoDatabase`, or an `IMongoClient` + database name pair.
+- Support for multi-tenant collection isolation (one collection per tenant or a shared collection with a tenant discriminator field), configurable at service-registration time.
+
+**Benefits:**
+- Change-stream-based synchronisation propagates routing changes to all cluster nodes in milliseconds, with no polling overhead.
+- Resume tokens survive process restarts: no subscription change is missed even if the service is temporarily offline.
+- MongoDB's flexible document model naturally accommodates the open-ended extension attributes carried by `EventSubscription` without schema migrations.
+- Pairs well with existing MongoDB-native services that already use the same cluster for domain data.
+
+---
+
+### 40. Subscription Management REST API
+
+> *Expose subscription lifecycle operations as secured HTTP endpoints, providing an admin surface for operations tooling and self-service tenant portals.*
+
+**The problem today:** Even with a durable subscription registry in place, there is no standardised HTTP interface for creating, inspecting, or modifying subscriptions from external tooling, CI pipelines, or tenant administration dashboards. Each team must build its own controller layer on top of `ISubscriptionRegistry`.
+
+**What we will build:** A `Hermodr.Subscriptions.Management.Api` package adding a minimal-API endpoint group to any ASP.NET Core application:
+- `MapSubscriptionManagementApi(prefix)` registers a self-contained endpoint group (default prefix `/subscriptions`) with the following endpoints:
+  - `GET /subscriptions` — paginated list with filtering by `type`, `source`, `state`, and `tenantId`.
+  - `GET /subscriptions/{id}` — retrieve a single subscription by ID.
+  - `POST /subscriptions` — create a new subscription; validates filter expressions and event type against the registered schema (if available).
+  - `PUT /subscriptions/{id}` — replace a subscription's filter and routing configuration.
+  - `PATCH /subscriptions/{id}/state` — enable or suspend a subscription without replacing its full configuration.
+  - `DELETE /subscriptions/{id}` — soft-delete with an optional hard-delete flag.
+- Full OpenAPI / Swagger metadata generated via `Microsoft.AspNetCore.OpenApi` annotations, compatible with Scalar and Swashbuckle.
+- Authorization policy hooks: each endpoint group can be secured independently using standard ASP.NET Core `IAuthorizationPolicy` names passed at registration time (`MapSubscriptionManagementApi(o => o.RequirePolicy("SubscriptionAdmin"))`).
+- An `ETag`-based optimistic-concurrency model on `PUT` and `PATCH` using the `EventSubscription` version counter from item 37.
+- Optional Webhook callback on subscription changes: posts a CloudEvent payload to a configured URL whenever a subscription is created, updated, or deleted — enabling external systems to react to registry mutations without polling.
+
+**Benefits:**
+- Provides an immediately usable admin surface without requiring each consuming team to write their own controller layer.
+- The secured, policy-driven endpoint model makes it safe to expose the API to tenant administrators in multi-tenant deployments.
+- OpenAPI metadata makes the management API discoverable and self-documenting for operations tooling and internal developer portals.
+- Soft-delete and state transitions support audit and compliance workflows that prohibit hard deletion of subscription records.
+- The optional change-notification webhook closes the loop for event-driven infrastructure automation that reacts to subscription lifecycle events.
+
+---
+
+## Framework Integrations
+
+### 41. MediatR Integration
+
+> *Bridge MediatR notifications to the Hermodr publishing pipeline, and optionally surface incoming CloudEvents as MediatR notifications — so MediatR-native applications can adopt CloudEvents without restructuring existing handler code.*
+
+**The problem today:** Applications that already use MediatR as their in-process messaging bus must maintain two separate dispatch paths: one for MediatR `INotification` / `IRequest` handling and one for Hermodr CloudEvent publishing. There is no standard hook that automatically intercepts a dispatched MediatR notification and routes it through the Hermodr enrichment, middleware, and channel pipeline, nor any facility to surface an inbound CloudEvent as a MediatR notification so that existing `INotificationHandler<T>` implementations can react to it without change.
+
+**What we will build:** A `Hermodr.Publisher.MediatR` package providing:
+- A MediatR `INotificationHandler<TNotification>` base implementation — and an opt-in `IPipelineBehavior<TRequest, TResponse>` for request-side interception — that detects notifications annotated with `[Event]` (or implementing a configurable marker interface) and forwards them to `IEventPublisher` as CloudEvents, applying the full enrichment, middleware, and channel dispatch pipeline.
+- A `CloudEventNotificationMapper` that translates between `INotification` and `CloudEvent`, deriving the CloudEvents `type`, `source`, and `subject` from annotation metadata (compatible with the existing `[Event]` and `[EventProperty]` attribute model) or from a configurable mapping delegate.
+- An inbound bridge: an `IEventSubscription` handler (item 1) that receives CloudEvents from the subscription registry and re-publishes them as MediatR `INotification` objects through the `IMediator` pipeline, so that existing `INotificationHandler<T>` implementations react to external events with no code changes.
+- `AddMediatREventPublisher()` and `AddMediatREventConsumer()` DI registration extensions, fully compatible with the standard `MediatR.Extensions.Microsoft.DependencyInjection` / `MediatR` v12+ registration pattern.
+- A test helper that captures CloudEvents emitted by MediatR notifications, compatible with the `Hermodr.TestPublisher` infrastructure.
+
+**Benefits:**
+- MediatR-native applications can adopt Hermodr incrementally: annotate an existing `INotification` and it begins flowing through the full CloudEvents pipeline — enrichment, schema validation, middleware, dead-letter — without restructuring any handler or command code.
+- The pipeline-behavior and notification-handler interception points mean cross-cutting concerns (logging, tracing, schema validation) are applied consistently whether the CloudEvent originates from a MediatR notification or from a direct `IEventPublisher` call.
+- The inbound bridge allows consumer-side handlers to remain written as standard `INotificationHandler<T>`, fully independent of the broker transport that delivered the event (RabbitMQ, Azure Service Bus, webhook, etc.).
+- No lock-in: the integration is purely additive — removing the package leaves both the MediatR handler tree and the Hermodr pipeline fully functional and independently operable.
+- Works seamlessly with the middleware pipeline (item 2), schema validation (item 8), OpenTelemetry tracing (item 6), and the dead-letter channel (item 3), inheriting all cross-cutting capabilities with zero additional configuration.
+
+### 42. Wolverine Integration
+
+> *Expose Hermodr publishing as a Wolverine message side-effect, and route inbound CloudEvents through the Wolverine runtime — so Wolverine-native applications gain CloudEvents interoperability without leaving their existing handler model.*
+
+**The problem today:** Wolverine (JasperFx) has become a popular dual-mode messaging framework: it handles both in-process command/event dispatch and out-of-process transport (RabbitMQ, Azure Service Bus, Amazon SQS) through a single `IMessageBus`. Applications built on Wolverine have no standard way to emit CloudEvents from a Wolverine message handler or to receive CloudEvents and route them into the Wolverine runtime for handler discovery and execution.
+
+**What we will build:** A `Hermodr.Publisher.Wolverine` package providing:
+- A Wolverine `IMessageMiddleware` (or side-effect policy) that intercepts outgoing messages annotated with `[Event]` and publishes them through `IEventPublisher` as CloudEvents, running the full enrichment, middleware, and channel pipeline.
+- A `CloudEventWolverineHandler` base that receives CloudEvents from the Hermodr subscription registry (item 1) and re-dispatches them into the Wolverine runtime via `IMessageBus.PublishAsync`, enabling existing Wolverine handlers to react to externally sourced CloudEvents.
+- A `CloudEventMessageMapper` that maps between Wolverine `Envelope` metadata (correlation ID, conversation ID, tenant ID) and the equivalent CloudEvents extension attributes.
+- `AddWolverineEventPublisher()` and `AddWolverineEventConsumer()` DI registration extensions compatible with Wolverine's `WolverineOptions` fluent configuration API.
+
+**Benefits:**
+- Wolverine applications can emit standards-compliant CloudEvents to any Hermodr channel (RabbitMQ, Azure Service Bus, Kafka, HTTP) without bypassing the existing Wolverine handler model or Wolverine's built-in transactional outbox.
+- The `Envelope` ↔ CloudEvent attribute mapping preserves Wolverine's native correlation and tenant context across service boundaries.
+- Inbound routing through the Wolverine runtime means CloudEvent-triggered flows benefit from Wolverine's retry, error-handling, and local-queue features — no duplicate infrastructure required.
+- Works side-by-side with Wolverine's own transport integrations: teams can use Wolverine for internal messaging and Hermodr CloudEvents channels for external, spec-compliant event publishing.
+
+---
+
+### 43. Brighter Integration
+
+> *Integrate Hermodr into the Paramore Brighter command-processor pipeline — publish CloudEvents as a side-effect of dispatched commands, and route inbound CloudEvents as Brighter `IEvent` objects.*
+
+**The problem today:** Paramore Brighter (`Paramore.Brighter`) implements the Command Processor pattern with `IAmACommandProcessor` offering `Send`, `Publish`, and `Post` semantics. Applications built around Brighter have no standard way to emit a CloudEvent as a side-effect of a dispatched command or event, nor any facility to bridge inbound CloudEvents into the Brighter handler pipeline.
+
+**What we will build:** A `Hermodr.Publisher.Brighter` package providing:
+- A Brighter `IHandleRequests<T>` pipeline step (using Brighter's `IAmAPipelineStep<T>` attribute-driven decorator model) that intercepts dispatched `ICommand` and `IEvent` types annotated with `[Event]` and publishes them through `IEventPublisher` as CloudEvents after the primary handler succeeds.
+- A `CloudEventBrighterMapper` that derives CloudEvents `type`, `source`, `subject`, and `id` from the Brighter message's `Id`, `Header`, and annotation metadata.
+- An inbound bridge: an `IAmAMessageMapper<CloudEvent>` implementation and a companion `IHandleRequestsAsync<CloudEventMessage>` handler that accept CloudEvents delivered by the Hermodr subscription registry (item 1) and dispatch them into the Brighter runtime via `IAmACommandProcessor.PublishAsync`.
+- `AddBrighterEventPublisher()` and `AddBrighterEventConsumer()` DI registration extensions compatible with `ServiceCollectionExtensions.AddBrighter()`.
+- Optional support for Brighter's built-in outbox (`IAmAnOutbox<T>`) as an alternative to the Hermodr Outbox channel (item 4), surfaced as a configuration option rather than a forced dependency.
+
+**Benefits:**
+- Command-processor teams can adopt CloudEvents as their external event contract incrementally: decorate an existing `IEvent` with `[Event]` and it begins flowing to the configured channels with no handler changes.
+- Brighter's pipeline-step model ensures CloudEvent publishing is transactionally safe: the step only fires after the primary handler succeeds, preventing phantom events from failed operations.
+- The inbound bridge preserves Brighter's strongly-typed handler discovery — a CloudEvent received from any transport arrives as a concrete `IEvent` type, selected by the `type` attribute.
+- Optional outbox integration avoids duplicating outbox infrastructure when a team is already using Brighter's own outbox support.
+
+---
+
+### Version increment rationale
+
+| Bump | Trigger |
+|------|---------|
+| **Patch** (`x.y.Z`) | Bug fixes, documentation corrections, dependency updates with no API changes. |
+| **Minor** (`x.Y.0`) | New packages or APIs added in a backward-compatible way; no changes to existing public interfaces. |
+| **Major** (`X.0.0`) | Architectural expansion that introduces a fundamentally new surface area (e.g., consumer packages in v2.0), or any breaking change to existing public APIs. |
+
+Pre-release labels (`-alpha`, `-beta`, `-rc`) will be used on feature branches and release-candidate branches in accordance with the existing GitVersion configuration.
+
+---
+
+## Tracking Progress
+
+Items will be tracked as GitHub milestones and issues. To propose a new feature, adjust the priority of an existing one, or contribute an implementation, please open an issue or start a discussion in the repository.

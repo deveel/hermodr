@@ -1,0 +1,117 @@
+{
+  "docs": [
+    "README",
+    "packages",
+    {
+      "type": "category",
+      "label": "Getting Started",
+      "link": {
+        "type": "doc",
+        "id": "getting-started/installation"
+      },
+      "items": [
+        "getting-started/installation",
+        "getting-started/quick-start"
+      ]
+    },
+    {
+      "type": "category",
+      "label": "Core Concepts",
+      "link": {
+        "type": "doc",
+        "id": "concepts/README"
+      },
+      "items": [
+        "concepts/cloudevents",
+        "concepts/event-publisher",
+        "concepts/event-creation",
+        "concepts/publish-pipeline",
+        "concepts/publish-channels",
+        "concepts/event-annotations"
+      ]
+    },
+    {
+      "type": "category",
+      "label": "Publisher Channels",
+      "link": {
+        "type": "doc",
+        "id": "publishers/README"
+      },
+      "items": [
+        "publishers/azure-service-bus",
+        "publishers/rabbitmq",
+        "publishers/masstransit",
+        "publishers/webhook",
+        "publishers/error-handling",
+        "publishers/opentelemetry",
+        "publishers/outbox",
+        "publishers/dead-letter",
+        "publishers/delivery-log",
+        "publishers/typed-channels",
+        "publishers/named-channels"
+      ]
+    },
+    {
+      "type": "category",
+      "label": "Event Schema",
+      "link": {
+        "type": "doc",
+        "id": "schema/README"
+      },
+      "items": [
+        "schema/fluent-builder",
+        "schema/from-annotations",
+        "schema/export-json",
+        "schema/export-yaml",
+        "schema/export-asyncapi",
+        "schema/validation"
+      ]
+    },
+    {
+      "type": "category",
+      "label": "Event Subscriptions",
+      "link": {
+        "type": "doc",
+        "id": "subscriptions/README"
+      },
+      "items": [
+        "subscriptions/filtering",
+        "subscriptions/filter-expressions",
+        "subscriptions/dispatcher",
+        "subscriptions/routing",
+        "subscriptions/custom-resolver"
+      ]
+    },
+    {
+      "type": "category",
+      "label": "Testing",
+      "link": {
+        "type": "doc",
+        "id": "testing/README"
+      },
+      "items": [
+        "testing/README"
+      ]
+    },
+    {
+      "type": "category",
+      "label": "Samples",
+      "link": {
+        "type": "doc",
+        "id": "samples/README"
+      },
+      "items": [
+        "samples/aspnet-publisher-rabbitmq",
+        "samples/outbox-inapp-rabbitmq",
+        "samples/outbox-inapp-scheduled-delivery",
+        "samples/outbox-relay-masstransit",
+        "samples/deadletter-inproc",
+        "samples/deadletter-relay-entityframework",
+        "samples/audit-trail-ndjson"
+      ]
+    },
+    "versioning",
+    "roadmap",
+    "contributing"
+  ]
+}
