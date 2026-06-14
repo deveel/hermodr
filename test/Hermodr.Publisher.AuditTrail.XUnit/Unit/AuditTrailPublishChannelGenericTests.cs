@@ -1,4 +1,5 @@
 using CloudNative.CloudEvents;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
 namespace Hermodr.Publisher.AuditTrail.XUnit.Unit;
@@ -18,7 +19,8 @@ public class AuditTrailPublishChannelGenericTests
     {
         var channel = new AuditTrailPublishChannel<TestEvent>(
             _auditTrail,
-            Options.Create(new AuditTrailPublishOptions()));
+            Options.Create(new AuditTrailPublishOptions()),
+            new ServiceCollection().BuildServiceProvider());
 
         Assert.IsAssignableFrom<IEventPublishChannel<TestEvent>>(channel);
         Assert.IsAssignableFrom<IEventPublishChannel>(channel);
@@ -30,7 +32,8 @@ public class AuditTrailPublishChannelGenericTests
         var cancellationToken = TestContext.Current.CancellationToken;
         var channel = new AuditTrailPublishChannel<TestEvent>(
             _auditTrail,
-            Options.Create(new AuditTrailPublishOptions()));
+            Options.Create(new AuditTrailPublishOptions()),
+            new ServiceCollection().BuildServiceProvider());
 
         var cloudEvent = new CloudEvent
         {
@@ -52,7 +55,8 @@ public class AuditTrailPublishChannelGenericTests
         var cancellationToken = TestContext.Current.CancellationToken;
         var channel = new AuditTrailPublishChannel<TestEvent>(
             _auditTrail,
-            Options.Create(new AuditTrailPublishOptions()));
+            Options.Create(new AuditTrailPublishOptions()),
+            new ServiceCollection().BuildServiceProvider());
 
         var cloudEvent = new CloudEvent
         {
@@ -73,7 +77,8 @@ public class AuditTrailPublishChannelGenericTests
         var cancellationToken = TestContext.Current.CancellationToken;
         var channel = new AuditTrailPublishChannel<TestEvent>(
             _auditTrail,
-            Options.Create(new AuditTrailPublishOptions()));
+            Options.Create(new AuditTrailPublishOptions()),
+            new ServiceCollection().BuildServiceProvider());
 
         for (int i = 0; i < 5; i++)
         {
@@ -93,7 +98,7 @@ public class AuditTrailPublishChannelGenericTests
     public void Constructor_NullWriter_ShouldThrowArgumentNullException()
     {
         Assert.Throws<ArgumentNullException>(() =>
-            new AuditTrailPublishChannel<TestEvent>(null!, Options.Create(new AuditTrailPublishOptions())));
+            new AuditTrailPublishChannel<TestEvent>(null!, Options.Create(new AuditTrailPublishOptions()), new ServiceCollection().BuildServiceProvider()));
     }
 
     [Fact]
@@ -101,7 +106,8 @@ public class AuditTrailPublishChannelGenericTests
     {
         var channel = new AuditTrailPublishChannel<TestEvent>(
             _auditTrail,
-            Options.Create(new AuditTrailPublishOptions()));
+            Options.Create(new AuditTrailPublishOptions()),
+            new ServiceCollection().BuildServiceProvider());
 
         // Should be assignable to base type
         Assert.IsAssignableFrom<AuditTrailPublishChannel>(channel);

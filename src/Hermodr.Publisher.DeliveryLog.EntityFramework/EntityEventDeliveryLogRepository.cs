@@ -1,6 +1,7 @@
 using Kista;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Hermodr;
@@ -10,28 +11,28 @@ namespace Hermodr;
 /// </summary>
 public class EntityEventDeliveryLogRepository : EntityRepository<DbEventDeliveryRecord, string>, IEventPublishDeliveryLog
 {
-    private readonly IEventSystemTime _systemTime;
     private readonly IEventDeliveryRecordFactory<DbEventDeliveryRecord> _recordFactory;
+    private readonly IServiceProvider _serviceProvider;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="EntityEventDeliveryLogRepository"/> class.
     /// </summary>
     /// <param name="context">The <see cref="DeliveryLogDbContext"/> to use for data access.</param>
     /// <param name="recordFactory">The factory used to create <see cref="DbEventDeliveryRecord"/> instances.</param>
-    /// <param name="systemTime">An optional clock abstraction for timestamping.</param>
-    /// <param name="services">An optional <see cref="IServiceProvider"/> for dependency resolution.</param>
+    /// <param name="serviceProvider">The service provider for lazy resolution of dependencies.</param>
     /// <param name="logger">An optional logger for diagnostic output.</param>
     public EntityEventDeliveryLogRepository(
         DeliveryLogDbContext context,
         IEventDeliveryRecordFactory<DbEventDeliveryRecord> recordFactory,
-        IEventSystemTime? systemTime = null,
-        IServiceProvider? services = null,
+        IServiceProvider serviceProvider,
         ILogger<EntityRepository<DbEventDeliveryRecord, string>>? logger = null)
-        : base(context, services!, logger!)
+        : base(context, serviceProvider, logger!)
     {
         _recordFactory = recordFactory;
-        _systemTime = systemTime ?? EventSystemTime.Instance;
+        _serviceProvider = serviceProvider;
     }
+
+    private IEventSystemTime SystemTime => _serviceProvider.GetRequiredService<IEventSystemTime>();
 
     /// <inheritdoc />
     public string ProviderName => "EntityFrameworkCore";

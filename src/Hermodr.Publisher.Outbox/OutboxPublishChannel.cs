@@ -20,7 +20,6 @@ internal sealed class OutboxPublishChannel<TMessage> : EventPublishChannel<Outbo
     private readonly OutboxTelemetry _telemetry = new();
     private readonly IOutboxMessageFactory<TMessage> _messageFactory;
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly IEventSystemTime _systemTime;
     private readonly ILogger _logger;
 
     /// <summary>
@@ -39,14 +38,6 @@ internal sealed class OutboxPublishChannel<TMessage> : EventPublishChannel<Outbo
     /// <see cref="IOutboxMessageStore{TMessage}"/> can be resolved without causing
     /// a scoped-in-singleton lifetime violation.
     /// </param>
-    /// <param name="systemTime">
-    /// The clock abstraction used to evaluate whether a scheduled publish time is
-    /// in the future and should be deferred in the outbox.
-    /// </param>
-    /// <param name="validators">
-    /// An optional collection of <see cref="IValidateOptions{TOptions}"/> services.
-    /// When empty or <c>null</c> validation falls back to DataAnnotations.
-    /// </param>
     /// <param name="logger">
     /// An optional logger; when <c>null</c> a <see cref="NullLogger{T}"/> is used.
     /// </param>
@@ -54,18 +45,15 @@ internal sealed class OutboxPublishChannel<TMessage> : EventPublishChannel<Outbo
         IOptions<OutboxPublishOptions> options,
         IOutboxMessageFactory<TMessage> messageFactory,
         IServiceScopeFactory scopeFactory,
-        IEventSystemTime systemTime,
-        IEnumerable<IValidateOptions<OutboxPublishOptions>>? validators = null,
+        IServiceProvider serviceProvider,
         ILogger<OutboxPublishChannel<TMessage>>? logger = null)
-        : base(options.Value, validators)
+        : base(options.Value, serviceProvider)
     {
         ArgumentNullException.ThrowIfNull(messageFactory);
         ArgumentNullException.ThrowIfNull(scopeFactory);
-        ArgumentNullException.ThrowIfNull(systemTime);
 
         _messageFactory = messageFactory;
         _scopeFactory   = scopeFactory;
-        _systemTime     = systemTime;
         _logger = logger ?? NullLogger<OutboxPublishChannel<TMessage>>.Instance;
     }
 
@@ -97,7 +85,7 @@ internal sealed class OutboxPublishChannel<TMessage> : EventPublishChannel<Outbo
             var message = _messageFactory.Create(@event, options);
             await store.AddAsync(message, cancellationToken);
 
-            if (options.ScheduleDeliveryAt is { } scheduleDeliveryAt && scheduleDeliveryAt > _systemTime.UtcNow)
+            if (options.ScheduleDeliveryAt is { } scheduleDeliveryAt && scheduleDeliveryAt > ServiceProvider.GetRequiredService<IEventSystemTime>().UtcNow)
             {
                 await store.SetDeferredAsync(message, scheduleDeliveryAt, cancellationToken);
             }

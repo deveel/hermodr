@@ -10,6 +10,7 @@ using Azure.Messaging.ServiceBus;
 
 using CloudNative.CloudEvents;
 
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -43,11 +44,6 @@ namespace Hermodr {
         /// <param name="messageCreator">
         /// The factory to create the message to send to the queue.
         /// </param>
-        /// <param name="validators">
-        /// Optional collection of <see cref="IValidateOptions{ServiceBusPublishOptions}"/>
-        /// services registered in the DI container. When the collection is empty or <c>null</c>
-        /// validation falls back to DataAnnotations.
-        /// </param>
         /// <param name="logger">
         /// A logger to record the operations of the channel.
         /// </param>
@@ -55,9 +51,9 @@ namespace Hermodr {
 			IOptions<ServiceBusPublishOptions> options,
 			IServiceBusClientFactory clientFactory,
 			ServiceBusMessageFactory messageCreator,
-			IEnumerable<IValidateOptions<ServiceBusPublishOptions>>? validators = null,
+			IServiceProvider serviceProvider,
 			ILogger<ServiceBusPublishChannel>? logger = null)
-			: base(options.Value, validators) {
+			: base(options.Value, serviceProvider) {
 
 			var clientOptions = options.Value.ClientOptions ?? new ServiceBusClientOptions();
 

@@ -3,6 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 //
 
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -45,20 +46,19 @@ namespace Hermodr
         /// </param>
         /// <param name="clientFactory">Factory that creates the <see cref="ServiceBusClient"/>.</param>
         /// <param name="messageCreator">Factory that converts a CloudEvent into a Service Bus message.</param>
-        /// <param name="validators">Optional DI-registered options validators.</param>
         /// <param name="logger">Optional logger; falls back to NullLogger when <c>null</c>.</param>
         public ServiceBusPublishChannel(
             IOptions<ServiceBusPublishOptions<TEvent>> typedOptions,
             IOptions<ServiceBusPublishOptions> baseOptions,
             IServiceBusClientFactory clientFactory,
             ServiceBusMessageFactory messageCreator,
-            IEnumerable<IValidateOptions<ServiceBusPublishOptions>>? validators = null,
+            IServiceProvider serviceProvider,
             ILogger<ServiceBusPublishChannel>? logger = null)
             : base(
                 Options.Create(ServiceBusPublishOptions<TEvent>.Merge(baseOptions.Value, typedOptions.Value)),
                 clientFactory,
                 messageCreator,
-                validators,
+                serviceProvider,
                 logger)
         {
         }

@@ -1,4 +1,5 @@
 using CloudNative.CloudEvents;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -15,7 +16,8 @@ public class AuditTrailPublishChannelTests
         _auditTrail = new InMemoryAuditTrail(_bag);
         _channel = new AuditTrailPublishChannel(
             _auditTrail,
-            Options.Create(new AuditTrailPublishOptions()));
+            Options.Create(new AuditTrailPublishOptions()),
+            new ServiceCollection().BuildServiceProvider());
     }
 
     [Fact]

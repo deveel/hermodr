@@ -8,6 +8,7 @@ using System.Diagnostics;
 
 using CloudNative.CloudEvents;
 
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
 namespace Hermodr
@@ -23,7 +24,12 @@ namespace Hermodr
     {
         private readonly ChannelTelemetry _telemetry = new();
         private readonly TOptions _defaultOptions;
-        private readonly IEnumerable<IValidateOptions<TOptions>> _validators;
+        private IEnumerable<IValidateOptions<TOptions>>? _validators;
+
+        /// <summary>
+        /// Gets the service provider for lazy resolution of dependencies.
+        /// </summary>
+        protected IServiceProvider ServiceProvider { get; }
 
         /// <summary>
         /// Initialises the channel with its channel-level defaults and optional extra
@@ -33,20 +39,21 @@ namespace Hermodr
         /// The channel-level default options used when no per-call overrides are supplied.
         /// Must not be <c>null</c>.
         /// </param>
-        /// <param name="validators">
-        /// An optional collection of <see cref="IValidateOptions{TOptions}"/> services
-        /// registered in the DI container.  When the collection is empty or <c>null</c>
-        /// validation falls back to
-        /// <see cref="Validator.ValidateObject(object, ValidationContext)"/> (DataAnnotations).
+        /// <param name="serviceProvider">
+        /// The service provider used to resolve <see cref="IValidateOptions{TOptions}"/>
+        /// services lazily.
         /// </param>
         protected EventPublishChannel(
             TOptions defaultOptions,
-            IEnumerable<IValidateOptions<TOptions>>? validators = null)
+            IServiceProvider serviceProvider)
         {
             ArgumentNullException.ThrowIfNull(defaultOptions);
             _defaultOptions = defaultOptions;
-            _validators = validators ?? [];
+            ServiceProvider = serviceProvider;
         }
+
+        private IEnumerable<IValidateOptions<TOptions>> Validators =>
+            _validators ??= ServiceProvider.GetServices<IValidateOptions<TOptions>>();
 
         /// <inheritdoc cref="INamedEventPublishChannel.Name"/>
         /// <remarks>
@@ -87,7 +94,7 @@ namespace Hermodr
         /// </exception>
         protected virtual void ValidateOptions(TOptions options)
         {
-            if (!_validators.Any())
+            if (!Validators.Any())
             {
                 // No IValidateOptions<T> registered – fall back to DataAnnotations.
                 var ctx = new ValidationContext(options);
@@ -96,7 +103,7 @@ namespace Hermodr
             }
 
             var failures = new List<string>();
-            foreach (var validator in _validators)
+            foreach (var validator in Validators)
             {
                 var result = validator.Validate(null, options);
                 if (result.Failed)

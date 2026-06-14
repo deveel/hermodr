@@ -23,68 +23,22 @@ namespace Hermodr
             this IServiceCollection services,
             Action<EventSchemaServicesOptions>? configureOptions = null)
         {
-            bool initializerRegistered = services.Any(d => d.ServiceType == typeof(SchemaRegistrationsApplier));
-
-            if (!initializerRegistered)
-            {
-                // Configure options (always do this, even if already registered)
-                if (configureOptions != null)
-                {
-                    services.Configure(configureOptions);
-                }
-
-                // Core services
-                services.TryAddSingleton<IEventSchemaFactory, EventSchemaFactory>();
-                services.TryAddSingleton<IEventSchemaValidator, EventSchemaValidator>();
-                services.TryAddSingleton<IEventSchemaRegistry, EventSchemaRegistry>();
-                services.TryAddSingleton<IEventDataDeserializerRegistry, EventDataDeserializerRegistry>();
-
-                // Built-in deserializers
-                services.TryAddSingleton<IEventDataDeserializer, JsonEventDataDeserializer>();
-                services.TryAddSingleton<IEventDataDeserializer, XmlEventDataDeserializer>();
-
-                // Register the applier as a singleton - its constructor runs once at resolution
-                services.TryAddSingleton<SchemaRegistrationsApplier>();
-            }
-            else if (configureOptions != null)
+            if (configureOptions != null)
             {
                 services.Configure(configureOptions);
             }
 
+            // Core services
+            services.TryAddSingleton<IEventSchemaFactory, EventSchemaFactory>();
+            services.TryAddSingleton<IEventSchemaValidator, EventSchemaValidator>();
+            services.TryAddSingleton<IEventSchemaRegistry, EventSchemaRegistry>();
+            services.TryAddSingleton<IEventDataDeserializerRegistry, EventDataDeserializerRegistry>();
+
+            // Built-in deserializers
+            services.TryAddSingleton<IEventDataDeserializer, JsonEventDataDeserializer>();
+            services.TryAddSingleton<IEventDataDeserializer, XmlEventDataDeserializer>();
+
             return services;
-        }
-    }
-
-    /// <summary>
-    /// Applies schema registrations (assembly scanning and explicit registrations)
-    /// when first resolved from the DI container.
-    /// </summary>
-    public sealed class SchemaRegistrationsApplier
-    {
-        /// <summary>
-        /// Initializes the schema registrations applier and applies all pending registrations.
-        /// </summary>
-        public SchemaRegistrationsApplier(
-            Microsoft.Extensions.Options.IOptions<EventSchemaServicesOptions> options,
-            IEventSchemaRegistry registry,
-            IEventDataDeserializerRegistry deserializerRegistry,
-            IEnumerable<IEventDataDeserializer> deserializers)
-        {
-            var opts = options.Value;
-
-            // Register built-in deserializers (JSON, XML, etc.) first
-            foreach (var deserializer in deserializers)
-                deserializerRegistry.Register(deserializer);
-
-            // Then additional deserializers from options
-            foreach (var deserializer in opts.AdditionalDeserializers)
-                deserializerRegistry.Register(deserializer);
-
-            foreach (var assembly in opts.AssembliesToScan)
-                registry.ScanAssembly(assembly);
-
-            foreach (var registration in opts.SchemaRegistrations)
-                registration(registry);
         }
     }
 }

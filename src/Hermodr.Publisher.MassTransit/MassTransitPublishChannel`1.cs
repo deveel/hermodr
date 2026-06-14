@@ -5,6 +5,7 @@
 
 using MassTransit;
 
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -42,20 +43,19 @@ namespace Hermodr
         /// </param>
         /// <param name="publishEndpoint">MassTransit publish endpoint.</param>
         /// <param name="sendEndpointProvider">MassTransit send-endpoint provider.</param>
-        /// <param name="validators">Optional DI-registered options validators.</param>
         /// <param name="logger">Optional logger; falls back to NullLogger when <c>null</c>.</param>
         public MassTransitPublishChannel(
             IOptions<MassTransitPublishOptions<TEvent>> typedOptions,
             IOptions<MassTransitPublishOptions> baseOptions,
             IPublishEndpoint publishEndpoint,
             ISendEndpointProvider sendEndpointProvider,
-            IEnumerable<IValidateOptions<MassTransitPublishOptions>>? validators = null,
+            IServiceProvider serviceProvider,
             ILogger<MassTransitPublishChannel>? logger = null)
             : base(
                 Options.Create(MassTransitPublishOptions.Merge(baseOptions.Value, typedOptions.Value)),
                 publishEndpoint,
                 sendEndpointProvider,
-                validators,
+                serviceProvider,
                 logger)
         {
         }

@@ -246,7 +246,7 @@ public class TelemetryEdgeCasesTests
 
     private sealed class SimpleTestChannel : EventPublishChannel<SimpleTestOptions>
     {
-        public SimpleTestChannel() : base(new SimpleTestOptions()) { }
+        public SimpleTestChannel(IServiceProvider? serviceProvider = null) : base(new SimpleTestOptions(), serviceProvider ?? new ServiceCollection().BuildServiceProvider()) { }
 
         protected override Task PublishCoreAsync(CloudEvent @event, SimpleTestOptions options, CancellationToken cancellationToken)
         {

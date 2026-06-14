@@ -3,6 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 //
 
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -44,23 +45,17 @@ namespace Hermodr
         /// will contain default values that are overridden by <paramref name="typedOptions"/>.
         /// </param>
         /// <param name="connection">The AMQ connection shared with other channels.</param>
-        /// <param name="messageFactory">Factory that converts a CloudEvent into a RabbitMQ message.</param>
-        /// <param name="validators">Optional DI-registered options validators.</param>
         /// <param name="logger">Optional logger; falls back to NullLogger when <c>null</c>.</param>
         public RabbitMqPublishChannel(
             IOptions<RabbitMqPublishOptions<TEvent>> typedOptions,
             IOptions<RabbitMqPublishOptions> baseOptions,
             IConnection connection,
-            IRabbitMqMessageFactory messageFactory,
-            IEventSystemTime? systemTime = null,
-            IEnumerable<IValidateOptions<RabbitMqPublishOptions>>? validators = null,
+            IServiceProvider serviceProvider,
             ILogger<RabbitMqPublishChannel>? logger = null)
             : base(
                 Options.Create(RabbitMqPublishOptions.Merge(baseOptions.Value, typedOptions.Value)),
                 connection,
-                messageFactory,
-                systemTime,
-                validators,
+                serviceProvider,
                 logger)
         {
         }

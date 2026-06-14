@@ -4,7 +4,9 @@
 //
 
 using System.ComponentModel.DataAnnotations;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace Hermodr
@@ -15,30 +17,52 @@ namespace Hermodr
     /// </summary>
     public sealed class SchemaValidationMiddleware : IEventMiddleware
     {
-        private readonly IEventSchemaRegistry _schemaRegistry;
-        private readonly IEventSchemaValidator _validator;
         private readonly SchemaValidationOptions _options;
         private readonly ILogger<SchemaValidationMiddleware> _logger;
+        private readonly IServiceProvider _serviceProvider;
+        private readonly Lazy<Task> _initializationTask;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="SchemaValidationMiddleware"/> class.
         /// </summary>
-        /// <param name="schemaRegistry">The schema registry for schema lookup.</param>
-        /// <param name="validator">The schema validator.</param>
         /// <param name="options">The validation options.</param>
         /// <param name="logger">A logger instance.</param>
-        /// <param name="initializer">Ensures schema registrations are applied before first validation.</param>
+        /// <param name="serviceProvider">The service provider for lazy resolution of dependencies.</param>
         public SchemaValidationMiddleware(
-            IEventSchemaRegistry schemaRegistry,
-            IEventSchemaValidator validator,
             IOptions<SchemaValidationOptions> options,
             ILogger<SchemaValidationMiddleware> logger,
-            SchemaRegistrationsApplier registrations)
+            IServiceProvider serviceProvider)
         {
-            _schemaRegistry = schemaRegistry;
-            _validator = validator;
             _options = options?.Value ?? new SchemaValidationOptions();
-            _logger = logger;
+            _logger = logger ?? NullLogger<SchemaValidationMiddleware>.Instance;
+            _serviceProvider = serviceProvider;
+            _initializationTask = new Lazy<Task>(InitializeAsync, LazyThreadSafetyMode.ExecutionAndPublication);
+        }
+
+        private IEventSchemaRegistry SchemaRegistry =>
+            _serviceProvider.GetRequiredService<IEventSchemaRegistry>();
+
+        private IEventSchemaValidator Validator =>
+            _serviceProvider.GetRequiredService<IEventSchemaValidator>();
+
+        private async Task InitializeAsync()
+        {
+            var options = _serviceProvider.GetRequiredService<IOptions<EventSchemaServicesOptions>>();
+            var registry = _serviceProvider.GetRequiredService<IEventSchemaRegistry>();
+            var deserializerRegistry = _serviceProvider.GetRequiredService<IEventDataDeserializerRegistry>();
+            var deserializers = _serviceProvider.GetServices<IEventDataDeserializer>();
+
+            foreach (var deserializer in deserializers)
+                deserializerRegistry.Register(deserializer);
+
+            foreach (var deserializer in options.Value.AdditionalDeserializers)
+                deserializerRegistry.Register(deserializer);
+
+            foreach (var assembly in options.Value.AssembliesToScan)
+                registry.ScanAssembly(assembly);
+
+            foreach (var registration in options.Value.SchemaRegistrations)
+                registration(registry);
         }
 
         /// <inheritdoc/>
@@ -47,11 +71,13 @@ namespace Hermodr
             ArgumentNullException.ThrowIfNull(context);
             ArgumentNullException.ThrowIfNull(next);
 
+            await _initializationTask.Value;
+
             var eventType = context.Event.Type;
             var version = context.Event["dataversion"] as string;
 
             // Lookup schema by event type + version
-            var schema = string.IsNullOrEmpty(eventType) ? null : _schemaRegistry.GetSchema(eventType, version);
+            var schema = string.IsNullOrEmpty(eventType) ? null : SchemaRegistry.GetSchema(eventType, version);
 
             if (schema == null)
             {
@@ -81,7 +107,7 @@ namespace Hermodr
 
             // Validate event payload against schema
             var errors = new List<ValidationResult>();
-            await foreach (var error in _validator.ValidateEventAsync(schema, context.Event, context.CancellationToken))
+            await foreach (var error in Validator.ValidateEventAsync(schema, context.Event, context.CancellationToken))
             {
                 errors.Add(error);
             }
