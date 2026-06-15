@@ -11,6 +11,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Kista.EntityFramework" Version="1.6.4" />
+    <PackageReference Include="Kista.EntityFramework" Version="1.6.7" />
   </ItemGroup>
 </Project>

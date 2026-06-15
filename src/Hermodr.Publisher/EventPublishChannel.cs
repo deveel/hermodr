@@ -24,7 +24,6 @@ namespace Hermodr
     {
         private readonly ChannelTelemetry _telemetry = new();
         private readonly TOptions _defaultOptions;
-        private IEnumerable<IValidateOptions<TOptions>>? _validators;
 
         /// <summary>
         /// Gets the service provider for lazy resolution of dependencies.
@@ -53,7 +52,7 @@ namespace Hermodr
         }
 
         private IEnumerable<IValidateOptions<TOptions>> Validators =>
-            _validators ??= ServiceProvider.GetServices<IValidateOptions<TOptions>>();
+            ServiceProvider.GetServices<IValidateOptions<TOptions>>();
 
         /// <inheritdoc cref="INamedEventPublishChannel.Name"/>
         /// <remarks>
