@@ -143,7 +143,7 @@ namespace Hermodr
                         yield return error;
                 }
 
-                if (property.Properties.Count > 0 && value != null)
+                if (property.Properties.Count > 0)
                 {
                     var nestedSchema = CreateNestedSchema(property);
                     foreach (var nestedError in ValidateObjectTree(value, nestedSchema, propertyPath))

@@ -10,7 +10,7 @@ namespace Hermodr
         public static async Task Deserialize_SimpleObject_ReturnsDictionary()
         {
             var json = """{"name": "John", "age": 30}""";
-            var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
 
             var result = await Deserializer.DeserializeAsync(stream, CancellationToken.None);
 
@@ -23,7 +23,7 @@ namespace Hermodr
         public static async Task Deserialize_NestedObject_ReturnsNestedDictionary()
         {
             var json = """{"user": {"name": "Alice", "email": "alice@test.com"}}""";
-            var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
 
             var result = await Deserializer.DeserializeAsync(stream, CancellationToken.None);
 
@@ -37,7 +37,7 @@ namespace Hermodr
         public static async Task Deserialize_Array_ReturnsList()
         {
             var json = """{"tags": ["a", "b", "c"]}""";
-            var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
 
             var result = await Deserializer.DeserializeAsync(stream, CancellationToken.None);
 
@@ -53,7 +53,7 @@ namespace Hermodr
         public static async Task Deserialize_NullValue_ReturnsNull()
         {
             var json = """{"value": null}""";
-            var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
 
             var result = await Deserializer.DeserializeAsync(stream, CancellationToken.None);
 
@@ -65,7 +65,7 @@ namespace Hermodr
         public static async Task Deserialize_BooleanValues_ReturnsBool()
         {
             var json = """{"active": true, "verified": false}""";
-            var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
 
             var result = await Deserializer.DeserializeAsync(stream, CancellationToken.None);
 
@@ -78,7 +78,7 @@ namespace Hermodr
         public static async Task Deserialize_NumberValues_ReturnsDouble()
         {
             var json = """{"int_val": 42, "float_val": 3.14}""";
-            var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
 
             var result = await Deserializer.DeserializeAsync(stream, CancellationToken.None);
 
@@ -107,7 +107,7 @@ namespace Hermodr
         [Fact]
         public static async Task Deserialize_EmptyStream_Throws()
         {
-            var stream = new MemoryStream(Array.Empty<byte>());
+            using var stream = new MemoryStream(Array.Empty<byte>());
             var exception = await Record.ExceptionAsync(() =>
                 Deserializer.DeserializeAsync(stream, CancellationToken.None));
             Assert.NotNull(exception);

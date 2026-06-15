@@ -10,7 +10,7 @@ namespace Hermodr
         public static async Task Deserialize_SimpleElement_ReturnsDictionary()
         {
             var xml = """<root><name>John</name><age>30</age></root>""";
-            var stream = new MemoryStream(Encoding.UTF8.GetBytes(xml));
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes(xml));
 
             var result = await Deserializer.DeserializeAsync(stream, CancellationToken.None);
 
@@ -23,7 +23,7 @@ namespace Hermodr
         public static async Task Deserialize_NestedElements_ReturnsNestedDictionary()
         {
             var xml = """<root><user><name>Alice</name><email>alice@test.com</email></user></root>""";
-            var stream = new MemoryStream(Encoding.UTF8.GetBytes(xml));
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes(xml));
 
             var result = await Deserializer.DeserializeAsync(stream, CancellationToken.None);
 
@@ -37,7 +37,7 @@ namespace Hermodr
         public static async Task Deserialize_AttributesAsProperties_ReturnsDictionary()
         {
             var xml = """<order id="123" status="active"></order>""";
-            var stream = new MemoryStream(Encoding.UTF8.GetBytes(xml));
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes(xml));
 
             var result = await Deserializer.DeserializeAsync(stream, CancellationToken.None);
 
@@ -50,7 +50,7 @@ namespace Hermodr
         public static async Task Deserialize_AttributeAndElementConflict_AttributeWins()
         {
             var xml = """<order id="attr-value"><id>element-value</id></order>""";
-            var stream = new MemoryStream(Encoding.UTF8.GetBytes(xml));
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes(xml));
 
             var result = await Deserializer.DeserializeAsync(stream, CancellationToken.None);
 
@@ -62,7 +62,7 @@ namespace Hermodr
         public static async Task Deserialize_ElementWithAttributes_ReturnsDictionary()
         {
             var xml = """<person id="1"><name>Bob</name><age>25</age></person>""";
-            var stream = new MemoryStream(Encoding.UTF8.GetBytes(xml));
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes(xml));
 
             var result = await Deserializer.DeserializeAsync(stream, CancellationToken.None);
 
@@ -76,7 +76,7 @@ namespace Hermodr
         public static async Task Deserialize_EmptyElement_ReturnsEmptyString()
         {
             var xml = """<root><value></value></root>""";
-            var stream = new MemoryStream(Encoding.UTF8.GetBytes(xml));
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes(xml));
 
             var result = await Deserializer.DeserializeAsync(stream, CancellationToken.None);
 
@@ -88,7 +88,7 @@ namespace Hermodr
         public static async Task Deserialize_ElementWithText_ReturnsString()
         {
             var xml = """<root><message>Hello World</message></root>""";
-            var stream = new MemoryStream(Encoding.UTF8.GetBytes(xml));
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes(xml));
 
             var result = await Deserializer.DeserializeAsync(stream, CancellationToken.None);
 
@@ -115,7 +115,7 @@ namespace Hermodr
         [Fact]
         public static async Task Deserialize_EmptyStream_Throws()
         {
-            var stream = new MemoryStream(Array.Empty<byte>());
+            using var stream = new MemoryStream(Array.Empty<byte>());
             await Assert.ThrowsAsync<System.Xml.XmlException>(() =>
                 Deserializer.DeserializeAsync(stream, CancellationToken.None));
         }
