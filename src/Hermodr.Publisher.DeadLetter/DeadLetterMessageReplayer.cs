@@ -20,8 +20,8 @@ public class DeadLetterMessageReplayer : IDeadLetterMessageReplayer
     private readonly DeadLetterTelemetry _telemetry = new();
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly DeadLetterReplayOptions _options;
-    private readonly IEventSystemTime _systemTime;
     private readonly ILogger _logger;
+    private readonly IServiceProvider _serviceProvider;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DeadLetterMessageReplayer"/> class.
@@ -29,14 +29,16 @@ public class DeadLetterMessageReplayer : IDeadLetterMessageReplayer
     public DeadLetterMessageReplayer(
         IServiceScopeFactory scopeFactory,
         IOptions<DeadLetterReplayOptions> options,
-        IEventSystemTime? systemTime = null,
+        IServiceProvider serviceProvider,
         ILogger<DeadLetterMessageReplayer>? logger = null)
     {
         _scopeFactory = scopeFactory;
         _options = options.Value;
-        _systemTime = systemTime ?? EventSystemTime.Instance;
+        _serviceProvider = serviceProvider;
         _logger = logger ?? NullLogger<DeadLetterMessageReplayer>.Instance;
     }
+
+    private IEventSystemTime SystemTime => _serviceProvider.GetRequiredService<IEventSystemTime>();
 
     /// <inheritdoc />
     public async Task ReplayAsync(IDeadLetterMessage message, CancellationToken cancellationToken = default)
@@ -81,7 +83,7 @@ public class DeadLetterMessageReplayer : IDeadLetterMessageReplayer
                 await store.SetRetryAsync(
                     message,
                     ex.Message,
-                    _systemTime.UtcNow.Add(_options.RetryInterval),
+                    SystemTime.UtcNow.Add(_options.RetryInterval),
                     cancellationToken);
             }
             else

@@ -1,5 +1,6 @@
 using CloudNative.CloudEvents;
 
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -27,18 +28,15 @@ public class AuditTrailPublishChannel<TEvent> : AuditTrailPublishChannel, IEvent
     /// <param name="options">
     /// The channel-level default options resolved from the DI container.
     /// </param>
-    /// <param name="validators">
-    /// An optional collection of <see cref="IValidateOptions{AuditTrailPublishOptions}"/> services.
-    /// </param>
     /// <param name="logger">
     /// An optional logger.
     /// </param>
     public AuditTrailPublishChannel(
         IAuditTrailWriter writer,
         IOptions<AuditTrailPublishOptions> options,
-        IEnumerable<IValidateOptions<AuditTrailPublishOptions>>? validators = null,
+        IServiceProvider serviceProvider,
         ILogger<AuditTrailPublishChannel>? logger = null)
-        : base(writer, options, validators, logger)
+        : base(writer, options, serviceProvider, logger)
     {
     }
 }

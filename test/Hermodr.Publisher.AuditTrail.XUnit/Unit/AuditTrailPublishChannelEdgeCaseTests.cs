@@ -1,4 +1,5 @@
 using CloudNative.CloudEvents;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -18,7 +19,7 @@ public class AuditTrailPublishChannelEdgeCaseTests
     public void Constructor_NullWriter_ShouldThrowArgumentNullException()
     {
         Assert.Throws<ArgumentNullException>(() =>
-            new AuditTrailPublishChannel(null!, Options.Create(new AuditTrailPublishOptions())));
+            new AuditTrailPublishChannel(null!, Options.Create(new AuditTrailPublishOptions()), new ServiceCollection().BuildServiceProvider()));
     }
 
     [Fact]
@@ -28,7 +29,8 @@ public class AuditTrailPublishChannelEdgeCaseTests
         var failingWriter = new FailingAuditTrailWriter();
         var channel = new AuditTrailPublishChannel(
             failingWriter,
-            Options.Create(new AuditTrailPublishOptions()));
+            Options.Create(new AuditTrailPublishOptions()),
+            new ServiceCollection().BuildServiceProvider());
 
         var cloudEvent = new CloudEvent
         {
@@ -47,7 +49,8 @@ public class AuditTrailPublishChannelEdgeCaseTests
         var cancellationToken = TestContext.Current.CancellationToken;
         var channel = new AuditTrailPublishChannel(
             _auditTrail,
-            Options.Create(new AuditTrailPublishOptions()));
+            Options.Create(new AuditTrailPublishOptions()),
+            new ServiceCollection().BuildServiceProvider());
 
         var cloudEvent = new CloudEvent
         {
@@ -69,7 +72,8 @@ public class AuditTrailPublishChannelEdgeCaseTests
         var cancellationToken = TestContext.Current.CancellationToken;
         var channel = new AuditTrailPublishChannel(
             _auditTrail,
-            Options.Create(new AuditTrailPublishOptions()));
+            Options.Create(new AuditTrailPublishOptions()),
+            new ServiceCollection().BuildServiceProvider());
 
         var cloudEvent = new CloudEvent
         {
@@ -90,7 +94,8 @@ public class AuditTrailPublishChannelEdgeCaseTests
         var cancellationToken = TestContext.Current.CancellationToken;
         var channel = new AuditTrailPublishChannel(
             _auditTrail,
-            Options.Create(new AuditTrailPublishOptions()));
+            Options.Create(new AuditTrailPublishOptions()),
+            new ServiceCollection().BuildServiceProvider());
 
         var cloudEvent = new CloudEvent
         {
@@ -111,7 +116,8 @@ public class AuditTrailPublishChannelEdgeCaseTests
         var cancellationToken = TestContext.Current.CancellationToken;
         var channel = new AuditTrailPublishChannel(
             _auditTrail,
-            Options.Create(new AuditTrailPublishOptions()));
+            Options.Create(new AuditTrailPublishOptions()),
+            new ServiceCollection().BuildServiceProvider());
 
         for (int i = 0; i < 5; i++)
         {

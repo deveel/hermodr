@@ -12,6 +12,7 @@ using CloudNative.CloudEvents.SystemTextJson;
 
 using MassTransit;
 
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -45,11 +46,6 @@ namespace Hermodr
         /// <param name="sendEndpointProvider">
         /// The MassTransit send-endpoint provider used when a destination address is configured.
         /// </param>
-        /// <param name="validators">
-        /// Optional collection of <see cref="IValidateOptions{MassTransitPublishOptions}"/>
-        /// services registered in the DI container. When the collection is empty or <c>null</c>
-        /// validation falls back to DataAnnotations.
-        /// </param>
         /// <param name="logger">
         /// An optional logger; when <c>null</c> a <see cref="Microsoft.Extensions.Logging.Abstractions.NullLogger{T}"/> is used.
         /// </param>
@@ -57,9 +53,9 @@ namespace Hermodr
             IOptions<MassTransitPublishOptions> options,
             IPublishEndpoint publishEndpoint,
             ISendEndpointProvider sendEndpointProvider,
-            IEnumerable<IValidateOptions<MassTransitPublishOptions>>? validators = null,
+            IServiceProvider serviceProvider,
             ILogger<MassTransitPublishChannel>? logger = null)
-            : base(options.Value, validators)
+            : base(options.Value, serviceProvider)
         {
             _publishEndpoint = publishEndpoint;
             _sendEndpointProvider = sendEndpointProvider;

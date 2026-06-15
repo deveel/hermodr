@@ -3,6 +3,7 @@ using CloudNative.CloudEvents;
 using Kista;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Hermodr;
@@ -31,7 +32,7 @@ public class EntityEventDeliveryLogRepositoryTests : IAsyncDisposable
 
         _repository = new EntityEventDeliveryLogRepository(_context,
             new EventDeliveryRecordFactory(),
-            services: null,
+            new ServiceCollection().BuildServiceProvider(),
             logger: NullLogger<EntityRepository<DbEventDeliveryRecord, string>>.Instance);
     }
 

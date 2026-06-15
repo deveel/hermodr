@@ -38,7 +38,7 @@ namespace Hermodr
         /// </summary>
         private sealed class AlphaChannel : EventPublishChannel<AlphaOptions>
         {
-            public AlphaChannel(AlphaOptions defaults) : base(defaults) { }
+            public AlphaChannel(AlphaOptions defaults, IServiceProvider? serviceProvider = null) : base(defaults, serviceProvider ?? new ServiceCollection().BuildServiceProvider()) { }
 
             /// <summary>Options received by the last <see cref="PublishCoreAsync"/> invocation.</summary>
             public AlphaOptions? LastEffectiveOptions { get; private set; }
@@ -59,7 +59,7 @@ namespace Hermodr
         /// </summary>
         private sealed class BetaChannel : EventPublishChannel<BetaOptions>
         {
-            public BetaChannel(BetaOptions defaults) : base(defaults) { }
+            public BetaChannel(BetaOptions defaults, IServiceProvider? serviceProvider = null) : base(defaults, serviceProvider ?? new ServiceCollection().BuildServiceProvider()) { }
 
             public BetaOptions? LastEffectiveOptions { get; private set; }
 
@@ -276,7 +276,7 @@ namespace Hermodr
             IEventPublishChannel<TEvent>
             where TEvent : class
         {
-            public TypedAlphaChannel(AlphaOptions defaults) : base(defaults) { }
+            public TypedAlphaChannel(AlphaOptions defaults, IServiceProvider? serviceProvider = null) : base(defaults, serviceProvider ?? new ServiceCollection().BuildServiceProvider()) { }
 
             public AlphaOptions? LastEffectiveOptions { get; private set; }
 

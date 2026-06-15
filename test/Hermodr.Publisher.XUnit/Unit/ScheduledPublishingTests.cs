@@ -91,8 +91,8 @@ public static class ScheduledPublishingTests
 
     private sealed class NonSchedulingTestChannel : EventPublishChannel<TestPublishOptions>
     {
-        public NonSchedulingTestChannel()
-            : base(new TestPublishOptions())
+        public NonSchedulingTestChannel(IServiceProvider? serviceProvider = null)
+            : base(new TestPublishOptions(), serviceProvider ?? new ServiceCollection().BuildServiceProvider())
         {
         }
 
@@ -107,8 +107,8 @@ public static class ScheduledPublishingTests
 
     private sealed class NativeSchedulingTestChannel : EventPublishChannel<TestPublishOptions>, IScheduledEventPublishChannel
     {
-        public NativeSchedulingTestChannel()
-            : base(new TestPublishOptions())
+        public NativeSchedulingTestChannel(IServiceProvider? serviceProvider = null)
+            : base(new TestPublishOptions(), serviceProvider ?? new ServiceCollection().BuildServiceProvider())
         {
         }
 

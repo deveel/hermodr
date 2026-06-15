@@ -1,4 +1,5 @@
 using CloudNative.CloudEvents;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -11,8 +12,8 @@ namespace Hermodr;
 public class DeliveryLogMiddleware : IEventMiddleware
 {
     private readonly IEventPublishDeliveryLog _deliveryLog;
-    private readonly IEventSystemTime _systemTime;
     private readonly ILogger _logger;
+    private readonly IServiceProvider _serviceProvider;
 
     /// <summary>
     /// Creates a new instance of the <see cref="DeliveryLogMiddleware"/>.
@@ -20,21 +21,23 @@ public class DeliveryLogMiddleware : IEventMiddleware
     /// <param name="deliveryLog">
     /// The service used to record delivery attempts.
     /// </param>
-    /// <param name="systemTime">
-    /// An optional service for obtaining the current UTC time; defaults to <see cref="EventSystemTime.Instance"/>.
-    /// </param>
     /// <param name="logger">
     /// An optional logger for diagnostic output.
     /// </param>
+    /// <param name="serviceProvider">
+    /// The service provider for lazy resolution of dependencies.
+    /// </param>
     public DeliveryLogMiddleware(
         IEventPublishDeliveryLog deliveryLog,
-        IEventSystemTime? systemTime = null,
-        ILogger<DeliveryLogMiddleware>? logger = null)
+        ILogger<DeliveryLogMiddleware>? logger = null,
+        IServiceProvider? serviceProvider = null)
     {
         _deliveryLog = deliveryLog ?? throw new ArgumentNullException(nameof(deliveryLog));
-        _systemTime = systemTime ?? EventSystemTime.Instance;
         _logger = logger ?? NullLogger<DeliveryLogMiddleware>.Instance;
+        _serviceProvider = serviceProvider!;
     }
+
+    private IEventSystemTime SystemTime => _serviceProvider.GetRequiredService<IEventSystemTime>();
 
     /// <summary>
     /// Invokes the middleware, recording the delivery outcome after the next delegate completes.
@@ -50,7 +53,7 @@ public class DeliveryLogMiddleware : IEventMiddleware
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(next);
 
-        var startTime = _systemTime.UtcNow;
+        var startTime = SystemTime.UtcNow;
         var channelName = (context.Options as INamedChannelFilter)?.ChannelName;
         var attempt = GetAttemptNumber(context);
         var outcome = EventDeliveryOutcome.Succeeded;
@@ -71,7 +74,7 @@ public class DeliveryLogMiddleware : IEventMiddleware
         }
         finally
         {
-            var elapsed = _systemTime.UtcNow - startTime;
+            var elapsed = SystemTime.UtcNow - startTime;
 
             var record = new EventDeliveryRecord
             {

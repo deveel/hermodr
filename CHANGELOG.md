@@ -1,5 +1,21 @@
 # Changelog
 
+## [Unreleased]
+
+### 🚀 Features
+
+- **Schema Validation at Publish Time**: New `Hermodr.Publisher.EventSchema` package adds automatic schema validation middleware to the publish pipeline (#90)
+  - `SchemaValidationMiddleware` — validates event payloads against registered schemas before channel dispatch
+  - `SchemaValidationOptions` — configurable `MissingSchemaBehavior` (Allow/Block/Fallback) and `ValidationFailureBehavior` (Throw/Log)
+  - `SchemaRegistrationsApplier` — registers built-in deserializers (JSON, XML) into the deserializer registry at startup
+  - `UseSchemaValidation()` — fluent extension on `EventPublisherBuilder` with auto-registration of schema services
+  - Version-aware validation via `dataversion` CloudEvent extension attribute
+  - Format-agnostic deserialization enables validation for JSON, XML, and future formats
+
+### 🧪 Tests
+
+- 212 new tests across `Hermodr.Schema.XUnit` (200) and `Hermodr.Publisher.EventSchema.XUnit` (12) covering all middleware behaviors, version-aware lookup, and error handling
+
 ## v1.2.6 - OpenTelemetry Enhancements
 
 ### 🚀 Features

@@ -3,6 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 //
 
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -40,26 +41,17 @@ namespace Hermodr
         /// <c>AddWebhooks(configure)</c>.  Unset typed values fall back to these defaults.
         /// </param>
         /// <param name="httpClientFactory">HTTP client factory for webhook delivery.</param>
-        /// <param name="signatureProviders">Optional signature providers.</param>
-        /// <param name="serializers">Optional event serializers.</param>
-        /// <param name="validators">Optional DI-registered options validators.</param>
         /// <param name="logger">Optional logger; falls back to NullLogger when <c>null</c>.</param>
         public WebhookPublishChannel(
             IOptions<WebhookPublishOptions<TEvent>> typedOptions,
             IOptions<WebhookPublishOptions> baseOptions,
             IHttpClientFactory httpClientFactory,
-            IEventSystemTime? systemTime = null,
-            IEnumerable<IWebhookSignatureProvider>? signatureProviders = null,
-            IEnumerable<IEventSerializer>? serializers = null,
-            IEnumerable<IValidateOptions<WebhookPublishOptions>>? validators = null,
+            IServiceProvider serviceProvider,
             ILogger<WebhookPublishChannel>? logger = null)
             : base(
                 Options.Create(WebhookPublishOptions.Merge(baseOptions.Value, typedOptions.Value)),
                 httpClientFactory,
-                systemTime,
-                signatureProviders,
-                serializers,
-                validators,
+                serviceProvider,
                 logger)
         {
         }

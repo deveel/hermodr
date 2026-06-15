@@ -8,6 +8,7 @@ using System.Net.Http.Headers;
 
 using CloudNative.CloudEvents;
 
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -52,8 +53,8 @@ namespace Hermodr
         private readonly IEventSystemTime _systemTime;
         private readonly ILogger _logger;
 
-        private readonly IDictionary<WebhookSignatureAlgorithm, IWebhookSignatureProvider> _signatureProviders;
-        private readonly IDictionary<string, IEventSerializer> _serializers;
+        private IDictionary<WebhookSignatureAlgorithm, IWebhookSignatureProvider>? _signatureProviders;
+        private IDictionary<string, IEventSerializer>? _serializers;
 
         // Cached pipeline built from the channel-level default retry options.
         // Avoids rebuilding the Polly pipeline on every delivery when per-call
@@ -68,23 +69,6 @@ namespace Hermodr
         /// The <see cref="IHttpClientFactory"/> used to create named HTTP clients for
         /// each delivery attempt.
         /// </param>
-        /// <param name="signatureProviders">
-        /// Optional set of <see cref="IWebhookSignatureProvider"/> implementations.
-        /// When non-<c>null</c>, any provider whose
-        /// <see cref="IWebhookSignatureProvider.Algorithm"/> matches an entry already
-        /// registered replaces the built-in default for that algorithm.
-        /// </param>
-        /// <param name="serializers">
-        /// Optional set of <see cref="IEventSerializer"/> implementations.
-        /// When non-<c>null</c>, any serializer whose
-        /// <see cref="IEventSerializer.Format"/> matches a built-in key replaces the default.
-        /// </param>
-        /// <param name="validators">
-        /// Optional collection of <see cref="IValidateOptions{WebhookPublishOptions}"/>
-        /// services registered in the DI container. When the collection is empty or <c>null</c>
-        /// validation falls back to DataAnnotations applied to the effective
-        /// (merged) <see cref="WebhookPublishOptions"/>.
-        /// </param>
         /// <param name="logger">
         /// An optional logger; when <c>null</c> a
         /// <see cref="Microsoft.Extensions.Logging.Abstractions.NullLogger{T}"/> is used.
@@ -92,15 +76,12 @@ namespace Hermodr
         public WebhookPublishChannel(
             IOptions<WebhookPublishOptions> options,
             IHttpClientFactory httpClientFactory,
-            IEventSystemTime? systemTime = null,
-            IEnumerable<IWebhookSignatureProvider>? signatureProviders = null,
-            IEnumerable<IEventSerializer>? serializers = null,
-            IEnumerable<IValidateOptions<WebhookPublishOptions>>? validators = null,
+            IServiceProvider serviceProvider,
             ILogger<WebhookPublishChannel>? logger = null)
-            : base(options.Value, validators)
+            : base(options.Value, serviceProvider)
         {
             _httpClientFactory = httpClientFactory;
-            _systemTime        = systemTime ?? EventSystemTime.Instance;
+            _systemTime        = EventSystemTime.Instance;
             _logger            = logger ?? NullLogger<WebhookPublishChannel>.Instance;
 
             // Build the default pipeline lazily from the channel-level options.
@@ -113,35 +94,55 @@ namespace Hermodr
                     options.Value.RetryBackoffMultiplier ?? 2.0,
                     options.Value.RetryableStatusCodes),
                 LazyThreadSafetyMode.ExecutionAndPublication);
-
-            // Signature providers
-            _signatureProviders = new Dictionary<WebhookSignatureAlgorithm, IWebhookSignatureProvider>
-            {
-                [WebhookSignatureAlgorithm.HmacSha256] = HmacSha256SignatureProvider.Default,
-                [WebhookSignatureAlgorithm.HmacSha384] = HmacSha384SignatureProvider.Default,
-                [WebhookSignatureAlgorithm.HmacSha512] = HmacSha512SignatureProvider.Default,
-#pragma warning disable CS0618
-                [WebhookSignatureAlgorithm.HmacSha1]   = HmacSha1SignatureProvider.Default,
-#pragma warning restore CS0618
-            };
-            if (signatureProviders != null)
-                foreach (var p in signatureProviders)
-                    _signatureProviders[p.Algorithm] = p;
-
-            // Message serializers — keyed by format string
-            _serializers = new Dictionary<string, IEventSerializer>(StringComparer.OrdinalIgnoreCase)
-            {
-                [EventMessageFormat.Json]            = JsonEventSerializer.Default,
-                [EventMessageFormat.Xml]             = XmlEventSerializer.Default,
-                [EventMessageFormat.CloudEventsJson] = CloudEventsJsonSerializer.Default,
-                [EventMessageFormat.CloudEventsXml]  = CloudEventsXmlSerializer.Default,
-            };
-            if (serializers != null)
-                foreach (var s in serializers)
-                    _serializers[s.Format] = s;
         }
 
         // ── EventPublishChannel<WebhookPublishOptions> ──────────────────
+
+        private IEventSystemTime SystemTime => ServiceProvider.GetRequiredService<IEventSystemTime>();
+
+        private IDictionary<WebhookSignatureAlgorithm, IWebhookSignatureProvider> SignatureProviders
+        {
+            get
+            {
+                if (_signatureProviders == null)
+                {
+                    var providers = new Dictionary<WebhookSignatureAlgorithm, IWebhookSignatureProvider>
+                    {
+                        [WebhookSignatureAlgorithm.HmacSha256] = HmacSha256SignatureProvider.Default,
+                        [WebhookSignatureAlgorithm.HmacSha384] = HmacSha384SignatureProvider.Default,
+                        [WebhookSignatureAlgorithm.HmacSha512] = HmacSha512SignatureProvider.Default,
+#pragma warning disable CS0618
+                        [WebhookSignatureAlgorithm.HmacSha1]   = HmacSha1SignatureProvider.Default,
+#pragma warning restore CS0618
+                    };
+                    foreach (var p in ServiceProvider.GetServices<IWebhookSignatureProvider>())
+                        providers[p.Algorithm] = p;
+                    _signatureProviders = providers;
+                }
+                return _signatureProviders;
+            }
+        }
+
+        private IDictionary<string, IEventSerializer> Serializers
+        {
+            get
+            {
+                if (_serializers == null)
+                {
+                    var serializers = new Dictionary<string, IEventSerializer>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        [EventMessageFormat.Json]            = JsonEventSerializer.Default,
+                        [EventMessageFormat.Xml]             = XmlEventSerializer.Default,
+                        [EventMessageFormat.CloudEventsJson] = CloudEventsJsonSerializer.Default,
+                        [EventMessageFormat.CloudEventsXml]  = CloudEventsXmlSerializer.Default,
+                    };
+                    foreach (var s in ServiceProvider.GetServices<IEventSerializer>())
+                        serializers[s.Format] = s;
+                    _serializers = serializers;
+                }
+                return _serializers;
+            }
+        }
 
         /// <summary>
         /// Performs a property-level merge: each nullable delivery field in
@@ -257,7 +258,7 @@ namespace Hermodr
 
             var deliveryId = Guid.NewGuid().ToString("N");
             var provider   = GetSignatureProvider(signatureAlgorithm);
-            var timestamp  = (eventTime ?? _systemTime.UtcNow).ToUnixTimeSeconds();
+            var timestamp  = (eventTime ?? SystemTime.UtcNow).ToUnixTimeSeconds();
             var algorithm  = signatureAlgorithm.ToString();
 
             if (eventType != null)
@@ -396,14 +397,14 @@ namespace Hermodr
 
         private IEventSerializer GetSerializer(string format)
         {
-            if (_serializers.TryGetValue(format, out var s)) return s;
+            if (Serializers.TryGetValue(format, out var s)) return s;
             throw new NotSupportedException(
                 $"No serializer registered for webhook message format '{format}'.");
         }
 
         private IWebhookSignatureProvider GetSignatureProvider(WebhookSignatureAlgorithm alg)
         {
-            if (_signatureProviders.TryGetValue(alg, out var p)) return p;
+            if (SignatureProviders.TryGetValue(alg, out var p)) return p;
             throw new NotSupportedException($"No signature provider registered for algorithm '{alg}'.");
         }
 

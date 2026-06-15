@@ -5,6 +5,7 @@
 
 using CloudNative.CloudEvents;
 
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
 using System.ComponentModel.DataAnnotations;
@@ -39,8 +40,8 @@ namespace Hermodr
         {
             public SimpleChannel(
                 SimpleOptions defaults,
-                IEnumerable<IValidateOptions<SimpleOptions>>? validators = null)
-                : base(defaults, validators) { }
+                IServiceProvider? serviceProvider = null)
+                : base(defaults, serviceProvider ?? new ServiceCollection().BuildServiceProvider()) { }
 
             public List<(CloudEvent Event, SimpleOptions Options)> Published { get; } = new();
 
@@ -122,10 +123,13 @@ namespace Hermodr
         [Fact]
         public async Task PublishAsync_WithIValidateOptionsFailure_ThrowsOptionsValidationException()
         {
-            var validator = new AlwaysFailValidator();
+            var services = new ServiceCollection();
+            services.AddSingleton<IValidateOptions<SimpleOptions>>(new AlwaysFailValidator());
+            var serviceProvider = services.BuildServiceProvider();
+
             var channel   = new SimpleChannel(
                 new SimpleOptions { Endpoint = "https://example.com" },
-                new[] { validator });
+                serviceProvider);
 
             await Assert.ThrowsAsync<OptionsValidationException>(
                 () => channel.PublishAsync(ValidEvent(), null, CancellationToken.None));
@@ -134,10 +138,14 @@ namespace Hermodr
         [Fact]
         public async Task PublishAsync_WithIValidateOptionsSuccess_DeliversEvent()
         {
+            var services = new ServiceCollection();
+            services.AddSingleton<IValidateOptions<SimpleOptions>>(new AlwaysPassValidator());
+            var serviceProvider = services.BuildServiceProvider();
+
             var validator = new AlwaysPassValidator();
             var channel   = new SimpleChannel(
                 new SimpleOptions { Endpoint = "https://example.com" },
-                new[] { validator });
+                serviceProvider);
 
             await channel.PublishAsync(ValidEvent(), null, CancellationToken.None);
 
@@ -147,15 +155,15 @@ namespace Hermodr
         [Fact]
         public async Task PublishAsync_MultipleValidators_OneFailure_ThrowsAndAccumulatesMessages()
         {
-            var validators = new IValidateOptions<SimpleOptions>[]
-            {
-                new AlwaysPassValidator(),
-                new AlwaysFailValidator("validation-error-1"),
-                new AlwaysFailValidator("validation-error-2"),
-            };
+            var services = new ServiceCollection();
+            services.AddSingleton<IValidateOptions<SimpleOptions>>(new AlwaysPassValidator());
+            services.AddSingleton<IValidateOptions<SimpleOptions>>(new AlwaysFailValidator("validation-error-1"));
+            services.AddSingleton<IValidateOptions<SimpleOptions>>(new AlwaysFailValidator("validation-error-2"));
+            var serviceProvider = services.BuildServiceProvider();
+
             var channel = new SimpleChannel(
                 new SimpleOptions { Endpoint = "https://example.com" },
-                validators);
+                serviceProvider);
 
             var ex = await Assert.ThrowsAsync<OptionsValidationException>(
                 () => channel.PublishAsync(ValidEvent(), null, CancellationToken.None));
@@ -211,7 +219,7 @@ namespace Hermodr
 
         private sealed class InspectableChannel : EventPublishChannel<SimpleOptions>
         {
-            public InspectableChannel(SimpleOptions defaults) : base(defaults) { }
+            public InspectableChannel(SimpleOptions defaults, IServiceProvider? serviceProvider = null) : base(defaults, serviceProvider ?? new ServiceCollection().BuildServiceProvider()) { }
             public SimpleOptions ExposedDefaults => DefaultOptions;
             protected override Task PublishCoreAsync(CloudEvent @event, SimpleOptions options, CancellationToken ct)
                 => Task.CompletedTask;
@@ -219,7 +227,7 @@ namespace Hermodr
 
         private sealed class SlowChannel : EventPublishChannel<SimpleOptions>
         {
-            public SlowChannel(SimpleOptions defaults) : base(defaults) { }
+            public SlowChannel(SimpleOptions defaults, IServiceProvider? serviceProvider = null) : base(defaults, serviceProvider ?? new ServiceCollection().BuildServiceProvider()) { }
             protected override async Task PublishCoreAsync(CloudEvent @event, SimpleOptions options, CancellationToken ct)
                 => await Task.Delay(TimeSpan.FromSeconds(10), ct);
         }

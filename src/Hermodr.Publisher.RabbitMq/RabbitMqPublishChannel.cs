@@ -9,6 +9,7 @@ using System.Diagnostics;
 
 using CloudNative.CloudEvents;
 
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -46,10 +47,9 @@ namespace Hermodr
         IAsyncDisposable, IDisposable
     {
         private readonly RabbitMqTransportTelemetry _telemetry = new();
-        private readonly IRabbitMqMessageFactory _messageFactory;
-        private readonly IEventSystemTime _systemTime;
         private readonly ILogger _logger;
         private readonly IConnection _connection;
+        private IRabbitMqMessageFactory? _messageFactory;
 
         // Semaphore used to serialize channel creation and publishing so that
         // a channel is not shared across concurrent callers during recovery.
@@ -68,38 +68,22 @@ namespace Hermodr
         /// An active <see cref="RabbitMQ.Client.IConnection"/> to the RabbitMQ broker.
         /// The channel borrows this connection and does not dispose it.
         /// </param>
-        /// <param name="messageFactory">
-        /// The factory used to convert a <see cref="CloudNative.CloudEvents.CloudEvent"/>
-        /// into a <see cref="RabbitMqMessage"/> ready for publishing.
-        /// </param>
-        /// <param name="systemTime">
-        /// Optional provider of the current UTC time; used to stamp
-        /// <see cref="RabbitMQ.Client.AmqpTimestamp"/> on messages whose
-        /// <see cref="CloudNative.CloudEvents.CloudEvent.Time"/> is <c>null</c>.
-        /// Defaults to <see cref="EventSystemTime.Instance"/> when <c>null</c>.
-        /// </param>
-        /// <param name="validators">
-        /// Optional collection of <see cref="IValidateOptions{RabbitMqPublishOptions}"/>
-        /// services registered in the DI container. When the collection is empty or <c>null</c>
-        /// validation falls back to DataAnnotations.
-        /// </param>
         /// <param name="logger">
         /// An optional logger; when <c>null</c> a <see cref="Microsoft.Extensions.Logging.Abstractions.NullLogger{T}"/> is used.
         /// </param>
         public RabbitMqPublishChannel(
             IOptions<RabbitMqPublishOptions> options,
             IConnection connection,
-            IRabbitMqMessageFactory messageFactory,
-            IEventSystemTime? systemTime = null,
-            IEnumerable<IValidateOptions<RabbitMqPublishOptions>>? validators = null,
+            IServiceProvider serviceProvider,
             ILogger<RabbitMqPublishChannel>? logger = null)
-            : base(options.Value, validators)
+            : base(options.Value, serviceProvider)
         {
             _connection = connection;
-            _messageFactory = messageFactory;
-            _systemTime = systemTime ?? EventSystemTime.Instance;
             _logger = logger ?? new NullLogger<RabbitMqPublishChannel>();
         }
+
+        private IRabbitMqMessageFactory MessageFactory =>
+            _messageFactory ??= ServiceProvider.GetRequiredService<IRabbitMqMessageFactory>();
 
         // ── Effective defaults for nullable value-type properties ──────────────────
         private const bool DefaultPersistentMessages = true;
@@ -193,7 +177,7 @@ namespace Hermodr
             if (string.IsNullOrWhiteSpace(routingKey))
                 throw new InvalidOperationException("The routing key is not defined");
 
-            var message = _messageFactory.CreateMessage(@event);
+            var message = MessageFactory.CreateMessage(@event);
 
             var props = new BasicProperties
             {
@@ -202,7 +186,7 @@ namespace Hermodr
                 Type = @event.Type,
                 MessageId = @event.Id,
                 Timestamp = new AmqpTimestamp(
-                    (@event.Time ?? _systemTime.UtcNow).ToUnixTimeSeconds()),
+                    (@event.Time ?? ServiceProvider.GetRequiredService<IEventSystemTime>().UtcNow).ToUnixTimeSeconds()),
                 DeliveryMode = (options.PersistentMessages ?? DefaultPersistentMessages)
                     ? DeliveryModes.Persistent
                     : DeliveryModes.Transient,

@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Title>Hermodr Publisher Event Schema Validation</Title>
+    <Description>Schema validation middleware for the Hermodr event publisher, validating event payloads against registered schemas before channel dispatch.</Description>
+    <PackageTags>event;events;schema;validation;publisher;middleware</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Hermodr.Publisher\Hermodr.Publisher.csproj" />
+    <ProjectReference Include="..\Hermodr.Schema\Hermodr.Schema.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -105,8 +105,13 @@ await foreach (var result in _validator.ValidateEventAsync(schema, @event))
 }
 ```
 
+## Publish-time validation
+
+The `Hermodr.Publisher.EventSchema` package provides a middleware that automatically validates every event against its registered schema before dispatch. See [Schema Validation at Publish Time](validation-at-publish.md) for setup and configuration.
+
 ## Related pages
 
+- [Schema Validation at Publish Time](validation-at-publish.md)
 - [Fluent Builder](fluent-builder.md)
 - [From Annotations](from-annotations.md)
 - [Event Publisher](../concepts/event-publisher.md)
