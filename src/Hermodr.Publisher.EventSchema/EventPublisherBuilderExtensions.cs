@@ -86,5 +86,79 @@ namespace Hermodr
 
             return builder;
         }
+
+        /// <summary>
+        /// Adds event upcasting middleware to the publisher pipeline.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// This middleware upcasts legacy event payloads to the latest registered schema version
+        /// before the event reaches any publish channel. It relies on the <c>dataversion</c>
+        /// CloudEvents extension (or the <c>dataschema</c> URI) to determine the current version
+        /// and on <see cref="IEventSchemaRegistry"/> to discover the latest version.
+        /// </para>
+        /// <para>
+        /// For correct behavior, call this method <em>before</em> <see cref="UseSchemaValidation"/>
+        /// in the pipeline so that upcasted events validate against the latest schema.
+        /// </para>
+        /// <para>
+        /// If schema services have not been registered yet, they are automatically registered
+        /// by this method.
+        /// </para>
+        /// </remarks>
+        /// <param name="builder">The publisher builder to configure.</param>
+        /// <param name="configureOptions">
+        /// An optional action to customize <see cref="EventUpcastingOptions"/>.
+        /// </param>
+        /// <param name="configureSchemaServices">
+        /// An optional action to configure schema service options (assembly scanning, explicit registrations).
+        /// Only used when schema services are not already registered.
+        /// </param>
+        /// <returns>The same <paramref name="builder"/> for chaining.</returns>
+        /// <example>
+        /// <code language="csharp">
+        /// services.AddEventPublisher()
+        ///     .UseEventUpcasting(options =>
+        ///     {
+        ///         options.MissingUpcasterBehavior = MissingUpcasterBehavior.Throw;
+        ///     })
+        ///     .UseSchemaValidation()
+        ///     .AddChannel&lt;RabbitMqPublishChannel&gt;();
+        /// </code>
+        /// </example>
+        public static EventPublisherBuilder UseEventUpcasting(
+            this EventPublisherBuilder builder,
+            Action<EventUpcastingOptions>? configureOptions = null,
+            Action<EventSchemaServicesOptions>? configureSchemaServices = null)
+        {
+            ArgumentNullException.ThrowIfNull(builder);
+
+            // Auto-register schema services if not already registered
+            var schemaRegistryRegistered = builder.Services.Any(
+                d => d.ServiceType == typeof(IEventSchemaRegistry));
+
+            if (!schemaRegistryRegistered)
+            {
+                builder.Services.AddEventSchemaServices(configureSchemaServices);
+            }
+            else if (configureSchemaServices != null)
+            {
+                builder.Services.Configure(configureSchemaServices);
+            }
+
+            // Configure upcasting options
+            if (configureOptions != null)
+            {
+                builder.Services.Configure(configureOptions);
+            }
+
+            // Pre-register middleware in DI so all constructor dependencies are resolved
+            builder.Services.TryAddSingleton<EventUpcastingMiddleware>();
+
+            // Add middleware to pipeline
+            builder.Use<EventUpcastingMiddleware>();
+
+            return builder;
+        }
     }
 }

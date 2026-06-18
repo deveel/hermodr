@@ -85,4 +85,5 @@ Configure `EventDispatcherOptions` during registration through `AddSubscriptions
 | [Filter Expressions](filter-expressions.md) | The `FilterExpression` model, `EventFilter` / `EventFilterBuilder`, `FilterExpressionType`, evaluator behaviour, serialization, and direct evaluation |
 | [Event Dispatcher](dispatcher.md) | How the dispatcher works, DI setup, and error handling |
 | [Routing Subscriptions](routing.md) | Re-publishing matched events to a different channel |
+| [Version-Aware Routing](version-aware-routing.md) | Subscribing to specific schema version ranges |
 | [Custom Resolvers](custom-resolver.md) | Reading subscriptions from a database or remote service |

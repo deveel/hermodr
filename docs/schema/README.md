@@ -26,11 +26,13 @@ dotnet add package Hermodr.Schema
 |------|-------------|
 | [Fluent Builder](fluent-builder.md) | Build a schema programmatically |
 | [From Annotations](from-annotations.md) | Derive a schema from `[Event]`-annotated classes |
-| [Export as JSON](export-json.md) | Serialise a schema to a JSON document |
-| [Export as YAML](export-yaml.md) | Serialise a schema to a YAML document |
-| [Export as AsyncAPI](export-asyncapi.md) | Generate complete AsyncAPI 2.x documents |
+| [Export as JSON](export/json.md) | Serialise a schema to a JSON document |
+| [Export as YAML](export/yaml.md) | Serialise a schema to a YAML document |
+| [Export as AsyncAPI](export/asyncapi.md) | Generate complete AsyncAPI 2.x documents |
 | [Validation](validation.md) | Validate `CloudEvent` instances against a schema |
 | [Validation at Publish Time](validation-at-publish.md) | Automatic schema validation via middleware |
+| [Compatibility](compatibility.md) | Compare schema versions and detect breaking changes |
+| [Upcasting](upcasting.md) | Migrate legacy event payloads to newer schema versions |
 
 ## Schema model at a glance
 

@@ -121,8 +121,8 @@ await asyncApiWriter.WriteToAsync(stream, schema);
 ## Related pages
 
 - [Fluent Builder](fluent-builder.md)
-- [Export as JSON](export-json.md)
-- [Export as YAML](export-yaml.md)
-- [Export as AsyncAPI](export-asyncapi.md)
+- [Export as JSON](export/json.md)
+- [Export as YAML](export/yaml.md)
+- [Export as AsyncAPI](export/asyncapi.md)
 - [Validation](validation.md)
 

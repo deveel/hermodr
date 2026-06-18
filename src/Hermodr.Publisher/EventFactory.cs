@@ -80,6 +80,14 @@ namespace Hermodr
                 Data = JsonSerializer.Serialize(data, PublisherOptions.JsonSerializerOptions)
             };
 
+            // Stamp the dataversion extension so version-aware middleware and subscriptions
+            // can identify the schema version without parsing the dataschema URI.
+            if (!String.IsNullOrWhiteSpace(dataVersion))
+            {
+                var dataVersionAttr = CloudEventAttribute.CreateExtension("dataversion", CloudEventAttributeType.String);
+                @event[dataVersionAttr] = dataVersion;
+            }
+
             var eventAttrs = dataType.GetCustomAttributes<EventAttributesAttribute>();
             foreach (var attr in eventAttrs)
             {

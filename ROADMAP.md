@@ -194,13 +194,28 @@ The table below maps each roadmap item to the release milestone in which it is p
 
 ## Schema Governance
 
-### 10. Event Versioning & Compatibility
+### 10. Event Versioning & Compatibility ✅
 
 > *Formal tooling for schema evolution: compatibility checking, upcasting, and version-aware routing.*
 
-**The problem today:** `IVersionedElement` exists in the schema package but is not enforced by any runtime behaviour. Breaking schema changes can silently invalidate existing consumers.
+**What was built:** Compatibility checking, an upcasting pipeline with JsonNode-based transformations, and version-aware subscription filters.
 
-**What we will build:** A compatibility checker (backward/forward/full) that compares two versions of an `EventSchema` and reports breaking changes. An upcasting pipeline will allow producers to register transformations from old schema versions to new ones, so that replayed or legacy events are automatically migrated before handling. Version-aware routing will let subscriptions optionally pin to a specific schema version range.
+**What was delivered:**
+- `Hermodr.Schema`
+  - `IEventSchemaCompatibilityChecker` / `EventSchemaCompatibilityChecker` — compares two schemas and reports backward/forward breaking changes property-by-property, including nested objects and constraints.
+  - `SchemaCompatibilityLevel`, `SchemaChangeType`, `SchemaChange`, `SchemaCompatibilityResult` — detailed compatibility model.
+  - `IEventUpcaster`, `IEventUpcasterRegistry`, `EventUpcasterRegistry`, `IEventUpcastingPipeline`, `EventUpcastingPipeline` — chainable, registry-driven upcasting.
+  - `IEventUpcastingDataAdapter` / `JsonEventUpcastingDataAdapter` — pluggable data adapters; JSON is built in, XML/Protobuf can be added later.
+  - `UpcastContext`, `EventUpcastingException` — upcaster execution context and error model.
+- `Hermodr.Publisher.EventSchema`
+  - `EventUpcastingMiddleware`, `EventUpcastingOptions`, `MissingUpcasterBehavior` — automatic upcasting before events reach downstream middleware and channels.
+  - `UseEventUpcasting()` extension on `EventPublisherBuilder`.
+- `Hermodr.Subscriptions`
+  - `EventFilter.BySchemaVersion` and `EventFilter.BySchemaVersionRange` — subscribe to exact or ranged schema versions.
+  - `EventFilterBuilder.BySchemaVersion` / `BySchemaVersionRange` — fluent builder equivalents.
+  - `EventFilterEvaluator` resolves the `schemaversion` variable from the `dataversion` extension or the `dataschema` URI and performs `System.Version` comparisons.
+- `Hermodr.Publisher`
+  - `EventFactory` stamps the `dataversion` CloudEvents extension when `[Event]` supplies `DataVersion`.
 
 **Benefits:**
 - Prevents accidental breaking changes from reaching consumers in production.

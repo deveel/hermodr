@@ -90,8 +90,8 @@ var schema = EventSchema.Build("user.registered")
 ## Related pages
 
 - [From Annotations](from-annotations.md) — derive a schema from existing data classes
-- [Export as JSON](export-json.md)
-- [Export as YAML](export-yaml.md)
-- [Export as AsyncAPI](export-asyncapi.md)
+- [Export as JSON](export/json.md)
+- [Export as YAML](export/yaml.md)
+- [Export as AsyncAPI](export/asyncapi.md)
 - [Validation](validation.md)
 

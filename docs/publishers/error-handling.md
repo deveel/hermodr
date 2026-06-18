@@ -198,4 +198,4 @@ Error handlers observe failures, but they do not replace the publisher's normal 
 
 Use the generic error handler page when you need broad failure interception across publisher stages.
 
-Use [Dead-Letter Handling and Replay](dead-letter.md) when you specifically want to capture failed channel deliveries for inspection, persistence, and replay.
+Use [Dead-Letter Handling and Replay](reliability/dead-letter/README.md) when you specifically want to capture failed channel deliveries for inspection, persistence, and replay.

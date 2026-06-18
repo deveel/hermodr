@@ -226,7 +226,7 @@ Choose the in-process topology when you want the simplest setup for small-to-med
 
 ## Related documentation
 
-- [Transactional Outbox Channel](../publishers/outbox.md)
+- [Transactional Outbox Channel](../publishers/reliability/outbox/README.md)
 - [RabbitMQ Channel](../publishers/rabbitmq.md)
 - [Typed Channels](../publishers/typed-channels.md)
 - [Event Annotations](../concepts/event-annotations.md)

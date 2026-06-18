@@ -263,7 +263,7 @@ Choose the external-relay topology when fault isolation, independent scaling, or
 
 ## Related documentation
 
-- [Transactional Outbox Channel](../publishers/outbox.md#cross-process-deployment)
+- [Transactional Outbox Channel](../publishers/reliability/outbox/registration.md#cross-process-deployment)
 - [MassTransit Channel](../publishers/masstransit.md)
 - [Typed Channels](../publishers/typed-channels.md)
 - [Event Publisher](../concepts/event-publisher.md)

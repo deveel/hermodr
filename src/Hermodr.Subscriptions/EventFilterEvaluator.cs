@@ -76,8 +76,24 @@ namespace Hermodr
                 "time"            => @event.Time?.ToString("O"),
                 "datacontenttype" => @event.DataContentType,
                 "dataschema"      => @event.DataSchema?.ToString(),
+                "schemaversion"   => ResolveSchemaVersion(@event),
                 _                 => null
             };
+        }
+
+        private static string? ResolveSchemaVersion(CloudEvent @event)
+        {
+            if (@event["dataversion"] is string dataVersion)
+                return dataVersion;
+
+            if (@event.DataSchema != null)
+            {
+                var lastSegment = @event.DataSchema.Segments.LastOrDefault()?.TrimEnd('/');
+                if (!string.IsNullOrEmpty(lastSegment))
+                    return lastSegment;
+            }
+
+            return null;
         }
 
         private static object? ResolveDataPath(
@@ -155,6 +171,58 @@ namespace Hermodr
             string s when double.TryParse(s, out var d) => d,
             _                                           => null
         };
+
+        // ── Version comparison helpers ───────────────────────────────────────────────
+
+        private static bool VersionEquals(string? value, object?[] args)
+        {
+            if (value is null || args.Length < 1 || args[0] is not string target)
+                return false;
+
+            return Version.TryParse(value, out var v1)
+                && Version.TryParse(target, out var v2)
+                && v1 == v2;
+        }
+
+        private static bool VersionInRange(string? value, object?[] args)
+        {
+            if (value is null || args.Length < 2 || !Version.TryParse(value, out var version))
+                return false;
+
+            if (args[0] is string minStr && !string.IsNullOrEmpty(minStr))
+            {
+                if (!Version.TryParse(minStr, out var min) || version < min)
+                    return false;
+            }
+
+            if (args[1] is string maxStr && !string.IsNullOrEmpty(maxStr))
+            {
+                if (!Version.TryParse(maxStr, out var max) || version > max)
+                    return false;
+            }
+
+            return true;
+        }
+
+        private static bool VersionGreaterThanOrEqual(string? value, object?[] args)
+        {
+            if (value is null || args.Length < 1 || args[0] is not string target)
+                return false;
+
+            return Version.TryParse(value, out var v1)
+                && Version.TryParse(target, out var v2)
+                && v1 >= v2;
+        }
+
+        private static bool VersionLessThanOrEqual(string? value, object?[] args)
+        {
+            if (value is null || args.Length < 1 || args[0] is not string target)
+                return false;
+
+            return Version.TryParse(value, out var v1)
+                && Version.TryParse(target, out var v2)
+                && v1 <= v2;
+        }
 
         // ── Visitor ─────────────────────────────────────────────────────────────────
 
@@ -256,6 +324,11 @@ namespace Hermodr
                         && varValue.Contains(sub, StringComparison.Ordinal),
 
                     "exists"     => varValue is not null,
+
+                    "versionequals" => VersionEquals(varValue, args),
+                    "versioninrange" => VersionInRange(varValue, args),
+                    "versiongte" => VersionGreaterThanOrEqual(varValue, args),
+                    "versionlte" => VersionLessThanOrEqual(varValue, args),
 
                     _            => null
                 };

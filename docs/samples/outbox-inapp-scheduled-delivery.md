@@ -122,7 +122,7 @@ That keeps the event semantics intact while still supporting infrastructure-leve
 
 ## Related docs
 
-- [Transactional Outbox](../publishers/outbox.md)
+- [Transactional Outbox](../publishers/reliability/outbox/README.md)
 - [RabbitMQ Publisher](../publishers/rabbitmq.md)
 - [Samples overview](README.md)
 

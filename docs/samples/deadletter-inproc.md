@@ -35,4 +35,4 @@ cd samples/deadletter-inproc/OrderService.InProcDeadLetter
 dotnet run
 ```
 
-For the full walkthrough, see the [sample README](../../samples/deadletter-inproc/OrderService.InProcDeadLetter/README.md).
+For the full walkthrough, see the [sample README](https://github.com/deveel/hermodr/tree/main/samples/deadletter-inproc/OrderService.InProcDeadLetter/README.md).

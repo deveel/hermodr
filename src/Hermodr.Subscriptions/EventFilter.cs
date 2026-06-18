@@ -190,6 +190,61 @@ namespace Hermodr
                 FilterExpression.Variable("extension." + extensionName),
                 FilterExpression.Constant(value));
 
+        // ── Schema-version filters ───────────────────────────────────────────────────
+
+        /// <summary>
+        /// Returns a filter that matches events whose schema version exactly equals
+        /// <paramref name="version"/>. The version is read from the <c>dataversion</c>
+        /// extension or, when absent, from the last segment of the <c>dataschema</c> URI.
+        /// </summary>
+        public static FilterExpression BySchemaVersion(string version)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(version, nameof(version));
+
+            return FilterExpression.Function(
+                FilterExpression.Variable("schemaversion"),
+                "versionEquals",
+                new[] { FilterExpression.Constant(version) });
+        }
+
+        /// <summary>
+        /// Returns a filter that matches events whose schema version falls within the
+        /// inclusive <paramref name="minVersion"/> and <paramref name="maxVersion"/> bounds.
+        /// Pass <c>null</c> for either bound to leave that side open.
+        /// </summary>
+        public static FilterExpression BySchemaVersionRange(string? minVersion, string? maxVersion)
+        {
+            if (string.IsNullOrWhiteSpace(minVersion) && string.IsNullOrWhiteSpace(maxVersion))
+            {
+                throw new ArgumentException(
+                    "At least one of minVersion or maxVersion must be provided.",
+                    nameof(minVersion));
+            }
+
+            var variable = FilterExpression.Variable("schemaversion");
+
+            if (!string.IsNullOrWhiteSpace(minVersion) && !string.IsNullOrWhiteSpace(maxVersion))
+            {
+                return FilterExpression.Function(
+                    variable,
+                    "versionInRange",
+                    new[] { FilterExpression.Constant(minVersion), FilterExpression.Constant(maxVersion) });
+            }
+
+            if (!string.IsNullOrWhiteSpace(minVersion))
+            {
+                return FilterExpression.Function(
+                    variable,
+                    "versionGte",
+                    new[] { FilterExpression.Constant(minVersion) });
+            }
+
+            return FilterExpression.Function(
+                variable,
+                "versionLte",
+                new[] { FilterExpression.Constant(maxVersion) });
+        }
+
         // ── Data-payload field filters ───────────────────────────────────────────────
 
         /// <summary>

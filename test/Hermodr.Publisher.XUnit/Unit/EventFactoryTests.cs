@@ -95,6 +95,41 @@ namespace Hermodr
         }
 
         [Fact]
+        public void Should_StampDataVersion_When_DataVersionIsUsed()
+        {
+            // Arrange
+            var services = new ServiceCollection();
+            services.AddEventPublisher(options =>
+            {
+                options.DataSchemaBaseUri = new Uri("https://example.com/events");
+            });
+            var creator = services.BuildServiceProvider().GetRequiredService<IEventFactory>();
+
+            // Act
+            var @event = creator.CreateEventFromData(typeof(PersonCreatedByVersion), new PersonCreatedByVersion
+            {
+                FirstName = "Jane",
+                LastName = "Doe"
+            });
+
+            // Assert
+            Assert.Equal("2.0", @event["dataversion"]);
+        }
+
+        [Fact]
+        public void Should_NotStampDataVersion_When_DataSchemaUriIsUsed()
+        {
+            // Arrange
+            var data = new PersonCreated { FirstName = "John", LastName = "Doe", Id = "12345", Age = 30 };
+
+            // Act
+            var @event = _eventFactory.CreateEventFromData(data);
+
+            // Assert
+            Assert.Null(@event["dataversion"]);
+        }
+
+        [Fact]
         public void Should_ThrowInvalidOperationException_When_VersionedTypeHasNoDataSchemaBaseUri()
         {
             // Arrange

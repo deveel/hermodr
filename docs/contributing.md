@@ -51,7 +51,7 @@ git checkout -b bugfix/123-fix-null-reference origin/main
 
 ### 4. Merging into `main`
 
-Feature branches are **not** merged into `main` immediately upon completion.  A branch is eligible for merge only when the `main` branch lifecycle has reached (or is actively preparing) the **major version** in which the feature is planned for delivery (see the [Roadmap](../ROADMAP.md)).
+Feature branches are **not** merged into `main` immediately upon completion.  A branch is eligible for merge only when the `main` branch lifecycle has reached (or is actively preparing) the **major version** in which the feature is planned for delivery (see the [Roadmap](roadmap.md)).
 
 | Planned milestone | Merge into `main` when… |
 |-------------------|--------------------------|

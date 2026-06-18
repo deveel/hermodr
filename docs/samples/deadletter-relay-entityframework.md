@@ -39,4 +39,4 @@ cd samples/deadletter-relay/OrderService.Publisher
 dotnet run
 ```
 
-For the full walkthrough, see the [sample README](../../samples/deadletter-relay/README.md).
+For the full walkthrough, see the [sample README](https://github.com/deveel/hermodr/tree/main/samples/deadletter-relay/README.md).

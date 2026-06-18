@@ -38,6 +38,12 @@ namespace Hermodr
             services.TryAddSingleton<IEventDataDeserializer, JsonEventDataDeserializer>();
             services.TryAddSingleton<IEventDataDeserializer, XmlEventDataDeserializer>();
 
+            // Versioning & compatibility
+            services.TryAddSingleton<IEventSchemaCompatibilityChecker, EventSchemaCompatibilityChecker>();
+            services.TryAddSingleton<IEventUpcasterRegistry, EventUpcasterRegistry>();
+            services.TryAddSingleton<IEventUpcastingPipeline, EventUpcastingPipeline>();
+            services.TryAddSingleton<IEventUpcastingDataAdapter, JsonEventUpcastingDataAdapter>();
+
             return services;
         }
     }

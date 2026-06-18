@@ -163,7 +163,7 @@ All events are modelled as [`CloudEvent`](https://github.com/cloudevents/spec) o
 | [Core Concepts](concepts/README.md) | Understand the building blocks |
 | [Publisher Channels](publishers/README.md) | Configure transports plus reliability features such as outbox and dead-letter replay |
 | [OpenTelemetry Instrumentation](publishers/opentelemetry.md) | Distributed tracing with W3C trace context propagation |
-| [Delivery Log](publishers/delivery-log.md) | Per-attempt operational records with pluggable storage backends |
+| [Delivery Log](publishers/reliability/delivery-log/README.md) | Per-attempt operational records with pluggable storage backends |
 | [Event Subscriptions](subscriptions/README.md) | In-process dispatch, filters, routing, and resolvers |
 | [Event Schema](schema/README.md) | Schema definition, export, and validation |
 | [Testing](testing/README.md) | Unit-test event publishing |

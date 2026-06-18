@@ -68,7 +68,7 @@ public class OrderPlacedData
 
 ## `[EventAttributes]` attribute
 
-A base class for attributes that inject arbitrary CloudEvent extension attributes into the envelope.  This is the foundation for things like `[AmqpExchange]` and `[AmqpRoutingKey]` (see [AMQP Annotations](../amqp/README.md)).
+A base class for attributes that inject arbitrary CloudEvent extension attributes into the envelope.  This is the foundation for things like `[AmqpExchange]` and `[AmqpRoutingKey]` (see [AMQP Annotations](../publishers/rabbitmq.md#amqp-annotations)).
 
 ```csharp
 // Inject a custom CloudEvent extension attribute

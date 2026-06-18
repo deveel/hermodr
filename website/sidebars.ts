@@ -44,6 +44,9 @@ const sidebars: SidebarsConfig = {
           ],
         },
         'schema/validation',
+        'schema/validation-at-publish',
+        'schema/compatibility',
+        'schema/upcasting',
       ],
     },
     {
@@ -64,7 +67,7 @@ const sidebars: SidebarsConfig = {
     {
       type: 'category',
       label: 'Reliability Patterns',
-      link: {type: 'generated-index', title: 'Reliability Patterns'},
+      link: {type: 'doc', id: 'publishers/reliability/README'},
       items: [
         {
           type: 'category',
@@ -132,6 +135,7 @@ const sidebars: SidebarsConfig = {
         'subscriptions/filter-expressions',
         'subscriptions/dispatcher',
         'subscriptions/routing',
+        'subscriptions/version-aware-routing',
         'subscriptions/custom-resolver',
       ],
     },

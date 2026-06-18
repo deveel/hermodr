@@ -111,6 +111,29 @@ namespace Hermodr
             return this;
         }
 
+        // ── Schema-version filters ─────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Adds a condition that matches events whose schema version exactly equals
+        /// <paramref name="version"/>.
+        /// </summary>
+        public EventFilterBuilder BySchemaVersion(string version)
+        {
+            _expressions.Add(EventFilter.BySchemaVersion(version));
+            return this;
+        }
+
+        /// <summary>
+        /// Adds a condition that matches events whose schema version falls within the
+        /// inclusive <paramref name="minVersion"/> and <paramref name="maxVersion"/> bounds.
+        /// Pass <c>null</c> for either bound to leave that side open.
+        /// </summary>
+        public EventFilterBuilder BySchemaVersionRange(string? minVersion, string? maxVersion)
+        {
+            _expressions.Add(EventFilter.BySchemaVersionRange(minVersion, maxVersion));
+            return this;
+        }
+
         // ── Data-payload field filters ────────────────────────────────────────────────────
 
         /// <summary>

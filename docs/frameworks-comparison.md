@@ -91,4 +91,4 @@ These frameworks are not mutually exclusive. Hermodr can coexist alongside any o
 
 ---
 
-← Back to [SUMMARY](SUMMARY.md)
+← Back to [Documentation Home](README.md)
