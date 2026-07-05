@@ -3,7 +3,7 @@
   <ItemGroup>
     <!-- Configuration.Binder is not centralised – needed only here -->
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="$(MicrosoftExtensionsVersion)" />
-    <PackageReference Include="Testcontainers.ServiceBus" Version="4.11.0" />
+    <PackageReference Include="Testcontainers.ServiceBus" Version="4.13.0" />
   </ItemGroup>
 
   <ItemGroup>

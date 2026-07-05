@@ -11,7 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Kista.EntityFramework" Version="1.6.7" />
+    <PackageReference Include="Kista.EntityFramework" Version="1.7.2" />
   </ItemGroup>
 
   <ItemGroup Condition="$(TargetFramework) == 'net8.0'">

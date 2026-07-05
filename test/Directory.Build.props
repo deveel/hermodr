@@ -38,8 +38,8 @@
        Packages injected ONLY into executable test projects
   ============================================================ -->
   <ItemGroup Condition="'$(IsTestProject)' == 'true'">
-    <PackageReference Include="xunit.v3" Version="3.*" />
-    <PackageReference Include="MartinCostello.Logging.XUnit.v3" Version="0.7.*" />
+    <PackageReference Include="xunit.v3" Version="3.2.2" />
+    <PackageReference Include="MartinCostello.Logging.XUnit.v3" Version="0.7.1" />
     <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" Version="17.*" />
     <PackageReference Include="coverlet.collector" Version="6.*">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
