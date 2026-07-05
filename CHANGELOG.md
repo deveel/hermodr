@@ -2,19 +2,48 @@
 
 ## [Unreleased]
 
+## v1.2.9 - Schema Compatibility & Event Upcasting
+
 ### 🚀 Features
 
-- **Schema Validation at Publish Time**: New `Hermodr.Publisher.EventSchema` package adds automatic schema validation middleware to the publish pipeline (#90)
-  - `SchemaValidationMiddleware` — validates event payloads against registered schemas before channel dispatch
-  - `SchemaValidationOptions` — configurable `MissingSchemaBehavior` (Allow/Block/Fallback) and `ValidationFailureBehavior` (Throw/Log)
-  - `SchemaRegistrationsApplier` — registers built-in deserializers (JSON, XML) into the deserializer registry at startup
-  - `UseSchemaValidation()` — fluent extension on `EventPublisherBuilder` with auto-registration of schema services
-  - Version-aware validation via `dataversion` CloudEvent extension attribute
-  - Format-agnostic deserialization enables validation for JSON, XML, and future formats
+- **Schema Compatibility Checking**: New `IEventSchemaCompatibilityChecker` and `EventSchemaCompatibilityChecker` in `Hermodr.Schema` that validates whether an event can be safely upcasted to a target schema version by analyzing schema changes (additions, removals, modifications) against configurable `SchemaCompatibilityLevel` (Backward, Forward, Full, None)
+- **Event Upcasting Pipeline**: New `EventUpcastingPipeline` and `EventUpcasterRegistry` supporting ordered chains of `IEventUpcaster` implementations with JSON data adapter (`JsonEventUpcastingDataAdapter`) for transforming event data across schema versions
+- **Publish-Time Upcasting Middleware**: New `EventUpcastingMiddleware` in `Hermodr.Publisher` that automatically applies registered upcasters during the publish pipeline, with configurable `MissingUpcasterBehavior` (Throw/Skip)
+- **Version-Aware Subscription Routing**: New `EventFilter`, `EventFilterBuilder`, and `EventFilterEvaluator` in `Hermodr.Subscriptions` enabling subscription-side filtering based on event type version and data version
 
-### 🧪 Tests
+### Change Log
 
-- 212 new tests across `Hermodr.Schema.XUnit` (200) and `Hermodr.Publisher.EventSchema.XUnit` (12) covering all middleware behaviors, version-aware lookup, and error handling
+#### Hermodr.Schema
+- `IEventSchemaCompatibilityChecker` — new interface for schema compatibility validation
+- `EventSchemaCompatibilityChecker` — implementation analyzing schema changes against compatibility levels
+- `SchemaCompatibilityLevel` — enum (Backward, Forward, Full, None)
+- `SchemaCompatibilityResult` — result type with pass/fail and change descriptions
+- `SchemaChange` — record type describing a single schema change
+- `SchemaChangeType` — enum (PropertyAdded, PropertyRemoved, PropertyTypeChanged, PropertyRequiredChanged)
+- `IEventUpcaster` — new interface for transforming event data across schema versions
+- `IEventUpcasterRegistry` — new interface for registering and resolving upcasters
+- `EventUpcasterRegistry` — default implementation with ordered upcaster chains
+- `IEventUpcastingPipeline` — new interface for executing upcaster chains
+- `EventUpcastingPipeline` — default pipeline implementation
+- `IEventUpcastingDataAdapter` — new interface for format-specific data access during upcasting
+- `JsonEventUpcastingDataAdapter` — JSON implementation using `JsonDocument`/`JsonElement`
+- `UpcastContext` — context object passed through the upcasting pipeline
+- `EventUpcastingException` — exception type for upcasting failures
+- `ServiceCollectionExtensions` — updated with upcaster registration methods
+
+#### Hermodr.Publisher
+- `EventUpcastingMiddleware` — new middleware applying registered upcasters during publish
+- `EventUpcastingOptions` — configuration for upcasting behavior
+- `MissingUpcasterBehavior` — enum (Throw, Skip) for handling missing upcasters
+- `EventPublisherBuilderExtensions` — new `UseEventUpcasting()` fluent extension
+- `EventFactory` — updated with version-aware event creation helpers
+
+#### Hermodr.Subscriptions
+- `EventFilter` — new type for subscription-side version filtering
+- `EventFilterBuilder` — fluent builder for constructing event filters
+- `EventFilterEvaluator` — evaluates filters against incoming events
+
+**Full Changelog**: https://github.com/deveel/hermodr/compare/v1.2.8...v1.2.9
 
 ## v1.2.6 - OpenTelemetry Enhancements
 

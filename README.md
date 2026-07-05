@@ -207,12 +207,12 @@ The framework is still evolving. See the [ROADMAP](ROADMAP.md) for the full desc
 
 - [x] **OpenTelemetry & Distributed Tracing Integration** — propagate W3C trace context as CloudEvents extensions for end-to-end traces
 - [x] **Audit Trail Channel** — append-only persistence of every domain event for auditing and read-model rebuilding
-- [ ] **Schema Validation at Publish Time** — validate event payloads against their registered schema before channel dispatch
+- [x] **Schema Validation at Publish Time** — validate event payloads against their registered schema before channel dispatch
 - [x] **Publish Delivery Log** — per-attempt operational record (channel, outcome, error code, latency, retry count) across pluggable storage backends
 
 ### v1.4 — Schema Governance
 
-- [ ] **Event Versioning & Compatibility** — breaking-change detection, upcasting pipeline, and version-aware routing
+- [x] **Event Versioning & Compatibility** — breaking-change detection, upcasting pipeline, and version-aware routing
 - [ ] **AsyncAPI & Schema Export Improvements** — compile-time auto-discovery, dotnet CLI tool, OpenAPI 3.1 webhook export
 
 ### v1.5 — New Transports

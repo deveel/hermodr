@@ -7,9 +7,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="CloudNative.CloudEvents" Version="2.8.0" />
-    <PackageReference Include="CloudNative.CloudEvents.SystemTextJson" Version="2.8.0" />
-    <PackageReference Include="Kista" Version="1.6.7" />
+    <PackageReference Include="CloudNative.CloudEvents" Version="2.9.0" />
+    <PackageReference Include="CloudNative.CloudEvents.SystemTextJson" Version="2.9.0" />
+    <PackageReference Include="Kista" Version="1.7.2" />
   </ItemGroup>
 
 </Project>

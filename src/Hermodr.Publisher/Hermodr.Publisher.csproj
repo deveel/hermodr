@@ -19,8 +19,8 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.7" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="CloudNative.CloudEvents" Version="2.8.0" />
-    <PackageReference Include="CloudNative.CloudEvents.SystemTextJson" Version="2.8.0" />
+    <PackageReference Include="CloudNative.CloudEvents" Version="2.9.0" />
+    <PackageReference Include="CloudNative.CloudEvents.SystemTextJson" Version="2.9.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Hermodr.Annotations\Hermodr.Annotations.csproj" />
