@@ -45,6 +45,39 @@
 
 **Full Changelog**: https://github.com/deveel/hermodr/compare/v1.2.8...v1.2.9
 
+## v1.2.8 - Schema Validation Middleware
+
+### 🚀 Features
+
+- **Schema Validation Middleware**: New `SchemaValidationMiddleware` in `Hermodr.Publisher` that validates CloudEvents envelope attributes (`id`, `source`, `type`, `specversion`) before channel dispatch, throwing `InvalidCloudEventException` if any are absent (#93)
+- **AuditTrailPublishChannel Refactor**: Refactored `AuditTrailPublishChannel` to use `IServiceProvider` for dependency resolution, improving testability and DI integration (#93)
+- **Kista Dependency Updates**: Updated references to the Kista provider model across the framework (#93)
+
+### 📖 Documentation
+
+- **Documentation Restructure**: Comprehensive docs reorganization with versioning support (#92)
+  - New Reliability Patterns category (Outbox, Dead-Letter, Delivery Log, Audit Trail)
+  - Event Schema category promoted higher in sidebar
+  - Docusaurus versioning configuration added
+  - Versioned docs snapshots created for tags v1.2.3 through v1.2.7
+  - Version dropdown in navbar for easy switching between doc versions
+
+**Full Changelog**: https://github.com/deveel/hermodr/compare/v1.2.7...v1.2.8
+
+## v1.2.7 - NDJson Delivery Log & Kista Migration
+
+### 🚀 Features
+
+- **NDJson Delivery Log Options**: New NDJson delivery log backend with configurable file rolling, retention policies, and in-memory storage implementation (#91)
+- **Kista Provider Migration**: Migrated framework components from Deveel to Kista provider model, aligning with the new infrastructure abstraction (#91)
+
+### 📖 Documentation
+
+- Updated installation and README for new Kista dependencies
+- Added frameworks comparison table
+
+**Full Changelog**: https://github.com/deveel/hermodr/compare/v1.2.6...v1.2.7
+
 ## v1.2.6 - OpenTelemetry Enhancements
 
 ### 🚀 Features

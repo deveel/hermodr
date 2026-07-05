@@ -13,11 +13,11 @@ The table below maps each roadmap item to the release milestone in which it is p
 | **Stable Publisher** | **v1.0.0** | Harden the publishing and schema packages, freeze public APIs, and ship production-ready documentation.                                                                                                                                                                                                                                                                                                                                                                               | — (current publisher + schema feature set) |
 | **Routing & Middleware** | **v1.1.0** | Introduce the foundational subscription & routing abstraction and the event middleware pipeline, enabling all later consumer-side and observability work.                                                                                                                                                                                                                                                                                                                             | 1 · 2 |
 | **Reliability** | **v1.2.0** | Add dead-letter capture and replay, the outbox pattern, and the event scheduler to make publishing robust to transient failures and deferred delivery requirements.                                                                                                                                                                                                                                                                                                                   | 3 · 4 · 5 |
-| **Observability** | **v1.3.0** | End-to-end distributed tracing via OpenTelemetry, schema validation at publish time, the append-only event store / audit log channel, and the publish delivery log for operational delivery telemetry.                                                                                                                                                                                                                                                                                | 6 · 7 · 8 · 9 |
-| **Schema Governance** | **v1.4.0** | Formal schema versioning, compatibility checking, upcasting, and AsyncAPI / schema export tooling improvements.                                                                                                                                                                                                                                                                                                                                                                       | 10 · 11 |
-| **New Transports** | **v1.5.0** | CloudEvents HTTP binding compliance for the Webhook publisher, a new lightweight HTTP CloudEvents channel, plus new channel adapters for gRPC streaming, Apache Kafka, Amazon SQS, Amazon SNS, Google Cloud Pub/Sub, and NATS/JetStream.                                                                                                                                                                                                                                              | 12 · 13 · 14 · 15 · 16 · 17 · 18 · 19 |
-| **Code Generation** | **v1.6.0** | Roslyn incremental source generators that read `[Event]` / `[EventProperty]` annotations at compile time to emit zero-reflection `IEventConvertible` implementations, pre-built schema DI registration helpers, and strongly-typed domain publisher interfaces — shifting annotation errors left to the build and eliminating startup reflection overhead. | 20 · 21 · 22 |
-| **Compliance** | **v1.7.0** | Schema-driven data classification and redaction for the regulated industries. Built on the `Microsoft.Extensions.Compliance.*` stack (no reinvented taxonomy), with storage-boundary redaction for the Audit Trail and the Delivery Log and an in-transit redaction pass for outbound publish channels — keeping clear-text confidential data out of every persistent and transported form. | 23 · 24 · 25 · 26 |
+| **Observability** | **Delivered across v1.2.5–v1.2.9** | End-to-end distributed tracing via OpenTelemetry, schema validation at publish time (envelope guard shipped; payload validation remainder moved to v1.3.0), the append-only event store / audit log channel, and the publish delivery log for operational delivery telemetry.                                                                                                                                                                                                  | 6 · 7 · 8 · 9 |
+| **Schema Governance** | **v1.3.0** | Formal schema versioning, compatibility checking, upcasting (item 10 shipped in v1.2.9), AsyncAPI / schema export improvements (item 11), and payload schema validation (remainder of item 8).                                                                                                                                                                                                                                                                                     | 8 · 10 · 11 |
+| **New Transports** | **v1.4.0** | CloudEvents HTTP binding compliance for the Webhook publisher, a new lightweight HTTP CloudEvents channel, plus new channel adapters for gRPC streaming, Apache Kafka, Amazon SQS, Amazon SNS, Google Cloud Pub/Sub, and NATS/JetStream.                                                                                                                                                                                                                                              | 12 · 13 · 14 · 15 · 16 · 17 · 18 · 19 |
+| **Code Generation** | **v1.5.0** | Roslyn incremental source generators that read `[Event]` / `[EventProperty]` annotations at compile time to emit zero-reflection `IEventConvertible` implementations, pre-built schema DI registration helpers, and strongly-typed domain publisher interfaces — shifting annotation errors left to the build and eliminating startup reflection overhead. | 20 · 21 · 22 |
+| **Compliance** | **v1.6.0** | Schema-driven data classification and redaction for the regulated industries. Built on the `Microsoft.Extensions.Compliance.*` stack (no reinvented taxonomy), with storage-boundary redaction for the Audit Trail and the Delivery Log and an in-transit redaction pass for outbound publish channels — keeping clear-text confidential data out of every persistent and transported form. | 23 · 24 · 25 · 26 |
 | **Event Consumers** | **v2.0.0** | First-class consumer adapters — ASP.NET Core Webhook framework, pre-built SaaS platform adapters (Facebook, SendGrid, Twilio, Stripe, GitHub, Shopify), RabbitMQ, Azure Service Bus, and MassTransit — completing the publish / consume lifecycle. This is a **major** release because it introduces a new, independently versioned surface area (`Hermodr.Consumer.*` packages) and changes the framing of the framework from a pure publisher to a full event-driven toolkit. | 27 · 28 · 29 · 30 · 31 |
 | **Testing & DX** | **v2.1.0** | Expanded testing utilities with fluent publish assertions and an in-memory event bus, a local development console sink, .NET Aspire integration, and a `dotnet event` CLI tool with a companion standalone executable — completing the developer inner-loop and tooling story. | 32 · 33 · 34 · 35 · 36 |
 | **Subscription Management** | **v2.2.0** | Provider-agnostic subscription management framework, EF Core and MongoDB registry providers, and a secured REST management API with OpenAPI metadata and change-notification webhooks. | 37 · 38 · 39 · 40 |
@@ -109,7 +109,9 @@ The table below maps each roadmap item to the release milestone in which it is p
 
 ---
 
-## Observability
+## Observability — Delivered across v1.2.5–v1.2.9
+
+> The Observability milestone (items 6–9) was originally planned as **v1.3.0** but shipped incrementally in the 1.2.x patch line. Items 6, 7, and 9 are fully delivered. Item 8 (Schema Validation at Publish Time) had its envelope guard shipped in v1.2.7; the payload-validation remainder is rescheduled to **v1.3.0** (Schema Governance) alongside item 11.
 
 ### 6. OpenTelemetry & Distributed Tracing Integration ✅
 
@@ -162,9 +164,9 @@ The table below maps each roadmap item to the release milestone in which it is p
 
 **The problem today:** The `Hermodr.Schema` and `Hermodr.Publisher` packages are entirely separate. An event with missing required fields or out-of-range values is published without complaint, and the error only surfaces at consumer side — or not at all.
 
-> **Already shipped (patch):** `EventPublisher` now enforces the four required CloudEvents envelope attributes (`id`, `source`, `type`, `specversion`) after enrichment and before channel dispatch, throwing `InvalidCloudEventException` if any are absent. This is a minimal, envelope-only guard. Full _payload_ validation — checking the `data` field against its declared schema — is the scope of this item and remains deferred.
+> **Already shipped (patch):** `EventPublisher` now enforces the four required CloudEvents envelope attributes (`id`, `source`, `type`, `specversion`) after enrichment and before channel dispatch, throwing `InvalidCloudEventException` if any are absent. This is a minimal, envelope-only guard. Full _payload_ validation — checking the `data` field against its declared schema — is the scope of this item.
 
-**What we will build:** A schema validation middleware (see item 2) that looks up the schema for a CloudEvent's `type` from the registered `IEventSchemaFactory` and runs the existing `IEventSchemaValidator` before the event reaches any channel. Failed validation can be configured to throw, log, or route to the dead-letter channel.
+> **Rescheduled:** The payload-validation remainder of this item has been moved to **v1.3.0** (Schema Governance) alongside item 11, where it will be delivered as a schema validation middleware (see item 2) that looks up the schema for a CloudEvent's `type` from the registered `IEventSchemaFactory` and runs the existing `IEventSchemaValidator` before the event reaches any channel. Failed validation can be configured to throw, log, or route to the dead-letter channel.
 
 **Benefits:**
 - Shifts schema violations left to the publisher boundary, where they are cheapest to fix.
@@ -198,7 +200,9 @@ The table below maps each roadmap item to the release milestone in which it is p
 
 ---
 
-## Schema Governance
+## Schema Governance — v1.3.0
+
+> The Schema Governance milestone was originally planned as **v1.4.0**. Item 10 (Event Versioning & Compatibility) shipped in v1.2.9. Item 11 (AsyncAPI & Schema Export Improvements) and the payload-validation remainder of item 8 are the remaining scope for **v1.3.0**.
 
 ### 10. Event Versioning & Compatibility ✅
 
@@ -247,7 +251,7 @@ The table below maps each roadmap item to the release milestone in which it is p
 
 ---
 
-## Transport & Channels
+## Transport & Channels — v1.4.0
 
 ### 12. CloudEvents HTTP Binding Compliance for the Webhook Publisher
 
@@ -419,7 +423,7 @@ The table below maps each roadmap item to the release milestone in which it is p
 
 ---
 
-## Code Generation
+## Code Generation — v1.5.0
 
 ### 20. CloudEvent Factory Source Generator
 
@@ -488,7 +492,7 @@ The table below maps each roadmap item to the release milestone in which it is p
 
 ---
 
-## Compliance
+## Compliance — v1.6.0
 
 ### 23. Data Compliance & Redaction Framework
 
