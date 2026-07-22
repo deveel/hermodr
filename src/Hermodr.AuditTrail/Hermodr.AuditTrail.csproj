@@ -9,7 +9,7 @@
   <ItemGroup>
     <PackageReference Include="CloudNative.CloudEvents" Version="2.9.0" />
     <PackageReference Include="CloudNative.CloudEvents.SystemTextJson" Version="2.9.0" />
-    <PackageReference Include="Kista" Version="1.7.2" />
+    <PackageReference Include="Kista" Version="1.7.3" />
   </ItemGroup>
 
 </Project>
