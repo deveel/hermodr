@@ -50,7 +50,7 @@
     "js-yaml": "^3.15.0",
     "serialize-javascript": "^7.0.7",
     "uuid": "^11.1.1",
-    "webpack-dev-server": "^5.2.5"
+    "webpack-dev-server": "^5.2.6"
   },
   "engines": {
     "node": ">=20.0"
