@@ -28,7 +28,8 @@ public static class DeadLetterBuilderExtensions
 
         builder.Services.AddDbContext<DeadLetterDbContext>(configure, lifetime);
         builder.UseRepository<DbDeadLetterMessage, EntityDeadLetterMessageStore<DbDeadLetterMessage>>(lifetime);
-        builder.Services.AddRepository<EntityDeadLetterMessageStore<DbDeadLetterMessage>>();
+        builder.Services.AddRepositoryContext()
+            .AddRepository<EntityDeadLetterMessageStore<DbDeadLetterMessage>>();
         builder.WithFactory<DbDeadLetterMessage, DeadLetterMessageEntityFactory<DbDeadLetterMessage>>();
         return builder;
     }
