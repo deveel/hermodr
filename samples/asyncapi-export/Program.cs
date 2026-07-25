@@ -69,5 +69,6 @@ static string WriteOpenApi() {
     using var ms = new MemoryStream();
     OpenApiDocumentWriter.Serialize(ms, doc, OpenApiFormat.Json);
     ms.Position = 0;
-    return new StreamReader(ms).ReadToEnd();
+    using var reader = new StreamReader(ms);
+    return reader.ReadToEnd();
 }
