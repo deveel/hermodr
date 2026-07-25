@@ -218,7 +218,8 @@ namespace Hermodr {
             using var ms = new MemoryStream();
             await writer.WriteToAsync(ms, schema);
             ms.Position = 0;
-            return new StreamReader(ms).ReadToEnd();
+            using var reader = new StreamReader(ms);
+            return reader.ReadToEnd();
         }
 
         [Fact]
@@ -266,7 +267,8 @@ namespace Hermodr {
             using var ms = new MemoryStream();
             await writer.WriteToAsync(ms, new[] { OpenApiTestSchemas.SimpleSchema(), OpenApiTestSchemas.NestedSchema() });
             ms.Position = 0;
-            var output = new StreamReader(ms).ReadToEnd();
+            using var reader = new StreamReader(ms);
+            var output = reader.ReadToEnd();
             using var doc = JsonDocument.Parse(output);
 
             Assert.True(doc.RootElement.GetProperty("webhooks").TryGetProperty("user-registered", out _));

@@ -192,11 +192,8 @@ namespace Hermodr
                 ["url"] = EndpointUrl
             };
 
-            foreach (var key in properties.Keys.ToList())
-            {
-                if (string.IsNullOrEmpty(properties[key]))
-                    properties.Remove(key);
-            }
+            foreach (var key in properties.Keys.Where(k => string.IsNullOrEmpty(properties[k])).ToList())
+                properties.Remove(key);
 
             return new EventPublishChannelMetadata(ChannelName, EventTransports.Webhook, properties);
         }

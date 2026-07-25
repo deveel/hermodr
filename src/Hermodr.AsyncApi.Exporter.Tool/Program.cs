@@ -48,7 +48,27 @@ internal static class Program
             await WriteDocumentAsync(options, schemas, channels);
             return 0;
         }
-        catch (Exception ex)
+        catch (IOException ex)
+        {
+            Console.Error.WriteLine($"error: {ex.Message}");
+            return 2;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            Console.Error.WriteLine($"error: {ex.Message}");
+            return 2;
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            Console.Error.WriteLine($"error: {ex.Message}");
+            return 2;
+        }
+        catch (InvalidOperationException ex)
+        {
+            Console.Error.WriteLine($"error: {ex.Message}");
+            return 2;
+        }
+        catch (ArgumentException ex)
         {
             Console.Error.WriteLine($"error: {ex.Message}");
             return 2;
@@ -64,7 +84,23 @@ internal static class Program
             {
                 assemblies.Add(Assembly.LoadFrom(path));
             }
-            catch (Exception ex)
+            catch (FileNotFoundException ex)
+            {
+                Console.Error.WriteLine($"warning: could not load assembly '{path}': {ex.Message}");
+            }
+            catch (FileLoadException ex)
+            {
+                Console.Error.WriteLine($"warning: could not load assembly '{path}': {ex.Message}");
+            }
+            catch (BadImageFormatException ex)
+            {
+                Console.Error.WriteLine($"warning: could not load assembly '{path}': {ex.Message}");
+            }
+            catch (PathTooLongException ex)
+            {
+                Console.Error.WriteLine($"warning: could not load assembly '{path}': {ex.Message}");
+            }
+            catch (UnauthorizedAccessException ex)
             {
                 Console.Error.WriteLine($"warning: could not load assembly '{path}': {ex.Message}");
             }

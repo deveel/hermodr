@@ -85,13 +85,9 @@ namespace Hermodr
         public AsyncApiDocumentBuilder WithChannels(IEnumerable<IEventPublishChannelMetadata> channels)
         {
             ArgumentNullException.ThrowIfNull(channels);
-            foreach (var c in channels)
-            {
-                if (c is null) continue;
-                if (string.Equals(c.Transport, EventTransports.Other, StringComparison.Ordinal))
-                    continue;
-                _channels.Add(c);
-            }
+            _channels.AddRange(channels.Where(c =>
+                c is not null &&
+                !string.Equals(c.Transport, EventTransports.Other, StringComparison.Ordinal)));
             return this;
         }
 
@@ -221,11 +217,9 @@ namespace Hermodr
         {
             var seen = new Dictionary<string, Server>(StringComparer.Ordinal);
 
-            foreach (var channel in channels)
+            foreach (var channel in channels.Where(c =>
+                        !string.Equals(c.Transport, EventTransports.Other, StringComparison.Ordinal)))
             {
-                if (string.Equals(channel.Transport, EventTransports.Other, StringComparison.Ordinal))
-                    continue;
-
                 var (url, protocol) = ResolveServerEndpoint(channel);
                 if (url is null) continue;
 

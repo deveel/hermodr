@@ -81,13 +81,9 @@ namespace Hermodr
         public OpenApiWebhookDocumentBuilder WithChannels(IEnumerable<IEventPublishChannelMetadata> channels)
         {
             ArgumentNullException.ThrowIfNull(channels);
-            foreach (var c in channels)
-            {
-                if (c is null) continue;
-                if (string.Equals(c.Transport, EventTransports.Other, StringComparison.Ordinal))
-                    continue;
-                _channels.Add(c);
-            }
+            _channels.AddRange(channels.Where(c =>
+                c is not null &&
+                !string.Equals(c.Transport, EventTransports.Other, StringComparison.Ordinal)));
             return this;
         }
 
