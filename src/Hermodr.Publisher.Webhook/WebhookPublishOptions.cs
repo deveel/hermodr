@@ -21,7 +21,7 @@ namespace Hermodr
     /// are always taken from the channel-level defaults and ignored when supplied
     /// in a per-call override.
     /// </remarks>
-    public class WebhookPublishOptions : NamedChannelPublishOptions, INamedChannelFilter
+    public class WebhookPublishOptions : NamedChannelPublishOptions, INamedChannelFilter, IChannelMetadataSource
     {
         /// <summary>
         /// Merges <paramref name="baseOptions"/> with <paramref name="typedOptions"/>,
@@ -183,5 +183,22 @@ namespace Hermodr
         /// the default channel name (<see cref="WebhookDefaults.HttpClientName"/>) is used.
         /// </summary>
         public string? HttpClientName { get; set; }
+
+        /// <inheritdoc/>
+        IEventPublishChannelMetadata IChannelMetadataSource.GetChannelMetadata()
+        {
+            var properties = new Dictionary<string, string?>(StringComparer.Ordinal)
+            {
+                ["url"] = EndpointUrl
+            };
+
+            foreach (var key in properties.Keys.ToList())
+            {
+                if (string.IsNullOrEmpty(properties[key]))
+                    properties.Remove(key);
+            }
+
+            return new EventPublishChannelMetadata(ChannelName, EventTransports.Webhook, properties);
+        }
     }
 }

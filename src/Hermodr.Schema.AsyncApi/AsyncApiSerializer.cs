@@ -25,7 +25,7 @@ namespace Hermodr {
     /// <summary>
     /// Shared serialisation helpers for Saunter <see cref="AsyncApiDocument"/> objects.
     /// </summary>
-    internal static class AsyncApiSerializer {
+    public static class AsyncApiSerializer {
         private static readonly JsonSerializerSettings JsonSettings = new JsonSerializerSettings {
             NullValueHandling = NullValueHandling.Ignore,
             Formatting = Formatting.Indented

@@ -14,7 +14,7 @@ The table below maps each roadmap item to the release milestone in which it is p
 | **Routing & Middleware** | **v1.1.0** | Introduce the foundational subscription & routing abstraction and the event middleware pipeline, enabling all later consumer-side and observability work.                                                                                                                                                                                                                                                                                                                             | 1 · 2 |
 | **Reliability** | **v1.2.0** | Add dead-letter capture and replay, the outbox pattern, and the event scheduler to make publishing robust to transient failures and deferred delivery requirements.                                                                                                                                                                                                                                                                                                                   | 3 · 4 · 5 |
 | **Observability** | **Delivered across v1.2.5–v1.2.9** | End-to-end distributed tracing via OpenTelemetry, schema validation at publish time (envelope guard shipped; payload validation remainder moved to v1.3.0), the append-only event store / audit log channel, and the publish delivery log for operational delivery telemetry.                                                                                                                                                                                                  | 6 · 7 · 8 · 9 |
-| **Schema Governance** | **v1.3.0** | Formal schema versioning, compatibility checking, upcasting (item 10 shipped in v1.2.9), AsyncAPI / schema export improvements (item 11), and payload schema validation (remainder of item 8).                                                                                                                                                                                                                                                                                     | 8 · 10 · 11 |
+| **Schema Governance** | **v1.3.0** | Formal schema versioning, compatibility checking, upcasting (item 10 shipped in v1.2.9), AsyncAPI / schema export improvements (item 11 shipped in v1.3.0), and payload schema validation (remainder of item 8).                                                                                                                                                                                                                                                                                     | 8 · 10 · 11 |
 | **New Transports** | **v1.4.0** | CloudEvents HTTP binding compliance for the Webhook publisher, a new lightweight HTTP CloudEvents channel, plus new channel adapters for gRPC streaming, Apache Kafka, Amazon SQS, Amazon SNS, Google Cloud Pub/Sub, and NATS/JetStream.                                                                                                                                                                                                                                              | 12 · 13 · 14 · 15 · 16 · 17 · 18 · 19 |
 | **Code Generation** | **v1.5.0** | Roslyn incremental source generators that read `[Event]` / `[EventProperty]` annotations at compile time to emit zero-reflection `IEventConvertible` implementations, pre-built schema DI registration helpers, and strongly-typed domain publisher interfaces — shifting annotation errors left to the build and eliminating startup reflection overhead. | 20 · 21 · 22 |
 | **Compliance** | **v1.6.0** | Schema-driven data classification and redaction for the regulated industries. Built on the `Microsoft.Extensions.Compliance.*` stack (no reinvented taxonomy), with storage-boundary redaction for the Audit Trail and the Delivery Log and an in-transit redaction pass for outbound publish channels — keeping clear-text confidential data out of every persistent and transported form. | 23 · 24 · 25 · 26 |
@@ -229,19 +229,39 @@ The table below maps each roadmap item to the release milestone in which it is p
 
 ---
 
-### 11. AsyncAPI & Schema Export Improvements
+### 11. AsyncAPI & Schema Export Improvements ✅
 
 > *Auto-discover event types from assemblies and enrich the exported AsyncAPI document with server, channel, and operation definitions.*
 
-**The problem today:** The `Hermodr.Schema.AsyncApi` package exports schemas but requires manual registration of each event type. Server URLs, channel bindings, and operation definitions are not populated automatically.
+**What was built:** Assembly-based schema discovery, transport-aware channel/operation population from `IEventPublishChannelMetadata`, OpenAPI 3.1 webhook export, and a `dotnet` global tool for CI-driven export.
 
-**What we will build:** Assembly scanning to auto-register all types annotated with `[Event]`, automatic population of AsyncAPI channel and operation objects from the registered publish channels (RabbitMQ exchange name, Azure Service Bus topic, etc.), and export as OpenAPI 3.1 webhooks in addition to AsyncAPI 2.x. A dotnet global tool will allow export as a CI step without a running application.
+**What was delivered:**
+- `Hermodr.Publisher`
+  - `IEventPublishChannelMetadata` — transport-agnostic metadata surface (`ChannelName`, free-form `Transport` string, convention-only `Properties` bag).
+  - `EventTransports` — well-known transport string constants (`RabbitMq`, `AzureServiceBus`, `Webhook`, `Http` [reserved for v1.4.0 item 13], `Other`). `Other` marks storage / deferral / recovery layers (Audit Trail, Outbox, Dead-Letter) that are excluded from exported contracts.
+  - `IChannelMetadataSource` — marker for options classes that supply metadata; implemented by `RabbitMqPublishOptions`, `ServiceBusPublishOptions`, `WebhookPublishOptions`.
+  - `EventPublishChannelMetadata` — default implementation + `For(IEventPublishChannel)` resolver that unwraps `NamedChannelDecorator` and reads metadata from the channel or its options.
+  - `EventPublisher.GetChannelMetadata()` — exposes the live pipeline metadata for tooling.
+- `Hermodr.Schema.AsyncApi`
+  - `EventSchemaDiscovery` — scans assemblies for `[Event]`-annotated types with a `DataVersion` and returns a schema for each; skips `DataSchema`-URI-only types, mirroring `EventSchemaRegistry.ScanAssembly`.
+  - `AsyncApiDocumentBuilder` — fluent builder (`FromAssemblies`, `WithSchemas`, `WithChannels(IEventPublisher)`, `WithServer`, `WithTitle/WithVersion`, `Build`) that populates RabbitMQ (AMQP) and HTTP channel bindings, aggregates servers, and emits a publish operation per channel. Unknown transports preserve the identifier in the channel description (lossless).
+  - `EventSchemaAsyncApiExtensions.AddEvent(IEventSchema, IEventPublishChannelMetadata?)` — enriches a single channel with transport-specific bindings.
+- `Hermodr.Schema.OpenApi` (new package, depends on `Microsoft.OpenApi` 2.7.5)
+  - `EventSchemaOpenApiExtensions` — `IEventSchema` → `OpenApiSchema` conversion (mirrors the AsyncAPI mapping incl. constraints, nested objects, arrays, enums).
+  - `OpenApiWebhookDocumentBuilder` — fluent builder producing an OpenAPI 3.1 document whose `webhooks` section carries one `POST` operation per event type; transport identifier preserved via `x-hermodr-transport` / `x-hermodr-properties` operation extensions.
+  - `EventSchemaOpenApiWriter` / `EventSchemasOpenApiWriter` — `IEventSchemaWriter` impls producing JSON or YAML.
+- `Hermodr.AsyncApi.Exporter.Tool` (new `dotnet` global tool, `hermodr-asyncapi`)
+  - Exports AsyncAPI 2.x or OpenAPI 3.1 from one or more assemblies without a running host.
+  - `--channels-file <json>` and `--entry <type>::<method>` mechanisms to supply transport metadata; `--entry` invokes a static method returning `IReadOnlyList<IEventPublishChannelMetadata>`.
+  - Skips channels whose transport is `EventTransports.Other`.
 
 **Benefits:**
 - No manual schema registration — annotate the class and it appears in the exported document automatically.
 - The exported document becomes a living, always-up-to-date contract that can be published to a developer portal.
-- OpenAPI 3.1 webhook export makes the schema accessible to REST-centric tooling.
+- OpenAPI 3.1 webhook export makes the schema accessible to REST-centric tooling (Swagger UI, Kiota, Postman).
 - The CLI tool enables contract-first workflows and automated breaking-change detection in CI.
+
+> **Note:** `EventSchemaDiscovery` uses reflection and is not suitable for trimmed / AOT-compiled deployments. The compile-time source generator planned for v1.5.0 (item 21) will provide an AOT-safe metadata source that replaces runtime discovery.
 
 ---
 

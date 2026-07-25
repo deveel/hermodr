@@ -2,6 +2,48 @@
 
 ## [Unreleased]
 
+### 🚀 Features
+
+- **AsyncAPI & Schema Export Improvements** (roadmap item 11, v1.3.0):
+  - **Channel metadata abstraction** in `Hermodr.Publisher`: new
+    `IEventPublishChannelMetadata` interface, `EventTransports` well-known
+    transport string constants, `IChannelMetadataSource` marker for options
+    classes, and `EventPublishChannelMetadata.For(...)` resolver that unwraps
+    `NamedChannelDecorator` and reads metadata from either the channel or its
+    options. `EventPublisher.GetChannelMetadata()` exposes the live pipeline
+    metadata for tooling.
+  - **Transport options implement `IChannelMetadataSource`**: `RabbitMqPublishOptions`,
+    `ServiceBusPublishOptions`, and `WebhookPublishOptions` now expose
+    transport-aware metadata (`exchange`, `routingKey`, `queue`, `url`, ...).
+    Storage / deferral / recovery channels (Audit Trail, Outbox, Dead-Letter)
+    report `EventTransports.Other` and are excluded from exported contracts.
+  - **Auto-discovery** (`Hermodr.Schema.AsyncApi`): new `EventSchemaDiscovery`
+    service that scans assemblies for `[Event]`-annotated types with a
+    `DataVersion` and returns a schema for each — the export-time counterpart of
+    `EventSchemaRegistry.ScanAssembly`.
+  - **Enriched AsyncAPI 2.x document**: new `AsyncApiDocumentBuilder` fluently
+    builds a document from schemas + channel metadata, populates RabbitMQ (AMQP)
+    and HTTP channel bindings, aggregates servers, and emits a publish operation
+    per channel. New `AddEvent` overload on `EventSchemaAsyncApiExtensions` enriches
+    a single channel with transport-specific bindings.
+  - **OpenAPI 3.1 webhook export** (new package `Hermodr.Schema.OpenApi`):
+    converts `IEventSchema` to `OpenApiSchema`, builds a `webhooks` document with
+    one `POST` operation per event type whose request body references the schema
+    under `components/schemas`, and preserves the transport identifier via the
+    `x-hermodr-transport` operation extension. JSON and YAML writers
+    (`EventSchemaOpenApiWriter`, `EventSchemasOpenApiWriter`) provided.
+  - **`dotnet` global tool** (new package `Hermodr.AsyncApi.Exporter.Tool`):
+    exports AsyncAPI 2.x or OpenAPI 3.1 documents from one or more assemblies
+    without a running host, with `--channels-file` (JSON) and `--entry
+    <type>::<method>` mechanisms to supply transport metadata. Installable via
+    `dotnet tool install --global Hermodr.AsyncApi.Exporter.Tool`.
+
+### 📖 Documentation
+
+- New docs pages: [Export as OpenAPI 3.1](docs/schema/export/openapi.md),
+  [CLI Export Tool](docs/schema/export/cli-tool.md), and updated
+  [Export Formats Overview](docs/schema/export/README.md).
+
 ## v1.2.9 - Schema Compatibility & Event Upcasting
 
 ### 🚀 Features

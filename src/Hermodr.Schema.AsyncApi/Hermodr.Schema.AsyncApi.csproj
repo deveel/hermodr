@@ -13,6 +13,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Hermodr.Schema\Hermodr.Schema.csproj" />
+    <ProjectReference Include="..\Hermodr.Publisher\Hermodr.Publisher.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Remove="docs\api\Hermodr.AsyncApiSerializer.md" />

@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Hermodr.Schema.OpenApi\Hermodr.Schema.OpenApi.csproj" />
+    <ProjectReference Include="..\..\src\Hermodr.Publisher\Hermodr.Publisher.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Hermodr.Tool</RootNamespace>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>hermodr-asyncapi</ToolCommandName>
+    <PackageId>Hermodr.AsyncApi.Exporter.Tool</PackageId>
+    <Title>Hermodr AsyncAPI / OpenAPI Exporter</Title>
+    <Description>A dotnet global tool that exports Hermodr event schemas to AsyncAPI 2.x or OpenAPI 3.1 documents without a running application host.</Description>
+    <PackageTags>event;events;asyncapi;openapi;cli;tool;export</PackageTags>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Hermodr.Schema.AsyncApi\Hermodr.Schema.AsyncApi.csproj" />
+    <ProjectReference Include="..\Hermodr.Schema.OpenApi\Hermodr.Schema.OpenApi.csproj" />
+  </ItemGroup>
+</Project>

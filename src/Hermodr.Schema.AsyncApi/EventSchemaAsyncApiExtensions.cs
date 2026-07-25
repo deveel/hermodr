@@ -147,6 +147,68 @@ namespace Hermodr {
             return document;
         }
 
+        /// <summary>
+        /// Adds the <paramref name="schema"/> and the transport-aware publish
+        /// channel described by <paramref name="channel"/> into an existing
+        /// <paramref name="document"/>.
+        /// </summary>
+        /// <remarks>
+        /// This overload enriches the channel with a publish operation and, when
+        /// the transport has a native AsyncAPI 2.x binding in Saunter (RabbitMQ →
+        /// AMQP, Webhook/HTTP → HTTP), populates the channel binding from the
+        /// metadata properties bag. For unknown transports (e.g.
+        /// <c>"azureservicebus"</c>, <c>"kafka"</c>) the transport identifier is
+        /// preserved in the channel description so the export remains lossless.
+        /// Channels whose <see cref="IEventPublishChannelMetadata.Transport"/> is
+        /// <see cref="EventTransports.Other"/> are skipped entirely.
+        /// </remarks>
+        public static AsyncApiDocument AddEvent(
+            this AsyncApiDocument document,
+            IEventSchema schema,
+            IEventPublishChannelMetadata? channel = null) {
+            var key = SanitizeKey(schema.EventType);
+
+            document.Components ??= new Components();
+            document.Components.Schemas[key] = schema.ToJsonSchema();
+            document.Components.Messages[key] = schema.ToAsyncApiMessage();
+
+            // When no channel metadata is supplied (or the channel is a non-
+            // transport), fall back to the schema-only subscribe channel produced
+            // by AddSchema for backward compatibility.
+            if (channel == null ||
+                string.Equals(channel.Transport, EventTransports.Other, StringComparison.Ordinal)) {
+                document.Channels[key] = new ChannelItem {
+                    Description = schema.Description,
+                    Subscribe = new Operation {
+                        Summary = schema.Description,
+                        Message = new MessageReference(key)
+                    }
+                };
+                return document;
+            }
+
+            var channelItem = document.Channels.TryGetValue(key, out var existing)
+                ? existing
+                : new ChannelItem();
+
+            channelItem.Description = string.IsNullOrEmpty(schema.Description)
+                ? $"Publish channel ({channel.Transport})"
+                : $"{schema.Description} ({channel.Transport})";
+
+            channelItem.Publish = new Operation {
+                OperationId = $"publish_{key}",
+                Summary = schema.Description,
+                Message = new MessageReference(key)
+            };
+
+            var binding = AsyncApiDocumentBuilder.ResolveChannelBinding(channel);
+            if (binding != null)
+                channelItem.Bindings = binding;
+
+            document.Channels[key] = channelItem;
+            return document;
+        }
+
         // ─── Internal helpers ─────────────────────────────────────────────────────
 
         private static void ApplyConstraint(JsonSchemaProperty prop, IEventPropertyConstraint constraint) {
