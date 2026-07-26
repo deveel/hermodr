@@ -6,10 +6,14 @@
 using System.ComponentModel;
 using System.Reflection;
 using System.Text.Json;
+using System.Threading;
 
 using Microsoft.OpenApi;
 
 using Saunter.AsyncApiSchema.v2;
+
+using Spectre.Console;
+using Spectre.Console.Cli;
 
 namespace Hermodr.Tool;
 
@@ -20,62 +24,16 @@ internal static class Program
 {
     public static async Task<int> Main(string[] args)
     {
-        var options = ParseArgs(args);
-        if (options == null)
-            return ExitUsage();
-
-        if (options.Help)
-            return ExitUsage(showHelp: true);
-
-        if (options.Assemblies.Count == 0)
+        var app = new CommandApp<ExportCommand>();
+        app.Configure(config =>
         {
-            Console.Error.WriteLine("error: at least one --assembly <path> is required.");
-            return 1;
-        }
-
-        // 1. Discover event schemas from the given assemblies.
-        var schemas = DiscoverSchemas(options.Assemblies);
-        if (schemas.Count == 0)
-            Console.Error.WriteLine("warning: no [Event]-annotated types with a DataVersion were found in the given assemblies.");
-
-        // 2. Resolve channel metadata: from --channels-file, or from an entry
-        //    point type that returns IReadOnlyList<IEventPublishChannelMetadata>.
-        var channels = await ResolveChannelsAsync(options);
-
-        // 3. Build the requested document and write it to --out.
-        try
-        {
-            await WriteDocumentAsync(options, schemas, channels);
-            return 0;
-        }
-        catch (IOException ex)
-        {
-            Console.Error.WriteLine($"error: {ex.Message}");
-            return 2;
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            Console.Error.WriteLine($"error: {ex.Message}");
-            return 2;
-        }
-        catch (System.Text.Json.JsonException ex)
-        {
-            Console.Error.WriteLine($"error: {ex.Message}");
-            return 2;
-        }
-        catch (InvalidOperationException ex)
-        {
-            Console.Error.WriteLine($"error: {ex.Message}");
-            return 2;
-        }
-        catch (ArgumentException ex)
-        {
-            Console.Error.WriteLine($"error: {ex.Message}");
-            return 2;
-        }
+            config.SetApplicationName("hermodr-asyncapi");
+            config.UseStrictParsing();
+        });
+        return await app.RunAsync(args);
     }
 
-    private static IReadOnlyList<IEventSchema> DiscoverSchemas(IReadOnlyList<string> assemblyPaths)
+    internal static IReadOnlyList<IEventSchema> DiscoverSchemas(IReadOnlyList<string> assemblyPaths)
     {
         var assemblies = new List<Assembly>(assemblyPaths.Count);
         foreach (var path in assemblyPaths)
@@ -86,23 +44,23 @@ internal static class Program
             }
             catch (FileNotFoundException ex)
             {
-                Console.Error.WriteLine($"warning: could not load assembly '{path}': {ex.Message}");
+                AnsiConsole.WriteLine($"warning: could not load assembly '{path}': {ex.Message}");
             }
             catch (FileLoadException ex)
             {
-                Console.Error.WriteLine($"warning: could not load assembly '{path}': {ex.Message}");
+                AnsiConsole.WriteLine($"warning: could not load assembly '{path}': {ex.Message}");
             }
             catch (BadImageFormatException ex)
             {
-                Console.Error.WriteLine($"warning: could not load assembly '{path}': {ex.Message}");
+                AnsiConsole.WriteLine($"warning: could not load assembly '{path}': {ex.Message}");
             }
             catch (PathTooLongException ex)
             {
-                Console.Error.WriteLine($"warning: could not load assembly '{path}': {ex.Message}");
+                AnsiConsole.WriteLine($"warning: could not load assembly '{path}': {ex.Message}");
             }
             catch (UnauthorizedAccessException ex)
             {
-                Console.Error.WriteLine($"warning: could not load assembly '{path}': {ex.Message}");
+                AnsiConsole.WriteLine($"warning: could not load assembly '{path}': {ex.Message}");
             }
         }
 
@@ -110,77 +68,74 @@ internal static class Program
         return discovery.DiscoverSchemas(assemblies.ToArray());
     }
 
-    private static async Task<IReadOnlyList<IEventPublishChannelMetadata>> ResolveChannelsAsync(ToolOptions options)
+    internal static async Task<IReadOnlyList<IEventPublishChannelMetadata>> ResolveChannelsAsync(ExportSettings settings)
     {
         // Priority 1: explicit --channels-file (JSON).
-        if (!string.IsNullOrEmpty(options.ChannelsFile))
+        if (!string.IsNullOrEmpty(settings.ChannelsFile))
         {
             try
             {
-                return await ChannelsFileLoader.LoadAsync(options.ChannelsFile);
+                return await ChannelsFileLoader.LoadAsync(settings.ChannelsFile);
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"warning: failed to read --channels-file '{options.ChannelsFile}': {ex.Message}");
+                AnsiConsole.WriteLine($"warning: failed to read --channels-file '{settings.ChannelsFile}': {ex.Message}");
             }
         }
 
         // Priority 2: --entry <assembly-qualified-type-name>::<static-method>
         // that returns IReadOnlyList<IEventPublishChannelMetadata>.
-        if (!string.IsNullOrEmpty(options.Entry))
+        if (!string.IsNullOrEmpty(settings.Entry))
         {
             try
             {
-                return EntryChannelResolver.Resolve(options.Entry);
+                return EntryChannelResolver.Resolve(settings.Entry);
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"warning: failed to invoke --entry '{options.Entry}': {ex.Message}");
+                AnsiConsole.WriteLine($"warning: failed to invoke --entry '{settings.Entry}': {ex.Message}");
             }
         }
 
         return Array.Empty<IEventPublishChannelMetadata>();
     }
 
-    private static async Task WriteDocumentAsync(
-        ToolOptions options,
+    internal static async Task WriteDocumentAsync(
+        ExportSettings settings,
         IReadOnlyList<IEventSchema> schemas,
         IReadOnlyList<IEventPublishChannelMetadata> channels)
     {
-        if (string.IsNullOrEmpty(options.OutputPath))
-            throw new InvalidOperationException("No --out <path> was provided.");
-
-        if (options.Output == OutputFormat.AsyncApi)
+        if (settings.Output == OutputFormat.AsyncApi)
         {
             var builder = new AsyncApiDocumentBuilder()
-                .WithTitle(options.Title ?? "Hermodr Events")
-                .WithVersion(options.Version ?? "1.0")
+                .WithTitle(settings.Title ?? "Hermodr Events")
+                .WithVersion(settings.Version ?? "1.0")
                 .WithSchemas(schemas)
                 .WithChannels(channels);
 
             var document = builder.Build();
-            var content = AsyncApiSerializer.Serialize(document, MapAsyncApiFormat(options.DocumentFormat));
+            var content = AsyncApiSerializer.Serialize(document, MapAsyncApiFormat(settings.DocumentFormat));
 
-            await WriteFileAsync(options.OutputPath!, content);
+            await WriteFileAsync(settings.OutputPath, content);
         }
         else // OpenAPI 3.1
         {
             var builder = new OpenApiWebhookDocumentBuilder()
-                .WithTitle(options.Title ?? "Hermodr Events")
-                .WithVersion(options.Version ?? "1.0")
+                .WithTitle(settings.Title ?? "Hermodr Events")
+                .WithVersion(settings.Version ?? "1.0")
                 .WithSchemas(schemas)
                 .WithChannels(channels);
 
             var document = builder.Build();
             using var ms = new MemoryStream();
-            OpenApiDocumentWriter.Serialize(ms, document, MapOpenApiFormat(options.DocumentFormat));
+            OpenApiDocumentWriter.Serialize(ms, document, MapOpenApiFormat(settings.DocumentFormat));
             ms.Position = 0;
             using var reader = new StreamReader(ms, leaveOpen: true);
             var content = reader.ReadToEnd();
-            await WriteFileAsync(options.OutputPath!, content);
+            await WriteFileAsync(settings.OutputPath, content);
         }
 
-        Console.WriteLine($"wrote {options.OutputPath} ({options.Output}, {options.DocumentFormat})");
+        AnsiConsole.WriteLine($"wrote {settings.OutputPath} ({settings.Output}, {settings.DocumentFormat})");
     }
 
     private static AsyncApiFormat MapAsyncApiFormat(DocumentFormat format)
@@ -197,116 +152,99 @@ internal static class Program
 
         await File.WriteAllTextAsync(path, content);
     }
-
-    // ── Argument parsing ────────────────────────────────────────────────────
-
-    private static ToolOptions? ParseArgs(string[] args)
-    {
-        var opts = new ToolOptions();
-        for (var i = 0; i < args.Length; i++)
-        {
-            var arg = args[i];
-            switch (arg)
-            {
-                case "--help":
-                case "-h":
-                    opts.Help = true;
-                    return opts;
-                case "--assembly":
-                    if (++i >= args.Length) return null!;
-                    opts.Assemblies.Add(args[i]);
-                    break;
-                case "--output":
-                    if (++i >= args.Length) return null!;
-                    opts.Output = args[i].ToLowerInvariant() switch
-                    {
-                        "asyncapi" => OutputFormat.AsyncApi,
-                        "openapi" => OutputFormat.OpenApi,
-                        _ => OutputFormat.AsyncApi
-                    };
-                    break;
-                case "--format":
-                    if (++i >= args.Length) return null!;
-                    opts.DocumentFormat = args[i].ToLowerInvariant() switch
-                    {
-                        "yaml" => DocumentFormat.Yaml,
-                        "json" => DocumentFormat.Json,
-                        _ => DocumentFormat.Json
-                    };
-                    break;
-                case "--title":
-                    if (++i >= args.Length) return null!;
-                    opts.Title = args[i];
-                    break;
-                case "--version":
-                    if (++i >= args.Length) return null!;
-                    opts.Version = args[i];
-                    break;
-                case "--out":
-                    if (++i >= args.Length) return null!;
-                    opts.OutputPath = args[i];
-                    break;
-                case "--channels-file":
-                    if (++i >= args.Length) return null!;
-                    opts.ChannelsFile = args[i];
-                    break;
-                case "--entry":
-                    if (++i >= args.Length) return null!;
-                    opts.Entry = args[i];
-                    break;
-                default:
-                    Console.Error.WriteLine($"error: unknown argument '{arg}'.");
-                    return null;
-            }
-        }
-        return opts;
-    }
-
-    private static int ExitUsage(bool showHelp = false)
-    {
-        Console.Error.WriteLine("""
-        Usage: hermodr-asyncapi --assembly <path> [--assembly <path> ...]
-                               [--output asyncapi|openapi]
-                               [--format json|yaml]
-                               [--title <title>] [--version <version>]
-                               [--out <path>]
-                               [--channels-file <path>]
-                               [--entry <type>::<method>]
-
-        Discovers [Event]-annotated types in the given assemblies and exports
-        an AsyncAPI 2.x or OpenAPI 3.1 document describing them.
-
-        Options:
-          --assembly <path>       Assembly to scan (repeatable).
-          --output <format>       asyncapi (default) | openapi
-          --format <format>       json (default) | yaml
-          --title <title>         Document info.title (default: 'Hermodr Events')
-          --version <version>     Document info.version (default: '1.0')
-          --out <path>            Output file path (required).
-          --channels-file <path>  JSON file describing channel bindings:
-                                   { "channels": [
-                                     { "name": "...", "transport": "rabbitmq",
-                                       "properties": { "exchange": "..." } }
-                                   ] }
-          --entry <type>::<method>  Assembly-qualified type name and a static
-                                   method returning IReadOnlyList<IEventPublishChannelMetadata>.
-          --help, -h              Show this help.
-        """);
-        return showHelp ? 0 : 1;
-    }
 }
 
-internal sealed class ToolOptions
+/// <summary>
+/// Settings for the <c>hermodr-asyncapi</c> export command.
+/// </summary>
+internal sealed class ExportSettings : CommandSettings
 {
-    public bool Help { get; set; }
-    public List<string> Assemblies { get; } = new();
-    public OutputFormat Output { get; set; } = OutputFormat.AsyncApi;
-    public DocumentFormat DocumentFormat { get; set; } = DocumentFormat.Json;
-    public string? Title { get; set; }
-    public string? Version { get; set; }
-    public string? OutputPath { get; set; }
-    public string? ChannelsFile { get; set; }
-    public string? Entry { get; set; }
+    [CommandOption("--assembly <PATH>")]
+    [Description("Assembly to scan for [[Event]]-annotated types (repeatable).")]
+    public string[] Assemblies { get; init; } = Array.Empty<string>();
+
+    [CommandOption("--output <FORMAT>")]
+    [Description("Output format: asyncapi (default) | openapi.")]
+    [DefaultValue(OutputFormat.AsyncApi)]
+    public OutputFormat Output { get; init; }
+
+    [CommandOption("--format <FORMAT>")]
+    [Description("Document format: json (default) | yaml.")]
+    [DefaultValue(DocumentFormat.Json)]
+    public DocumentFormat DocumentFormat { get; init; }
+
+    [CommandOption("--title <TITLE>")]
+    [Description("Document info.title (default: 'Hermodr Events').")]
+    public string? Title { get; init; }
+
+    [CommandOption("--version <VERSION>")]
+    [Description("Document info.version (default: '1.0').")]
+    public string? Version { get; init; }
+
+    [CommandOption("--out <PATH>", isRequired: true)]
+    [Description("Output file path.")]
+    public string OutputPath { get; init; } = null!;
+
+    [CommandOption("--channels-file <PATH>")]
+    [Description("JSON file describing channel bindings.")]
+    public string? ChannelsFile { get; init; }
+
+    [CommandOption("--entry <ENTRY>")]
+    [Description("Assembly-qualified type name and a static method, in the form '<type>::<method>', returning IReadOnlyList<IEventPublishChannelMetadata>.")]
+    public string? Entry { get; init; }
+}
+
+/// <summary>
+/// Discovers [Event]-annotated types in the given assemblies and exports
+/// an AsyncAPI 2.x or OpenAPI 3.1 document describing them.
+/// </summary>
+internal sealed class ExportCommand : AsyncCommand<ExportSettings>
+{
+    protected override async Task<int> ExecuteAsync(CommandContext context, ExportSettings settings, CancellationToken cancellationToken)
+    {
+        if (settings.Assemblies.Length == 0)
+        {
+            AnsiConsole.MarkupLine("[red]error: at least one --assembly <path> is required.[/]");
+            return 1;
+        }
+
+        var schemas = Program.DiscoverSchemas(settings.Assemblies);
+        if (schemas.Count == 0)
+            AnsiConsole.MarkupLine("[yellow]warning: no [[Event]]-annotated types with a DataVersion were found in the given assemblies.[/]");
+
+        var channels = await Program.ResolveChannelsAsync(settings);
+
+        try
+        {
+            await Program.WriteDocumentAsync(settings, schemas, channels);
+            return 0;
+        }
+        catch (IOException ex)
+        {
+            AnsiConsole.WriteLine($"error: {ex.Message}");
+            return 2;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            AnsiConsole.WriteLine($"error: {ex.Message}");
+            return 2;
+        }
+        catch (JsonException ex)
+        {
+            AnsiConsole.WriteLine($"error: {ex.Message}");
+            return 2;
+        }
+        catch (InvalidOperationException ex)
+        {
+            AnsiConsole.WriteLine($"error: {ex.Message}");
+            return 2;
+        }
+        catch (ArgumentException ex)
+        {
+            AnsiConsole.WriteLine($"error: {ex.Message}");
+            return 2;
+        }
+    }
 }
 
 internal enum OutputFormat { AsyncApi, OpenApi }

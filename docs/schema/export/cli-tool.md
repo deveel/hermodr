@@ -34,7 +34,7 @@ Usage: hermodr-asyncapi --assembly <path> [--assembly <path> ...]
 | `--version <version>` | `info.version` (default: `1.0`). |
 | `--out <path>` | Output file path (required). |
 | `--channels-file <path>` | JSON file describing channel bindings (see below). |
-| `--entry <type>::<method>` | Assembly-qualified type name and a static method returning `IReadOnlyList<IEventPublishChannelMetadata>`. |
+| `--entry <type>::<method>` | Assembly-qualified type name and a static method (in the form `<type>::<method>`) returning `IReadOnlyList<IEventPublishChannelMetadata>`. |
 | `--help`, `-h` | Show help. |
 
 ## Channel bindings
