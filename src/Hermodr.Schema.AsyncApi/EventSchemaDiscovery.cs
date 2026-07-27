@@ -103,7 +103,15 @@ namespace Hermodr
                         var schema = _factory.CreateFromType(type);
                         schemas.Add(schema);
                     }
-                    catch
+                    catch (InvalidOperationException)
+                    {
+                        // Skip types that cannot be turned into a schema.
+                    }
+                    catch (ArgumentException)
+                    {
+                        // Skip types that cannot be turned into a schema.
+                    }
+                    catch (NotSupportedException)
                     {
                         // Skip types that cannot be turned into a schema.
                     }

@@ -25,14 +25,14 @@ public class ExportCommandTests
         get
         {
             var dir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
-            var probe = Path.Combine(dir, "asyncapi-export.dll");
+            var probe = Path.Join(dir, "asyncapi-export.dll");
             if (File.Exists(probe))
                 return probe;
 
             var baseDir = AppContext.BaseDirectory;
             for (var d = new DirectoryInfo(baseDir); d != null; d = d.Parent)
             {
-                var candidate = Path.Combine(d.FullName, "samples", "asyncapi-export", "bin");
+                var candidate = Path.Join(d.FullName, "samples", "asyncapi-export", "bin");
                 if (Directory.Exists(candidate))
                 {
                     var dll = Directory.GetFiles(candidate, "asyncapi-export.dll", SearchOption.AllDirectories)
@@ -53,14 +53,14 @@ public class ExportCommandTests
         get
         {
             var dir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
-            var probe = Path.Combine(dir, "channels.json");
+            var probe = Path.Join(dir, "channels.json");
             if (File.Exists(probe))
                 return probe;
 
             var baseDir = AppContext.BaseDirectory;
             for (var d = new DirectoryInfo(baseDir); d != null; d = d.Parent)
             {
-                var candidate = Path.Combine(d.FullName, "samples", "asyncapi-export", "channels.json");
+                var candidate = Path.Join(d.FullName, "samples", "asyncapi-export", "channels.json");
                 if (File.Exists(candidate))
                     return candidate;
             }
@@ -75,7 +75,7 @@ public class ExportCommandTests
         var originalOut = Console.Out;
         var originalError = Console.Error;
         var test = new TestConsole();
-        var sw = new StringWriter();
+        using var sw = new StringWriter();
         AnsiConsole.Console = test;
         Console.SetOut(sw);
         Console.SetError(sw);
@@ -88,7 +88,7 @@ public class ExportCommandTests
                 config.UseStrictParsing();
             });
             var rc = await app.RunAsync(args, CancellationToken.None);
-            var output = sw.ToString() + test.Output;
+            var output = sw + test.Output;
             return (rc, output);
         }
         finally
@@ -109,14 +109,14 @@ public class ExportCommandTests
     [Fact]
     public async Task Missing_out_is_a_parse_error()
     {
-        var (rc, output) = await RunAsync("--assembly", "/tmp/nope.dll");
+        var (rc, _) = await RunAsync("--assembly", "/tmp/nope.dll");
         Assert.NotEqual(0, rc);
     }
 
     [Fact]
     public async Task Missing_assembly_returns_1()
     {
-        var (rc, output) = await RunAsync("--out", Path.Combine(Path.GetTempPath(), "x.json"));
+        var (rc, output) = await RunAsync("--out", Path.Join(Path.GetTempPath(), "x.json"));
         Assert.Equal(1, rc);
         Assert.Contains("at least one --assembly", output);
     }
@@ -124,28 +124,28 @@ public class ExportCommandTests
     [Fact]
     public async Task Unknown_format_is_a_parse_error()
     {
-        var (rc, _) = await RunAsync("--out", Path.Combine(Path.GetTempPath(), "x.json"), "--format", "bogus");
+        var (rc, _) = await RunAsync("--out", Path.Join(Path.GetTempPath(), "x.json"), "--format", "bogus");
         Assert.NotEqual(0, rc);
     }
 
     [Fact]
     public async Task Unknown_output_is_a_parse_error()
     {
-        var (rc, _) = await RunAsync("--out", Path.Combine(Path.GetTempPath(), "x.json"), "--output", "bar");
+        var (rc, _) = await RunAsync("--out", Path.Join(Path.GetTempPath(), "x.json"), "--output", "bar");
         Assert.NotEqual(0, rc);
     }
 
     [Fact]
     public async Task Unknown_option_is_a_parse_error()
     {
-        var (rc, _) = await RunAsync("--out", Path.Combine(Path.GetTempPath(), "x.json"), "--bogus");
+        var (rc, _) = await RunAsync("--out", Path.Join(Path.GetTempPath(), "x.json"), "--bogus");
         Assert.NotEqual(0, rc);
     }
 
     [Fact]
     public async Task Happy_path_writes_asyncapi_json()
     {
-        var outPath = Path.Combine(Path.GetTempPath(), $"hermodr-test-{Guid.NewGuid():N}.json");
+        var outPath = Path.Join(Path.GetTempPath(), $"hermodr-test-{Guid.NewGuid():N}.json");
         try
         {
             var (rc, output) = await RunAsync(
@@ -174,7 +174,7 @@ public class ExportCommandTests
     [Fact]
     public async Task Happy_path_writes_openapi_yaml()
     {
-        var outPath = Path.Combine(Path.GetTempPath(), $"hermodr-test-{Guid.NewGuid():N}.yaml");
+        var outPath = Path.Join(Path.GetTempPath(), $"hermodr-test-{Guid.NewGuid():N}.yaml");
         try
         {
             var (rc, output) = await RunAsync(
@@ -199,7 +199,7 @@ public class ExportCommandTests
     [Fact]
     public async Task Equals_syntax_is_supported()
     {
-        var outPath = Path.Combine(Path.GetTempPath(), $"hermodr-test-{Guid.NewGuid():N}.json");
+        var outPath = Path.Join(Path.GetTempPath(), $"hermodr-test-{Guid.NewGuid():N}.json");
         try
         {
             var (rc, _) = await RunAsync(
@@ -219,7 +219,7 @@ public class ExportCommandTests
     [Fact]
     public async Task Repeated_assemblies_accumulate()
     {
-        var outPath = Path.Combine(Path.GetTempPath(), $"hermodr-test-{Guid.NewGuid():N}.json");
+        var outPath = Path.Join(Path.GetTempPath(), $"hermodr-test-{Guid.NewGuid():N}.json");
         try
         {
             var (rc, _) = await RunAsync(
@@ -239,7 +239,7 @@ public class ExportCommandTests
     [Fact]
     public async Task Defaults_asyncapi_json_when_unspecified()
     {
-        var outPath = Path.Combine(Path.GetTempPath(), $"hermodr-test-{Guid.NewGuid():N}.json");
+        var outPath = Path.Join(Path.GetTempPath(), $"hermodr-test-{Guid.NewGuid():N}.json");
         try
         {
             var (rc, output) = await RunAsync(

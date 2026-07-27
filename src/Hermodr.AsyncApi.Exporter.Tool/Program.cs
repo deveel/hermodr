@@ -77,7 +77,27 @@ internal static class Program
             {
                 return await ChannelsFileLoader.LoadAsync(settings.ChannelsFile);
             }
-            catch (Exception ex)
+            catch (FileNotFoundException ex)
+            {
+                AnsiConsole.WriteLine($"warning: failed to read --channels-file '{settings.ChannelsFile}': {ex.Message}");
+            }
+            catch (DirectoryNotFoundException ex)
+            {
+                AnsiConsole.WriteLine($"warning: failed to read --channels-file '{settings.ChannelsFile}': {ex.Message}");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                AnsiConsole.WriteLine($"warning: failed to read --channels-file '{settings.ChannelsFile}': {ex.Message}");
+            }
+            catch (PathTooLongException ex)
+            {
+                AnsiConsole.WriteLine($"warning: failed to read --channels-file '{settings.ChannelsFile}': {ex.Message}");
+            }
+            catch (IOException ex)
+            {
+                AnsiConsole.WriteLine($"warning: failed to read --channels-file '{settings.ChannelsFile}': {ex.Message}");
+            }
+            catch (JsonException ex)
             {
                 AnsiConsole.WriteLine($"warning: failed to read --channels-file '{settings.ChannelsFile}': {ex.Message}");
             }
@@ -91,7 +111,35 @@ internal static class Program
             {
                 return EntryChannelResolver.Resolve(settings.Entry);
             }
-            catch (Exception ex)
+            catch (ArgumentException ex)
+            {
+                AnsiConsole.WriteLine($"warning: failed to invoke --entry '{settings.Entry}': {ex.Message}");
+            }
+            catch (InvalidOperationException ex)
+            {
+                AnsiConsole.WriteLine($"warning: failed to invoke --entry '{settings.Entry}': {ex.Message}");
+            }
+            catch (TypeLoadException ex)
+            {
+                AnsiConsole.WriteLine($"warning: failed to invoke --entry '{settings.Entry}': {ex.Message}");
+            }
+            catch (FileNotFoundException ex)
+            {
+                AnsiConsole.WriteLine($"warning: failed to invoke --entry '{settings.Entry}': {ex.Message}");
+            }
+            catch (FileLoadException ex)
+            {
+                AnsiConsole.WriteLine($"warning: failed to invoke --entry '{settings.Entry}': {ex.Message}");
+            }
+            catch (MissingMethodException ex)
+            {
+                AnsiConsole.WriteLine($"warning: failed to invoke --entry '{settings.Entry}': {ex.Message}");
+            }
+            catch (TargetInvocationException ex)
+            {
+                AnsiConsole.WriteLine($"warning: failed to invoke --entry '{settings.Entry}': {ex.Message}");
+            }
+            catch (NotSupportedException ex)
             {
                 AnsiConsole.WriteLine($"warning: failed to invoke --entry '{settings.Entry}': {ex.Message}");
             }

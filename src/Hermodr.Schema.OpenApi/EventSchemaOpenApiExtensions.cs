@@ -126,7 +126,9 @@ namespace Hermodr
         {
             if (value == null) return null;
             try { return Convert.ToDecimal(value, System.Globalization.CultureInfo.InvariantCulture); }
-            catch { return null; }
+            catch (FormatException) { return null; }
+            catch (InvalidCastException) { return null; }
+            catch (OverflowException) { return null; }
         }
 
         /// <summary>

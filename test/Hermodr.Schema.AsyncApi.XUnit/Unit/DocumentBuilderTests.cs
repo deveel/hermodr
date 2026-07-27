@@ -72,8 +72,7 @@ namespace Hermodr {
                 .WithChannels(new[] { rabbit })
                 .Build();
 
-            Assert.True(doc.Channels.ContainsKey("orders"));
-            var channel = doc.Channels["orders"];
+            Assert.True(doc.Channels.TryGetValue("orders", out var channel));
             Assert.NotNull(channel.Bindings);
             var bindings = Assert.IsType<ChannelBindings>(channel.Bindings);
             Assert.NotNull(bindings.Amqp);
@@ -94,8 +93,7 @@ namespace Hermodr {
                 .WithChannels(new[] { kafka })
                 .Build();
 
-            Assert.True(doc.Channels.ContainsKey("events"));
-            var channel = doc.Channels["events"];
+            Assert.True(doc.Channels.TryGetValue("events", out var channel));
             // No native binding for kafka in Saunter.
             Assert.Null(channel.Bindings);
             // Transport is preserved in the channel description.
