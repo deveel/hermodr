@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Hermodr.Schema.AsyncApi\Hermodr.Schema.AsyncApi.csproj" />
+    <ProjectReference Include="..\..\src\Hermodr.Publisher\Hermodr.Publisher.csproj" />
   </ItemGroup>
 
 </Project>

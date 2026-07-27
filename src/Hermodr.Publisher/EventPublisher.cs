@@ -132,6 +132,21 @@ namespace Hermodr
             if (missing.Count > 0) throw new InvalidCloudEventException(missing);
         }
 
+        /// <summary>
+        /// Returns a metadata snapshot for every registered channel, unwrapping
+        /// decorators and reading transport-specific addressing information.
+        /// </summary>
+        /// <remarks>
+        /// This is a tooling-time accessor used by AsyncAPI / OpenAPI exporters.
+        /// Channels whose transport is <see cref="EventTransports.Other"/> (storage,
+        /// deferral, recovery layers) are included in the returned list so callers
+        /// can decide how to handle them; exporters are expected to skip them.
+        /// </remarks>
+        public IReadOnlyList<IEventPublishChannelMetadata> GetChannelMetadata()
+            => _channels
+                .Select(EventPublishChannelMetadata.For)
+                .ToList();
+
         /// <summary>Resolves the options to pass to the given channel.</summary>
         protected virtual EventPublishOptions? ResolveChannelOptions(IEventPublishChannel channel,
             EventPublishOptions? options)

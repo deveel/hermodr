@@ -12,7 +12,7 @@ namespace Hermodr {
     /// The options for a channel that publishes events 
     /// to an Azure Service Bus.
     /// </summary>
-    public class ServiceBusPublishOptions : NamedChannelPublishOptions, INamedChannelFilter {
+    public class ServiceBusPublishOptions : NamedChannelPublishOptions, INamedChannelFilter, IChannelMetadataSource {
         /// <summary>
         /// Gets or sets the connection string to the Azure Service Bus
         /// instance that is used to publish the events.
@@ -48,5 +48,19 @@ namespace Hermodr {
         /// <see cref="ServiceBusEventAttributes.PartitionKey"/>.
         /// </summary>
         public string? PartitionKeyAttributeName { get; set; }
+
+        /// <inheritdoc/>
+        IEventPublishChannelMetadata IChannelMetadataSource.GetChannelMetadata()
+        {
+            var properties = new Dictionary<string, string?>(StringComparer.Ordinal)
+            {
+                ["queue"] = QueueName
+            };
+
+            foreach (var key in properties.Keys.Where(k => string.IsNullOrEmpty(properties[k])).ToList())
+                properties.Remove(key);
+
+            return new EventPublishChannelMetadata(ChannelName, EventTransports.AzureServiceBus, properties);
+        }
 	}
 }

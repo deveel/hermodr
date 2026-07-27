@@ -8,7 +8,8 @@ The `Hermodr.Schema` package can export event schemas in multiple formats, each 
 |--------|----------|------------------|----------------|-----------------|
 | **JSON** | Schema registries, validation libraries, API gateways | ✅ Excellent | ⚠️ Moderate | ✅ Excellent |
 | **YAML** | Documentation, version control, configuration files | ✅ Good | ✅ Excellent | ✅ Good |
-| **AsyncAPI** | Complete API specifications, documentation generation | ✅ Excellent | ✅ Excellent | ✅ Excellent |
+| **AsyncAPI** | Complete async API specifications, broker documentation | ✅ Excellent | ✅ Excellent | ✅ Excellent |
+| **OpenAPI 3.1** | Webhook contracts for REST-centric tooling (Swagger UI, Kiota) | ✅ Excellent | ✅ Excellent | ✅ Excellent |
 
 ---
 
@@ -154,6 +155,33 @@ components:
 
 ---
 
+## OpenAPI 3.1 Webhook Export
+
+**Best for:** Webhook contracts consumable by REST-centric tooling (Swagger UI,
+Stoplight, Postman, Kiota code generation)
+
+### When to use OpenAPI 3.1
+
+- ✅ Publishing event contracts to teams already standardised on OpenAPI
+- ✅ Generating typed clients with Kiota or OpenAPI Generator
+- ✅ Surfacing webhooks in Swagger UI / Stoplight
+- ✅ Contract-first workflows where the downstream stack is HTTP-centric
+
+### Learn More
+
+→ [Export as OpenAPI 3.1](openapi.md)
+
+---
+
+## CLI Export Tool
+
+A `dotnet` global tool that produces AsyncAPI / OpenAPI documents without a
+running host — ideal for CI pipelines and contract-first workflows.
+
+→ [CLI Export Tool](cli-tool.md)
+
+---
+
 ## Format Selection Guide
 
 ### I need to... → Use...
@@ -200,3 +228,5 @@ await asyncApiWriter.WriteToAsync(asyncApiStream, schema);
 - [Export as JSON](json.md)
 - [Export as YAML](yaml.md)
 - [Export as AsyncAPI](asyncapi.md)
+- [Export as OpenAPI 3.1](openapi.md)
+- [CLI Export Tool](cli-tool.md)

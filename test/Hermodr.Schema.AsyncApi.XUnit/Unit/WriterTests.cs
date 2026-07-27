@@ -21,7 +21,8 @@ namespace Hermodr {
             using var ms = new MemoryStream();
             await writer.WriteToAsync(ms, schema);
             ms.Position = 0;
-            return new StreamReader(ms).ReadToEnd();
+            using var reader = new StreamReader(ms);
+            return reader.ReadToEnd();
         }
 
         // ── JSON output ───────────────────────────────────────────────────────
@@ -178,7 +179,8 @@ namespace Hermodr {
             using var ms = new MemoryStream();
             await writer.WriteToAsync(ms, schemas);
             ms.Position = 0;
-            return new StreamReader(ms).ReadToEnd();
+            using var reader = new StreamReader(ms);
+            return reader.ReadToEnd();
         }
 
         // ── Construction ──────────────────────────────────────────────────────

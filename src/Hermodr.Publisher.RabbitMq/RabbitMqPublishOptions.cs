@@ -12,7 +12,7 @@ namespace Hermodr
     /// <summary>
     /// Configuration options for a <see cref="RabbitMqPublishChannel"/>.
     /// </summary>
-    public class RabbitMqPublishOptions : NamedChannelPublishOptions, INamedChannelFilter
+    public class RabbitMqPublishOptions : NamedChannelPublishOptions, INamedChannelFilter, IChannelMetadataSource
     {
         /// <summary>
         /// Merges <paramref name="baseOptions"/> with <paramref name="typedOptions"/>,
@@ -124,5 +124,23 @@ namespace Hermodr
         /// the effective default is <c>false</c>.
         /// </summary>
         public bool? Mandatory { get; set; }
+
+        /// <inheritdoc/>
+        IEventPublishChannelMetadata IChannelMetadataSource.GetChannelMetadata()
+        {
+            var properties = new Dictionary<string, string?>(StringComparer.Ordinal)
+            {
+                ["exchange"]   = ExchangeName,
+                ["routingKey"] = RoutingKey,
+                ["queue"]      = QueueName
+            };
+
+            // Drop null/empty-valued keys to keep the bag tidy; exporters treat
+            // absent keys as "not specified".
+            foreach (var key in properties.Keys.Where(k => string.IsNullOrEmpty(properties[k])).ToList())
+                properties.Remove(key);
+
+            return new EventPublishChannelMetadata(ChannelName, EventTransports.RabbitMq, properties);
+        }
     }
 }

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsTestProject>true</IsTestProject>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Hermodr.Tool.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Spectre.Console.Testing" Version="0.55.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Hermodr.AsyncApi.Exporter.Tool\Hermodr.AsyncApi.Exporter.Tool.csproj" />
+    <ProjectReference Include="..\..\samples\asyncapi-export\asyncapi-export.csproj" />
+  </ItemGroup>
+
+</Project>
