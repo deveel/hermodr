@@ -5,16 +5,39 @@
 
 using System.Reflection;
 
-namespace Hermodr.Tool;
+namespace Hermodr;
 
 /// <summary>
 /// Resolves channel metadata by invoking a static method on a type loaded
 /// from a referenced assembly. The entry-point string has the form
-/// <c>AssemblyQualifiedName::MethodName</c>, where the method is expected to
-/// return <see cref="IReadOnlyList{T}"/> of <see cref="IEventPublishChannelMetadata"/>.
+/// <c>&lt;assembly-qualified-type-name&gt;::&lt;method-name&gt;</c>, where the
+/// method is expected to return <see cref="IReadOnlyList{T}"/> of
+/// <see cref="IEventPublishChannelMetadata"/>.
 /// </summary>
-internal static class EntryChannelResolver
+public static class EntryChannelResolver
 {
+    /// <summary>
+    /// Parses <paramref name="entry"/> and invokes the referenced static
+    /// method, returning the channel metadata it produces.
+    /// </summary>
+    /// <param name="entry">
+    /// The entry specifier, <c>AssemblyQualifiedName::MethodName</c>.
+    /// </param>
+    /// <returns>
+    /// The list of channel metadata returned by the invoked method.
+    /// </returns>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when <paramref name="entry"/> is <c>null</c>.
+    /// </exception>
+    /// <exception cref="ArgumentException">
+    /// Thrown when <paramref name="entry"/> is not of the form
+    /// <c>type::method</c>.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the type or method cannot be resolved, or when the method
+    /// does not return <see cref="IReadOnlyList{T}"/> of
+    /// <see cref="IEventPublishChannelMetadata"/>.
+    /// </exception>
     public static IReadOnlyList<IEventPublishChannelMetadata> Resolve(string entry)
     {
         ArgumentNullException.ThrowIfNull(entry);

@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- ============================================================
+       Non-test class library that provides a deterministic
+       [Event]-annotated DLL + a channel metadata factory for the
+       Hermodr.AsyncApi.Exporter.Tool.XUnit tests. Referenced as a
+       ProjectReference from the test project so its output DLL and
+       content files travel into the test bin directory.
+  ============================================================ -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <TargetFrameworks></TargetFrameworks>
+
+    <OutputType>Library</OutputType>
+    <IsTestProject>false</IsTestProject>
+    <IsPackable>false</IsPackable>
+
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Hermodr.AsyncApi.Exporter.Fixtures</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Hermodr.Annotations\Hermodr.Annotations.csproj" />
+    <ProjectReference Include="..\..\src\Hermodr.Publisher\Hermodr.Publisher.csproj" />
+  </ItemGroup>
+
+  <!-- The inherited test/Directory.Build.props injects a global Xunit using
+       and an ExcludeFromCodeCoverage attribute (both are harmless for a
+       non-test library) but the Xunit global must be removed so the fixtures
+       project doesn't require the xunit.v3 package reference. -->
+  <ItemGroup>
+    <Using Remove="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Fixtures\channels.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Pack>false</Pack>
+    </None>
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Hermodr</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <PackageId>Hermodr.AsyncApi.Exporter</PackageId>
+    <Title>Hermodr AsyncAPI / OpenAPI Exporter</Title>
+    <Description>
+      Internal orchestration library that discovers Hermodr event schemas and
+      exports them as AsyncAPI 2.x or OpenAPI 3.1 documents. Bundled inside the
+      Hermodr.AsyncApi.Exporter.Tool dotnet global tool; not published as a
+      standalone NuGet package.
+    </Description>
+    <PackageTags>event;events;asyncapi;openapi;export;cli;tool</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Hermodr.Schema.AsyncApi\Hermodr.Schema.AsyncApi.csproj" />
+    <ProjectReference Include="..\Hermodr.Schema.OpenApi\Hermodr.Schema.OpenApi.csproj" />
+  </ItemGroup>
+
+</Project>

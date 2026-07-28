@@ -38,6 +38,34 @@
     <type>::<method>` mechanisms to supply transport metadata. Installable via
     `dotnet tool install --global Hermodr.AsyncApi.Exporter.Tool`.
 
+### 🔧 Refactoring
+
+- **Tool is now a single-target `net10.0` package**: the
+  `Hermodr.AsyncApi.Exporter.Tool` was previously inheriting the solution's
+  multi-target (`net8.0;net9.0;net10.0`), which is unsupported for `dotnet
+  tool` packs. It now single-targets `net10.0` with `RollForward=LatestMajor`
+  so the same tool install works on .NET 10 and later runtimes.
+- **Export logic extracted to an internal `Hermodr.AsyncApi.Exporter`
+  library**: `ExportService`, `ChannelMetadataFileLoader`,
+  `EntryChannelResolver`, `ExportOptions`, and `ExportResult` are now
+  console-agnostic public types in a dedicated class library that ships
+  bundled inside the tool nupkg (`PrivateAssets=all` on the project
+  reference). The tool project is reduced to a Spectre.Console.Cli shell.
+- **`samples/asyncapi-export/` removed**: the Web app sample that doubled as
+  the test fixture has been deleted. The CLI tool docs already cover the
+  same usage; a dedicated non-test fixture project now provides the
+  event-annotated assembly for the tests.
+- **New test fixture `Hermodr.AsyncApi.Exporter.Fixtures`**: a non-test class
+  library (not part of the shipped packages) that carries the
+  `[Event]`-annotated types, a `channels.json` file, and a
+  `ChannelMetadataFactory` used by the `--entry` tests. The previous
+  filesystem walk from `AppContext.BaseDirectory` is replaced by a direct
+  project reference, removing the brittle `net10.0`-pinned DLL hunt.
+- **Test coverage expanded**: `ChannelMetadataFileLoaderTests`,
+  `EntryChannelResolverTests`, and `ExportServiceTests` exercise the export
+  pipeline directly (no Spectre.Console involvement) on top of the existing
+  `ExportCommandTests` that verify the CLI behaviour.
+
 ### 📖 Documentation
 
 - New docs pages: [Export as OpenAPI 3.1](docs/schema/export/openapi.md),

@@ -4,13 +4,6 @@
 //
 
 using System.ComponentModel;
-using System.Reflection;
-using System.Text.Json;
-using System.Threading;
-
-using Microsoft.OpenApi;
-
-using Saunter.AsyncApiSchema.v2;
 
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -32,178 +25,11 @@ internal static class Program
         });
         return await app.RunAsync(args);
     }
-
-    internal static IReadOnlyList<IEventSchema> DiscoverSchemas(IReadOnlyList<string> assemblyPaths)
-    {
-        var assemblies = new List<Assembly>(assemblyPaths.Count);
-        foreach (var path in assemblyPaths)
-        {
-            try
-            {
-                assemblies.Add(Assembly.LoadFrom(path));
-            }
-            catch (FileNotFoundException ex)
-            {
-                AnsiConsole.WriteLine($"warning: could not load assembly '{path}': {ex.Message}");
-            }
-            catch (FileLoadException ex)
-            {
-                AnsiConsole.WriteLine($"warning: could not load assembly '{path}': {ex.Message}");
-            }
-            catch (BadImageFormatException ex)
-            {
-                AnsiConsole.WriteLine($"warning: could not load assembly '{path}': {ex.Message}");
-            }
-            catch (PathTooLongException ex)
-            {
-                AnsiConsole.WriteLine($"warning: could not load assembly '{path}': {ex.Message}");
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                AnsiConsole.WriteLine($"warning: could not load assembly '{path}': {ex.Message}");
-            }
-        }
-
-        var discovery = new EventSchemaDiscovery();
-        return discovery.DiscoverSchemas(assemblies.ToArray());
-    }
-
-    internal static async Task<IReadOnlyList<IEventPublishChannelMetadata>> ResolveChannelsAsync(ExportSettings settings)
-    {
-        // Priority 1: explicit --channels-file (JSON).
-        if (!string.IsNullOrEmpty(settings.ChannelsFile))
-        {
-            try
-            {
-                return await ChannelsFileLoader.LoadAsync(settings.ChannelsFile);
-            }
-            catch (FileNotFoundException ex)
-            {
-                AnsiConsole.WriteLine($"warning: failed to read --channels-file '{settings.ChannelsFile}': {ex.Message}");
-            }
-            catch (DirectoryNotFoundException ex)
-            {
-                AnsiConsole.WriteLine($"warning: failed to read --channels-file '{settings.ChannelsFile}': {ex.Message}");
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                AnsiConsole.WriteLine($"warning: failed to read --channels-file '{settings.ChannelsFile}': {ex.Message}");
-            }
-            catch (PathTooLongException ex)
-            {
-                AnsiConsole.WriteLine($"warning: failed to read --channels-file '{settings.ChannelsFile}': {ex.Message}");
-            }
-            catch (IOException ex)
-            {
-                AnsiConsole.WriteLine($"warning: failed to read --channels-file '{settings.ChannelsFile}': {ex.Message}");
-            }
-            catch (JsonException ex)
-            {
-                AnsiConsole.WriteLine($"warning: failed to read --channels-file '{settings.ChannelsFile}': {ex.Message}");
-            }
-        }
-
-        // Priority 2: --entry <assembly-qualified-type-name>::<static-method>
-        // that returns IReadOnlyList<IEventPublishChannelMetadata>.
-        if (!string.IsNullOrEmpty(settings.Entry))
-        {
-            try
-            {
-                return EntryChannelResolver.Resolve(settings.Entry);
-            }
-            catch (ArgumentException ex)
-            {
-                AnsiConsole.WriteLine($"warning: failed to invoke --entry '{settings.Entry}': {ex.Message}");
-            }
-            catch (InvalidOperationException ex)
-            {
-                AnsiConsole.WriteLine($"warning: failed to invoke --entry '{settings.Entry}': {ex.Message}");
-            }
-            catch (TypeLoadException ex)
-            {
-                AnsiConsole.WriteLine($"warning: failed to invoke --entry '{settings.Entry}': {ex.Message}");
-            }
-            catch (FileNotFoundException ex)
-            {
-                AnsiConsole.WriteLine($"warning: failed to invoke --entry '{settings.Entry}': {ex.Message}");
-            }
-            catch (FileLoadException ex)
-            {
-                AnsiConsole.WriteLine($"warning: failed to invoke --entry '{settings.Entry}': {ex.Message}");
-            }
-            catch (MissingMethodException ex)
-            {
-                AnsiConsole.WriteLine($"warning: failed to invoke --entry '{settings.Entry}': {ex.Message}");
-            }
-            catch (TargetInvocationException ex)
-            {
-                AnsiConsole.WriteLine($"warning: failed to invoke --entry '{settings.Entry}': {ex.Message}");
-            }
-            catch (NotSupportedException ex)
-            {
-                AnsiConsole.WriteLine($"warning: failed to invoke --entry '{settings.Entry}': {ex.Message}");
-            }
-        }
-
-        return Array.Empty<IEventPublishChannelMetadata>();
-    }
-
-    internal static async Task WriteDocumentAsync(
-        ExportSettings settings,
-        IReadOnlyList<IEventSchema> schemas,
-        IReadOnlyList<IEventPublishChannelMetadata> channels)
-    {
-        if (settings.Output == OutputFormat.AsyncApi)
-        {
-            var builder = new AsyncApiDocumentBuilder()
-                .WithTitle(settings.Title ?? "Hermodr Events")
-                .WithVersion(settings.Version ?? "1.0")
-                .WithSchemas(schemas)
-                .WithChannels(channels);
-
-            var document = builder.Build();
-            var content = AsyncApiSerializer.Serialize(document, MapAsyncApiFormat(settings.DocumentFormat));
-
-            await WriteFileAsync(settings.OutputPath, content);
-        }
-        else // OpenAPI 3.1
-        {
-            var builder = new OpenApiWebhookDocumentBuilder()
-                .WithTitle(settings.Title ?? "Hermodr Events")
-                .WithVersion(settings.Version ?? "1.0")
-                .WithSchemas(schemas)
-                .WithChannels(channels);
-
-            var document = builder.Build();
-            using var ms = new MemoryStream();
-            OpenApiDocumentWriter.Serialize(ms, document, MapOpenApiFormat(settings.DocumentFormat));
-            ms.Position = 0;
-            using var reader = new StreamReader(ms, leaveOpen: true);
-            var content = reader.ReadToEnd();
-            await WriteFileAsync(settings.OutputPath, content);
-        }
-
-        AnsiConsole.WriteLine($"wrote {settings.OutputPath} ({settings.Output}, {settings.DocumentFormat})");
-    }
-
-    private static AsyncApiFormat MapAsyncApiFormat(DocumentFormat format)
-        => format == DocumentFormat.Yaml ? AsyncApiFormat.Yaml : AsyncApiFormat.Json;
-
-    private static OpenApiFormat MapOpenApiFormat(DocumentFormat format)
-        => format == DocumentFormat.Yaml ? OpenApiFormat.Yaml : OpenApiFormat.Json;
-
-    private static async Task WriteFileAsync(string path, string content)
-    {
-        var dir = Path.GetDirectoryName(path);
-        if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-            Directory.CreateDirectory(dir);
-
-        await File.WriteAllTextAsync(path, content);
-    }
 }
 
 /// <summary>
-/// Settings for the <c>hermodr-asyncapi</c> export command.
+/// Spectre.Console.Cli settings for the <c>export</c> command. Acts as a
+/// thin shim over the console-agnostic <see cref="ExportOptions"/> POCO.
 /// </summary>
 internal sealed class ExportSettings : CommandSettings
 {
@@ -240,6 +66,23 @@ internal sealed class ExportSettings : CommandSettings
     [CommandOption("--entry <ENTRY>")]
     [Description("Assembly-qualified type name and a static method, in the form '<type>::<method>', returning IReadOnlyList<IEventPublishChannelMetadata>.")]
     public string? Entry { get; init; }
+
+    /// <summary>
+    /// Maps these Spectre-bound settings to a console-agnostic
+    /// <see cref="ExportOptions"/>.
+    /// </summary>
+    public ExportOptions ToOptions()
+        => new()
+        {
+            Assemblies = Assemblies,
+            Output = Output,
+            DocumentFormat = DocumentFormat,
+            Title = Title,
+            Version = Version,
+            OutputPath = OutputPath,
+            ChannelsFile = ChannelsFile,
+            Entry = Entry
+        };
 }
 
 /// <summary>
@@ -248,52 +91,26 @@ internal sealed class ExportSettings : CommandSettings
 /// </summary>
 internal sealed class ExportCommand : AsyncCommand<ExportSettings>
 {
-    protected override async Task<int> ExecuteAsync(CommandContext context, ExportSettings settings, CancellationToken cancellationToken)
+    protected override async Task<int> ExecuteAsync(
+        CommandContext context,
+        ExportSettings settings,
+        CancellationToken cancellationToken)
     {
-        if (settings.Assemblies.Length == 0)
+        var result = await ExportService.ExportAsync(settings.ToOptions(), cancellationToken);
+
+        foreach (var w in result.Warnings)
+            AnsiConsole.MarkupLineInterpolated($"[yellow]warning:[/] {w}");
+
+        if (result.Success)
         {
-            AnsiConsole.MarkupLine("[red]error: at least one --assembly <path> is required.[/]");
-            return 1;
+            AnsiConsole.MarkupLineInterpolated(
+                $"wrote {result.OutputPath} ({result.Output}, {result.DocumentFormat})");
+            return result.ExitCode;
         }
 
-        var schemas = Program.DiscoverSchemas(settings.Assemblies);
-        if (schemas.Count == 0)
-            AnsiConsole.MarkupLine("[yellow]warning: no [[Event]]-annotated types with a DataVersion were found in the given assemblies.[/]");
+        foreach (var e in result.Errors)
+            AnsiConsole.MarkupLineInterpolated($"[red]error:[/] {e}");
 
-        var channels = await Program.ResolveChannelsAsync(settings);
-
-        try
-        {
-            await Program.WriteDocumentAsync(settings, schemas, channels);
-            return 0;
-        }
-        catch (IOException ex)
-        {
-            AnsiConsole.WriteLine($"error: {ex.Message}");
-            return 2;
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            AnsiConsole.WriteLine($"error: {ex.Message}");
-            return 2;
-        }
-        catch (JsonException ex)
-        {
-            AnsiConsole.WriteLine($"error: {ex.Message}");
-            return 2;
-        }
-        catch (InvalidOperationException ex)
-        {
-            AnsiConsole.WriteLine($"error: {ex.Message}");
-            return 2;
-        }
-        catch (ArgumentException ex)
-        {
-            AnsiConsole.WriteLine($"error: {ex.Message}");
-            return 2;
-        }
+        return result.ExitCode;
     }
 }
-
-internal enum OutputFormat { AsyncApi, OpenApi }
-internal enum DocumentFormat { Json, Yaml }
