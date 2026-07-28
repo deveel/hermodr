@@ -13,7 +13,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Hermodr.AsyncApi.Exporter.Tool\Hermodr.AsyncApi.Exporter.Tool.csproj" />
-    <ProjectReference Include="..\..\samples\asyncapi-export\asyncapi-export.csproj" />
   </ItemGroup>
 
 </Project>

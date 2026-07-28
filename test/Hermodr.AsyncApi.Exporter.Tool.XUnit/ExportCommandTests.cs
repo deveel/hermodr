@@ -4,7 +4,6 @@
 //
 
 using System.IO;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -24,11 +23,6 @@ public class ExportCommandTests
     {
         get
         {
-            var dir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
-            var probe = Path.Join(dir, "asyncapi-export.dll");
-            if (File.Exists(probe))
-                return probe;
-
             var baseDir = AppContext.BaseDirectory;
             for (var d = new DirectoryInfo(baseDir); d != null; d = d.Parent)
             {
@@ -36,15 +30,17 @@ public class ExportCommandTests
                 if (Directory.Exists(candidate))
                 {
                     var dll = Directory.GetFiles(candidate, "asyncapi-export.dll", SearchOption.AllDirectories)
-                        .FirstOrDefault(p => p.Contains("net10.0"));
+                        .FirstOrDefault(p => p.Contains("net10.0"))
+                        ?? Directory.GetFiles(candidate, "asyncapi-export.dll", SearchOption.AllDirectories)
+                            .FirstOrDefault();
                     if (dll != null)
                         return dll;
                 }
             }
 
             throw new FileNotFoundException(
-                "Could not locate the sample 'asyncapi-export.dll' (net10.0). " +
-                "Ensure the sample project is built before running the tests.", probe);
+                "Could not locate the sample 'asyncapi-export.dll'. " +
+                "Ensure the sample project is built before running the tests.", "asyncapi-export.dll");
         }
     }
 
@@ -52,11 +48,6 @@ public class ExportCommandTests
     {
         get
         {
-            var dir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
-            var probe = Path.Join(dir, "channels.json");
-            if (File.Exists(probe))
-                return probe;
-
             var baseDir = AppContext.BaseDirectory;
             for (var d = new DirectoryInfo(baseDir); d != null; d = d.Parent)
             {
