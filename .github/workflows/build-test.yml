@@ -48,6 +48,15 @@ jobs:
         with:
           dotnet-version: ${{ matrix.dotnet-version }}
 
+      - name: Exclude net10.0-only projects on non-net10.0 matrix legs
+        if: env.DOTNET_TFM != 'net10.0'
+        shell: bash
+        run: |
+          dotnet sln Hermodr.sln remove \
+            src/Hermodr.AsyncApi.Exporter.Tool/Hermodr.AsyncApi.Exporter.Tool.csproj \
+            test/Hermodr.AsyncApi.Exporter.Fixtures/Hermodr.AsyncApi.Exporter.Fixtures.csproj \
+            test/Hermodr.AsyncApi.Exporter.Tool.XUnit/Hermodr.AsyncApi.Exporter.Tool.XUnit.csproj
+
       - name: Restore dependencies
         run: dotnet restore
 
