@@ -27,7 +27,7 @@ namespace Hermodr
     /// <para>
     /// The discovery process uses reflection and is therefore not suitable for
     /// trimmed / AOT-compiled deployments. The compile-time source generator
-    /// planned for v1.5.0 (roadmap item 21) will provide an AOT-safe alternative.
+    /// planned for v1.6.0 (roadmap item 21) will provide an AOT-safe alternative.
     /// </para>
     /// </remarks>
     public sealed class EventSchemaDiscovery

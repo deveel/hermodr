@@ -36,8 +36,8 @@ namespace Hermodr
 
         /// <summary>
         /// Lightweight direct HTTP delivery transport identifier (<c>"http"</c>).
-        /// Reserved for the <c>Hermodr.Publisher.Http</c> channel planned for v1.4.0
-        /// (roadmap item 13); no channel produces this value in v1.3.0.
+        /// Reserved for the <c>Hermodr.Publisher.Http</c> channel planned for v1.5.0
+        /// (roadmap item 13); no channel produces this value in v1.4.0.
         /// </summary>
         public const string Http = "http";
 

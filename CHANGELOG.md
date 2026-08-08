@@ -2,9 +2,11 @@
 
 ## [Unreleased]
 
+## v1.4.0 - Schema Governance & AsyncAPI Export
+
 ### 🚀 Features
 
-- **AsyncAPI & Schema Export Improvements** (roadmap item 11, v1.3.0):
+- **AsyncAPI & Schema Export Improvements** (roadmap item 11, v1.4.0):
   - **Channel metadata abstraction** in `Hermodr.Publisher`: new
     `IEventPublishChannelMetadata` interface, `EventTransports` well-known
     transport string constants, `IChannelMetadataSource` marker for options
@@ -43,6 +45,22 @@
 - New docs pages: [Export as OpenAPI 3.1](docs/schema/export/openapi.md),
   [CLI Export Tool](docs/schema/export/cli-tool.md), and updated
   [Export Formats Overview](docs/schema/export/README.md).
+- New Docusaurus version snapshot `v1.4.0` (latest); removed the unreleased
+  `v1.3.0` snapshot.
+
+### 🛠 Refactoring
+
+- **Exporter library extraction** (PR #100): the `hermodr-asyncapi` CLI was
+  refactored from a monolithic `Program.cs` into a packable internal library
+  (`Hermodr.AsyncApi.Exporter`) and a slim Spectre.Console.Cli shell
+  (`Hermodr.AsyncApi.Exporter.Tool`). The tool now single-targets `net10.0`
+  with `RollForward=LatestMajor` (tools cannot multi-target), and the library
+  is embedded in the nuspkg via `PrivateAssets=all` — the install is fully
+  self-contained. The dual-purpose `samples/asyncapi-export` Web app was
+  removed and replaced by a dedicated non-test fixture project
+  (`Hermodr.AsyncApi.Exporter.Fixtures`).
+
+**Full Changelog**: https://github.com/deveel/hermodr/compare/v1.2.9...v1.4.0
 
 ## v1.2.9 - Schema Compatibility & Event Upcasting
 
