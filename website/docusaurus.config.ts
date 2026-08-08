@@ -77,13 +77,16 @@ const config: Config = {
           path: '../docs',
           sidebarPath: './sidebars.ts',
           editUrl: 'https://github.com/deveel/hermodr/edit/main/docs/',
-          lastVersion: 'v1.2.8',
+          lastVersion: 'v1.3.0',
           versions: {
             current: {
               label: 'Next',
             },
+            'v1.3.0': {
+              label: 'v1.3.0 (latest)',
+            },
             'v1.2.8': {
-              label: 'v1.2.8 (latest)',
+              label: 'v1.2.8',
             },
             'v1.2.7': {
               label: 'v1.2.7',

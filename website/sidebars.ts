@@ -41,6 +41,8 @@ const sidebars: SidebarsConfig = {
             'schema/export/json',
             'schema/export/yaml',
             'schema/export/asyncapi',
+            'schema/export/openapi',
+            'schema/export/cli-tool',
           ],
         },
         'schema/validation',

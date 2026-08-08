@@ -1,0 +1,14 @@
+{
+  "channels": [
+    {
+      "name": "order-placed",
+      "transport": "rabbitmq",
+      "properties": { "exchange": "orders.x", "routingKey": "#" }
+    },
+    {
+      "name": "order-confirmed",
+      "transport": "webhook",
+      "properties": { "url": "https://example.com/hook" }
+    }
+  ]
+}

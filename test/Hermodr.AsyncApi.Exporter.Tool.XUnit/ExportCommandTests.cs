@@ -18,57 +18,38 @@ using Xunit;
 
 namespace Hermodr.Tool.Tests;
 
+/// <summary>
+/// Shared helpers for resolving the bundled fixture assets that travel into
+/// the test bin output directory via the
+/// <c>Hermodr.AsyncApi.Exporter.Fixtures</c> project reference.
+/// </summary>
+internal static class FixturePaths
+{
+    /// <summary>
+    /// Absolute path to the <c>Hermodr.AsyncApi.Exporter.Fixtures.dll</c>
+    /// copied into the test output directory. This is the assembly the
+    /// <c>--assembly</c> flag points at.
+    /// </summary>
+    public static string FixtureAssembly =>
+        Path.Combine(AppContext.BaseDirectory, "Hermodr.AsyncApi.Exporter.Fixtures.dll");
+
+    /// <summary>
+    /// Absolute path to the <c>channels.json</c> shipped by the fixtures
+    /// project (marked <c>CopyToOutputDirectory=PreserveNewest</c>).
+    /// </summary>
+    public static string FixtureChannelsFile =>
+        Path.Combine(AppContext.BaseDirectory, "Fixtures", "channels.json");
+
+    /// <summary>
+    /// The assembly-qualified entry specifier
+    /// (<c>Type::Method</c>) used to exercise the <c>--entry</c> flag.
+    /// </summary>
+    public static string EntrySpecifier =>
+        $"{typeof(Hermodr.AsyncApi.Exporter.Fixtures.ChannelMetadataFactory).AssemblyQualifiedName}::GetChannels";
+}
+
 public class ExportCommandTests
 {
-    private static string SampleAssemblyPath
-    {
-        get
-        {
-            var dir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
-            var probe = Path.Join(dir, "asyncapi-export.dll");
-            if (File.Exists(probe))
-                return probe;
-
-            var baseDir = AppContext.BaseDirectory;
-            for (var d = new DirectoryInfo(baseDir); d != null; d = d.Parent)
-            {
-                var candidate = Path.Join(d.FullName, "samples", "asyncapi-export", "bin");
-                if (Directory.Exists(candidate))
-                {
-                    var dll = Directory.GetFiles(candidate, "asyncapi-export.dll", SearchOption.AllDirectories)
-                        .FirstOrDefault(p => p.Contains("net10.0"));
-                    if (dll != null)
-                        return dll;
-                }
-            }
-
-            throw new FileNotFoundException(
-                "Could not locate the sample 'asyncapi-export.dll' (net10.0). " +
-                "Ensure the sample project is built before running the tests.", probe);
-        }
-    }
-
-    private static string SampleChannelsFile
-    {
-        get
-        {
-            var dir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
-            var probe = Path.Join(dir, "channels.json");
-            if (File.Exists(probe))
-                return probe;
-
-            var baseDir = AppContext.BaseDirectory;
-            for (var d = new DirectoryInfo(baseDir); d != null; d = d.Parent)
-            {
-                var candidate = Path.Join(d.FullName, "samples", "asyncapi-export", "channels.json");
-                if (File.Exists(candidate))
-                    return candidate;
-            }
-
-            throw new FileNotFoundException("Could not locate the sample 'channels.json'.", "channels.json");
-        }
-    }
-
     private static async Task<(int exitCode, string output)> RunAsync(params string[] args)
     {
         var originalAnsi = AnsiConsole.Console;
@@ -109,7 +90,7 @@ public class ExportCommandTests
     [Fact]
     public async Task Missing_out_is_a_parse_error()
     {
-        var (rc, _) = await RunAsync("--assembly", "/tmp/nope.dll");
+        var (rc, _) = await RunAsync("--assembly", FixturePaths.FixtureAssembly);
         Assert.NotEqual(0, rc);
     }
 
@@ -149,8 +130,8 @@ public class ExportCommandTests
         try
         {
             var (rc, output) = await RunAsync(
-                "--assembly", SampleAssemblyPath,
-                "--channels-file", SampleChannelsFile,
+                "--assembly", FixturePaths.FixtureAssembly,
+                "--channels-file", FixturePaths.FixtureChannelsFile,
                 "--output", "asyncapi",
                 "--format", "json",
                 "--title", "Test Events",
@@ -178,8 +159,8 @@ public class ExportCommandTests
         try
         {
             var (rc, output) = await RunAsync(
-                "--assembly", SampleAssemblyPath,
-                "--channels-file", SampleChannelsFile,
+                "--assembly", FixturePaths.FixtureAssembly,
+                "--channels-file", FixturePaths.FixtureChannelsFile,
                 "--output", "openapi",
                 "--format", "yaml",
                 "--out", outPath);
@@ -197,13 +178,39 @@ public class ExportCommandTests
     }
 
     [Fact]
+    public async Task Entry_specifier_resolves_channels_via_factory()
+    {
+        var outPath = Path.Join(Path.GetTempPath(), $"hermodr-test-{Guid.NewGuid():N}.json");
+        try
+        {
+            var (rc, output) = await RunAsync(
+                "--assembly", FixturePaths.FixtureAssembly,
+                "--entry", FixturePaths.EntrySpecifier,
+                "--out", outPath);
+
+            Assert.Equal(0, rc);
+            Assert.Contains("wrote", output);
+            Assert.True(File.Exists(outPath));
+            var content = await File.ReadAllTextAsync(outPath);
+            Assert.Contains("\"asyncapi\"", content);
+            // The factory declares a webhook channel for order-confirmed;
+            // its server URL should appear in the document.
+            Assert.Contains("example.com", content);
+        }
+        finally
+        {
+            if (File.Exists(outPath)) File.Delete(outPath);
+        }
+    }
+
+    [Fact]
     public async Task Equals_syntax_is_supported()
     {
         var outPath = Path.Join(Path.GetTempPath(), $"hermodr-test-{Guid.NewGuid():N}.json");
         try
         {
             var (rc, _) = await RunAsync(
-                $"--assembly={SampleAssemblyPath}",
+                $"--assembly={FixturePaths.FixtureAssembly}",
                 $"--out={outPath}",
                 "--format=json");
 
@@ -223,8 +230,8 @@ public class ExportCommandTests
         try
         {
             var (rc, _) = await RunAsync(
-                "--assembly", SampleAssemblyPath,
-                "--assembly", SampleAssemblyPath,
+                "--assembly", FixturePaths.FixtureAssembly,
+                "--assembly", FixturePaths.FixtureAssembly,
                 "--out", outPath);
 
             Assert.Equal(0, rc);
@@ -243,8 +250,8 @@ public class ExportCommandTests
         try
         {
             var (rc, output) = await RunAsync(
-                "--assembly", SampleAssemblyPath,
-                "--channels-file", SampleChannelsFile,
+                "--assembly", FixturePaths.FixtureAssembly,
+                "--channels-file", FixturePaths.FixtureChannelsFile,
                 "--out", outPath);
 
             Assert.Equal(0, rc);

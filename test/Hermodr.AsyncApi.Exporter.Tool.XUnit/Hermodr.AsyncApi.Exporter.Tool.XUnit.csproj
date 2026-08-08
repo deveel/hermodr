@@ -1,11 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
     <IsTestProject>true</IsTestProject>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Hermodr.Tool.Tests</RootNamespace>
+    <!-- The tool and the fixtures library are net10.0-only (dotnet tools
+         cannot multi-target), so this test project must single-target
+         net10.0 too, overriding test/Directory.Build.props. -->
+    <TargetFramework>net10.0</TargetFramework>
+    <TargetFrameworks></TargetFrameworks>
+    <!-- Directory.Build.props derives these from $(TargetFramework) at
+         import time, before this PropertyGroup runs; set them explicitly. -->
+    <MicrosoftExtensionsVersion>10.*</MicrosoftExtensionsVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,8 +20,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The tool itself (Spectre CLI shell). -->
     <ProjectReference Include="..\..\src\Hermodr.AsyncApi.Exporter.Tool\Hermodr.AsyncApi.Exporter.Tool.csproj" />
-    <ProjectReference Include="..\..\samples\asyncapi-export\asyncapi-export.csproj" />
+    <!-- The console-agnostic export library — tested directly by the unit tests. -->
+    <ProjectReference Include="..\..\src\Hermodr.AsyncApi.Exporter\Hermodr.AsyncApi.Exporter.csproj" />
+    <!-- Event-annotated DLL + channels.json + ChannelMetadataFactory fixture. -->
+    <ProjectReference Include="..\Hermodr.AsyncApi.Exporter.Fixtures\Hermodr.AsyncApi.Exporter.Fixtures.csproj" />
   </ItemGroup>
 
 </Project>
