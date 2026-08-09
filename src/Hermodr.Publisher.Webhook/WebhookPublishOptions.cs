@@ -55,6 +55,7 @@ namespace Hermodr
                 SignatureAlgorithm     = typedOptions.SignatureAlgorithm     ?? baseOptions.SignatureAlgorithm,
                 ScheduleDeliveryAt     = typedOptions.ScheduleDeliveryAt     ?? baseOptions.ScheduleDeliveryAt,
                 AdditionalHeaders      = mergedHeaders,
+                Discovery              = typedOptions.Discovery              ?? baseOptions.Discovery,
                 // Channel-structural — always from base
                 SignatureHeaderName         = baseOptions.SignatureHeaderName,
                 DeliveryIdHeaderName        = baseOptions.DeliveryIdHeaderName,
@@ -133,6 +134,24 @@ namespace Hermodr
         /// </summary>
         public IDictionary<string, string> AdditionalHeaders { get; set; }
             = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// Optional
+        /// <see href="https://github.com/cloudevents/spec/blob/main/cloudevents/http-webhook.md">CloudEvents HTTP WebHooks</see>
+        /// abuse-protection discovery settings. When <c>null</c> (the default) no
+        /// validation handshake is performed and no
+        /// <c>WebHook-Request-Origin</c> header is attached to delivery requests.
+        /// </summary>
+        /// <remarks>
+        /// When set, the channel lazily issues an <c>OPTIONS</c> pre-flight
+        /// validation request to the endpoint before the first delivery (and
+        /// re-validates after a cached permission is evicted), and attaches
+        /// <c>WebHook-Request-Origin</c> to every delivery POST. The granted
+        /// <c>WebHook-Allowed-Rate</c> is logged and tagged on the publish
+        /// activity but not auto-enforced; the host can read it from the
+        /// <see cref="WebhookDiscoveryPermission"/> exposed by the channel.
+        /// </remarks>
+        public WebhookDiscoveryOptions? Discovery { get; set; }
 
         // ── Channel-structural settings — not overrideable per call ──────────
         // These are always taken from the channel-level defaults during the merge;

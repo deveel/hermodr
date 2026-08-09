@@ -112,5 +112,37 @@ namespace Hermodr
             this ILogger logger,
             string       deliveryId,
             int          totalAttempts);
+
+        // ── WebHook discovery handshake ────────────────────────────────────
+
+        /// <summary>Logs that the WebHook validation handshake was granted.</summary>
+        [LoggerMessage(
+            EventId  = 4009,
+            Level    = LogLevel.Information,
+            Message  = "WebHook handshake to {Url} granted (allowed-origin={AllowedOrigin}, allowed-rate={AllowedRate})")]
+        public static partial void LogHandshakeGranted(
+            this ILogger logger,
+            string       url,
+            string       allowedOrigin,
+            int?         allowedRate);
+
+        /// <summary>Logs that the WebHook validation handshake was refused by the target.</summary>
+        [LoggerMessage(
+            EventId  = 4010,
+            Level    = LogLevel.Warning,
+            Message  = "WebHook handshake to {Url} was refused: the target did not return WebHook-Allowed-Origin")]
+        public static partial void LogHandshakeRefused(
+            this ILogger logger,
+            string       url);
+
+        /// <summary>Logs that the WebHook validation request itself faulted.</summary>
+        [LoggerMessage(
+            EventId  = 4011,
+            Level    = LogLevel.Warning,
+            Message  = "WebHook handshake to {Url} failed: {ErrorMessage}")]
+        public static partial void LogHandshakeFailed(
+            this ILogger logger,
+            string       url,
+            string       errorMessage);
     }
 }

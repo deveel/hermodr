@@ -62,12 +62,13 @@ Delivery settings (nullable — `null` in a per-call override inherits the chann
 | `EndpointUrl` | `string?` | _(required)_ | URL of the webhook endpoint |
 | `SigningSecret` | `string?` | `null` | Shared secret for HMAC signing; no signature header is sent when omitted |
 | `SignatureAlgorithm` | `WebhookSignatureAlgorithm?` | `HmacSha256` | HMAC algorithm used to sign the body |
-| `MessageFormat` | `string?` | `"json"` | Serialisation format. Use `EventMessageFormat` constants (for built-ins: `"json"`, `"xml"`, `"cloudevents+json"`, `"cloudevents+xml"`) or a custom serializer format key |
+| `MessageFormat` | `string?` | `"json"` | Serialisation format. Use `EventMessageFormat` constants (for built-ins: `"json"`, `"xml"`, `"cloudevents+json"`, `"cloudevents+xml"`, `"cloudevents+binary"`) or a custom serializer format key |
 | `MaxRetryCount` | `int?` | `3` | Maximum delivery attempts; `0` disables retries |
 | `RetryDelay` | `TimeSpan?` | 1 s | Initial delay between retries |
 | `RetryBackoffMultiplier` | `double?` | `2.0` | Multiplier for exponential backoff |
 | `RequestTimeout` | `TimeSpan?` | 30 s | Timeout per individual HTTP request |
 | `AdditionalHeaders` | `IDictionary<string, string>` | `{}` | Extra HTTP headers merged into every request; per-call entries win on key collision |
+| `Discovery` | `WebhookDiscoveryOptions?` | `null` | CloudEvents WebHooks abuse-protection handshake (lazy `OPTIONS` pre-flight + `WebHook-Request-Origin` on every POST); see [WebHook discovery](#webhook-discovery-abuse-protection) below |
 
 Channel-structural settings (always taken from the channel-level defaults; ignored in per-call overrides):
 
@@ -157,6 +158,122 @@ Use `EventMessageFormat` constants when selecting a built-in format.
 | `"xml"` (`EventMessageFormat.Xml`) | `application/xml` | Plain XML payload |
 | `"cloudevents+json"` (`EventMessageFormat.CloudEventsJson`) | `application/cloudevents+json` | Full CloudEvents JSON envelope |
 | `"cloudevents+xml"` (`EventMessageFormat.CloudEventsXml`) | `application/cloudevents+xml` | Full CloudEvents XML envelope |
+| `"cloudevents+binary"` (`EventMessageFormat.CloudEventsBinary`) | event's `datacontenttype` (fallback `application/json`) | CloudEvents [binary HTTP content mode](https://github.com/cloudevents/spec/blob/main/cloudevents/bindings/http-protocol-binding.md#31-binary-content-mode) — `ce-*` attribute headers + data-only body; single-event only (batch throws `NotSupportedException`) |
+
+In binary content mode the channel maps every CloudEvent context attribute
+(including extensions) to a `ce-*` HTTP header, sets the request `Content-Type`
+to the event's `datacontenttype`, and sends the raw `data` as the body. This
+lets receivers compliant with the CloudEvents HTTP binding (Azure Event Grid,
+Knative Eventing, etc.) route on attributes without deserialising the body,
+and allows `data` to be any content type (e.g. `application/protobuf`).
+
+```csharp
+builder.Services
+    .AddEventPublisher()
+    .AddWebhooks(options =>
+    {
+        options.EndpointUrl   = "https://partner.example.com/events";
+        options.MessageFormat = EventMessageFormat.CloudEventsBinary;
+    });
+```
+
+> **Batch + binary:** the CloudEvents HTTP binding defines no binary batch
+> mode; `PublishBatchAsync` throws `NotSupportedException` when the effective
+> format is `cloudevents+binary`. Use `cloudevents+json` for batched delivery.
+
+## WebHook discovery (abuse protection)
+
+When the delivery target supports and requires
+[CloudEvents HTTP WebHooks](https://github.com/cloudevents/spec/blob/main/cloudevents/http-webhook.md)
+abuse protection, the channel can perform an `OPTIONS` validation handshake
+before the first delivery and attach the `WebHook-Request-Origin` header to
+every subsequent POST.  Enable it by setting `WebhookPublishOptions.Discovery`
+to a `WebhookDiscoveryOptions` instance.
+
+### `WebhookDiscoveryOptions`
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `RequestOrigin` | `string` | _(required)_ | DNS name identifying the sending system, sent as `WebHook-Request-Origin` on the `OPTIONS` request and on every delivery POST |
+| `RequestCallback` | `string?` | `null` | Optional HTTPS URL advertised via `WebHook-Request-Callback`; the receiver may call it asynchronously to grant permission. The channel does **not** host this endpoint. |
+| `RequestRate` | `int?` | `null` | Desired request rate (requests per minute), sent via `WebHook-Request-Rate`; the receiver may grant a different rate |
+| `RequestTimeout` | `TimeSpan?` | `null` | Timeout for the `OPTIONS` request; falls back to `RequestTimeout` (default 30 s) when `null` |
+| `RequireSuccessfulHandshake` | `bool` | `false` | `false` (best-effort): a refused or faulted handshake is logged and the delivery proceeds. `true` (strict): throws `WebhookHandshakeException` and suppresses the POST. |
+
+### How the handshake works
+
+1. Before the first delivery to an endpoint, the channel issues an `OPTIONS`
+   request carrying `WebHook-Request-Origin` (and, when set,
+   `WebHook-Request-Callback` / `WebHook-Request-Rate`).
+2. The target grants permission by returning `WebHook-Allowed-Origin`
+   (the origin name, or `*` for all origins) and optionally
+   `WebHook-Allowed-Rate` (an integer, or `*` for unlimited).  The granted
+   permission is cached per endpoint and reused for subsequent deliveries;
+   concurrent first deliveries share a single round-trip.
+3. After a successful handshake, `WebHook-Request-Origin` is attached to
+   every delivery POST, matching the value used in the handshake (spec §2.1).
+4. The granted `WebHook-Allowed-Rate` is tagged on the publish
+   [`Activity`](https://learn.microsoft.com/dotnet/api/system.diagnostics.activity)
+   (`webhook.allowed_origin`, `webhook.allowed_rate`) and cached as a
+   `WebhookDiscoveryPermission`, but **not auto-enforced** — the host can
+   read it to apply its own throttling policy.
+
+### Best-effort vs. strict
+
+- `RequireSuccessfulHandshake = false` (default) — a refused handshake (no
+  `WebHook-Allowed-Origin`) or a faulted request is logged and the delivery
+  proceeds.  Use this when the target may not implement the handshake.
+- `RequireSuccessfulHandshake = true` — a refused or faulted handshake throws
+  `WebhookHandshakeException` (carrying the `EndpointUrl` and, when
+  applicable, the `StatusCode`) and the delivery POST is not sent.
+
+### `Retry-After` on 429
+
+When a delivery returns `429 Too Many Requests` with a
+[`Retry-After`](https://developer.mozilla.org/docs/Web/HTTP/Headers/Retry-After)
+header (delta-seconds or HTTP-date), the channel uses it as the delay before
+the next retry attempt, overriding the configured exponential backoff for
+that attempt (spec §2.2).  An absent or unparseable `Retry-After` falls back
+to the normal backoff.
+
+### Configuration
+
+```csharp
+builder.Services
+    .AddEventPublisher()
+    .AddWebhooks(options =>
+    {
+        options.EndpointUrl   = "https://partner.example.com/events";
+        options.SigningSecret  = "s3cr3t";
+        options.Discovery = new WebhookDiscoveryOptions
+        {
+            RequestOrigin              = "eventemitter.example.com",
+            RequestRate                 = 120,
+            RequireSuccessfulHandshake = true
+        };
+    });
+```
+
+```json
+{
+  "Events": {
+    "Webhook": {
+      "EndpointUrl": "https://partner.example.com/events",
+      "SigningSecret": "s3cr3t",
+      "Discovery": {
+        "RequestOrigin": "eventemitter.example.com",
+        "RequestRate": 120,
+        "RequireSuccessfulHandshake": true
+      }
+    }
+  }
+}
+```
+
+> The publisher does **not** host the `WebHook-Request-Callback` endpoint:
+> it only advertises the callback URL so the receiver (or an administrator)
+> can grant permission out-of-band.  Hosting a callback receiver belongs to
+> the subscription-management layer.
 
 ## Per-delivery options
 

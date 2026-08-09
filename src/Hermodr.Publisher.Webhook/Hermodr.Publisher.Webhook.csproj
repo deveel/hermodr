@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <Title>Hermodr Webhook Publisher</Title>
-    <Description>Provides a publisher of CloudEvents through HTTP POST webhooks with signature verification, delivery tracking and retry support</Description>
+    <Description>Provides a publisher of CloudEvents through HTTP POST webhooks with HMAC signing, delivery tracking, retry support, CloudEvents binary HTTP content mode, and WebHook abuse-protection discovery.</Description>
     <PackageTags>event;events;ddd;publisher;webhook;http;cloudevents</PackageTags>
   </PropertyGroup>
   <ItemGroup>

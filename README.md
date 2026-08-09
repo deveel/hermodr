@@ -217,7 +217,7 @@ The framework is still evolving. See the [ROADMAP](ROADMAP.md) for the full desc
 
 ### v1.5 — New Transports
 
-- [ ] **CloudEvents HTTP Binding for the Webhook Publisher** — bring the existing Webhook publisher into full structured/binary content-mode compliance
+- [x] **CloudEvents HTTP Binding for the Webhook Publisher** — structured/binary content-mode compliance + WebHook abuse-protection discovery
 - [ ] **HTTP Publisher Channel** — lightweight, sign-free point-to-point delivery to statically-configured endpoints
 - [ ] **gRPC Publisher Channel** — low-latency service-to-service delivery using the CloudEvents gRPC protocol binding
 - [ ] **Apache Kafka Publisher Channel** — publish CloudEvents to Kafka topics with partition key control and Schema Registry support

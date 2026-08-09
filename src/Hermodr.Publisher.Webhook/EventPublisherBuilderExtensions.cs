@@ -40,6 +40,8 @@ namespace Hermodr
                 ServiceDescriptor.Singleton<IEventSerializer, CloudEventsJsonSerializer>());
             builder.Services.TryAddEnumerable(
                 ServiceDescriptor.Singleton<IEventSerializer, CloudEventsXmlSerializer>());
+            builder.Services.TryAddEnumerable(
+                ServiceDescriptor.Singleton<IEventSerializer, CloudEventsBinarySerializer>());
 
             return builder;
         }

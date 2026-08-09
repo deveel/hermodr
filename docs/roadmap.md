@@ -269,6 +269,8 @@ The table below maps each roadmap item to the release milestone in which it is p
 
 ### 12. CloudEvents HTTP Binding Compliance for the Webhook Publisher
 
+> ✅ **Delivered in v1.5.0.** See [Webhook Channel](publishers/webhook.md) for usage.
+
 > *Bring the existing Webhook publisher into full CloudEvents HTTP binding specification compliance — structured and binary content modes, correct `Content-Type` and `ce-*` headers — without changing its delivery semantics.*
 
 **The problem today:** `Hermodr.Publisher.Webhook` delivers events over HTTP, but sends a raw JSON payload rather than a CloudEvents-structured or binary-mode message. Receivers that expect the canonical CloudEvents envelope — correct `Content-Type: application/cloudevents+json` header in structured mode, or `ce-*` attribute headers in binary mode — must perform custom remapping before they can process the payload.
