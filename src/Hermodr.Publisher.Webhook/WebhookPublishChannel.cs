@@ -53,6 +53,8 @@ namespace Hermodr
         private readonly IEventSystemTime _systemTime;
         private readonly ILogger _logger;
 
+        private readonly WebhookHandshakeClient _handshakeClient;
+
         private IDictionary<WebhookSignatureAlgorithm, IWebhookSignatureProvider>? _signatureProviders;
         private IDictionary<string, IEventSerializer>? _serializers;
 
@@ -83,6 +85,10 @@ namespace Hermodr
             _httpClientFactory = httpClientFactory;
             _systemTime        = EventSystemTime.Instance;
             _logger            = logger ?? NullLogger<WebhookPublishChannel>.Instance;
+
+            // The WebHook discovery handshake client is owned by the channel so
+            // that the per-endpoint permission cache persists across deliveries.
+            _handshakeClient = new WebhookHandshakeClient(httpClientFactory, logger);
 
             // Build the default pipeline lazily from the channel-level options.
             // LazyThreadSafetyMode.ExecutionAndPublication guarantees exactly-once
@@ -131,10 +137,11 @@ namespace Hermodr
                 {
                     var serializers = new Dictionary<string, IEventSerializer>(StringComparer.OrdinalIgnoreCase)
                     {
-                        [EventMessageFormat.Json]            = JsonEventSerializer.Default,
-                        [EventMessageFormat.Xml]             = XmlEventSerializer.Default,
-                        [EventMessageFormat.CloudEventsJson] = CloudEventsJsonSerializer.Default,
-                        [EventMessageFormat.CloudEventsXml]  = CloudEventsXmlSerializer.Default,
+                        [EventMessageFormat.Json]              = JsonEventSerializer.Default,
+                        [EventMessageFormat.Xml]               = XmlEventSerializer.Default,
+                        [EventMessageFormat.CloudEventsJson]   = CloudEventsJsonSerializer.Default,
+                        [EventMessageFormat.CloudEventsXml]    = CloudEventsXmlSerializer.Default,
+                        [EventMessageFormat.CloudEventsBinary] = CloudEventsBinarySerializer.Default,
                     };
                     foreach (var s in ServiceProvider.GetServices<IEventSerializer>())
                         serializers[s.Format] = s;
@@ -179,6 +186,7 @@ namespace Hermodr
                 SignatureAlgorithm     = perCallOptions.SignatureAlgorithm     ?? defaults.SignatureAlgorithm,
                 AdditionalHeaders      = mergedHeaders,
                 ScheduleDeliveryAt     = perCallOptions.ScheduleDeliveryAt     ?? defaults.ScheduleDeliveryAt,
+                Discovery              = perCallOptions.Discovery              ?? defaults.Discovery,
                 SignatureHeaderName          = defaults.SignatureHeaderName,
                 DeliveryIdHeaderName         = defaults.DeliveryIdHeaderName,
                 EventTypeHeaderName          = defaults.EventTypeHeaderName,
@@ -198,9 +206,24 @@ namespace Hermodr
             var format     = options.MessageFormat ?? EventMessageFormat.Json;
             var serializer = GetSerializer(format);
             var payload    = serializer.Serialize(@event);
+
+            // Binary content mode: the body is the raw data and the Content-Type
+            // is the event's datacontenttype; the CloudEvent attributes are
+            // projected onto ce-* HTTP headers by CloudEventHttpHeadersMapper.
+            IReadOnlyDictionary<string, string>? ceHeaders = null;
             var contentType = serializer.ContentType;
 
-            return DeliverAsync(payload, contentType, eventType: @event.Type, eventCount: 1, @event.Time, options, cancellationToken);
+            if (string.Equals(format, EventMessageFormat.CloudEventsBinary,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                contentType = !string.IsNullOrWhiteSpace(@event.DataContentType)
+                    ? @event.DataContentType!
+                    : serializer.ContentType;
+                ceHeaders = CloudEventHttpHeadersMapper.Map(@event);
+            }
+
+            return DeliverAsync(payload, contentType, eventType: @event.Type, eventCount: 1,
+                @event.Time, options, cancellationToken, ceHeaders);
         }
 
         // ── IBatchEventPublishChannel ────────────────
@@ -224,12 +247,23 @@ namespace Hermodr
             var effective = MergeOptions(DefaultOptions, options);
             ValidateOptions(effective);
 
-            var format      = effective.MessageFormat ?? EventMessageFormat.Json;
+            var format = effective.MessageFormat ?? EventMessageFormat.Json;
+
+            // Binary content mode is defined by the CloudEvents HTTP binding
+            // specification only for single-event delivery.
+            if (string.Equals(format, EventMessageFormat.CloudEventsBinary,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                throw new NotSupportedException(
+                    "Binary content mode is not defined for batches by the CloudEvents HTTP binding specification.");
+            }
+
             var serializer  = GetSerializer(format);
             var payload     = serializer.SerializeBatch(events);
             var contentType = serializer.BatchContentType;
 
-            return DeliverAsync(payload, contentType, eventType: null, eventCount: events.Count, eventTime: null, effective, cancellationToken);
+            return DeliverAsync(payload, contentType, eventType: null, eventCount: events.Count,
+                eventTime: null, effective, cancellationToken, ceHeaders: null);
         }
 
         // ── Core delivery ───────────────────────────────────────────────────
@@ -241,7 +275,8 @@ namespace Hermodr
             int eventCount,
             DateTimeOffset? eventTime,
             WebhookPublishOptions options,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            IReadOnlyDictionary<string, string>? ceHeaders = null)
         {
             var endpointUrl            = options.EndpointUrl!;
 
@@ -260,6 +295,30 @@ namespace Hermodr
             var provider   = GetSignatureProvider(signatureAlgorithm);
             var timestamp  = (eventTime ?? SystemTime.UtcNow).ToUnixTimeSeconds();
             var algorithm  = signatureAlgorithm.ToString();
+
+            // ── CloudEvents HTTP WebHooks abuse-protection handshake ──────────
+            // When Discovery is configured, lazily perform the OPTIONS pre-flight
+            // validation request (cached per endpoint) and capture the granted
+            // permission for telemetry/metadata. The WebHook-Request-Origin
+            // header is then attached to every delivery POST per §2.1.
+            WebhookDiscoveryPermission? permission = null;
+            string? webHookRequestOrigin = null;
+
+            if (options.Discovery is WebhookDiscoveryOptions discovery)
+            {
+                permission = await _handshakeClient.EnsureHandshakeAsync(
+                    endpointUrl, discovery, httpClientName, cancellationToken)
+                    .ConfigureAwait(false);
+
+                webHookRequestOrigin = discovery.RequestOrigin;
+
+                if (permission is not null)
+                {
+                    activity?.SetTag("webhook.allowed_origin", permission.AllowedOrigin);
+                    if (permission.AllowedRate is int ar)
+                        activity?.SetTag("webhook.allowed_rate", ar);
+                }
+            }
 
             if (eventType != null)
                 _logger.LogDeliveringEvent(eventType, deliveryId, format, algorithm, endpointUrl);
@@ -291,7 +350,8 @@ namespace Hermodr
                 {
                     using var request = BuildRequest(
                         payload, contentType, eventType, deliveryId, timestamp, provider,
-                        endpointUrl, options.SigningSecret, additionalHeaders, options);
+                        endpointUrl, options.SigningSecret, additionalHeaders, options,
+                        ceHeaders, webHookRequestOrigin);
                     using var cts = CancellationTokenSource.CreateLinkedTokenSource(ctx.CancellationToken);
                     cts.CancelAfter(requestTimeout);
                     return await CreateHttpClient(httpClientName).SendAsync(request, cts.Token);
@@ -349,10 +409,22 @@ namespace Hermodr
                 {
                     MaxRetryAttempts = maxRetryCount,
                     UseJitter        = false,
-                    DelayGenerator   = args => ValueTask.FromResult<TimeSpan?>(
-                        TimeSpan.FromMilliseconds(
+                    // Per the CloudEvents HTTP WebHooks spec §2.2, a 429 response
+                    // with Retry-After MUST be honored. When the response carries
+                    // a Retry-After header (delta-seconds or HTTP-date) we use it
+                    // as the next retry delay; otherwise we fall back to the
+                    // configured exponential backoff.
+                    DelayGenerator = args =>
+                    {
+                        var retryAfter = TryGetRetryAfterDelay(args.Outcome.Result);
+                        if (retryAfter is TimeSpan ra)
+                            return ValueTask.FromResult<TimeSpan?>(ra);
+
+                        var backoff = TimeSpan.FromMilliseconds(
                             retryDelay.TotalMilliseconds *
-                            Math.Pow(retryBackoffMultiplier, args.AttemptNumber))),
+                            Math.Pow(retryBackoffMultiplier, args.AttemptNumber));
+                        return ValueTask.FromResult<TimeSpan?>(backoff);
+                    },
                     // External cancellation is handled by Polly respecting the
                     // CancellationToken in the ResilienceContext; only transport
                     // errors and server-side transient failures are retried here.
@@ -412,6 +484,40 @@ namespace Hermodr
             => _httpClientFactory.CreateClient(
                 string.IsNullOrEmpty(name) ? WebhookDefaults.HttpClientName : name);
 
+        /// <summary>
+        /// Parses the <c>Retry-After</c> response header (RFC 7231 §7.1.3) into
+        /// a delay. Supports both delta-seconds and HTTP-date forms. Returns
+        /// <c>null</c> when the header is absent or unparseable.
+        /// </summary>
+        private static TimeSpan? TryGetRetryAfterDelay(HttpResponseMessage? response)
+        {
+            if (response is null)
+                return null;
+
+            if (!response.Headers.TryGetValues("Retry-After", out var values))
+                return null;
+
+            var raw = values.FirstOrDefault();
+            if (string.IsNullOrWhiteSpace(raw))
+                return null;
+
+            raw = raw.Trim();
+
+            // Form 1: delta-seconds (non-negative integer).
+            if (int.TryParse(raw, out var seconds) && seconds >= 0)
+                return TimeSpan.FromSeconds(Math.Min(seconds, 3600));
+
+            // Form 2: HTTP-date.
+            if (DateTimeOffset.TryParseExact(raw, "R", System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.AssumeUniversal, out var date))
+            {
+                var delta = date - DateTimeOffset.UtcNow;
+                return delta > TimeSpan.Zero ? delta : TimeSpan.Zero;
+            }
+
+            return null;
+        }
+
         private HttpRequestMessage BuildRequest(
             byte[] payload,
             string contentType,
@@ -422,11 +528,30 @@ namespace Hermodr
             string endpointUrl,
             string? signingSecret,
             IDictionary<string, string> additionalHeaders,
-            WebhookPublishOptions options)
+            WebhookPublishOptions options,
+            IReadOnlyDictionary<string, string>? cloudEventHeaders = null,
+            string? webHookRequestOrigin = null)
         {
             var request = new HttpRequestMessage(HttpMethod.Post, endpointUrl);
             request.Content = new ByteArrayContent(payload);
             request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse(contentType);
+
+            // CloudEvents binary content mode: ce-* attribute headers are emitted
+            // first so that explicit X-Webhook-* headers and AdditionalHeaders can
+            // still override them on key collision (the spec mandates ce-* names,
+            // but the channel preserves the existing webhook header semantics).
+            if (cloudEventHeaders is not null)
+            {
+                foreach (var h in cloudEventHeaders)
+                    request.Headers.TryAddWithoutValidation(h.Key, h.Value);
+            }
+
+            // CloudEvents HTTP WebHooks §2.1: when the target requires abuse
+            // protection, every delivery POST carries WebHook-Request-Origin
+            // (with the value matching the one used in the OPTIONS handshake).
+            if (!string.IsNullOrWhiteSpace(webHookRequestOrigin))
+                request.Headers.TryAddWithoutValidation(
+                    WebhookHandshakeClient.RequestOriginHeader, webHookRequestOrigin);
 
             request.Headers.TryAddWithoutValidation(options.DeliveryIdHeaderName, deliveryId);
 

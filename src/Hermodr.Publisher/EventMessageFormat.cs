@@ -43,6 +43,19 @@ namespace Hermodr
         /// (<c>application/cloudevents+xml</c>).
         /// </summary>
         public const string CloudEventsXml = "cloudevents+xml";
+
+        /// <summary>
+        /// CloudEvents binary HTTP content mode
+        /// (<see href="https://github.com/cloudevents/spec/blob/main/cloudevents/bindings/http-protocol-binding.md#321-binary-content-mode">HTTP binding §3.2.1</see>).
+        /// The event context attributes are emitted as <c>ce-*</c> HTTP headers and
+        /// the <c>data</c> field alone forms the request body, transmitted with the
+        /// native <c>datacontenttype</c> as <c>Content-Type</c>.
+        /// <para>
+        /// Binary content mode is defined only for single-event delivery; the
+        /// CloudEvents HTTP binding specification has no binary batch mode.
+        /// </para>
+        /// </summary>
+        public const string CloudEventsBinary = "cloudevents+binary";
     }
 }
 
