@@ -2,6 +2,55 @@
 
 ## [Unreleased]
 
+### 🚀 Features
+
+- **CloudEvents binary HTTP content mode for the Webhook publisher** (roadmap item 12):
+  - New `EventMessageFormat.CloudEventsBinary` (`"cloudevents+binary"`) format
+    constant in `Hermodr.Publisher`.
+  - New `CloudEventsBinarySerializer` — emits the raw event `data` as the
+    request body via `JsonEventFormatter.EncodeBinaryModeEventData`.
+  - New `CloudEventHttpHeadersMapper` (internal) — projects every CloudEvent
+    context attribute (including extensions) onto `ce-*` HTTP headers per the
+    [CloudEvents HTTP binding §3.1](https://github.com/cloudevents/spec/blob/main/cloudevents/bindings/http-protocol-binding.md#31-binary-content-mode).
+  - The channel sets the request `Content-Type` to the event's
+    `datacontenttype` (falling back to `application/json`), so `data` may be
+    any content type (e.g. `application/protobuf`).
+  - Batch delivery in binary mode throws `NotSupportedException` (the HTTP
+    binding defines no binary batch).
+  - HMAC signing still covers the raw body bytes only; `IWebhookSignatureProvider`
+    is unchanged.
+
+- **WebHook abuse-protection discovery** ([CloudEvents HTTP WebHooks spec](https://github.com/cloudevents/spec/blob/main/cloudevents/http-webhook.md)):
+  - New `WebhookDiscoveryOptions` (`RequestOrigin`, `RequestCallback`,
+    `RequestRate`, `RequestTimeout`, `RequireSuccessfulHandshake`) on
+    `WebhookPublishOptions.Discovery`.
+  - New `WebhookHandshakeClient` (internal) — lazily issues the `OPTIONS`
+    pre-flight before the first delivery, caches the granted
+    `WebHook-Allowed-Origin` / `WebHook-Allowed-Rate` per endpoint, and gates
+    concurrent first deliveries to a single round-trip.
+  - `WebHook-Request-Origin` attached to every delivery POST after a
+    successful handshake (spec §2.1).
+  - New `WebhookDiscoveryPermission` (cached handshake result, queryable by
+    the host) and `WebhookHandshakeException` (strict-mode refusal/failure).
+  - Best-effort (`RequireSuccessfulHandshake = false`, default) logs refusal
+    and proceeds; strict (`true`) throws and suppresses the POST.
+  - The granted `WebHook-Allowed-Rate` is tagged on the publish `Activity`
+    but **not auto-enforced** — the host applies its own throttling policy.
+  - The publisher does **not** host the `WebHook-Request-Callback` endpoint;
+    it only advertises the URL for the receiver to call.
+
+- **`Retry-After` on 429** now honored — when a delivery returns
+  `429 Too Many Requests` with a `Retry-After` header (delta-seconds or
+  HTTP-date), the channel uses it as the next retry delay, overriding the
+  configured exponential backoff for that attempt (spec §2.2).
+
+### 🔒 Security
+
+- **Zero breaking change**: the legacy `"json"` default wire format is
+  preserved (regression-guarded); `Discovery` defaults to `null` (no
+  handshake, no `WebHook-Request-Origin` header). All signing, retry, and
+  subscriber-management behaviour is unchanged.
+
 ## v1.4.0 - Schema Governance & AsyncAPI Export
 
 ### 🚀 Features
