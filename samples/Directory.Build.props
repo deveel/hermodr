@@ -4,4 +4,16 @@
     <AssemblyAttribute Include="System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage" />
   </ItemGroup>
 
+  <!--
+    Security override: forces SQLitePCLRaw.lib.e_sqlite3 to 2.1.12 (bundles
+    SQLite >= 3.50.2, fixing CVE-2025-6965 / GHSA-2m69-gcr7-jv3q) for the sample
+    projects that pull in Microsoft.EntityFrameworkCore.Sqlite transitively via
+    SQLitePCLRaw.bundle_e_sqlite3 2.1.11. NuGet's nearest-wins rule overrides
+    the transitive pin. Remove once EF Sqlite ships a bundle that references
+    >= 2.1.12.
+  -->
+  <ItemGroup>
+    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.12" />
+  </ItemGroup>
+
 </Project>
