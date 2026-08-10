@@ -15,13 +15,14 @@ The table below maps each roadmap item to the release milestone in which it is p
 | **Reliability** | **v1.2.0** | Add dead-letter capture and replay, the outbox pattern, and the event scheduler to make publishing robust to transient failures and deferred delivery requirements.                                                                                                                                                                                                                                                                                                                   | 3 · 4 · 5 |
 | **Observability** | **v1.3.0** *(delivered across v1.2.5–v1.2.9)* | End-to-end distributed tracing via OpenTelemetry, schema validation at publish time (envelope guard shipped; payload validation remainder moved to v1.4.0), the append-only event store / audit log channel, and the publish delivery log for operational delivery telemetry.                                                                                                                                                                                                  | 6 · 7 · 8 · 9 |
 | **Schema Governance** | **v1.4.0** | Formal schema versioning, compatibility checking, upcasting (item 10 shipped in v1.2.9), AsyncAPI / schema export improvements (item 11 shipped in v1.4.0), and payload schema validation (remainder of item 8).                                                                                                                                                                                                                                                                                      | 8 · 10 · 11 |
-| **New Transports** | **v1.5.0** | CloudEvents HTTP binding compliance for the Webhook publisher, a new lightweight HTTP CloudEvents channel, plus new channel adapters for gRPC streaming, Apache Kafka, Amazon SQS, Amazon SNS, Google Cloud Pub/Sub, and NATS/JetStream.                                                                                                                                                                                                                                              | 12 · 13 · 14 · 15 · 16 · 17 · 18 · 19 |
+| **New Transports** | **v1.5.0** | CloudEvents HTTP binding compliance for the Webhook publisher, a new lightweight HTTP CloudEvents channel, plus new channel adapters for gRPC streaming, Apache Kafka, NATS/JetStream, and the Dapr pub/sub building block — completing the broker-agnostic and portable publisher surface. Cloud-provider-specific adapters (Amazon SQS, Amazon SNS, Google Cloud Pub/Sub) have been deferred to v2.4.0.                                                                                                                                                                                                                                              | 12 · 13 · 14 · 15 · 19 · 44 |
 | **Code Generation** | **v1.6.0** | Roslyn incremental source generators that read `[Event]` / `[EventProperty]` annotations at compile time to emit zero-reflection `IEventConvertible` implementations, pre-built schema DI registration helpers, and strongly-typed domain publisher interfaces — shifting annotation errors left to the build and eliminating startup reflection overhead. | 20 · 21 · 22 |
 | **Compliance** | **v1.7.0** | Schema-driven data classification and redaction for the regulated industries. Built on the `Microsoft.Extensions.Compliance.*` stack (no reinvented taxonomy), with storage-boundary redaction for the Audit Trail and the Delivery Log and an in-transit redaction pass for outbound publish channels — keeping clear-text confidential data out of every persistent and transported form. | 23 · 24 · 25 · 26 |
 | **Event Consumers** | **v2.0.0** | First-class consumer adapters — ASP.NET Core Webhook framework, pre-built SaaS platform adapters (Facebook, SendGrid, Twilio, Stripe, GitHub, Shopify), RabbitMQ, Azure Service Bus, and MassTransit — completing the publish / consume lifecycle. This is a **major** release because it introduces a new, independently versioned surface area (`Hermodr.Consumer.*` packages) and changes the framing of the framework from a pure publisher to a full event-driven toolkit. | 27 · 28 · 29 · 30 · 31 |
 | **Testing & DX** | **v2.1.0** | Expanded testing utilities with fluent publish assertions and an in-memory event bus, a local development console sink, .NET Aspire integration, and a `dotnet event` CLI tool with a companion standalone executable — completing the developer inner-loop and tooling story. | 32 · 33 · 34 · 35 · 36 |
 | **Subscription Management** | **v2.2.0** | Provider-agnostic subscription management framework, EF Core and MongoDB registry providers, and a secured REST management API with OpenAPI metadata and change-notification webhooks. | 37 · 38 · 39 · 40 |
 | **Framework Integrations** | **v2.3.0** | Bridges between Hermodr and the four major .NET in-process mediator / command-bus frameworks — MediatR, Wolverine, Brighter — so teams can emit CloudEvents as a natural side-effect of existing handler dispatch and route inbound CloudEvents back into each framework's handler pipeline. | 41 · 42 · 43 |
+| **Cloud-Provider Transports** | **v2.4.0** | First-party channel adapters for the major cloud-provider messaging services — Amazon SQS, Amazon SNS, and Google Cloud Pub/Sub — completing the multi-cloud publisher surface alongside Azure Service Bus and RabbitMQ. | 16 · 17 · 18 |
 
 ---
 
@@ -355,69 +356,6 @@ The table below maps each roadmap item to the release milestone in which it is p
 
 ---
 
-### 16. Amazon SQS Publisher Channel
-
-> *Publish CloudEvents to Amazon SQS queues, including FIFO queues with deduplication and message-group ordering.*
-
-**The problem today:** Teams running on AWS have no first-party Hermodr adapter for SQS and must duplicate their publishing logic outside the framework, losing middleware, schema validation, and dead-letter integration.
-
-**What we will build:** A `Hermodr.Publisher.AmazonSqs` package wrapping the AWS SDK v3 `IAmazonSQS` client:
-- CloudEvents attributes carried as SQS message attributes.
-- Standard queue and FIFO queue support; FIFO mode exposes `MessageGroupId` (mapped from a configurable CloudEvents attribute) and `MessageDeduplicationId` (defaulting to the CloudEvents `id`).
-- Batch publish via `SendMessageBatchAsync` for throughput optimisation, with automatic splitting at the SQS 10-message batch limit.
-- Large-message support via Amazon SQS Extended Client / S3 offload for payloads exceeding 256 KB.
-- IAM credential resolution through the standard AWS SDK credential chain (environment variables, instance profile, assumed role).
-- `AddAmazonSqsEventPublisherChannel()` DI registration extension.
-
-**Benefits:**
-- Enables fully-managed, serverless event publishing on AWS without operating a broker.
-- FIFO queue support provides per-entity ordering and exactly-once delivery guarantees at the SQS level.
-- Batch publish reduces API calls and cost for high-volume event streams.
-- Works seamlessly alongside the existing Azure Service Bus channel in multi-cloud architectures.
-
----
-
-### 17. Amazon SNS Publisher Channel
-
-> *Fan out CloudEvents to Amazon SNS topics for multi-subscriber delivery across SQS queues, Lambda functions, HTTP endpoints, and mobile push.*
-
-**The problem today:** Amazon SNS is the standard AWS mechanism for pub/sub fan-out to heterogeneous subscribers, yet there is no first-party Hermodr adapter, forcing teams to call the SNS SDK directly outside the framework pipeline.
-
-**What we will build:** A `Hermodr.Publisher.AmazonSns` package wrapping the AWS SDK v3 `IAmazonSimpleNotificationService` client:
-- CloudEvents attributes mapped to SNS message attributes for subscriber-side filtering.
-- SNS message filtering policy integration: the channel can be configured to set attribute values that match subscriber filter policies, enabling content-based fan-out without custom routing code.
-- FIFO SNS topic support with `MessageGroupId` and deduplication ID propagation (mirroring the SQS FIFO channel, item 16).
-- Raw message delivery mode for SQS subscriber stacks that expect the CloudEvent JSON body directly without the SNS envelope wrapper.
-- `AddAmazonSnsEventPublisherChannel()` DI registration extension.
-
-**Benefits:**
-- A single `PublishAsync` call fans the event out to all SNS subscribers — SQS queues, Lambda functions, HTTP/S endpoints, and email — without the publisher needing to know the subscriber topology.
-- SNS message attribute filtering lets the broker perform content-based routing, reducing unnecessary message delivery to uninterested subscribers.
-- Complements the SQS channel (item 16): SNS → SQS is the canonical AWS fanout-to-queue pattern and both channels share the same AWS SDK credential configuration.
-
----
-
-### 18. Google Cloud Pub/Sub Publisher Channel
-
-> *Publish CloudEvents to Google Cloud Pub/Sub topics with attribute-based filtering and ordering key support.*
-
-**The problem today:** Teams running on Google Cloud have no first-party Hermodr adapter for Pub/Sub and must publish events outside the framework, bypassing the middleware, schema validation, and dead-letter pipeline.
-
-**What we will build:** A `Hermodr.Publisher.GooglePubSub` package wrapping the Google Cloud Pub/Sub client library (`Google.Cloud.PubSub.V1`):
-- CloudEvents attributes mapped to Pub/Sub message attributes following the [CloudEvents Pub/Sub protocol binding](https://github.com/cloudevents/spec/blob/main/cloudevents/bindings/pubsub-protocol-binding.md).
-- Ordering key support: a configurable selector maps a CloudEvents attribute (e.g., `subject` or a custom extension) to the Pub/Sub ordering key, enabling per-entity ordered delivery to subscribers with ordering enabled.
-- Batching via the `PublisherClient` flow control settings, surfaced as framework channel options.
-- Application Default Credentials (ADC) and Workload Identity support through the standard Google Auth library credential resolution chain.
-- `AddGooglePubSubEventPublisherChannel()` DI registration extension.
-
-**Benefits:**
-- Brings the full Hermodr pipeline to GCP-native workloads without a separate publish path.
-- Ordering key integration provides per-aggregate event ordering — a key correctness requirement for event-sourced systems.
-- ADC / Workload Identity credential resolution requires zero credential management code in application services.
-- Complements the AWS channels (items 16–17) for teams operating multi-cloud or migrating between providers.
-
----
-
 ### 19. NATS / NATS JetStream Publisher Channel
 
 > *Publish CloudEvents to NATS subjects or JetStream streams for ultra-low-latency, cloud-native messaging.*
@@ -436,6 +374,27 @@ The table below maps each roadmap item to the release milestone in which it is p
 - JetStream persistence and deduplication support enables at-least-once delivery guarantees without a heavier broker.
 - Lightweight operational footprint — NATS runs as a single binary with no external dependencies, making it ideal for edge, IoT, and sidecar deployments.
 - The subject-per-type mapping convention integrates naturally with NATS subject hierarchies and wildcard subscriptions.
+
+---
+
+### 44. Dapr Publisher Channel (Pub/Sub Building Block)
+
+> *Publish CloudEvents through the Dapr pub/sub building block, abstracting the underlying broker behind Dapr's resource model.*
+
+**The problem today:** Dapr is widely adopted as a portable, sidecar-driven eventing abstraction over many brokers (Kafka, RabbitMQ, Azure Service Bus, NATS, and more), particularly by teams that want to keep their publish code agnostic of the underlying message broker. There is no first-party Hermodr adapter for the Dapr pub/sub building block, so teams using Dapr must publish via `DaprClient.PublishEventAsync` directly, bypassing the framework's enrichment, schema validation, middleware, and dead-letter pipeline and ending up with two parallel publish paths in the same service.
+
+**What we will build:** A `Hermodr.Publisher.Dapr` package implementing `IEventPublishChannel` on top of `Dapr.Client.DaprClient`:
+- Per-channel `pubsubname` (the Dapr pub/sub component name) and `topic` configuration, with optional topic mapping derived from the CloudEvents `type` or a custom selector delegate.
+- CloudEvents attributes carried as Dapr metadata where supported by the binding; the serialised CloudEvent (structured mode) is preserved as the event payload so consumers receive the canonical CloudEvents envelope regardless of the underlying broker.
+- Per-channel options for `DaprClient` resolution via `IDaprClientBuilder` / `IHttpClientFactory` integration, allowing mTLS and token-credential configuration through the standard Dapr SDK surface.
+- Full integration with the middleware pipeline (item 2) and the dead-letter channel (item 3), so enrichment, schema validation, tracing, and the delivery log all apply to Dapr-published events.
+- `AddDaprEventPublisherChannel()` DI registration extension compatible with the standard `AddDaprClient()` flow.
+
+**Benefits:**
+- Portable write-once-run-anywhere publish against any Dapr-supported broker — Kafka, RabbitMQ, Azure Service Bus, NATS, and others — without changing application code or channel wiring.
+- Keeps the full Hermodr pipeline intact (enrichment, schema validation, middleware, dead-letter, OpenTelemetry tracing, delivery log) for teams that prefer the sidecar abstraction over direct broker adapters.
+- Enables multi-cloud and edge deployments that swap underlying brokers via Dapr component configuration rather than code changes or channel re-registration.
+- Complements the existing direct adapters (RabbitMQ, Azure Service Bus, Kafka, NATS) for teams that standardise on Dapr as their portable eventing surface; no Dapr lock-in — the channel can be replaced with any other `IEventPublishChannel` implementation without touching application code.
 
 ---
 
@@ -957,6 +916,73 @@ Each adapter package:
 - Brighter's pipeline-step model ensures CloudEvent publishing is transactionally safe: the step only fires after the primary handler succeeds, preventing phantom events from failed operations.
 - The inbound bridge preserves Brighter's strongly-typed handler discovery — a CloudEvent received from any transport arrives as a concrete `IEvent` type, selected by the `type` attribute.
 - Optional outbox integration avoids duplicating outbox infrastructure when a team is already using Brighter's own outbox support.
+
+---
+
+## Cloud-Provider Transports — v2.4.0
+
+> *Items 16–18 were originally planned for **v1.5.0** (New Transports) but have been deferred to **v2.4.0** to keep the v1.5.0 release focused on broker-agnostic and portable adapters (HTTP, gRPC, Kafka, NATS, Dapr). The cloud-provider-specific adapters ship later, after the consumer-side and tooling milestones, completing the multi-cloud publisher surface.*
+
+### 16. Amazon SQS Publisher Channel
+
+> *Publish CloudEvents to Amazon SQS queues, including FIFO queues with deduplication and message-group ordering.*
+
+**The problem today:** Teams running on AWS have no first-party Hermodr adapter for SQS and must duplicate their publishing logic outside the framework, losing middleware, schema validation, and dead-letter integration.
+
+**What we will build:** A `Hermodr.Publisher.AmazonSqs` package wrapping the AWS SDK v3 `IAmazonSQS` client:
+- CloudEvents attributes carried as SQS message attributes.
+- Standard queue and FIFO queue support; FIFO mode exposes `MessageGroupId` (mapped from a configurable CloudEvents attribute) and `MessageDeduplicationId` (defaulting to the CloudEvents `id`).
+- Batch publish via `SendMessageBatchAsync` for throughput optimisation, with automatic splitting at the SQS 10-message batch limit.
+- Large-message support via Amazon SQS Extended Client / S3 offload for payloads exceeding 256 KB.
+- IAM credential resolution through the standard AWS SDK credential chain (environment variables, instance profile, assumed role).
+- `AddAmazonSqsEventPublisherChannel()` DI registration extension.
+
+**Benefits:**
+- Enables fully-managed, serverless event publishing on AWS without operating a broker.
+- FIFO queue support provides per-entity ordering and exactly-once delivery guarantees at the SQS level.
+- Batch publish reduces API calls and cost for high-volume event streams.
+- Works seamlessly alongside the existing Azure Service Bus channel in multi-cloud architectures.
+
+---
+
+### 17. Amazon SNS Publisher Channel
+
+> *Fan out CloudEvents to Amazon SNS topics for multi-subscriber delivery across SQS queues, Lambda functions, HTTP endpoints, and mobile push.*
+
+**The problem today:** Amazon SNS is the standard AWS mechanism for pub/sub fan-out to heterogeneous subscribers, yet there is no first-party Hermodr adapter, forcing teams to call the SNS SDK directly outside the framework pipeline.
+
+**What we will build:** A `Hermodr.Publisher.AmazonSns` package wrapping the AWS SDK v3 `IAmazonSimpleNotificationService` client:
+- CloudEvents attributes mapped to SNS message attributes for subscriber-side filtering.
+- SNS message filtering policy integration: the channel can be configured to set attribute values that match subscriber filter policies, enabling content-based fan-out without custom routing code.
+- FIFO SNS topic support with `MessageGroupId` and deduplication ID propagation (mirroring the SQS FIFO channel, item 16).
+- Raw message delivery mode for SQS subscriber stacks that expect the CloudEvent JSON body directly without the SNS envelope wrapper.
+- `AddAmazonSnsEventPublisherChannel()` DI registration extension.
+
+**Benefits:**
+- A single `PublishAsync` call fans the event out to all SNS subscribers — SQS queues, Lambda functions, HTTP/S endpoints, and email — without the publisher needing to know the subscriber topology.
+- SNS message attribute filtering lets the broker perform content-based routing, reducing unnecessary message delivery to uninterested subscribers.
+- Complements the SQS channel (item 16): SNS → SQS is the canonical AWS fanout-to-queue pattern and both channels share the same AWS SDK credential configuration.
+
+---
+
+### 18. Google Cloud Pub/Sub Publisher Channel
+
+> *Publish CloudEvents to Google Cloud Pub/Sub topics with attribute-based filtering and ordering key support.*
+
+**The problem today:** Teams running on Google Cloud have no first-party Hermodr adapter for Pub/Sub and must publish events outside the framework, bypassing the middleware, schema validation, and dead-letter pipeline.
+
+**What we will build:** A `Hermodr.Publisher.GooglePubSub` package wrapping the Google Cloud Pub/Sub client library (`Google.Cloud.PubSub.V1`):
+- CloudEvents attributes mapped to Pub/Sub message attributes following the [CloudEvents Pub/Sub protocol binding](https://github.com/cloudevents/spec/blob/main/cloudevents/bindings/pubsub-protocol-binding.md).
+- Ordering key support: a configurable selector maps a CloudEvents attribute (e.g., `subject` or a custom extension) to the Pub/Sub ordering key, enabling per-entity ordered delivery to subscribers with ordering enabled.
+- Batching via the `PublisherClient` flow control settings, surfaced as framework channel options.
+- Application Default Credentials (ADC) and Workload Identity support through the standard Google Auth library credential resolution chain.
+- `AddGooglePubSubEventPublisherChannel()` DI registration extension.
+
+**Benefits:**
+- Brings the full Hermodr pipeline to GCP-native workloads without a separate publish path.
+- Ordering key integration provides per-aggregate event ordering — a key correctness requirement for event-sourced systems.
+- ADC / Workload Identity credential resolution requires zero credential management code in application services.
+- Complements the AWS channels (items 16–17) for teams operating multi-cloud or migrating between providers.
 
 ---
 
