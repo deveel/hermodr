@@ -71,6 +71,7 @@ namespace Hermodr
         public const string SpanTransportServiceBus = "transport.publish.servicebus";
         public const string SpanTransportMassTransit = "transport.publish.masstransit";
         public const string SpanTransportWebhook = "transport.publish.webhook";
+        public const string SpanTransportDapr = "transport.publish.dapr";
 
         public const string PublishStartTimeItemKey = "Hermodr.Metrics.Publish.StartTime";
 

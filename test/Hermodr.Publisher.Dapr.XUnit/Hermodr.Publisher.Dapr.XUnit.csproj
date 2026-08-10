@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Dapr.Client 1.18.5 transitively depends on Microsoft.Extensions.* >= 10.0.8
+    across all target frameworks, so this project pins the shared version to 10.*
+    (overriding the per-TFM derivation in test/Directory.Build.props).
+  -->
+  <PropertyGroup>
+    <MicrosoftExtensionsVersion>10.0.8</MicrosoftExtensionsVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NSubstitute" Version="5.1.0" />
+    <PackageReference Include="Dapr.Testcontainers" Version="1.18.5" />
+    <PackageReference Include="Testcontainers" Version="4.13.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Hermodr.Publisher.Dapr\Hermodr.Publisher.Dapr.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Fixtures\components\pubsub.yaml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+</Project>
