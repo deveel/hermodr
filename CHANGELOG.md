@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## v1.5.0 - CloudEvents HTTP Binding Compliance for the Webhook Publisher
+
 ### 🚀 Features
 
 - **CloudEvents binary HTTP content mode for the Webhook publisher** (roadmap item 12):
@@ -44,12 +46,14 @@
   HTTP-date), the channel uses it as the next retry delay, overriding the
   configured exponential backoff for that attempt (spec §2.2).
 
-### 🔒 Security
+### ⚠ Breaking Changes
 
-- **Zero breaking change**: the legacy `"json"` default wire format is
-  preserved (regression-guarded); `Discovery` defaults to `null` (no
-  handshake, no `WebHook-Request-Origin` header). All signing, retry, and
+- **None** — the legacy `"json"` default wire format is preserved
+  (regression-guarded); `Discovery` defaults to `null` (no handshake, no
+  `WebHook-Request-Origin` header). All signing, retry, and
   subscriber-management behaviour is unchanged.
+
+**Full Changelog**: https://github.com/deveel/hermodr/compare/v1.4.0...v1.5.0
 
 ## v1.4.0 - Schema Governance & AsyncAPI Export
 
