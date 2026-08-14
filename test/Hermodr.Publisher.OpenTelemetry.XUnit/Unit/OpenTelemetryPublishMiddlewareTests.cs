@@ -107,7 +107,7 @@ public class OpenTelemetryPublishMiddlewareTests
 
         var activity = fixture.SingleProducerActivity;
         Assert.Equal(ActivityStatusCode.Error, activity.Status);
-        Assert.NotEmpty(activity.StatusDescription);
+        Assert.NotEmpty(activity.StatusDescription!);
     }
 
 

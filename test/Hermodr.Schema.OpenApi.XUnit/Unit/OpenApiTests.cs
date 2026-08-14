@@ -26,7 +26,7 @@ namespace Hermodr {
             var schema = OpenApiTestSchemas.SimpleSchema();
             var open = schema.ToOpenApiSchema();
 
-            Assert.True(open.Properties.ContainsKey("user_id"));
+            Assert.True(open.Properties!.ContainsKey("user_id"));
             Assert.True(open.Properties.ContainsKey("email"));
             Assert.True(open.Properties.ContainsKey("age"));
             Assert.True(open.Properties.ContainsKey("nickname"));
@@ -37,9 +37,9 @@ namespace Hermodr {
             var schema = OpenApiTestSchemas.SimpleSchema();
             var open = schema.ToOpenApiSchema();
 
-            Assert.Contains("user_id", open.Required);
-            Assert.Contains("email", open.Required);
-            Assert.DoesNotContain("nickname", open.Required);
+            Assert.Contains("user_id", open.Required!);
+            Assert.Contains("email", open.Required!);
+            Assert.DoesNotContain("nickname", open.Required!);
         }
 
         [Fact]
@@ -51,7 +51,7 @@ namespace Hermodr {
                 .Build();
             var open = schema.ToOpenApiSchema();
 
-            Assert.Equal(JsonSchemaType.Array, open.Properties["tags"].Type);
+            Assert.Equal(JsonSchemaType.Array, open.Properties!["tags"].Type);
             Assert.NotNull(open.Properties["tags"].Items);
             Assert.Equal(JsonSchemaType.String, open.Properties["tags"].Items!.Type);
         }
@@ -61,12 +61,12 @@ namespace Hermodr {
             var schema = OpenApiTestSchemas.NestedSchema();
             var open = schema.ToOpenApiSchema();
 
-            var addr = open.Properties["address"];
+            var addr = open.Properties!["address"];
             Assert.Equal(JsonSchemaType.Object, addr.Type);
-            Assert.True(addr.Properties.ContainsKey("street"));
+            Assert.True(addr.Properties!.ContainsKey("street"));
             Assert.True(addr.Properties.ContainsKey("city"));
-            Assert.Contains("street", addr.Required);
-            Assert.Contains("city", addr.Required);
+            Assert.Contains("street", addr.Required!);
+            Assert.Contains("city", addr.Required!);
         }
 
         [Fact]
@@ -80,7 +80,7 @@ namespace Hermodr {
                 .Build();
             var open = schema.ToOpenApiSchema();
 
-            Assert.NotEmpty(open.Properties["status"].Enum);
+            Assert.NotEmpty(open.Properties!["status"].Enum!);
         }
 
         [Fact]
@@ -88,7 +88,7 @@ namespace Hermodr {
             var schema = OpenApiTestSchemas.SimpleSchema();
             var open = schema.ToOpenApiSchema();
 
-            var age = open.Properties["age"];
+            var age = open.Properties!["age"];
             Assert.Equal("18", age.Minimum);
             Assert.Equal("120", age.Maximum);
         }
@@ -120,7 +120,7 @@ namespace Hermodr {
                 .WithSchemas(new[] { OpenApiTestSchemas.SimpleSchema(), OpenApiTestSchemas.NestedSchema() })
                 .Build();
 
-            Assert.Equal(2, doc.Webhooks.Count);
+            Assert.Equal(2, doc.Webhooks!.Count);
             Assert.True(doc.Webhooks.ContainsKey("user-registered"));
             Assert.True(doc.Webhooks.ContainsKey("order-shipped"));
         }
@@ -133,7 +133,7 @@ namespace Hermodr {
                 .WithSchemas(new[] { OpenApiTestSchemas.SimpleSchema() })
                 .Build();
 
-            Assert.True(doc.Components!.Schemas.ContainsKey("user-registered"));
+            Assert.True(doc.Components!.Schemas!.ContainsKey("user-registered"));
         }
 
         [Fact]
@@ -144,8 +144,8 @@ namespace Hermodr {
                 .WithSchemas(new[] { OpenApiTestSchemas.SimpleSchema() })
                 .Build();
 
-            var pathItem = doc.Webhooks["user-registered"];
-            Assert.True(pathItem.Operations.ContainsKey(HttpMethod.Post));
+            var pathItem = doc.Webhooks!["user-registered"];
+            Assert.True(pathItem.Operations!.ContainsKey(HttpMethod.Post));
         }
 
         [Fact]
@@ -161,7 +161,7 @@ namespace Hermodr {
 
             // The webhook is still emitted (it's schema-driven), but no
             // transport extension should be present.
-            var op = doc.Webhooks["user-registered"].Operations[HttpMethod.Post];
+            var op = doc.Webhooks!["user-registered"].Operations![HttpMethod.Post];
             Assert.Null(op.Extensions);
         }
 
@@ -179,7 +179,7 @@ namespace Hermodr {
                 .WithChannels(new[] { rabbit })
                 .Build();
 
-            var op = doc.Webhooks["user-registered"].Operations[HttpMethod.Post];
+            var op = doc.Webhooks!["user-registered"].Operations![HttpMethod.Post];
             Assert.NotNull(op.Extensions);
             Assert.True(op.Extensions!.ContainsKey("x-hermodr-transport"));
         }
@@ -198,7 +198,7 @@ namespace Hermodr {
                 .WithChannels(new[] { kafka })
                 .Build();
 
-            var op = doc.Webhooks["user-registered"].Operations[HttpMethod.Post];
+            var op = doc.Webhooks!["user-registered"].Operations![HttpMethod.Post];
             Assert.NotNull(op.Extensions);
             Assert.True(op.Extensions!.ContainsKey("x-hermodr-transport"));
         }

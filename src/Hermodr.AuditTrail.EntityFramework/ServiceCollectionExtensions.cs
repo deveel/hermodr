@@ -36,7 +36,7 @@ public static class ServiceCollectionExtensions
         ServiceLifetime lifetime = ServiceLifetime.Scoped)
     {
         services.AddRepositoryContext()
-            .UseEntityFramework<AuditTrailDbContext>(ef => ef.ConfigureDbContext(configure))
+            .UseEntityFramework<AuditTrailDbContext>(ef => ef.ConfigureDbContext(configure ?? (_ => { })))
             .AddRepository<EntityAuditTrailRepository>(lifetime);
         
         services.TryAdd(new ServiceDescriptor(typeof(EntityAuditTrail), typeof(EntityAuditTrail), lifetime));

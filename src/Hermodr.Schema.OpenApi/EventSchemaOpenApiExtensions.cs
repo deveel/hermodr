@@ -110,7 +110,7 @@ namespace Hermodr
 
                 case "allowedValues" when constraint is IEnumMemberConstraint enumConstraint:
                     foreach (var value in enumConstraint.AllowedValueObjects)
-                        prop.Enum.Add(System.Text.Json.JsonSerializer.SerializeToNode(value));
+                        prop.Enum!.Add(System.Text.Json.JsonSerializer.SerializeToNode(value)!);
                     break;
 
                 case "range" when constraint is IRangeConstraint rangeConstraint:

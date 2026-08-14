@@ -125,7 +125,7 @@ public class NdJsonEventDeliveryLogRepositoryTests : IDisposable
         await store.RecordAsync(record, TestContext.Current.CancellationToken);
 
         var results = await store.GetByEventIdAsync(
-            record.Event!.Id, TestContext.Current.CancellationToken);
+            record.Event!.Id!, TestContext.Current.CancellationToken);
 
         Assert.Single(results);
         Assert.Equal(record.Id, results[0].Id);

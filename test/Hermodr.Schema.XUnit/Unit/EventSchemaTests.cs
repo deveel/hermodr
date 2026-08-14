@@ -23,11 +23,11 @@ namespace Hermodr
             // Assert
             var name = schema.Properties["name"];
             Assert.NotNull(name);
-            Assert.Equal("1.0", name.Version.ToString());
+            Assert.Equal("1.0", name.Version!.ToString());
 
             var age = schema.Properties["age"];
             Assert.NotNull(age);
-            Assert.Equal("1.0", age.Version.ToString());
+            Assert.Equal("1.0", age.Version!.ToString());
         }
 
         [Fact]
@@ -43,11 +43,11 @@ namespace Hermodr
             // Assert
             var name = schema.Properties["name"];
             Assert.NotNull(name);
-            Assert.Equal("1.0", name.Version.ToString());
+            Assert.Equal("1.0", name.Version!.ToString());
 
             var age = schema.Properties["age"];
             Assert.NotNull(age);
-            Assert.Equal("1.2", age.Version.ToString());
+            Assert.Equal("1.2", age.Version!.ToString());
         }
 
         [Fact]
@@ -100,7 +100,7 @@ namespace Hermodr
             // Assert
             var name = schema.Properties["name"];
             Assert.NotNull(name);
-            Assert.Equal("1.1", name.Version.ToString());
+            Assert.Equal("1.1", name.Version!.ToString());
         }
 
         // ── IEventProperty interface contract ─────────────────────────────────

@@ -67,7 +67,7 @@ public class EntityEventDeliveryLogRepositoryIntegrationTests : IClassFixture<Sq
         var record = CreateRecord();
         await repo.RecordAsync(record, TestContext.Current.CancellationToken);
 
-        var results = await repo.GetByEventIdAsync(record.Event!.Id, TestContext.Current.CancellationToken);
+        var results = await repo.GetByEventIdAsync(record.Event!.Id!, TestContext.Current.CancellationToken);
         var found = Assert.Single(results);
         Assert.Equal(record.Id, found.Id);
         Assert.Equal(record.Event.Type, found.EventType);
@@ -287,7 +287,7 @@ public class EntityEventDeliveryLogRepositoryIntegrationTests : IClassFixture<Sq
         var publishLog = (IEventPublishDeliveryLog)repo;
         await publishLog.RecordAsync(record, TestContext.Current.CancellationToken);
 
-        var results = await repo.GetByEventIdAsync(record.Event!.Id, TestContext.Current.CancellationToken);
+        var results = await repo.GetByEventIdAsync(record.Event!.Id!, TestContext.Current.CancellationToken);
         Assert.Single(results);
     }
 

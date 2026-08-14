@@ -195,7 +195,7 @@ public class PublisherMetricsTests
             HermodrDiagnostics.Meter = _originalMeter;
             _testMeter.Dispose();
             _listener.Dispose();
-            _activityListener.Dispose();
+            _activityListener!.Dispose();
             return _provider.DisposeAsync();
         }
     }

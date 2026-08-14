@@ -10,7 +10,7 @@ namespace Hermodr {
     /// do not declare a version greater than the owning element.
     /// </summary>
     interface IVersionedElement {
-        /// <summary>Gets the version of this element.</summary>
-        Version Version { get; }
+        /// <summary>Gets the version of this element, or <c>null</c> when the element inherits its owner's version.</summary>
+        Version? Version { get; }
     }
 }

@@ -91,7 +91,7 @@ namespace Hermodr
 
                     case MissingSchemaBehavior.Fallback:
                         // Use a default empty schema (no constraints)
-                        schema = CreateFallbackSchema(eventType, version);
+                        schema = CreateFallbackSchema(eventType!, version);
                         break;
 
                     case MissingSchemaBehavior.Allow:
