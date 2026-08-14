@@ -62,11 +62,11 @@ jobs:
 
       - name: Build (framework-restricted)
         if: inputs.restrict-build-to-tfm
-        run: dotnet build -c Release --no-restore --framework ${{ env.DOTNET_TFM }} ${{ startsWith(matrix.os, 'windows') && '-m:1 --no-build-server' || '' }}
+        run: dotnet build -c Release --no-restore --framework ${{ env.DOTNET_TFM }} ${{ startsWith(matrix.os, 'windows') && '-m:1 --disable-build-servers' || '' }}
 
       - name: Build
         if: ${{ !inputs.restrict-build-to-tfm }}
-        run: dotnet build -c Release --no-restore ${{ startsWith(matrix.os, 'windows') && '-m:1 --no-build-server' || '' }}
+        run: dotnet build -c Release --no-restore ${{ startsWith(matrix.os, 'windows') && '-m:1 --disable-build-servers' || '' }}
 
       - name: Test (Ubuntu)
         if: startsWith(matrix.os, 'ubuntu')
