@@ -13,6 +13,14 @@ namespace Hermodr
     /// </summary>
     public static class OpenApiDocumentWriter
     {
+        /// <summary>Serialise the supplied OpenAPI document to the supplied stream in the requested format.</summary>
+        /// <param name="stream">The destination stream to write the serialised document to.</param>
+        /// <param name="document">The OpenAPI document to serialise.</param>
+        /// <param name="format">The serialisation format (JSON or YAML).</param>
+        /// <remarks>
+        /// The format switches between the <see cref="OpenApiYamlWriter"/> and <see cref="OpenApiJsonWriter"/>
+        /// implementations from Microsoft.OpenApi.
+        /// </remarks>
         public static void Serialize(Stream stream, OpenApiDocument document, OpenApiFormat format)
         {
             using var textWriter = new StreamWriter(stream, leaveOpen: true);

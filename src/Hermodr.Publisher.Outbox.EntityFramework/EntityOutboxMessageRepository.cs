@@ -83,6 +83,10 @@ public class EntityOutboxMessageRepository<TMessage>
         await base.AddAsync(message, cancellationToken);
     }
 
+    /// <summary>Gets the current delivery status of the supplied outbox message.</summary>
+    /// <param name="message">The outbox message whose status should be retrieved.</param>
+    /// <param name="cancellationToken">A token used to observe cancellation of the operation.</param>
+    /// <returns>A <see cref="Task{OutboxMessageStatus}"/> result that completes with the message's current <see cref="OutboxMessageStatus"/>.</returns>
     public Task<OutboxMessageStatus> GetStatusAsync(TMessage message, CancellationToken cancellationToken = default)
     {
         return Task.FromResult(message.Status);

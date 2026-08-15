@@ -41,15 +41,25 @@ namespace Hermodr {
                 .WithNamingConvention(CamelCaseNamingConvention.Instance)
                 .Build();
 
+        /// <summary>Serialise the supplied AsyncAPI document as a JSON string.</summary>
+        /// <param name="document">The AsyncAPI document to serialise.</param>
+        /// <returns>A JSON-encoded string representation of the document.</returns>
         public static string ToJson(AsyncApiDocument document)
             => JsonConvert.SerializeObject(document, JsonSettings);
 
+        /// <summary>Serialise the supplied AsyncAPI document as a YAML string.</summary>
+        /// <param name="document">The AsyncAPI document to serialise.</param>
+        /// <returns>A YAML-encoded string representation of the document.</returns>
         public static string ToYaml(AsyncApiDocument document) {
             var json = ToJson(document);
             var obj = YamlJsonBridge.Deserialize<object>(new System.IO.StringReader(json));
             return YamlSerializer.Serialize(obj);
         }
 
+        /// <summary>Serialise the supplied AsyncAPI document in the requested format.</summary>
+        /// <param name="document">The AsyncAPI document to serialise.</param>
+        /// <param name="format">The serialisation format (JSON or YAML).</param>
+        /// <returns>A string representation of the document encoded in the requested format.</returns>
         public static string Serialize(AsyncApiDocument document, AsyncApiFormat format)
             => format == AsyncApiFormat.Yaml ? ToYaml(document) : ToJson(document);
     }

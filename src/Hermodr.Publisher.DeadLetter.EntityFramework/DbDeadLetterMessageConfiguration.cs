@@ -15,6 +15,10 @@ namespace Hermodr;
 /// </summary>
 public class DbDeadLetterMessageConfiguration : IEntityTypeConfiguration<DbDeadLetterMessage>
 {
+    /// <summary>
+    /// Configures the Entity Framework Core model for the <see cref="DbDeadLetterMessage"/> entity type.
+    /// </summary>
+    /// <param name="builder">The builder used to configure the entity type.</param>
     public void Configure(EntityTypeBuilder<DbDeadLetterMessage> builder)
     {
         builder.ToTable("dead_letter_messages");
