@@ -37,11 +37,20 @@ namespace Hermodr
     public class DaprChannelContainerTests : IClassFixture<DaprSidecarFixture>, IAsyncLifetime
     {
         private readonly DaprSidecarFixture _fixture;
-        private readonly IServiceProvider _services;
+        private readonly IServiceProvider? _services;
 
         public DaprChannelContainerTests(DaprSidecarFixture fixture, ITestOutputHelper outputHelper)
         {
             _fixture = fixture;
+
+            // When the Dapr sidecar did not start (e.g. Docker unavailable on
+            // the CI host), the fixture is reported as not-started and the
+            // tests skip themselves via Assert.SkipUnless below. Skip the
+            // DaprChannel/DI construction here too, otherwise building a
+            // DaprClient against the placeholder "http://localhost:0" endpoint
+            // could throw in the test class ctor and turn a skip into a fail.
+            if (!fixture.SidecarStarted)
+                return;
 
             var sidecarDaprClient = new DaprClientBuilder()
                 .UseGrpcEndpoint(fixture.GrpcEndpoint)
@@ -67,7 +76,7 @@ namespace Hermodr
             _services = services.BuildServiceProvider();
         }
 
-        private EventPublisher Publisher => _services.GetRequiredService<EventPublisher>();
+        private EventPublisher Publisher => _services!.GetRequiredService<EventPublisher>();
 
         [Fact]
         public async Task PublishEventThroughDaprSidecar()
