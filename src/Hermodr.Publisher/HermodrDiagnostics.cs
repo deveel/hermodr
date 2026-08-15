@@ -11,7 +11,7 @@ namespace Hermodr
     /// <summary>
     /// Shared <see cref="ActivitySource"/> and <see cref="Meter"/> instances for all
     /// Hermodr instrumentation.  The DI registration in
-    /// <see cref="OpenTelemetry.EventPublisherBuilderExtensions.UseOpenTelemetry"/>
+    /// <c>UseOpenTelemetry</c> (Hermodr.Publisher.OpenTelemetry)
     /// replaces these with user-configured instances.
     /// </summary>
     public static class HermodrDiagnostics

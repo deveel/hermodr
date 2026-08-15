@@ -21,7 +21,7 @@ public sealed class MiddlewareRegistration
 
     /// <summary>
     /// Gets the additional constructor arguments (beyond those resolved from DI)
-    /// passed to <see cref="ActivatorUtilities"/> when the middleware is instantiated.
+    /// passed to <see cref="Microsoft.Extensions.DependencyInjection.ActivatorUtilities"/> when the middleware is instantiated.
     /// </summary>
     public object[] ActivationArguments { get; }
 

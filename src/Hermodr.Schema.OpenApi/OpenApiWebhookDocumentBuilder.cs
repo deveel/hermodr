@@ -65,7 +65,8 @@ namespace Hermodr
 
         /// <summary>
         /// Adds the given schemas to the document. Schema discovery is the
-        /// caller's responsibility; see <see cref="EventSchemaDiscovery"/>.
+        /// caller's responsibility; see the <c>EventSchemaDiscovery</c> type in the
+        /// Hermodr.Schema.AsyncApi package.
         /// </summary>
         public OpenApiWebhookDocumentBuilder WithSchemas(IEnumerable<IEventSchema> schemas)
         {

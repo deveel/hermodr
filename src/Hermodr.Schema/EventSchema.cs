@@ -30,10 +30,10 @@ namespace Hermodr {
         /// Thrown when <paramref name="eventType"/>, <paramref name="version"/>,
         /// or <paramref name="contentType"/> is <c>null</c>.
         /// </exception>
-        /// <exception cref="ArgumentException">
-        /// Thrown when <paramref name="version"/> is not a valid version string
-        /// (i.e. cannot be parsed by <see cref="System.Version.TryParse"/>).
-        /// </exception>
+/// <exception cref="ArgumentException">
+    /// Thrown when <paramref name="version"/> is not a valid version string
+    /// (i.e. cannot be parsed by <see cref="Version.TryParse(string, out System.Version)"/>).
+    /// </exception>
         public EventSchema(string eventType, string version, string contentType) {
 			ArgumentNullException.ThrowIfNull(eventType, nameof(eventType));
 			ArgumentNullException.ThrowIfNull(version, nameof(version));

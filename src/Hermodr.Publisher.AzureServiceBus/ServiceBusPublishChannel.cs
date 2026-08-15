@@ -44,6 +44,9 @@ namespace Hermodr {
         /// <param name="messageCreator">
         /// The factory to create the message to send to the queue.
         /// </param>
+        /// <param name="serviceProvider">
+        /// The service provider used to lazily resolve dependencies.
+        /// </param>
         /// <param name="logger">
         /// A logger to record the operations of the channel.
         /// </param>

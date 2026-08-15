@@ -81,7 +81,7 @@ namespace Hermodr
         /// Validates <paramref name="options"/> using any
         /// <see cref="IValidateOptions{TOptions}"/> registered in the DI container.
         /// When no validators are registered the method falls back to
-        /// <see cref="Validator.ValidateObject"/> (DataAnnotations).
+        /// <see cref="Validator.ValidateObject(object, ValidationContext, bool)"/> (DataAnnotations).
         /// </summary>
         /// <param name="options">The effective options to validate.</param>
         /// <exception cref="OptionsValidationException">

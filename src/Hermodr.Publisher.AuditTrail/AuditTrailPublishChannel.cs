@@ -38,6 +38,9 @@ public class AuditTrailPublishChannel : EventPublishChannel<AuditTrailPublishOpt
     /// <param name="options">
     /// The channel-level default options resolved from the DI container.
     /// </param>
+    /// <param name="serviceProvider">
+    /// The service provider used to lazily resolve dependencies.
+    /// </param>
     /// <param name="logger">
     /// An optional logger.
     /// </param>

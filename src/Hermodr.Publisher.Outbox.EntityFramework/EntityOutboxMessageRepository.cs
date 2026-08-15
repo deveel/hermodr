@@ -16,14 +16,10 @@ namespace Hermodr;
 /// built on top of <see cref="EntityRepository{TEntity,TKey}"/>.
 /// </summary>
 /// <typeparam name="TMessage">
-/// The outbox message entity type.  Must be a reference type and implement
-/// <see cref="IOutboxMessageEntity"/> so the repository can mutate its delivery state.
-/// </typeparam>
-/// <typeparam name="TContext">
-/// The <see cref="DbContext"/> type that contains the <typeparamref name="TMessage"/>
-/// entity set.
-/// </typeparam>
-/// <remarks>
+    /// The outbox message entity type.  Must be a reference type that derives from
+    /// <see cref="DbOutboxMessage"/> so the repository can mutate its delivery state.
+    /// </typeparam>
+    /// <remarks>
 /// <para>
 /// Register this repository via
 /// <see cref="OutboxChannelBuilderExtensions.WithEntityFramework"/>
@@ -62,12 +58,9 @@ public class EntityOutboxMessageRepository<TMessage>
     /// <see cref="DateTimeOffset.UtcNow"/>.
     /// Provide a test double in unit / integration tests to make timestamps deterministic.
     /// </param>
-    /// <param name="loggerFactory">
-    /// An optional <see cref="ILoggerFactory"/> used to create loggers both for the
-    /// base <see cref="EntityRepository{TEntity,TKey}"/> and for this derived class.
-    /// When <c>null</c>, <see cref="NullLogger"/> is used and no output is produced.
-    /// In production the DI container will typically supply an <see cref="ILoggerFactory"/>
-    /// automatically.
+    /// <param name="logger">
+    /// An optional logger used by the repository.  When <c>null</c>,
+    /// <see cref="NullLogger"/> is used and no output is produced.
     /// </param>
     public EntityOutboxMessageRepository(OutboxDbContext context, ISystemTime? systemTime = null, ILogger<EntityOutboxMessageRepository<TMessage>>? logger = null)
         : base(context, null, logger)

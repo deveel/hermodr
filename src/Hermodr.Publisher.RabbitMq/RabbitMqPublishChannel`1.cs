@@ -45,6 +45,7 @@ namespace Hermodr
         /// will contain default values that are overridden by <paramref name="typedOptions"/>.
         /// </param>
         /// <param name="connection">The AMQ connection shared with other channels.</param>
+        /// <param name="serviceProvider">The service provider used to lazily resolve dependencies.</param>
         /// <param name="logger">Optional logger; falls back to NullLogger when <c>null</c>.</param>
         public RabbitMqPublishChannel(
             IOptions<RabbitMqPublishOptions<TEvent>> typedOptions,

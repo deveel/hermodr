@@ -11,8 +11,9 @@ public static class ServiceCollectionExtensions
 {
     /// <summary>
     /// Adds the in-memory audit trail services to the service collection,
-    /// including both the writer and reader. Uses <see cref="ServiceCollectionDescriptorExtensions.TryAdd{TService}(IServiceCollection)"/>
-    /// for shared services to avoid duplicates when the publisher is also registered.
+    /// including both the writer and reader. Uses the <c>TryAddSingleton&lt;TService&gt;</c>
+    /// family of extension methods for shared services to avoid duplicates when the
+    /// publisher is also registered.
     /// </summary>
     /// <param name="services">
     /// The service collection to add the services to.
@@ -33,8 +34,8 @@ public static class ServiceCollectionExtensions
     /// <summary>
     /// Adds the in-memory audit trail querying infrastructure to the service collection.
     /// This registers only the <see cref="IAuditTrailReader{TEntry}"/> without the writer.
-    /// Uses <see cref="ServiceCollectionDescriptorExtensions.TryAdd{TService}(IServiceCollection)"/>
-    /// for shared services so that publisher and reader can coexist in the same application
+    /// Uses the <c>TryAddSingleton&lt;TService&gt;</c> family of extension methods for
+    /// shared services so that publisher and reader can coexist in the same application
     /// without duplicate registrations.
     /// </summary>
     /// <param name="services">

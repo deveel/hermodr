@@ -46,6 +46,9 @@ namespace Hermodr
         /// <param name="sendEndpointProvider">
         /// The MassTransit send-endpoint provider used when a destination address is configured.
         /// </param>
+        /// <param name="serviceProvider">
+        /// The service provider used to lazily resolve dependencies.
+        /// </param>
         /// <param name="logger">
         /// An optional logger; when <c>null</c> a <see cref="Microsoft.Extensions.Logging.Abstractions.NullLogger{T}"/> is used.
         /// </param>
