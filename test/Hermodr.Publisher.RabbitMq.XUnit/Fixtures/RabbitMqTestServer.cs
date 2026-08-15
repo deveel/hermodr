@@ -9,8 +9,8 @@ namespace Hermodr
 
         public RabbitMqTestServer()
         {
-            rabbitMq = new RabbitMqBuilder()
-                .Build();
+rabbitMq = new RabbitMqBuilder("rabbitmq:3-management-alpine")
+            .Build();
         }
 
         public string ConnectionString => rabbitMq.GetConnectionString();

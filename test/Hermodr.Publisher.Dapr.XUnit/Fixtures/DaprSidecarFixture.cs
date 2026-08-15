@@ -47,8 +47,7 @@ namespace Hermodr
             // The pubsub.yaml component references the Redis host as "redis:6379",
             // so the container is registered on the shared network with the
             // "redis" alias to make it resolvable by daprd.
-            _redis = new ContainerBuilder()
-                .WithImage("redis:alpine")
+            _redis = new ContainerBuilder("redis:alpine")
                 .WithName("hermodr-redis-" + Guid.NewGuid().ToString("N"))
                 .WithNetwork(_network)
                 .WithNetworkAliases("redis")
