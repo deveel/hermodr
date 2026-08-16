@@ -38,6 +38,9 @@ internal sealed class OutboxPublishChannel<TMessage> : EventPublishChannel<Outbo
     /// <see cref="IOutboxMessageStore{TMessage}"/> can be resolved without causing
     /// a scoped-in-singleton lifetime violation.
     /// </param>
+    /// <param name="serviceProvider">
+    /// The service provider used to lazily resolve dependencies.
+    /// </param>
     /// <param name="logger">
     /// An optional logger; when <c>null</c> a <see cref="NullLogger{T}"/> is used.
     /// </param>

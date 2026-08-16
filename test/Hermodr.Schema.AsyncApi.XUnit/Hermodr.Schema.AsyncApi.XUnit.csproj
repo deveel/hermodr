@@ -1,5 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
+  <PropertyGroup>
+    <!-- Microsoft.AspNetCore.App (FrameworkReference below) already provides
+         Microsoft.Extensions.DependencyInjection / Configuration; the shared
+         test/Directory.Build.props would otherwise inject them and emit NU1510. -->
+    <HermodrSkipFrameworkExtensions>true</HermodrSkipFrameworkExtensions>
+  </PropertyGroup>
+
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>

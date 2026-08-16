@@ -79,7 +79,7 @@ public class DbDeadLetterMessageTests
 
         Assert.Equal(eventId, entity.Id);
         Assert.Equal("user.created", entity.EventType);
-        Assert.Equal(cloudEvent.Source.ToString(), entity.Source);
+        Assert.Equal(cloudEvent.Source!.ToString(), entity.Source);
         Assert.Equal("users/42", entity.Subject);
         Assert.Equal(cloudEvent.Time, entity.EventTime);
         Assert.Equal("application/json", entity.DataContentType);

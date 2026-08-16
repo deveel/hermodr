@@ -21,8 +21,8 @@ public class EntityAuditTrail : IAuditTrailWriter, IAuditTrailReader<DbAuditTrai
     /// <summary>
     /// Creates a new instance of <see cref="EntityAuditTrail"/>.
     /// </summary>
-    /// <param name="context">
-    /// The database context to use for data access.
+    /// <param name="repository">
+    /// The repository (database context) used for data access.
     /// </param>
     /// <param name="logger">
     /// An optional logger.

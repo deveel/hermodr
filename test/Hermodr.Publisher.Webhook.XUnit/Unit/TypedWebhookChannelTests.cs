@@ -159,6 +159,12 @@ public class TypedWebhookChannelTests
     [Fact]
     public void UseWebhookSignatureProvider_AppendsToEnumerable_NotReplaces()
     {
+        // HMAC-SHA1 is intentionally registered here to exercise the legacy
+        // signature-provider registration path. The test asserts that adding
+        // a provider appends rather than replaces, which is provider-agnostic;
+        // HmacSha1SignatureProvider is marked obsolete because SHA-1 is weak,
+        // but the test does not rely on SHA-1 interop, only on the DI behavior.
+#pragma warning disable CS0618 // HmacSha1SignatureProvider is obsolete: SHA-1 considered cryptographically weak
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddEventPublisher(o => o.Source = new Uri("https://example.com"))
@@ -167,7 +173,8 @@ public class TypedWebhookChannelTests
 
         var shaCount = services.Count(d =>
             d.ServiceType == typeof(IWebhookSignatureProvider) &&
-            d.ImplementationType == typeof(HmacSha1SignatureProvider));
+d.ImplementationType == typeof(HmacSha1SignatureProvider));
+#pragma warning restore CS0618
 
         Assert.True(shaCount >= 1);
     }

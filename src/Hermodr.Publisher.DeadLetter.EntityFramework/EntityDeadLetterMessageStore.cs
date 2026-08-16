@@ -33,8 +33,17 @@ public class EntityDeadLetterMessageStore<TMessage>
         _systemTime = systemTime ?? EventSystemTime.Instance;
     }
 
+    /// <summary>
+    /// Gets the Entity Framework dead-letter context backing this store.
+    /// </summary>
     protected new DeadLetterDbContext Context => (DeadLetterDbContext)base.Context;
 
+    /// <summary>
+    /// Marks the specified dead-letter message as currently being replayed and persists the change.
+    /// </summary>
+    /// <param name="message">The dead-letter message to update.</param>
+    /// <param name="cancellationToken">Token to cancel the asynchronous operation.</param>
+    /// <returns>A task that represents the asynchronous save operation.</returns>
     public Task SetReplayingAsync(TMessage message, CancellationToken cancellationToken = default)
     {
         message.Status = DeadLetterMessageStatus.Replaying;
@@ -42,6 +51,12 @@ public class EntityDeadLetterMessageStore<TMessage>
         return SaveAsync(message, cancellationToken);
     }
 
+    /// <summary>
+    /// Marks the specified dead-letter message as successfully replayed, clears the next replay time, and persists the change.
+    /// </summary>
+    /// <param name="message">The dead-letter message to update.</param>
+    /// <param name="cancellationToken">Token to cancel the asynchronous operation.</param>
+    /// <returns>A task that represents the asynchronous save operation.</returns>
     public Task SetReplayedAsync(TMessage message, CancellationToken cancellationToken = default)
     {
         message.Status = DeadLetterMessageStatus.Replayed;
@@ -50,6 +65,14 @@ public class EntityDeadLetterMessageStore<TMessage>
         return SaveAsync(message, cancellationToken);
     }
 
+    /// <summary>
+    /// Schedules a new replay attempt for the specified dead-letter message, recording the error message and next replay time, and persists the change.
+    /// </summary>
+    /// <param name="message">The dead-letter message to update.</param>
+    /// <param name="errorMessage">The error message describing the failed replay attempt.</param>
+    /// <param name="nextReplayAt">The UTC time at which the next replay should be attempted.</param>
+    /// <param name="cancellationToken">Token to cancel the asynchronous operation.</param>
+    /// <returns>A task that represents the asynchronous save operation.</returns>
     public Task SetRetryAsync(
         TMessage message,
         string errorMessage,
@@ -64,6 +87,13 @@ public class EntityDeadLetterMessageStore<TMessage>
         return SaveAsync(message, cancellationToken);
     }
 
+    /// <summary>
+    /// Marks the specified dead-letter message as permanently failed, recording the error message, and persists the change.
+    /// </summary>
+    /// <param name="message">The dead-letter message to update.</param>
+    /// <param name="errorMessage">The error message describing why the message failed.</param>
+    /// <param name="cancellationToken">Token to cancel the asynchronous operation.</param>
+    /// <returns>A task that represents the asynchronous save operation.</returns>
     public Task SetFailedAsync(TMessage message, string errorMessage, CancellationToken cancellationToken = default)
     {
         message.Status = DeadLetterMessageStatus.Failed;
@@ -72,6 +102,12 @@ public class EntityDeadLetterMessageStore<TMessage>
         return SaveAsync(message, cancellationToken);
     }
 
+    /// <summary>
+    /// Returns the dead-letter messages that are pending replay and eligible to be attempted now.
+    /// </summary>
+    /// <param name="limit">The optional maximum number of messages to return.</param>
+    /// <param name="cancellationToken">Token to cancel the asynchronous operation.</param>
+    /// <returns>A task that represents the asynchronous read operation. The result contains the read-only list of messages pending replay and eligible for replay.</returns>
     public async Task<IReadOnlyList<TMessage>> GetPendingMessagesAsync(int? limit = null, CancellationToken cancellationToken = default)
     {
         var query = Context.Set<TMessage>()

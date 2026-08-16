@@ -41,6 +41,9 @@ namespace Hermodr
         /// </summary>
         public const string Http = "http";
 
+        /// <summary>Dapr pub/sub building block transport identifier (<c>"dapr"</c>).</summary>
+        public const string Dapr = "dapr";
+
         /// <summary>
         /// Marks a channel that is not a message transport (storage, deferral,
         /// recovery, ...). Exporters exclude channels with this transport from

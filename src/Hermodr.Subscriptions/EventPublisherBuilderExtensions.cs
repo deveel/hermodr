@@ -46,7 +46,7 @@ namespace Hermodr
         /// <para>
         /// Pass a <paramref name="configure"/> action to customise
         /// <see cref="EventDispatcherOptions"/> (e.g. set
-        /// <see cref="EventDispatcherOptions.MaxRoutingDepth"/>) inline without a separate call.
+        /// <c>MaxRoutingDepth</c>) inline without a separate call.
         /// </para>
         /// <para>
         /// To return to the parent <see cref="EventPublisherBuilder"/> after configuring

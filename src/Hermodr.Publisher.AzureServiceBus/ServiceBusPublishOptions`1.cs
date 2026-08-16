@@ -13,8 +13,8 @@ namespace Hermodr
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <see cref="ConnectionString"/> and <see cref="QueueName"/> are redeclared as nullable
-    /// so that leaving them unset signals "inherit from the base channel options".
+    /// <see cref="ServiceBusPublishOptions.ConnectionString"/> and <see cref="ServiceBusPublishOptions.QueueName"/> are inherited
+    /// unchanged from the base class so that leaving them unset signals "inherit from the base channel options".
     /// </para>
     /// <para>
     /// Any property left at <c>null</c> (or at its zero-value for strings) will be

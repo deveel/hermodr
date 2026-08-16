@@ -11,7 +11,7 @@ namespace Hermodr
     /// <summary>
     /// Shared <see cref="ActivitySource"/> and <see cref="Meter"/> instances for all
     /// Hermodr instrumentation.  The DI registration in
-    /// <see cref="OpenTelemetry.EventPublisherBuilderExtensions.UseOpenTelemetry"/>
+    /// <c>UseOpenTelemetry</c> (Hermodr.Publisher.OpenTelemetry)
     /// replaces these with user-configured instances.
     /// </summary>
     public static class HermodrDiagnostics
@@ -81,16 +81,27 @@ namespace Hermodr
     /// </summary>
     public static class TelemetryTags
     {
+        /// <summary>The OpenTelemetry tag key carrying the event type.</summary>
         public const string EventType = "event.type";
+        /// <summary>The OpenTelemetry tag key for the messaging system identifier.</summary>
         public const string MessagingSystem = "messaging.system";
+        /// <summary>The OpenTelemetry tag key for the messaging operation name.</summary>
         public const string MessagingOperation = "messaging.operation";
+        /// <summary>The OpenTelemetry tag key for the messaging destination name.</summary>
         public const string MessagingDestination = "messaging.destination";
+        /// <summary>The OpenTelemetry tag key for the messaging destination kind.</summary>
         public const string MessagingDestinationKind = "messaging.destination_kind";
+        /// <summary>The OpenTelemetry tag key for the RabbitMQ routing key.</summary>
         public const string MessagingRabbitMqRoutingKey = "messaging.rabbitmq.routing_key";
+        /// <summary>The OpenTelemetry tag key for the HTTP request method.</summary>
         public const string HttpRequestMethod = "http.request.method";
+        /// <summary>The OpenTelemetry tag key for the subscription name.</summary>
         public const string SubscriptionName = "subscription.name";
+        /// <summary>The OpenTelemetry tag key for the channel type.</summary>
         public const string ChannelType = "channel.type";
+        /// <summary>The OpenTelemetry tag key for the message identifier.</summary>
         public const string MessageId = "message.id";
+        /// <summary>The OpenTelemetry tag key indicating whether the operation succeeded.</summary>
         public const string Success = "success";
     }
 }

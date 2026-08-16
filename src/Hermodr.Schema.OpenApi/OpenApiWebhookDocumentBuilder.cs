@@ -65,7 +65,8 @@ namespace Hermodr
 
         /// <summary>
         /// Adds the given schemas to the document. Schema discovery is the
-        /// caller's responsibility; see <see cref="EventSchemaDiscovery"/>.
+        /// caller's responsibility; see the <c>EventSchemaDiscovery</c> type in the
+        /// Hermodr.Schema.AsyncApi package.
         /// </summary>
         public OpenApiWebhookDocumentBuilder WithSchemas(IEnumerable<IEventSchema> schemas)
         {
@@ -173,11 +174,11 @@ namespace Hermodr
                     operation.Extensions ??= new Dictionary<string, IOpenApiExtension>();
                     operation.Extensions["x-hermodr-transport"] =
                         new Microsoft.OpenApi.JsonNodeExtension(
-                            System.Text.Json.JsonSerializer.SerializeToNode(channel.Transport));
+                            System.Text.Json.JsonSerializer.SerializeToNode(channel.Transport)!);
                     if (channel.Properties.Count > 0)
                         operation.Extensions["x-hermodr-properties"] =
                             new Microsoft.OpenApi.JsonNodeExtension(
-                                System.Text.Json.JsonSerializer.SerializeToNode(channel.Properties));
+                                System.Text.Json.JsonSerializer.SerializeToNode(channel.Properties)!);
                 }
 
                 doc.Webhooks[key] = new OpenApiPathItem

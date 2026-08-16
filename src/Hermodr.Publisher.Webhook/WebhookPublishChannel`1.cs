@@ -41,6 +41,7 @@ namespace Hermodr
         /// <c>AddWebhooks(configure)</c>.  Unset typed values fall back to these defaults.
         /// </param>
         /// <param name="httpClientFactory">HTTP client factory for webhook delivery.</param>
+        /// <param name="serviceProvider">The service provider used to lazily resolve dependencies.</param>
         /// <param name="logger">Optional logger; falls back to NullLogger when <c>null</c>.</param>
         public WebhookPublishChannel(
             IOptions<WebhookPublishOptions<TEvent>> typedOptions,

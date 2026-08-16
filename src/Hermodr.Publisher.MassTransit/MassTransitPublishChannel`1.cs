@@ -43,6 +43,7 @@ namespace Hermodr
         /// </param>
         /// <param name="publishEndpoint">MassTransit publish endpoint.</param>
         /// <param name="sendEndpointProvider">MassTransit send-endpoint provider.</param>
+        /// <param name="serviceProvider">The service provider used to lazily resolve dependencies.</param>
         /// <param name="logger">Optional logger; falls back to NullLogger when <c>null</c>.</param>
         public MassTransitPublishChannel(
             IOptions<MassTransitPublishOptions<TEvent>> typedOptions,

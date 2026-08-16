@@ -11,14 +11,14 @@ namespace Hermodr
     /// <remarks>
     /// Prior to the DI-time pipeline registration design, callers had to invoke
     /// <c>publisher.UseDispatcher()</c> after resolving the publisher from the container.
-    /// The <see cref="EventPublisherBuilderExtensions.AddSubscriptions"/> method now
+    /// The <see cref="EventPublisherBuilderExtensions.AddSubscriptions(EventPublisherBuilder, Action{EventDispatcherOptions})"/> method now
     /// wires <see cref="EventDispatcher"/> into the pipeline at registration time
-    /// (via <see cref="EventPublisherBuilder.Use{TMiddleware}"/>), so these extension
+    /// (via <see cref="EventPublisherBuilder.Use{T}"/>), so these extension
     /// methods are no-ops kept only for source compatibility.
     /// <para>
     /// To configure <see cref="EventDispatcherOptions"/> pass an
     /// <c>Action&lt;EventDispatcherOptions&gt;</c> argument to
-    /// <see cref="EventPublisherBuilderExtensions.AddSubscriptions"/> on the builder
+    /// <see cref="EventPublisherBuilderExtensions.AddSubscriptions(EventPublisherBuilder, Action{EventDispatcherOptions})"/> on the builder
     /// instead of passing an <see cref="EventDispatcherOptions"/> instance here.
     /// </para>
     /// </remarks>
@@ -29,7 +29,7 @@ namespace Hermodr
         /// </summary>
         /// <remarks>
         /// The <see cref="EventDispatcher"/> middleware is already wired into the
-        /// pipeline by <see cref="EventPublisherBuilderExtensions.AddSubscriptions"/>;
+        /// pipeline by <see cref="EventPublisherBuilderExtensions.AddSubscriptions(EventPublisherBuilder, Action{EventDispatcherOptions})"/>;
         /// this call is a no-op kept for source compatibility.
         /// </remarks>
         /// <param name="publisher">The publisher instance.</param>
@@ -52,12 +52,12 @@ namespace Hermodr
         /// <para>
         /// To configure <see cref="EventDispatcherOptions"/> pass an
         /// <c>Action&lt;EventDispatcherOptions&gt;</c> to
-        /// <see cref="EventPublisherBuilderExtensions.AddSubscriptions"/> on the
+        /// <see cref="EventPublisherBuilderExtensions.AddSubscriptions(EventPublisherBuilder, Action{EventDispatcherOptions})"/> on the
         /// <see cref="EventPublisherBuilder"/> during DI registration instead.
         /// </para>
         /// </remarks>
         /// <param name="publisher">The publisher instance.</param>
-        /// <param name="options">Ignored — configure options via the <c>configure</c> argument of <see cref="EventPublisherBuilderExtensions.AddSubscriptions"/>.</param>
+        /// <param name="options">Ignored — configure options via the <c>configure</c> argument of <see cref="EventPublisherBuilderExtensions.AddSubscriptions(EventPublisherBuilder, Action{EventDispatcherOptions})"/>.</param>
         /// <returns>The same <paramref name="publisher"/> instance.</returns>
         [Obsolete(
             "Pass EventDispatcherOptions via the configure argument of AddSubscriptions() on the EventPublisherBuilder at DI-registration time. " +

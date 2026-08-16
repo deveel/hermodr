@@ -68,7 +68,7 @@ public class EntityEventDeliveryLogRepositoryTests : IAsyncDisposable
         var record = CreateRecord();
         await _repository.RecordAsync(record, TestContext.Current.CancellationToken);
 
-        var results = await _repository.GetByEventIdAsync(record.Event!.Id, TestContext.Current.CancellationToken);
+        var results = await _repository.GetByEventIdAsync(record.Event!.Id!, TestContext.Current.CancellationToken);
         Assert.Single(results);
     }
 

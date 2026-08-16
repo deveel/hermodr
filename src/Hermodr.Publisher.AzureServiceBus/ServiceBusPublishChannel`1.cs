@@ -46,6 +46,7 @@ namespace Hermodr
         /// </param>
         /// <param name="clientFactory">Factory that creates the <see cref="ServiceBusClient"/>.</param>
         /// <param name="messageCreator">Factory that converts a CloudEvent into a Service Bus message.</param>
+        /// <param name="serviceProvider">The service provider used to lazily resolve dependencies.</param>
         /// <param name="logger">Optional logger; falls back to NullLogger when <c>null</c>.</param>
         public ServiceBusPublishChannel(
             IOptions<ServiceBusPublishOptions<TEvent>> typedOptions,

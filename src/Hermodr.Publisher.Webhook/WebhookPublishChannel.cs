@@ -71,6 +71,9 @@ namespace Hermodr
         /// The <see cref="IHttpClientFactory"/> used to create named HTTP clients for
         /// each delivery attempt.
         /// </param>
+        /// <param name="serviceProvider">
+        /// The service provider used to lazily resolve serializers and signature providers.
+        /// </param>
         /// <param name="logger">
         /// An optional logger; when <c>null</c> a
         /// <see cref="Microsoft.Extensions.Logging.Abstractions.NullLogger{T}"/> is used.
@@ -228,8 +231,8 @@ namespace Hermodr
 
         // ── IBatchEventPublishChannel ────────────────
 
-        Task IBatchEventPublishChannel.PublishBatchAsync(IReadOnlyList<CloudEvent> events, EventPublishOptions? options = null,
-            CancellationToken cancellationToken = default)
+        Task IBatchEventPublishChannel.PublishBatchAsync(IReadOnlyList<CloudEvent> events, EventPublishOptions? options,
+            CancellationToken cancellationToken)
         {
             return PublishBatchAsync(events, options as WebhookPublishOptions, cancellationToken);
         }

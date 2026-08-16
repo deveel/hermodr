@@ -20,13 +20,13 @@ namespace Hermodr {
 			Assert.NotNull(property);
 			Assert.Equal("key1", property.Name);
 			Assert.Equal("string", property.DataType);
-			Assert.Equal("1.0", property.Version.ToString());
+			Assert.Equal("1.0", property.Version!.ToString());
 
 			property = schema.Properties["key2"];
 			Assert.NotNull(property);
 			Assert.Equal("key2", property.Name);
 			Assert.Equal("int", property.DataType);
-			Assert.Equal("1.0", property.Version.ToString());
+			Assert.Equal("1.0", property.Version!.ToString());
 		}
 
 		[Fact]
@@ -46,13 +46,13 @@ namespace Hermodr {
 			Assert.NotNull(property);
 			Assert.Equal("key1", property.Name);
 			Assert.Equal("string", property.DataType);
-			Assert.Equal("1.0", property.Version.ToString());
+			Assert.Equal("1.0", property.Version!.ToString());
 
 			property = schema.Properties["key2"];
 			Assert.NotNull(property);
 			Assert.Equal("key2", property.Name);
 			Assert.Equal("int", property.DataType);
-			Assert.Equal("2.0", property.Version.ToString());
+			Assert.Equal("2.0", property.Version!.ToString());
 		}
 
 		[Fact]
@@ -81,7 +81,7 @@ namespace Hermodr {
 			Assert.NotNull(property);
 			Assert.Equal("key1", property.Name);
 			Assert.Equal("string", property.DataType);
-			Assert.Equal("1.0", property.Version.ToString());
+			Assert.Equal("1.0", property.Version!.ToString());
 			Assert.NotEmpty(property.Constraints);
 			Assert.True(property.IsRequired());
 
@@ -89,7 +89,7 @@ namespace Hermodr {
 			Assert.NotNull(property);
 			Assert.Equal("key2", property.Name);
 			Assert.Equal("int", property.DataType);
-			Assert.Equal("1.0", property.Version.ToString());
+			Assert.Equal("1.0", property.Version!.ToString());
 			Assert.NotEmpty(property.Constraints);
 			Assert.IsType<RangeConstraint<int>>(property.Constraints.First());
 		}
@@ -110,19 +110,19 @@ namespace Hermodr {
 			Assert.NotNull(property);
 			Assert.Equal("first_name", property.Name);
 			Assert.Equal("string", property.DataType);
-			Assert.Equal("1.0", property.Version.ToString());
+			Assert.Equal("1.0", property.Version!.ToString());
 
 			property = schema.Properties["last_name"];
 			Assert.NotNull(property);
 			Assert.Equal("last_name", property.Name);
 			Assert.Equal("string", property.DataType);
-			Assert.Equal("1.0", property.Version.ToString());
+			Assert.Equal("1.0", property.Version!.ToString());
 
 			property = schema.Properties["middle_name"];
 			Assert.NotNull(property);
 			Assert.Equal("middle_name", property.Name);
 			Assert.Equal("string", property.DataType);
-			Assert.Equal("1.0", property.Version.ToString());
+			Assert.Equal("1.0", property.Version!.ToString());
 		}
 
 		[Fact]
@@ -142,25 +142,25 @@ namespace Hermodr {
 			Assert.NotNull(property);
 			Assert.Equal("first_name", property.Name);
 			Assert.Equal("string", property.DataType);
-			Assert.Equal("1.0", property.Version.ToString());
+			Assert.Equal("1.0", property.Version!.ToString());
 
 			property = schema.Properties["last_name"];
 			Assert.NotNull(property);
 			Assert.Equal("last_name", property.Name);
 			Assert.Equal("string", property.DataType);
-			Assert.Equal("1.0", property.Version.ToString());
+			Assert.Equal("1.0", property.Version!.ToString());
 
 			property = schema.Properties["middle_name"];
 			Assert.NotNull(property);
 			Assert.Equal("middle_name", property.Name);
 			Assert.Equal("string", property.DataType);
-			Assert.Equal("1.0", property.Version.ToString());
+			Assert.Equal("1.0", property.Version!.ToString());
 
 			property = schema.Properties["age"];
 			Assert.NotNull(property);
 			Assert.Equal("age", property.Name);
 			Assert.Equal("int", property.DataType);
-			Assert.Equal("2.0", property.Version.ToString());
+			Assert.Equal("2.0", property.Version!.ToString());
 			Assert.NotEmpty(property.Constraints);
 			Assert.IsType<RangeConstraint<int>>(property.Constraints.First());
 
@@ -183,7 +183,7 @@ namespace Hermodr {
 			Assert.NotNull(property);
 			Assert.Equal("Email", property.Name);
 			Assert.Equal(typeof(EmailAddress).FullName, property.DataType);
-			Assert.Equal("1.0", property.Version.ToString());
+			Assert.Equal("1.0", property.Version!.ToString());
 			Assert.NotEmpty(property.Properties);
 
 			Assert.True(property.Properties.Contains("DisplayName"));
@@ -193,13 +193,13 @@ namespace Hermodr {
 			Assert.NotNull(subProperty);
 			Assert.Equal("DisplayName", subProperty.Name);
 			Assert.Equal("string", subProperty.DataType);
-			Assert.Equal("1.0", subProperty.Version.ToString());
+			Assert.Equal("1.0", subProperty.Version!.ToString());
 
 			subProperty = property.Properties["Address"];
 			Assert.NotNull(subProperty);
 			Assert.Equal("Address", subProperty.Name);
 			Assert.Equal("string", subProperty.DataType);
-			Assert.Equal("1.0", subProperty.Version.ToString());
+			Assert.Equal("1.0", subProperty.Version!.ToString());
 			Assert.NotEmpty(subProperty.Constraints);
 			Assert.IsType<PropertyRequiredConstraint>(subProperty.Constraints.First());
 		}
@@ -222,7 +222,7 @@ namespace Hermodr {
 			Assert.NotNull(property);
 			Assert.Equal("first_name", property.Name);
 			Assert.Equal("string", property.DataType);
-			Assert.Equal("1.0", property.Version.ToString());
+			Assert.Equal("1.0", property.Version!.ToString());
 			Assert.NotEmpty(property.Constraints);
 			Assert.IsType<PropertyRequiredConstraint>(property.Constraints.First());
 
@@ -230,7 +230,7 @@ namespace Hermodr {
 			Assert.NotNull(property);
 			Assert.Equal("last_name", property.Name);
 			Assert.Equal("string", property.DataType);
-			Assert.Equal("1.0", property.Version.ToString());
+			Assert.Equal("1.0", property.Version!.ToString());
 			Assert.NotEmpty(property.Constraints);
 			Assert.IsType<PropertyRequiredConstraint>(property.Constraints.First());
 
@@ -238,14 +238,14 @@ namespace Hermodr {
 			Assert.NotNull(property);
 			Assert.Equal("middle_name", property.Name);
 			Assert.Equal("string", property.DataType);
-			Assert.Equal("1.0", property.Version.ToString());
+			Assert.Equal("1.0", property.Version!.ToString());
 			Assert.Empty(property.Constraints);
 
 			property = schema.Properties["age"];
 			Assert.NotNull(property);
 			Assert.Equal("age", property.Name);
 			Assert.Equal("int", property.DataType);
-			Assert.Equal("2.0", property.Version.ToString());
+			Assert.Equal("2.0", property.Version!.ToString());
 			Assert.NotEmpty(property.Constraints);
 			Assert.IsType<RangeConstraint<int>>(property.Constraints.First());
 
@@ -257,7 +257,7 @@ namespace Hermodr {
 			Assert.NotNull(property);
 			Assert.Equal("gender", property.Name);
 			Assert.Equal("string", property.DataType);
-			Assert.Equal("3.0", property.Version.ToString());
+			Assert.Equal("3.0", property.Version!.ToString());
 			Assert.NotEmpty(property.Constraints);
 			Assert.IsType<EnumMemberConstraint<string>>(property.Constraints.First());
 

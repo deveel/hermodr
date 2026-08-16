@@ -15,7 +15,7 @@ namespace Hermodr
     public static class OpenTelemetryBuilderExtensions
     {
         /// <summary>
-        /// Adds the Hermodr <see cref="ActivitySource"/> to the tracer provider.
+        /// Adds the Hermodr <see cref="System.Diagnostics.ActivitySource"/> to the tracer provider.
         /// </summary>
         /// <param name="builder">The tracer provider builder.</param>
         /// <param name="activitySourceName">

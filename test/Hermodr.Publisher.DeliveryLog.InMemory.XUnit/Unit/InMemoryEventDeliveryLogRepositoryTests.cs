@@ -42,7 +42,7 @@ public class InMemoryEventDeliveryLogRepositoryTests
 
             await store.RecordAsync(record, cancellationToken);
 
-            var result = await store.GetByEventIdAsync(record.Event!.Id, cancellationToken);
+            var result = await store.GetByEventIdAsync(record.Event!.Id!, cancellationToken);
             Assert.Single(result);
         }
 
@@ -84,7 +84,7 @@ public class InMemoryEventDeliveryLogRepositoryTests
             await store.RecordAsync(record, cancellationToken);
 
             var queryStore = (InMemoryEventDeliveryLogRepository)store;
-            var results = await queryStore.GetByEventIdAsync(record.Event!.Id, cancellationToken);
+            var results = await queryStore.GetByEventIdAsync(record.Event!.Id!, cancellationToken);
             Assert.Single(results);
         }
     }

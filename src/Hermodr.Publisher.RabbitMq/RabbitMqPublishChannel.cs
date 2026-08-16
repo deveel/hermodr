@@ -68,6 +68,9 @@ namespace Hermodr
         /// An active <see cref="RabbitMQ.Client.IConnection"/> to the RabbitMQ broker.
         /// The channel borrows this connection and does not dispose it.
         /// </param>
+        /// <param name="serviceProvider">
+        /// The service provider used to lazily resolve <see cref="IRabbitMqMessageFactory"/>.
+        /// </param>
         /// <param name="logger">
         /// An optional logger; when <c>null</c> a <see cref="Microsoft.Extensions.Logging.Abstractions.NullLogger{T}"/> is used.
         /// </param>

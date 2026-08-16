@@ -24,6 +24,10 @@ public static class OutboxChannelBuilderExtensions
     /// <param name="builder">
     /// The <see cref="OutboxChannelBuilder"/> to configure.
     /// </param>
+    /// <param name="configure">
+    /// An optional delegate to configure the <see cref="DbContextOptionsBuilder"/> for
+    /// the outbox <see cref="DbContext"/>.
+    /// </param>
     /// <param name="lifetime">
     /// The DI service lifetime for the store.
     /// Defaults to <see cref="ServiceLifetime.Scoped"/>, which is the typical lifetime for

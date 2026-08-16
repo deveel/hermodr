@@ -45,9 +45,14 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <!-- Microsoft.Extensions packages – version-aligned with the target framework -->
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="$(MicrosoftExtensionsVersion)" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="$(MicrosoftExtensionsVersion)" />
+    <!-- Microsoft.Extensions packages – version-aligned with the target framework.
+         Projects that already pull these in via a FrameworkReference
+         (e.g. Microsoft.AspNetCore.App) set
+         <HermodrSkipFrameworkExtensions>true</HermodrSkipFrameworkExtensions>
+         to avoid NU1510 ("automatically available, does not need to be
+         referenced explicitly"). -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="$(MicrosoftExtensionsVersion)" Condition="'$(HermodrSkipFrameworkExtensions)' != 'true'" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="$(MicrosoftExtensionsVersion)" Condition="'$(HermodrSkipFrameworkExtensions)' != 'true'" />
     <!--
       Security override: forces SQLitePCLRaw.lib.e_sqlite3 to 2.1.12 (bundles
       SQLite >= 3.50.2, fixing CVE-2025-6965 / GHSA-2m69-gcr7-jv3q) for the test

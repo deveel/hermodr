@@ -1,0 +1,21 @@
+//
+// Copyright (c) Antonello Provenzano and other contributors. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for details.
+//
+
+using System.Diagnostics.CodeAnalysis;
+
+using Microsoft.Extensions.Logging;
+
+namespace Hermodr
+{
+    [ExcludeFromCodeCoverage]
+    internal static partial class LoggerExtensions
+    {
+        [LoggerMessage(EventId = 1, Level = LogLevel.Trace, Message = "Publishing event of type '{EventType}' via Dapr pub/sub '{PubSubName}' on topic '{Topic}'")]
+        public static partial void TracePublishingEvent(this ILogger logger, string? eventType, string? pubSubName, string? topic);
+
+        [LoggerMessage(EventId = 2, Level = LogLevel.Error, Message = "Error publishing event of type '{EventType}' via Dapr")]
+        public static partial void LogErrorPublishingEvent(this ILogger logger, Exception ex, string? eventType);
+    }
+}

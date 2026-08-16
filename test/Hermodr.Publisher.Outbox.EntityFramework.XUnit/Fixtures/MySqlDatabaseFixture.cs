@@ -44,8 +44,7 @@ public sealed class MySqlDatabaseFixture : IAsyncLifetime
 
     public MySqlDatabaseFixture()
     {
-        _container = new MySqlBuilder()
-            .WithImage("mysql:8.0")
+        _container = new MySqlBuilder("mysql:8.0")
             .Build();
     }
 

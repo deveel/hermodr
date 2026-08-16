@@ -11,7 +11,7 @@ namespace Hermodr {
     /// </summary>
     /// <remarks>
     /// Created by the overloads of
-    /// <see cref="EventPublisherBuilderExtensions.AddTestChannel(EventPublisherBuilder,System.Func{CloudNative.CloudEvents.CloudEvent,System.Threading.Tasks.Task})"/>
+    /// <see cref="EventPublisherBuilderExtensions.AddTestChannel(EventPublisherBuilder,System.Func{CloudNative.CloudEvents.CloudEvent,System.Threading.Tasks.Task},System.String)"/>
     /// and its synchronous variant.
     /// </remarks>
     class DelegatedEventPublishCallback : IEventPublishCallback {

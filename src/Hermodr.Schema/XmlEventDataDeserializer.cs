@@ -32,7 +32,7 @@ namespace Hermodr
             cancellationToken.ThrowIfCancellationRequested();
 
             var doc = XDocument.Load(data);
-            var result = ConvertXElementToDictionary(doc.Root);
+            var result = ConvertXElementToDictionary(doc.Root!);
             return Task.FromResult<object?>(result);
         }
 

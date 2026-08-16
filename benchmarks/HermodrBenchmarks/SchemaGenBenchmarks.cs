@@ -50,7 +50,7 @@ namespace HermodrBenchmarks
         {
             [EventProperty("name", "1.0", Description = "The name of the person")]
             [Required]
-            public string Name { get; set; }
+            public string Name { get; set; } = null!;
 
             [EventProperty("age", "1.2", Description = "The age of the person")]
             [Range(0, 110)]
