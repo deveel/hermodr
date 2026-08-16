@@ -60,6 +60,7 @@ const sidebars: SidebarsConfig = {
         'publishers/rabbitmq',
         'publishers/masstransit',
         'publishers/webhook',
+        'publishers/dapr',
         'publishers/error-handling',
         'publishers/opentelemetry',
         'publishers/typed-channels',

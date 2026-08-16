@@ -2,6 +2,53 @@
 
 ## [Unreleased]
 
+## v1.5.1 - Dapr Publisher Channel
+
+### 🚀 Features
+
+- **New `Hermodr.Publisher.Dapr` package** — a first-party publish channel
+  (roadmap item 44) that delivers CloudEvents through the [Dapr pub/sub building
+  block](https://docs.dapr.io/developing-applications/building-blocks/pubsub/pubsub-overview/)
+  on top of `DaprClient`, keeping the underlying broker (Kafka, RabbitMQ, Azure
+  Service Bus, NATS, ...) a Dapr component-configuration concern:
+  - `AddDapr()` / `AddDapr<TEvent>()` registration extensions, configured via an
+    `Action` delegate or an `IConfiguration` section; the typed variant supports
+    per-event-type overrides merged over the general channel defaults.
+  - `DaprPublishOptions` / `DaprPublishOptions<TEvent>` — `PubSubName`, `Topic`,
+    `TopicSelector`, `MapAttributesToMetadata`, `MetadataPrefix` (default
+    `"ce-"`), `DaprClientName`, and `ScheduleDeliveryAt`.
+  - Topic resolution order: explicit `Topic` → `TopicSelector` delegate →
+    CloudEvent `subject` attribute.
+  - The CloudEvent is serialised in **structured mode** (canonical CloudEvents
+    JSON envelope) and published verbatim, so consumers receive the canonical
+    envelope regardless of the underlying broker; CloudEvent attributes are
+    additionally projected onto Dapr metadata with a configurable prefix.
+  - `IDaprClientBuilder` + default `DaprClientBuilder` resolve named (keyed)
+    `DaprClient` instances, enabling mTLS / token-credential configuration of
+    multiple sidecars via the standard Dapr SDK surface.
+  - Transport failures are wrapped in `DaprPublishException`, so the existing
+    error-handling pipeline (dead-letter, delivery log, tracing) engages
+    automatically.
+  - OpenTelemetry: publish span with `messaging.dapr.pubsubname` and destination
+    tags, consistent with the other transport channels.
+  - New `EventTransports.Dapr` transport identifier, exposed through channel
+    metadata for the AsyncAPI / OpenAPI exporters.
+
+- **CI fix**: drop the `files` glob from the Codecov upload step (the v5 action
+  expanded it into stray CLI arguments).
+
+### ⚠ Breaking Changes
+
+- **None** — the new Dapr channel is additive; all existing channel behaviour is
+  unchanged.
+
+### 📖 Documentation
+
+- New docs page: [Dapr Publisher Channel](docs/publishers/dapr.md), package
+  listing in `packages.md`, and Docusaurus version snapshot `v1.5.1`.
+
+**Full Changelog**: https://github.com/deveel/hermodr/compare/v1.5.0...v1.5.1
+
 ## v1.5.0 - CloudEvents HTTP Binding Compliance for the Webhook Publisher
 
 ### 🚀 Features
