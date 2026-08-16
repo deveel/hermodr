@@ -111,6 +111,8 @@ namespace Hermodr
         public const string SpanTransportMassTransit = "transport.publish.masstransit";
         /// <summary>Span name for publishing through the webhook transport.</summary>
         public const string SpanTransportWebhook = "transport.publish.webhook";
+        /// <summary>Span name for publishing through the HTTP transport.</summary>
+        public const string SpanTransportHttp = "transport.publish.http";
         /// <summary>Span name for publishing through the Dapr transport.</summary>
         public const string SpanTransportDapr = "transport.publish.dapr";
 
