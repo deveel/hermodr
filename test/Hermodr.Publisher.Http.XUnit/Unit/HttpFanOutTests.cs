@@ -93,5 +93,33 @@ namespace Hermodr
             Assert.Equal(2, ex.Failures.Count);
             Assert.All(ex.Failures, f => Assert.IsType<HttpStatusCodeException>(f));
         }
+
+        [Fact]
+        public async Task PublishAsync_CancellationPropagates_NotAggregated()
+        {
+            using var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            var channel = TestHttp.BuildChannel(
+                [MakeEndpoint(0), MakeEndpoint(1)],
+                new BlockingHandler());
+
+            // A canceled fan-out must surface the cancellation to the caller rather than
+            // wrapping it in HttpPublishException (which could send the event to the
+            // dead-letter pipeline even though nothing was attempted).
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+                channel.PublishAsync(MakeEvent(), cancellationToken: cts.Token));
+        }
+
+        private sealed class BlockingHandler : HttpMessageHandler
+        {
+            protected override async Task<HttpResponseMessage> SendAsync(
+                HttpRequestMessage request,
+                CancellationToken cancellationToken)
+            {
+                await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+                return TestHttp.OK();
+            }
+        }
     }
 }

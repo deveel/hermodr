@@ -3,6 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 //
 
+using System.Linq;
+
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -304,10 +306,10 @@ namespace Hermodr
             // Host builders register IConfiguration as an instance singleton, which makes
             // the actual instance discoverable before the container is built. Scoped/transient
             // or factory-based registrations cannot be evaluated here and are skipped.
-            foreach (var descriptor in services)
+            foreach (var descriptor in services
+                .Where(descriptor => descriptor.ServiceType == typeof(IConfiguration)))
             {
-                if (descriptor.ServiceType == typeof(IConfiguration) &&
-                    descriptor.ImplementationInstance is IConfiguration configuration)
+                if (descriptor.ImplementationInstance is IConfiguration configuration)
                 {
                     return configuration;
                 }

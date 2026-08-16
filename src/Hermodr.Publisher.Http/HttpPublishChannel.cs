@@ -139,7 +139,7 @@ namespace Hermodr
             {
                 await Task.WhenAll(deliveries);
             }
-            catch
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 var failures = deliveries
                     .Where(t => t.IsFaulted)
@@ -214,7 +214,15 @@ namespace Hermodr
                     $"HTTP delivery to '{url}' failed: {transportFailure.Message}.", transportFailure);
             }
 
-            if (response!.IsSuccessStatusCode)
+            if (response == null)
+            {
+                _logger.LogDeliveryFailed(url, 1);
+                activity?.SetStatus(ActivityStatusCode.Error, "HTTP delivery failed: no response was received.");
+                throw new HttpTransportException(
+                    $"HTTP delivery to '{url}' failed: no response was received.");
+            }
+
+            if (response.IsSuccessStatusCode)
             {
                 _logger.LogDeliverySucceeded(url, (int)response.StatusCode);
                 activity?.SetStatus(ActivityStatusCode.Ok);

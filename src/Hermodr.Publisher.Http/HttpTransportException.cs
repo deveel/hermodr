@@ -12,6 +12,15 @@ namespace Hermodr
     public class HttpTransportException : HttpPublishException
     {
         /// <summary>
+        /// Initializes the exception with a message.
+        /// </summary>
+        /// <param name="message">A message describing the delivery failure.</param>
+        public HttpTransportException(string message)
+            : base(message)
+        {
+        }
+
+        /// <summary>
         /// Initializes the exception with a message and the underlying transport error.
         /// </summary>
         /// <param name="message">A message describing the delivery failure.</param>
