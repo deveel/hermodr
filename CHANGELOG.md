@@ -2,6 +2,69 @@
 
 ## [Unreleased]
 
+## v1.5.2 - HTTP Publisher Channel
+
+### 🚀 Features
+
+- **New `Hermodr.Publisher.Http` package** — a lightweight, first-party publish
+  channel (roadmap item 13) that delivers CloudEvents to statically-configured
+  HTTP endpoints using the
+  [CloudEvents HTTP binding](https://github.com/cloudevents/spec/blob/main/cloudevents/bindings/http-protocol-binding.md)
+  (structured or binary content mode) — with no subscriber registry, no signing,
+  and no delivery-receipt overhead, complementing `Hermodr.Publisher.Webhook`:
+  - `AddHttpEventPublisherChannel()` registration extensions, configured via an
+    `Action` delegate or an `IConfiguration` section; the typed variants
+    (`AddHttpEventPublisherChannel<TEvent>()`) route only events of a given data
+    class and support per-event-type overrides merged over the general channel
+    defaults.
+  - `HttpPublishOptions` / `HttpPublishOptions<TEvent>` with a static
+    `Endpoints` collection; each `HttpEndpoint` carries its own `Format`,
+    `HttpClientName`, `Authentication`, `Resilience`, `RequestTimeout`, and
+    `AdditionalHeaders`.
+  - Every publish call **fans the event out concurrently** to all configured
+    endpoints, each resolved through `IHttpClientFactory` with its own named
+    client (and therefore its own authentication handlers and standard
+    resilience pipeline).
+  - Per-endpoint wire format: structured content modes (`cloudevents+json`,
+    `cloudevents+xml`) embed the whole CloudEvent envelope in the body, while
+    the binary content mode (`cloudevents+binary`) sends the raw event `data`
+    as the body (with its native `datacontenttype` as `Content-Type`) and the
+    context attributes as `ce-*` HTTP headers.
+  - Built-in authentication via `HttpEndpointAuthentication` (`None`, `Bearer`,
+    `ApiKey` with configurable header name) applied through `DelegatingHandler`s
+    registered in DI; custom handlers, TLS, and timeouts attach to any endpoint's
+    named client via `ConfigureHttpClient`.
+  - Per-endpoint resilience on top of `AddStandardResilienceHandler()`:
+    retry (attempts, exponential delay, jitter) and circuit-breaker
+    (sampling duration, minimum throughput, failure ratio, break duration)
+    configurable through the bindable `HttpResilienceOptions`; `429/500/502/503/504`
+    are retryable by default.
+  - Transport failures and non-success status codes surface as
+    `HttpPublishException` subclasses (`HttpTransportException`,
+    `HttpStatusCodeException`), so the existing error-handling pipeline
+    (dead-letter, delivery log, tracing) engages automatically.
+  - OpenTelemetry publish span per endpoint, consistent with the other transport
+    channels.
+  - New `EventTransports.Http` transport identifier and `HttpPublishOptions`
+    channel metadata (`url`, `url.N`), exposed for the AsyncAPI / OpenAPI
+    exporters.
+
+- **CI fix**: stage the `dotnet test --coverage` reports (named `<guid>.cobertura.xml`)
+  into `coverage-reports/` as `coverage-*.cobertura.xml` so the Codecov upload
+  finds real coverage data on every OS.
+
+### ⚠ Breaking Changes
+
+- **None** — the new HTTP channel is additive; all existing channel behaviour is
+  unchanged.
+
+### 📖 Documentation
+
+- New docs page: [HTTP Channel](docs/publishers/http.md), package listing in
+  `packages.md`, and Docusaurus version snapshot `v1.5.2`.
+
+**Full Changelog**: https://github.com/deveel/hermodr/compare/v1.5.1...v1.5.2
+
 ## v1.5.1 - Dapr Publisher Channel
 
 ### 🚀 Features
