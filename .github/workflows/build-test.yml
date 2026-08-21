@@ -83,11 +83,24 @@ jobs:
           -- --filter-not-trait "DisableCICD=Windows"
           ${{ inputs.collect-coverage && '--coverage --coverage-output-format cobertura' || '' }}
 
+      - name: Stage coverage reports
+        if: inputs.collect-coverage
+        shell: bash
+        run: |
+          rm -rf coverage-reports
+          mkdir -p coverage-reports
+          while IFS= read -r -d '' f; do
+            cp "$f" "coverage-reports/coverage-$(basename "$f")"
+          done < <(find . -path '*/TestResults/*.cobertura.xml' -print0)
+
       - name: Upload coverage to Codecov
         if: inputs.collect-coverage
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          directory: coverage-reports
+          name: ${{ matrix.os }}-${{ env.DOTNET_TFM }}
+          fail_ci_if_error: false
 
 
 
