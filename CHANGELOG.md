@@ -2,6 +2,48 @@
 
 ## [Unreleased]
 
+### 🚀 Features
+
+- **New `Hermodr.Publisher.Grpc` package** — a gRPC-based publish channel
+  (roadmap item 14) that delivers CloudEvents to statically-configured gRPC
+  endpoints using [grpc-dotnet](https://github.com/grpc/grpc-dotnet)
+  (`Grpc.Net.Client`) for the low-level HTTP/2 client:
+  - `AddGrpcEventPublisherChannel()` registration extensions, configured via an
+    `Action` delegate or an `IConfiguration` section; the typed variants
+    (`AddGrpcEventPublisherChannel<TEvent>()`) route only events of a given data
+    class and support per-event-type overrides merged over the general channel
+    defaults.
+  - `GrpcPublishOptions` / `GrpcPublishOptions<TEvent>` with a static
+    `Endpoints` collection; each `GrpcEndpoint` carries its own `Address`,
+    `HttpClientName`, `SenderName`, `Deadline`, and `Headers`.
+  - Every publish call **fans the event out concurrently** to all configured
+    endpoints, each resolved through `IHttpClientFactory` (wrapped as a
+    `GrpcChannel` via `GrpcChannelOptions.HttpClient`) with its own TLS/mTLS
+    and `CallCredentials` configuration.
+  - **Pluggable `IGrpcEventSender` strategy** — the channel delegates the
+    actual gRPC RPC (unary for single events, client-streaming for batches) to
+    a user-supplied sender that calls their `.proto`-generated gRPC client.
+    A `GrpcCallContext` carries the `CallInvoker`, per-endpoint headers,
+    deadline, and cancellation token. A `.proto` generator for `[Event]`-
+    annotated types (producing both the `.proto` contract and a generated
+    `IGrpcEventSender` automatically) is planned for v1.6.0.
+  - Per-endpoint sender selection via `GrpcEndpoint.SenderName` and named
+    `AddGrpcEventSender<T>(name)` registration.
+  - `IBatchEventPublishChannel` support — batch publishes use a
+    client-streaming RPC per endpoint.
+  - TLS, mTLS, and `CallCredentials` configured through the standard
+    `IHttpClientFactory` / `SocketsHttpHandler` surface via
+    `ConfigureGrpcChannel(name, configure)` — no bespoke gRPC configuration API.
+  - Transport failures and non-OK gRPC statuses surface as
+    `GrpcPublishException` subclasses (`GrpcTransportException`), so the
+    existing error-handling pipeline (dead-letter, delivery log, tracing)
+    engages automatically.
+  - OpenTelemetry publish span per endpoint (`transport.publish.grpc`),
+    consistent with the other transport channels.
+  - New `EventTransports.Grpc` transport identifier and `GrpcPublishOptions`
+    channel metadata (`address`, `address.N`), exposed for the AsyncAPI /
+    OpenAPI exporters.
+
 ## v1.5.2 - HTTP Publisher Channel
 
 ### 🚀 Features

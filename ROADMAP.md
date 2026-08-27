@@ -319,6 +319,8 @@ The table below maps each roadmap item to the release milestone in which it is p
 
 ### 14. gRPC Publisher Channel
 
+> ✅ **Runtime channel delivered in v1.5.x.** See [gRPC Channel](publishers/grpc.md) for usage. The `.proto` generator for `[Event]`-annotated types (which produces both the `.proto` contract and a generated `IGrpcEventSender` automatically) is planned for **v1.6.0** (Code Generation milestone, items 20–22).
+
 > *Stream CloudEvents over gRPC for low-latency, bidirectional service-to-service delivery.*
 
 **The problem today:** High-throughput or latency-sensitive services that already use gRPC for their inter-service communication have no CloudEvents-native gRPC publishing channel and must mix transport styles.
