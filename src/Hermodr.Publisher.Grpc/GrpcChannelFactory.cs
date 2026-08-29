@@ -29,6 +29,21 @@ namespace Hermodr
     /// (client-name, address) key so repeated publishes reuse the same
     /// underlying HTTP/2 connection pool.
     /// </para>
+    /// <para>
+    /// Because a cached <c>GrpcChannel</c> keeps the <c>HttpClient</c> (and its
+    /// primary handler) it captured at creation time, the default gRPC client is
+    /// registered with an infinite <c>HandlerLifetime</c>: handler rotation would
+    /// never take effect. To keep long-running processes resilient to DNS
+    /// changes, configure the underlying handler's connection lifetime instead,
+    /// for example:
+    /// <code>
+    /// builder.ConfigureGrpcChannel("Hermodr.Grpc", http =>
+    ///     http.ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+    ///     {
+    ///         PooledConnectionLifetime = TimeSpan.FromMinutes(2),
+    ///     }));
+    /// </code>
+    /// </para>
     /// </remarks>
     internal sealed class GrpcChannelFactory : IGrpcChannelFactory
     {

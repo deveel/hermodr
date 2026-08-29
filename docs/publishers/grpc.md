@@ -144,6 +144,8 @@ builder.Services
     .AddGrpcEventSender<NotificationServiceSender>("notifications");
 ```
 
+> **Fail fast:** if an endpoint references a `SenderName` that is not registered in the DI container, publishing fails with a `GrpcPublishException` naming the missing sender instead of silently falling back to the default sender. This prevents events from being serialized and delivered by the wrong sender (and therefore to the wrong gRPC service) due to a typo.
+
 ## Options reference
 
 ### `GrpcPublishOptions`
@@ -156,11 +158,17 @@ builder.Services
 
 | Property | Description |
 |----------|-------------|
-| `Address` | The absolute address of the gRPC endpoint (for example `https://svc.example.com:5001`). Required. |
+| `Address` | The absolute address of the gRPC endpoint (for example `https://svc.example.com:5001`). Must use the `http` or `https` scheme; any other scheme is rejected by validation. Required. |
 | `HttpClientName` | Optional name of the named `HttpClient` resolved through `IHttpClientFactory` for this endpoint. When unset, the default `Hermodr.Grpc` client is used. The `HttpClient` is wrapped as a `GrpcChannel` via `GrpcChannelOptions.HttpClient`. |
-| `SenderName` | Optional name used to resolve a named `IGrpcEventSender` for this endpoint. When unset, the default (unnamed) sender is used. |
+| `SenderName` | Optional name used to resolve a named `IGrpcEventSender` for this endpoint. When unset, the default (unnamed) sender is used. Publishing fails fast when a configured name is not registered. |
 | `Deadline` | Timeout applied to each individual gRPC call. Defaults to 30 seconds. |
-| `Headers` | Additional gRPC call metadata (headers) merged into every call for this endpoint. |
+| `Headers` | Additional gRPC call metadata (headers) merged into every call for this endpoint. Keys must be valid gRPC ASCII metadata keys (lowercase letters, digits, underscores, hyphens, dots); `-bin` (binary) keys cannot be carried as string values and are rejected by validation. Invalid entries fail validation before any delivery is attempted. |
+
+## Transport security
+
+- **`https` endpoints** deliver events over TLS, configured through the endpoint's named `HttpClient` (see below).
+- **`http` endpoints** deliver events over plaintext HTTP/2 (h2c) — convenient for local development, but event payloads are transmitted unencrypted. The channel logs a **warning** at every delivery to a plaintext endpoint; prefer `https` in production.
+- Any other scheme (`ftp://`, `file://`, ...) is rejected by options validation at publish time.
 
 ## TLS, mTLS, and CallCredentials
 
@@ -194,6 +202,28 @@ builder.Services
     });
 ```
 
+## Connection & DNS management
+
+`GrpcChannel` instances are cached per (client-name, address) pair and live for the lifetime of the application, so repeated publishes reuse the same underlying HTTP/2 connection pool. Because a cached channel keeps the `HttpClient` (and its handler) captured at creation time, the default `Hermodr.Grpc` client is registered with an **infinite handler lifetime** — `IHttpClientFactory` handler rotation would never take effect.
+
+For long-running processes that must pick up DNS changes, configure the underlying handler's connection lifetime instead:
+
+```csharp
+builder.Services
+    .AddEventPublisher()
+    .AddGrpcEventPublisherChannel(options => { /* ... */ })
+    .AddGrpcEventSender<MyCloudEventSender>()
+    .ConfigureGrpcChannel("Hermodr.Grpc", b =>
+    {
+        b.ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+        {
+            PooledConnectionLifetime = TimeSpan.FromMinutes(2),
+        });
+    });
+```
+
+For full control over `GrpcChannel` creation (retry policies via `ServiceConfig`, message-size limits, keep-alive pings), register a custom `IGrpcChannelFactory`.
+
 ## Batch publishing (client-streaming RPC)
 
 The channel implements `IBatchEventPublishChannel`, so you can publish a batch of events via a single client-streaming RPC per endpoint. The channel fans the batch out to all configured endpoints concurrently:
@@ -217,10 +247,10 @@ The sender's `SendBatchAsync` method receives the full event list and is respons
 
 Transport failures and non-OK gRPC statuses surface as `GrpcPublishException` subclasses, so the existing error-handling pipeline (including the dead-letter channel) engages automatically:
 
-- **`GrpcTransportException`** — a transport-level failure (connection refused, DNS, timeout, non-OK gRPC `StatusCode`) when delivering to an endpoint. Carries the gRPC `StatusCode` when available.
-- **`GrpcPublishException`** — aggregated failure when multiple endpoints fail; the `Failures` collection lists each individual endpoint failure.
+- **`GrpcTransportException`** — a transport-level failure (connection refused, DNS, timeout, deadline, non-OK gRPC `StatusCode`) when delivering to an endpoint. Carries the gRPC `StatusCode` when available.
+- **`GrpcPublishException`** — the base type, used for two purposes: aggregated failure when multiple endpoints fail (the `Failures` collection lists each individual endpoint failure), and non-transport failures such as sender bugs, missing named senders, or invalid configuration, which are not wrapped as transport errors so callers can distinguish them.
 
-Because one publish call fans out to every endpoint, a multi-endpoint failure rethrows as `GrpcPublishException` with a `Failures` collection listing each individual endpoint failure. All endpoints are attempted regardless of individual failures (no short-circuiting).
+Because one publish call fans out to every endpoint, a multi-endpoint failure rethrows as `GrpcPublishException` with a `Failures` collection listing each individual endpoint failure. All endpoints are attempted regardless of individual failures (no short-circuiting). Endpoint faults always take precedence over cancellation, so a cancelled publish never hides a delivery failure; endpoints cancelled mid-flight are reported with a warning log.
 
 ## Observability
 

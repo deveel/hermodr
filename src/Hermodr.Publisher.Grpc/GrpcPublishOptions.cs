@@ -5,6 +5,8 @@
 
 using System.ComponentModel.DataAnnotations;
 
+using Grpc.Core;
+
 namespace Hermodr
 {
     /// <summary>
@@ -33,6 +35,9 @@ namespace Hermodr
         /// Merges <paramref name="baseOptions"/> with <paramref name="typedOptions"/>,
         /// where every non-<c>null</c> property in <paramref name="typedOptions"/>
         /// overrides the corresponding property from <paramref name="baseOptions"/>.
+        /// For <see cref="Endpoints"/> an <em>empty</em> list counts as unset, so that
+        /// typed or per-call options that did not configure endpoints fall back to the
+        /// base endpoints (an empty endpoint list can never be valid anyway).
         /// </summary>
         /// <param name="baseOptions">The base (channel-level) options to merge from.</param>
         /// <param name="typedOptions">The typed per-event overrides to apply.</param>
@@ -44,10 +49,15 @@ namespace Hermodr
             return new GrpcPublishOptions
             {
                 ChannelName        = typedOptions.ChannelName        ?? baseOptions.ChannelName,
-                Endpoints          = typedOptions.Endpoints          ?? baseOptions.Endpoints,
+                Endpoints          = HasEndpoints(typedOptions.Endpoints)
+                                         ? typedOptions.Endpoints
+                                         : baseOptions.Endpoints,
                 ScheduleDeliveryAt = typedOptions.ScheduleDeliveryAt ?? baseOptions.ScheduleDeliveryAt,
             };
         }
+
+        private static bool HasEndpoints(IReadOnlyList<GrpcEndpoint>? endpoints)
+            => endpoints is { Count: > 0 };
 
         /// <summary>
         /// Gets or sets the statically-configured gRPC endpoints the events are
@@ -93,6 +103,43 @@ namespace Hermodr
                     yield return new ValidationResult(
                         $"The address '{endpoint.Address}' of the endpoint at index {i} must be a valid absolute URL.",
                         [$"{nameof(Endpoints)}[{i}].Address"]);
+                }
+                else if (!string.Equals(endpointUri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
+                         && !string.Equals(endpointUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+                {
+                    yield return new ValidationResult(
+                        $"The address '{endpoint.Address}' of the endpoint at index {i} must use the http or https scheme (found '{endpointUri.Scheme}').",
+                        [$"{nameof(Endpoints)}[{i}].Address"]);
+                }
+
+                foreach (var result in ValidateHeaders(endpoint, i))
+                    yield return result;
+            }
+        }
+
+        private static IEnumerable<ValidationResult> ValidateHeaders(GrpcEndpoint endpoint, int index)
+        {
+            if (endpoint.Headers is not { Count: > 0 })
+                yield break;
+
+            foreach (var header in endpoint.Headers)
+            {
+                ArgumentException? error = null;
+                try
+                {
+                    var metadata = new Metadata();
+                    metadata.Add(header.Key, header.Value);
+                }
+                catch (ArgumentException ex)
+                {
+                    error = ex;
+                }
+
+                if (error is not null)
+                {
+                    yield return new ValidationResult(
+                        $"The header '{header.Key}' of the endpoint at index {index} is not a valid gRPC metadata entry: {error.Message}",
+                        [$"{nameof(Endpoints)}[{index}].Headers"]);
                 }
             }
         }

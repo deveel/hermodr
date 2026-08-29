@@ -55,13 +55,15 @@ namespace Hermodr
             var events = new[] { TestGrpc.MakeEvent() };
 
             // With a single failure (one of two endpoints), the channel rethrows
-            // the original GrpcTransportException via ExceptionDispatchInfo.
-            await Assert.ThrowsAsync<GrpcTransportException>(() =>
+            // the wrapped per-endpoint failure via ExceptionDispatchInfo. The
+            // conditional sender throws InvalidOperationException, which the
+            // channel classifies as a non-transport failure (GrpcPublishException).
+            await Assert.ThrowsAsync<GrpcPublishException>(() =>
                 batchChannel.PublishBatchAsync(events, cancellationToken: ct));
         }
 
         [Fact]
-        public async Task PublishAsync_NamedSenderNotFound_FallsBackToDefault()
+        public async Task PublishAsync_NamedSenderNotFound_ThrowsGrpcPublishException()
         {
             var ct = TestContext.Current.CancellationToken;
             var defaultSender = new TestGrpc.FakeSender();
@@ -74,7 +76,8 @@ namespace Hermodr
                 });
             services.RemoveAll<IGrpcEventSender>();
             services.AddSingleton<IGrpcEventSender>(defaultSender);
-            // No named sender registered for "nonexistent" — should fall back
+            // No named sender registered for "nonexistent" — must fail fast
+            // instead of silently misdirecting the event to the default sender.
             services.RemoveAll<IGrpcChannelFactory>();
             services.AddSingleton<IGrpcChannelFactory>(new TestGrpc.StubChannelFactory());
 
@@ -84,10 +87,14 @@ namespace Hermodr
 
             var channel = sp.GetRequiredKeyedService<IEventPublishChannel>("");
 
-            await channel.PublishAsync(TestGrpc.MakeEvent(), cancellationToken: ct);
+            var ex = await Assert.ThrowsAsync<GrpcPublishException>(() =>
+                channel.PublishAsync(TestGrpc.MakeEvent(), cancellationToken: ct));
 
-            // The default sender should have been used (fallback)
-            Assert.Single(defaultSender.SentEvents);
+            Assert.Contains("nonexistent", ex.Message);
+            Assert.Contains("AddGrpcEventSender", ex.Message);
+
+            // The default sender must not have been used.
+            Assert.Empty(defaultSender.SentEvents);
         }
 
         [Fact]

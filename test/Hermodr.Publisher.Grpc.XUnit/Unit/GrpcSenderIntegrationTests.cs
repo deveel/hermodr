@@ -115,7 +115,7 @@ namespace Hermodr
         }
 
         [Fact]
-        public async Task SendBatchAsync_SenderThrows_SurfacesAsGrpcTransportException()
+        public async Task SendBatchAsync_SenderThrows_SurfacesAsGrpcPublishException()
         {
             var ct = TestContext.Current.CancellationToken;
             var (channel, _, _) = TestGrpc.BuildChannel(
@@ -125,9 +125,11 @@ namespace Hermodr
 
             var events = new[] { TestGrpc.MakeEvent() };
 
-            var ex = await Assert.ThrowsAsync<GrpcTransportException>(() =>
+            // Non-transport sender failures surface as the base GrpcPublishException.
+            var ex = await Assert.ThrowsAsync<GrpcPublishException>(() =>
                 batchChannel.PublishBatchAsync(events, cancellationToken: ct));
 
+            Assert.IsNotType<GrpcTransportException>(ex);
             Assert.Contains("batch-fail", ex.Message);
         }
     }

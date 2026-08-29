@@ -32,6 +32,12 @@ namespace Hermodr
         /// Gets or sets the absolute address of the gRPC endpoint the event is
         /// delivered to (for example <c>https://svc.example.com:5001</c>).
         /// </summary>
+        /// <remarks>
+        /// The address must be an absolute <c>http</c> or <c>https</c> URL; any other
+        /// scheme is rejected by options validation. <c>http</c> addresses deliver
+        /// events over plaintext HTTP/2 (no TLS) and cause a warning to be logged at
+        /// every delivery — prefer <c>https</c> for anything but local development.
+        /// </remarks>
         [Required(AllowEmptyStrings = false,
             ErrorMessage = "The endpoint address is required and must not be empty.")]
         [Url(ErrorMessage = "The endpoint address must be a valid absolute URL.")]
@@ -69,6 +75,14 @@ namespace Hermodr
         /// Gets or sets additional gRPC call metadata (headers) merged into
         /// every call for this endpoint.
         /// </summary>
+        /// <remarks>
+        /// Keys must be valid gRPC ASCII metadata keys: lowercase letters, digits,
+        /// underscores, hyphens and dots (uppercase letters are normalized by
+        /// grpc-dotnet, but prefer lowercase). Keys with a <c>-bin</c> suffix denote
+        /// binary metadata and cannot be carried as string values — they are
+        /// rejected by options validation. Invalid entries fail validation before
+        /// any delivery is attempted.
+        /// </remarks>
         public IDictionary<string, string> Headers { get; set; }
             = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
     }

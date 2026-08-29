@@ -56,17 +56,35 @@ namespace Hermodr
         }
 
         [Fact]
-        public async Task PublishAsync_SenderThrows_SurfacesAsGrpcTransportException()
+        public async Task PublishAsync_SenderThrowsInvalidOperationException_SurfacesAsGrpcPublishException()
         {
             var ct = TestContext.Current.CancellationToken;
             var (channel, _, _) = TestGrpc.BuildChannel(
                 [TestGrpc.MakeEndpoint()],
                 throwOnCall: new InvalidOperationException("boom"));
 
+            // Sender programming errors (non-transport failures) surface as the base
+            // GrpcPublishException so callers can distinguish them from transport errors.
+            var ex = await Assert.ThrowsAsync<GrpcPublishException>(() =>
+                channel.PublishAsync(TestGrpc.MakeEvent(), cancellationToken: ct));
+
+            Assert.IsNotType<GrpcTransportException>(ex);
+            Assert.Contains("boom", ex.Message);
+        }
+
+        [Fact]
+        public async Task PublishAsync_SenderThrowsRpcException_SurfacesAsGrpcTransportException()
+        {
+            var ct = TestContext.Current.CancellationToken;
+            var (channel, _, _) = TestGrpc.BuildChannel(
+                [TestGrpc.MakeEndpoint()],
+                throwOnCall: new RpcException(new Status(StatusCode.Unavailable, "svc down")));
+
             var ex = await Assert.ThrowsAsync<GrpcTransportException>(() =>
                 channel.PublishAsync(TestGrpc.MakeEvent(), cancellationToken: ct));
 
-            Assert.Contains("boom", ex.Message);
+            Assert.Equal(StatusCode.Unavailable, ex.StatusCode);
+            Assert.Contains("svc down", ex.Message);
         }
 
         [Fact]

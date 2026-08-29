@@ -6,6 +6,7 @@
 using CloudNative.CloudEvents;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 
 namespace Hermodr
@@ -71,6 +72,41 @@ namespace Hermodr
                 m.Transport == EventTransports.Grpc &&
                 m.Properties.TryGetValue("address", out var addr) &&
                 addr == "https://typed.example.com:5001");
+        }
+
+        [Fact]
+        public async Task TypedChannel_WithoutTypedEndpoints_UsesBaseEndpoints()
+        {
+            var ct = TestContext.Current.CancellationToken;
+            var channelFactory = new TestGrpc.StubChannelFactory();
+
+            var services = new ServiceCollection();
+            services.AddEventPublisher()
+                .AddGrpcEventPublisherChannel(options =>
+                {
+                    options.Endpoints = [new GrpcEndpoint { Address = "https://base.example.com:5001" }];
+                })
+                // Typed channel registered without its own options: an empty typed
+                // Endpoints list must fall back to the base endpoints at merge time
+                // instead of clobbering them and failing every publish.
+                .AddGrpcEventPublisherChannel<OrderPlaced>()
+                .AddGrpcEventSender<TestGrpc.FakeSender>();
+            services.RemoveAll<IGrpcChannelFactory>();
+            services.AddSingleton<IGrpcChannelFactory>(channelFactory);
+
+            var sp = services.BuildServiceProvider();
+
+            var typedChannel = sp.GetKeyedService<IEventPublishChannel<OrderPlaced>>("");
+            Assert.NotNull(typedChannel);
+
+            var sender = (TestGrpc.FakeSender)sp.GetRequiredService<IGrpcEventSender>();
+
+            await ((IEventPublishChannel)typedChannel).PublishAsync(
+                TestGrpc.MakeEvent(), cancellationToken: ct);
+
+            Assert.Single(sender.SentEvents);
+            Assert.Contains("https://base.example.com:5001", channelFactory.ResolvedAddresses);
+            Assert.DoesNotContain("https://typed.example.com:5001", channelFactory.ResolvedAddresses);
         }
     }
 }

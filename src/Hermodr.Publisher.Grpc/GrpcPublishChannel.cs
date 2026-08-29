@@ -119,28 +119,7 @@ namespace Hermodr
                 .Select(endpoint => DeliverToEndpointAsync(@event, endpoint, cancellationToken))
                 .ToArray();
 
-            try
-            {
-                await Task.WhenAll(deliveries);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                var failures = deliveries
-                    .Where(t => t.IsFaulted)
-                    .Select(t => t.Exception?.GetBaseException())
-                    .Where(ex => ex != null)
-                    .Cast<Exception>()
-                    .ToList();
-
-                _logger.LogPublishFailed(failures.Count, endpoints.Count);
-
-                if (failures.Count == 1)
-                    ExceptionDispatchInfo.Capture(failures[0]).Throw();
-
-                throw new GrpcPublishException(
-                    $"gRPC publish failed for {failures.Count} of {endpoints.Count} endpoint(s).",
-                    failures);
-            }
+            await AwaitDeliveriesAsync(deliveries, endpoints.Count, "publish");
         }
 
         // ── IBatchEventPublishChannel ────────────────
@@ -182,31 +161,67 @@ namespace Hermodr
                 .Select(endpoint => DeliverBatchToEndpointAsync(events, endpoint, cancellationToken))
                 .ToArray();
 
+            await AwaitDeliveriesAsync(deliveries, endpoints.Count, "batch publish");
+        }
+
+        // ── Core delivery ───────────────────────────────────────────────────
+
+        /// <summary>
+        /// Awaits all endpoint deliveries, aggregating their failures. Endpoint
+        /// faults always take precedence over cancellation (per <see cref="Task.WhenAll"/>
+        /// semantics), so a cancelled publish never hides a delivery failure.
+        /// </summary>
+        /// <param name="deliveries">The per-endpoint delivery tasks.</param>
+        /// <param name="endpointCount">The total number of endpoints fanned out to.</param>
+        /// <param name="operation">
+        /// A label for the operation used in error messages (e.g. <c>publish</c> or
+        /// <c>batch publish</c>).
+        /// </param>
+        private async Task AwaitDeliveriesAsync(
+            Task[] deliveries,
+            int endpointCount,
+            string operation)
+        {
             try
             {
                 await Task.WhenAll(deliveries);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex)
             {
-                var failures = deliveries
-                    .Where(t => t.IsFaulted)
-                    .Select(t => t.Exception?.GetBaseException())
-                    .Where(ex => ex != null)
-                    .Cast<Exception>()
-                    .ToList();
+                var failures = CollectDeliveryFailures(deliveries);
+                if (failures.Count == 0)
+                {
+                    // No faulted endpoint task: the publish was cancelled for every
+                    // endpoint (Task.WhenAll surfaces cancellation only when no task
+                    // faulted) — propagate the cancellation rather than throwing an
+                    // empty aggregate.
+                    ExceptionDispatchInfo.Capture(ex).Throw();
+                }
 
-                _logger.LogPublishFailed(failures.Count, endpoints.Count);
+                _logger.LogPublishFailed(failures.Count, endpointCount);
+
+                // Endpoints cancelled mid-flight are not failures, but they must
+                // not silently disappear when other endpoint failures are reported.
+                var cancelledCount = deliveries.Count(t => t.IsCanceled);
+                if (cancelledCount > 0)
+                    _logger.LogDeliveriesCancelledWhileOthersFailed(cancelledCount, endpointCount);
 
                 if (failures.Count == 1)
                     ExceptionDispatchInfo.Capture(failures[0]).Throw();
 
                 throw new GrpcPublishException(
-                    $"gRPC batch publish failed for {failures.Count} of {endpoints.Count} endpoint(s).",
+                    $"gRPC {operation} failed for {failures.Count} of {endpointCount} endpoint(s).",
                     failures);
             }
         }
 
-        // ── Core delivery ───────────────────────────────────────────────────
+        private static List<Exception> CollectDeliveryFailures(Task[] deliveries)
+            => deliveries
+                .Where(t => t.IsFaulted)
+                .Select(t => t.Exception?.GetBaseException())
+                .Where(ex => ex != null)
+                .Cast<Exception>()
+                .ToList();
 
         private async Task DeliverToEndpointAsync(
             CloudEvent @event,
@@ -216,15 +231,18 @@ namespace Hermodr
             var address = endpoint.Address;
             using var activity = _telemetry.StartPublishActivity(@event.Type, address, "unary");
 
-            var sender = ResolveSender(endpoint.SenderName);
-            var deadline = endpoint.Deadline ?? GrpcDefaults.DefaultDeadline;
-            var headers = BuildCallHeaders(endpoint);
-            var callInvoker = _channelFactory.CreateCallInvoker(address, endpoint.HttpClientName);
-
-            _logger.LogDeliveringEvent(@event.Type, address, "unary");
-
             try
             {
+                var sender = ResolveSender(endpoint.SenderName, address);
+                var deadline = endpoint.Deadline ?? GrpcDefaults.DefaultDeadline;
+                var headers = BuildCallHeaders(endpoint);
+                var callInvoker = _channelFactory.CreateCallInvoker(address, endpoint.HttpClientName);
+
+                if (IsPlaintextAddress(address))
+                    _logger.LogPlaintextDelivery(address);
+
+                _logger.LogDeliveringEvent(@event.Type, address, "unary");
+
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 cts.CancelAfter(deadline);
 
@@ -240,8 +258,7 @@ namespace Hermodr
             {
                 _logger.LogDeliveryFailed(address, 1);
                 activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-                throw new GrpcTransportException(
-                    $"gRPC delivery to '{address}' failed: {ex.Message}.", ex);
+                throw WrapDeliveryException("delivery", address, ex);
             }
         }
 
@@ -254,15 +271,18 @@ namespace Hermodr
             var firstType = events[0].Type;
             using var activity = _telemetry.StartPublishActivity(firstType, address, "client_streaming");
 
-            var sender = ResolveSender(endpoint.SenderName);
-            var deadline = endpoint.Deadline ?? GrpcDefaults.DefaultDeadline;
-            var headers = BuildCallHeaders(endpoint);
-            var callInvoker = _channelFactory.CreateCallInvoker(address, endpoint.HttpClientName);
-
-            _logger.LogDeliveringEvent(firstType, address, "client_streaming");
-
             try
             {
+                var sender = ResolveSender(endpoint.SenderName, address);
+                var deadline = endpoint.Deadline ?? GrpcDefaults.DefaultDeadline;
+                var headers = BuildCallHeaders(endpoint);
+                var callInvoker = _channelFactory.CreateCallInvoker(address, endpoint.HttpClientName);
+
+                if (IsPlaintextAddress(address))
+                    _logger.LogPlaintextDelivery(address);
+
+                _logger.LogDeliveringEvent(firstType, address, "client_streaming");
+
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 cts.CancelAfter(deadline);
 
@@ -278,12 +298,18 @@ namespace Hermodr
             {
                 _logger.LogDeliveryFailed(address, 1);
                 activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-                throw new GrpcTransportException(
-                    $"gRPC batch delivery to '{address}' failed: {ex.Message}.", ex);
+                throw WrapDeliveryException("batch delivery", address, ex);
             }
         }
 
-        private IGrpcEventSender ResolveSender(string? senderName)
+        /// <summary>
+        /// Resolves the sender for an endpoint: the default sender when no name is
+        /// configured, otherwise the keyed sender with that name. A configured name
+        /// that is not registered fails the delivery (fail-fast) instead of silently
+        /// falling back to the default sender, which could misdirect events to the
+        /// wrong gRPC service.
+        /// </summary>
+        private IGrpcEventSender ResolveSender(string? senderName, string address)
         {
             if (string.IsNullOrEmpty(senderName))
                 return _defaultSender;
@@ -292,7 +318,11 @@ namespace Hermodr
             if (keyed is not null)
                 return keyed;
 
-            return _defaultSender;
+            throw new GrpcPublishException(
+                $"No IGrpcEventSender named '{senderName}' is registered in the dependency injection container, " +
+                $"but the gRPC endpoint '{address}' requires it. Register a named sender via " +
+                "AddGrpcEventSender<TSender>(name) on the EventPublisherBuilder, or remove the " +
+                "endpoint's SenderName to use the default sender.");
         }
 
         private static Metadata BuildCallHeaders(GrpcEndpoint endpoint)
@@ -301,6 +331,34 @@ namespace Hermodr
             foreach (var header in endpoint.Headers)
                 metadata.Add(header.Key, header.Value);
             return metadata;
+        }
+
+        private static bool IsPlaintextAddress(string address) =>
+            Uri.TryCreate(address, UriKind.Absolute, out var uri)
+            && string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// Classifies a per-endpoint delivery failure: genuine transport/network
+        /// failures become <see cref="GrpcTransportException"/> (preserving the gRPC
+        /// status code), while configuration or sender-code failures become the base
+        /// <see cref="GrpcPublishException"/> so callers can distinguish them. Failures
+        /// that are already <see cref="GrpcPublishException"/> instances are passed
+        /// through unchanged.
+        /// </summary>
+        private static Exception WrapDeliveryException(string operationLabel, string address, Exception ex)
+        {
+            if (ex is GrpcPublishException)
+                return ex;
+
+            return ex switch
+            {
+                RpcException or HttpRequestException or TimeoutException => new GrpcTransportException(
+                    $"gRPC {operationLabel} to '{address}' failed: {ex.Message}.", ex),
+                OperationCanceledException => new GrpcTransportException(
+                    $"gRPC {operationLabel} to '{address}' was cancelled before completion (deadline or transport timeout): {ex.Message}.", ex),
+                _ => new GrpcPublishException(
+                    $"gRPC {operationLabel} to '{address}' failed with an unexpected error: {ex.Message}.", ex),
+            };
         }
     }
 }

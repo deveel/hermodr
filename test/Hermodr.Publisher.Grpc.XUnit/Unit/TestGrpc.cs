@@ -9,6 +9,7 @@ using Grpc.Core;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Diagnostics;
 using System.Reflection;
@@ -211,6 +212,60 @@ namespace Hermodr
         /// </summary>
         public static IGrpcEventSender CreateThrowingSender()
             => (IGrpcEventSender)Activator.CreateInstance(ThrowingSenderType)!;
+
+        // ───────────────────────────────────────────────────────────────
+        // Collecting logger for asserting log output (warnings, etc.)
+        // ───────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// An <see cref="ILoggerProvider"/> that records every log entry so tests
+        /// can assert that specific warnings (e.g. plaintext endpoints, failures
+        /// superseded by cancellation) were emitted.
+        /// </summary>
+        public sealed class CollectingLoggerProvider : ILoggerProvider
+        {
+            private readonly object _lock = new();
+            private readonly List<Entry> _entries = new();
+
+            /// <summary>Gets a snapshot of all recorded log entries.</summary>
+            public IReadOnlyList<Entry> Entries
+            {
+                get
+                {
+                    lock (_lock)
+                        return _entries.ToArray();
+                }
+            }
+
+            public ILogger CreateLogger(string categoryName) => new CollectingLogger(this, categoryName);
+
+            public void Dispose()
+            {
+            }
+
+            public sealed record Entry(LogLevel Level, string Category, string Message, Exception? Exception);
+
+            private sealed class CollectingLogger(CollectingLoggerProvider owner, string categoryName) : ILogger
+            {
+                public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+                public bool IsEnabled(LogLevel logLevel) => true;
+
+                public void Log<TState>(
+                    LogLevel logLevel,
+                    EventId eventId,
+                    TState state,
+                    Exception? exception,
+                    Func<TState, Exception?, string> formatter)
+                {
+                    lock (owner._lock)
+                    {
+                        owner._entries.Add(
+                            new Entry(logLevel, categoryName, formatter(state, exception), exception));
+                    }
+                }
+            }
+        }
 
         // ───────────────────────────────────────────────────────────────
         // Permissive-validator helper for defensive-guard tests

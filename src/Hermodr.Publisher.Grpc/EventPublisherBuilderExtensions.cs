@@ -38,7 +38,15 @@ namespace Hermodr
             // Default named HttpClient: always present so that
             // IHttpClientFactory.CreateClient(GrpcDefaults.HttpClientName) resolves.
             // Grpc.Net.Client wraps this HttpClient as a GrpcChannel.
-            builder.Services.AddHttpClient(GrpcDefaults.HttpClientName);
+            //
+            // The handler lifetime is infinite because the GrpcChannelFactory caches
+            // GrpcChannel instances (and therefore the HttpClient/handler they
+            // captured) for the lifetime of the application: a rotating handler would
+            // never take effect and would keep the replaced handler alive. Refresh
+            // connections (and DNS) by configuring SocketsHttpHandler
+            // PooledConnectionLifetime via ConfigureGrpcChannel instead.
+            builder.Services.AddHttpClient(GrpcDefaults.HttpClientName)
+                .SetHandlerLifetime(Timeout.InfiniteTimeSpan);
 
             // The gRPC channel factory resolves/creates GrpcChannel instances per endpoint.
             builder.Services.TryAddSingleton<IGrpcChannelFactory, GrpcChannelFactory>();
@@ -52,6 +60,15 @@ namespace Hermodr
 
         private static EventPublisherBuilder AddGrpcChannel(this EventPublisherBuilder builder)
         {
+            if (builder.Services.Any(d => d.ServiceType == typeof(GrpcPublishChannel)))
+            {
+                throw new InvalidOperationException(
+                    "The gRPC event publisher channel has already been added to this " +
+                    "EventPublisherBuilder. Calling AddGrpcEventPublisherChannel more than once " +
+                    "would register the channel twice and deliver every event multiple times; " +
+                    "configure all endpoints on the existing options instead.");
+            }
+
             builder.AddGrpcInfrastructure();
 
             // Register the concrete channel once under its own type so callers can resolve it

@@ -32,5 +32,17 @@ namespace Hermodr
             Message = "gRPC publish failed for {FailureCount} of {EndpointCount} endpoint(s).")]
         public static partial void LogPublishFailed(
             this ILogger logger, int failureCount, int endpointCount);
+
+        [LoggerMessage(
+            Level = LogLevel.Warning,
+            Message = "The gRPC publish was cancelled for {CancelledCount} of {EndpointCount} endpoint deliveries while other endpoint failures were being reported.")]
+        public static partial void LogDeliveriesCancelledWhileOthersFailed(
+            this ILogger logger, int cancelledCount, int endpointCount);
+
+        [LoggerMessage(
+            Level = LogLevel.Warning,
+            Message = "The gRPC endpoint '{Address}' uses plaintext HTTP (no TLS): event payloads are transmitted unencrypted.")]
+        public static partial void LogPlaintextDelivery(
+            this ILogger logger, string? address);
     }
 }

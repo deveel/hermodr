@@ -44,7 +44,8 @@ namespace Hermodr
         [Fact]
         public void CreateChannel_NullAddress_ThrowsArgumentNullException()
         {
-            var (factory, _) = CreateFactory();
+            var (factory, sp) = CreateFactory();
+            using var serviceProvider = (IDisposable)sp;
 
             // Reflection Invoke wraps exceptions in TargetInvocationException on
             // some runtimes; unwrap and assert the inner exception type.
@@ -57,21 +58,17 @@ namespace Hermodr
         public void CreateChannel_WithHttpAddress_ReturnsGrpcChannel()
         {
             var (factory, sp) = CreateFactory();
-            try
-            {
-                var channel = InvokeCreateChannel(factory, "http://localhost:5001");
-                Assert.NotNull(channel);
-            }
-            finally
-            {
-                (factory as Grpc.Net.Client.GrpcChannel)?.Dispose();
-            }
+            using var serviceProvider = (IDisposable)sp;
+
+            var channel = InvokeCreateChannel(factory, "http://localhost:5001");
+            Assert.NotNull(channel);
         }
 
         [Fact]
         public void CreateChannel_SameAddressAndName_ReturnsCachedInstance()
         {
-            var (factory, _) = CreateFactory();
+            var (factory, sp) = CreateFactory();
+            using var serviceProvider = (IDisposable)sp;
 
             var ch1 = InvokeCreateChannel(factory, "http://localhost:5001", "client-a");
             var ch2 = InvokeCreateChannel(factory, "http://localhost:5001", "client-a");
@@ -82,7 +79,8 @@ namespace Hermodr
         [Fact]
         public void CreateChannel_DifferentAddresses_ReturnDifferentInstances()
         {
-            var (factory, _) = CreateFactory();
+            var (factory, sp) = CreateFactory();
+            using var serviceProvider = (IDisposable)sp;
 
             var ch1 = InvokeCreateChannel(factory, "http://localhost:5001");
             var ch2 = InvokeCreateChannel(factory, "http://localhost:5002");
@@ -93,7 +91,8 @@ namespace Hermodr
         [Fact]
         public void CreateChannel_DifferentNames_ReturnDifferentInstances()
         {
-            var (factory, _) = CreateFactory();
+            var (factory, sp) = CreateFactory();
+            using var serviceProvider = (IDisposable)sp;
 
             var ch1 = InvokeCreateChannel(factory, "http://localhost:5001", "client-a");
             var ch2 = InvokeCreateChannel(factory, "http://localhost:5001", "client-b");
@@ -104,7 +103,8 @@ namespace Hermodr
         [Fact]
         public void CreateChannel_NullClientName_UsesDefaultName()
         {
-            var (factory, _) = CreateFactory();
+            var (factory, sp) = CreateFactory();
+            using var serviceProvider = (IDisposable)sp;
 
             // Null client name should fall back to the default. Two calls with
             // the same address and null name should return the same cached instance.
@@ -117,7 +117,8 @@ namespace Hermodr
         [Fact]
         public void CreateCallInvoker_ReturnsNonNullInvoker()
         {
-            var (factory, _) = CreateFactory();
+            var (factory, sp) = CreateFactory();
+            using var serviceProvider = (IDisposable)sp;
 
             var invoker = InvokeCreateCallInvoker(factory, "http://localhost:5001");
 

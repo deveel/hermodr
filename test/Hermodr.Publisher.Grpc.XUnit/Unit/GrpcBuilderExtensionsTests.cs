@@ -5,6 +5,7 @@
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Options;
 
 namespace Hermodr
@@ -77,6 +78,69 @@ namespace Hermodr
 
             Assert.Single(options.Endpoints);
             Assert.Equal("https://typed-cfg.example.com:5001", options.Endpoints[0].Address);
+        }
+
+        [Fact]
+        public void AddGrpcEventPublisherChannel_Twice_ThrowsInvalidOperationException()
+        {
+            var services = new ServiceCollection();
+            var builder = services.AddEventPublisher();
+
+            builder.AddGrpcEventPublisherChannel(options =>
+            {
+                options.Endpoints = [new GrpcEndpoint { Address = "https://svc.example.com:5001" }];
+            });
+
+            // A second registration would add a second channel to the pipeline and
+            // deliver every event multiple times; it must fail fast instead.
+            var ex = Assert.Throws<InvalidOperationException>(() =>
+                builder.AddGrpcEventPublisherChannel(options =>
+                {
+                    options.Endpoints = [new GrpcEndpoint { Address = "https://other.example.com:5001" }];
+                }));
+
+            Assert.Contains("already been added", ex.Message);
+        }
+
+        [Fact]
+        public void AddGrpcEventPublisherChannel_TypedAfterUntyped_IsAllowed()
+        {
+            var services = new ServiceCollection();
+            var builder = services.AddEventPublisher();
+
+            builder.AddGrpcEventPublisherChannel(options =>
+            {
+                options.Endpoints = [new GrpcEndpoint { Address = "https://svc.example.com:5001" }];
+            });
+
+            // Typed channels are separate registrations and must not trip the
+            // duplicate guard.
+            builder.AddGrpcEventPublisherChannel<TypedEvent>();
+
+            var sp = services.BuildServiceProvider();
+            Assert.NotNull(sp.GetKeyedService<IEventPublishChannel>(""));
+            Assert.NotNull(sp.GetKeyedService<IEventPublishChannel<TypedEvent>>(""));
+        }
+
+        [Fact]
+        public void AddGrpcEventPublisherChannel_DefaultHttpClient_HandlerLifetimeIsInfinite()
+        {
+            // The GrpcChannelFactory caches GrpcChannel instances (and the
+            // HttpClient/handler they captured) for the application lifetime, so
+            // the default client must not use a rotating handler.
+            var services = new ServiceCollection();
+            services.AddEventPublisher()
+                .AddGrpcEventPublisherChannel(options =>
+                {
+                    options.Endpoints = [new GrpcEndpoint { Address = "https://svc.example.com:5001" }];
+                });
+
+            var sp = services.BuildServiceProvider();
+            var options = sp.GetRequiredService<IOptionsMonitor<HttpClientFactoryOptions>>();
+
+            Assert.Equal(
+                Timeout.InfiniteTimeSpan,
+                options.Get(GrpcDefaults.HttpClientName).HandlerLifetime);
         }
 
         [Fact]

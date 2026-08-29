@@ -44,6 +44,37 @@
     channel metadata (`address`, `address.N`), exposed for the AsyncAPI /
     OpenAPI exporters.
 
+### 🛠 Hardening
+
+- **gRPC channel hardening** (from a security & reliability review):
+  - Publishing **fails fast** with a `GrpcPublishException` when an endpoint's
+    `SenderName` references a sender that is not registered, instead of
+    silently falling back to the default sender — which could misdirect events
+    to the wrong gRPC service.
+  - Endpoint addresses must use the `http` or `https` scheme (other schemes are
+    rejected by validation); `http` endpoints log a warning at every delivery
+    because payloads are transmitted unencrypted.
+  - Endpoint headers are validated against the gRPC metadata rules before any
+    delivery is attempted (invalid keys and `-bin` keys with string values fail
+    validation), and per-endpoint configuration failures (headers, sender
+    resolution, channel creation) now flow through the regular error pipeline
+    (logged, span-marked, dead-lettered) instead of surfacing as raw exceptions.
+  - Non-transport failures (sender bugs, missing named senders, configuration
+    errors) are surfaced as the base `GrpcPublishException` so callers can
+    distinguish them from `GrpcTransportException` network failures.
+  - The typed/per-call options merge treats an *empty* `Endpoints` list as
+    unset, so typed channels registered without their own endpoints fall back
+    to the base endpoints instead of failing every publish with "no endpoints
+    are configured".
+  - `AddGrpcEventPublisherChannel()` throws `InvalidOperationException` when
+    called twice on the same `EventPublisherBuilder` — a duplicate registration
+    would silently deliver every event multiple times.
+  - The default `Hermodr.Grpc` named client is registered with an **infinite
+    handler lifetime**: a cached `GrpcChannel` keeps the `HttpClient`/handler it
+    captured, so `IHttpClientFactory` handler rotation never took effect. DNS
+    refresh should be configured via `SocketsHttpHandler.PooledConnectionLifetime`
+    (see the channel documentation).
+
 ## v1.5.2 - HTTP Publisher Channel
 
 ### 🚀 Features
