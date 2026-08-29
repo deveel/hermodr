@@ -2,6 +2,79 @@
 
 ## [Unreleased]
 
+### 🚀 Features
+
+- **New `Hermodr.Publisher.Grpc` package** — a gRPC-based publish channel
+  (roadmap item 14) that delivers CloudEvents to statically-configured gRPC
+  endpoints using [grpc-dotnet](https://github.com/grpc/grpc-dotnet)
+  (`Grpc.Net.Client`) for the low-level HTTP/2 client:
+  - `AddGrpcEventPublisherChannel()` registration extensions, configured via an
+    `Action` delegate or an `IConfiguration` section; the typed variants
+    (`AddGrpcEventPublisherChannel<TEvent>()`) route only events of a given data
+    class and support per-event-type overrides merged over the general channel
+    defaults.
+  - `GrpcPublishOptions` / `GrpcPublishOptions<TEvent>` with a static
+    `Endpoints` collection; each `GrpcEndpoint` carries its own `Address`,
+    `HttpClientName`, `SenderName`, `Deadline`, and `Headers`.
+  - Every publish call **fans the event out concurrently** to all configured
+    endpoints, each resolved through `IHttpClientFactory` (wrapped as a
+    `GrpcChannel` via `GrpcChannelOptions.HttpClient`) with its own TLS/mTLS
+    and `CallCredentials` configuration.
+  - **Pluggable `IGrpcEventSender` strategy** — the channel delegates the
+    actual gRPC RPC (unary for single events, client-streaming for batches) to
+    a user-supplied sender that calls their `.proto`-generated gRPC client.
+    A `GrpcCallContext` carries the `CallInvoker`, per-endpoint headers,
+    deadline, and cancellation token. A `.proto` generator for `[Event]`-
+    annotated types (producing both the `.proto` contract and a generated
+    `IGrpcEventSender` automatically) is planned for v1.6.0.
+  - Per-endpoint sender selection via `GrpcEndpoint.SenderName` and named
+    `AddGrpcEventSender<T>(name)` registration.
+  - `IBatchEventPublishChannel` support — batch publishes use a
+    client-streaming RPC per endpoint.
+  - TLS, mTLS, and `CallCredentials` configured through the standard
+    `IHttpClientFactory` / `SocketsHttpHandler` surface via
+    `ConfigureGrpcChannel(name, configure)` — no bespoke gRPC configuration API.
+  - Transport failures and non-OK gRPC statuses surface as
+    `GrpcPublishException` subclasses (`GrpcTransportException`), so the
+    existing error-handling pipeline (dead-letter, delivery log, tracing)
+    engages automatically.
+  - OpenTelemetry publish span per endpoint (`transport.publish.grpc`),
+    consistent with the other transport channels.
+  - New `EventTransports.Grpc` transport identifier and `GrpcPublishOptions`
+    channel metadata (`address`, `address.N`), exposed for the AsyncAPI /
+    OpenAPI exporters.
+
+### 🛠 Hardening
+
+- **gRPC channel hardening** (from a security & reliability review):
+  - Publishing **fails fast** with a `GrpcPublishException` when an endpoint's
+    `SenderName` references a sender that is not registered, instead of
+    silently falling back to the default sender — which could misdirect events
+    to the wrong gRPC service.
+  - Endpoint addresses must use the `http` or `https` scheme (other schemes are
+    rejected by validation); `http` endpoints log a warning at every delivery
+    because payloads are transmitted unencrypted.
+  - Endpoint headers are validated against the gRPC metadata rules before any
+    delivery is attempted (invalid keys and `-bin` keys with string values fail
+    validation), and per-endpoint configuration failures (headers, sender
+    resolution, channel creation) now flow through the regular error pipeline
+    (logged, span-marked, dead-lettered) instead of surfacing as raw exceptions.
+  - Non-transport failures (sender bugs, missing named senders, configuration
+    errors) are surfaced as the base `GrpcPublishException` so callers can
+    distinguish them from `GrpcTransportException` network failures.
+  - The typed/per-call options merge treats an *empty* `Endpoints` list as
+    unset, so typed channels registered without their own endpoints fall back
+    to the base endpoints instead of failing every publish with "no endpoints
+    are configured".
+  - `AddGrpcEventPublisherChannel()` throws `InvalidOperationException` when
+    called twice on the same `EventPublisherBuilder` — a duplicate registration
+    would silently deliver every event multiple times.
+  - The default `Hermodr.Grpc` named client is registered with an **infinite
+    handler lifetime**: a cached `GrpcChannel` keeps the `HttpClient`/handler it
+    captured, so `IHttpClientFactory` handler rotation never took effect. DNS
+    refresh should be configured via `SocketsHttpHandler.PooledConnectionLifetime`
+    (see the channel documentation).
+
 ## v1.5.2 - HTTP Publisher Channel
 
 ### 🚀 Features

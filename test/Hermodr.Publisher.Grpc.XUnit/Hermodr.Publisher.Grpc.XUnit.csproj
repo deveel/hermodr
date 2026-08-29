@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Hermodr.Publisher.Grpc\Hermodr.Publisher.Grpc.csproj" />
+  </ItemGroup>
+
+</Project>
