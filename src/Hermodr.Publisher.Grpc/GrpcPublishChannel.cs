@@ -168,7 +168,7 @@ namespace Hermodr
 
         /// <summary>
         /// Awaits all endpoint deliveries, aggregating their failures. Endpoint
-        /// faults always take precedence over cancellation (per <see cref="Task.WhenAll"/>
+        /// faults always take precedence over cancellation (per <see cref="Task.WhenAll(Task[])"/>
         /// semantics), so a cancelled publish never hides a delivery failure.
         /// </summary>
         /// <param name="deliveries">The per-endpoint delivery tasks.</param>
@@ -186,17 +186,13 @@ namespace Hermodr
             {
                 await Task.WhenAll(deliveries);
             }
-            catch (Exception ex)
+            catch (Exception) when (deliveries.Any(t => t.IsFaulted))
             {
+                // One or more endpoint deliveries faulted: awaiting Task.WhenAll
+                // surfaces only the first exception, so the failures are always
+                // re-collected from the tasks. (A faulted task takes precedence
+                // over a cancelled one per Task.WhenAll semantics.)
                 var failures = CollectDeliveryFailures(deliveries);
-                if (failures.Count == 0)
-                {
-                    // No faulted endpoint task: the publish was cancelled for every
-                    // endpoint (Task.WhenAll surfaces cancellation only when no task
-                    // faulted) — propagate the cancellation rather than throwing an
-                    // empty aggregate.
-                    ExceptionDispatchInfo.Capture(ex).Throw();
-                }
 
                 _logger.LogPublishFailed(failures.Count, endpointCount);
 

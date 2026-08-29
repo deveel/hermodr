@@ -133,6 +133,56 @@ namespace Hermodr
                 r.MemberNames.Contains($"{nameof(GrpcPublishOptions.Endpoints)}[0].Headers"));
         }
 
+        [Theory]
+        [InlineData("value\r\nX-Injected: evil")]
+        [InlineData("line1\nline2")]
+        [InlineData("héllo")]
+        [InlineData("\u0000")]
+        public void Validate_HeaderValueWithControlOrNonAsciiChars_ReturnsFailure(string value)
+        {
+            // Control characters (including CR/LF — a header-injection vector)
+            // and non-ASCII characters are rejected by the HTTP/2 layer; they
+            // must fail validation before any delivery is attempted.
+            var endpoint = new GrpcEndpoint { Address = "https://svc.example.com:5001" };
+            endpoint.Headers["x-custom"] = value;
+
+            var options = new GrpcPublishOptions { Endpoints = [endpoint] };
+            var results = options.Validate(new ValidationContext(options));
+
+            Assert.Contains(results, r =>
+                r.MemberNames.Contains($"{nameof(GrpcPublishOptions.Endpoints)}[0].Headers") &&
+                r.ErrorMessage!.Contains("printable ASCII"));
+        }
+
+        [Fact]
+        public void Validate_EmptyHeaderKey_ReturnsFailure()
+        {
+            var endpoint = new GrpcEndpoint { Address = "https://svc.example.com:5001" };
+            endpoint.Headers[""] = "value";
+
+            var options = new GrpcPublishOptions { Endpoints = [endpoint] };
+            var results = options.Validate(new ValidationContext(options));
+
+            Assert.Contains(results, r =>
+                r.MemberNames.Contains($"{nameof(GrpcPublishOptions.Endpoints)}[0].Headers") &&
+                r.ErrorMessage!.Contains("null or empty"));
+        }
+
+        [Fact]
+        public void Validate_UppercaseHeaderKey_IsAllowed()
+        {
+            // grpc-dotnet normalizes uppercase keys to lowercase, so they must
+            // pass validation like any other key.
+            var endpoint = new GrpcEndpoint { Address = "https://svc.example.com:5001" };
+            endpoint.Headers["X-Custom"] = "value123";
+
+            var options = new GrpcPublishOptions { Endpoints = [endpoint] };
+            var results = options.Validate(new ValidationContext(options));
+
+            Assert.DoesNotContain(results, r =>
+                r.MemberNames.Contains($"{nameof(GrpcPublishOptions.Endpoints)}[0].Headers"));
+        }
+
         [Fact]
         public void Validate_ValidHeaders_ReturnsNoFailures()
         {

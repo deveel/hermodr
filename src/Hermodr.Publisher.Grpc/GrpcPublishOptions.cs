@@ -5,8 +5,6 @@
 
 using System.ComponentModel.DataAnnotations;
 
-using Grpc.Core;
-
 namespace Hermodr
 {
     /// <summary>
@@ -124,25 +122,55 @@ namespace Hermodr
 
             foreach (var header in endpoint.Headers)
             {
-                ArgumentException? error = null;
-                try
-                {
-                    var metadata = new Metadata();
-                    metadata.Add(header.Key, header.Value);
-                }
-                catch (ArgumentException ex)
-                {
-                    error = ex;
-                }
-
-                if (error is not null)
+                var failure = ValidateHeaderEntry(header.Key, header.Value);
+                if (failure is not null)
                 {
                     yield return new ValidationResult(
-                        $"The header '{header.Key}' of the endpoint at index {index} is not a valid gRPC metadata entry: {error.Message}",
+                        $"The header '{header.Key}' of the endpoint at index {index} is not a valid gRPC metadata entry: {failure}",
                         [$"{nameof(Endpoints)}[{index}].Headers"]);
                 }
             }
         }
+
+        /// <summary>
+        /// Validates a single header entry against the gRPC metadata rules that
+        /// grpc-dotnet enforces (key charset, no binary keys on the string surface),
+        /// plus the value constraints enforced by the HTTP/2 layer (printable ASCII
+        /// only, no control characters such as CR/LF which would allow header
+        /// injection). Returns the failure reason, or <c>null</c> when valid.
+        /// </summary>
+        /// <remarks>
+        /// Binary metadata (keys with a <c>-bin</c> suffix) cannot be carried as
+        /// string values: grpc-dotnet rejects them, so they are invalid on this
+        /// options surface regardless of value encoding.
+        /// </remarks>
+        private static string? ValidateHeaderEntry(string? key, string? value)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+                return "the key is null or empty.";
+
+            if (key.EndsWith(BinaryKeySuffix, StringComparison.OrdinalIgnoreCase))
+                return "binary metadata keys (with a '-bin' suffix) cannot be carried as string values.";
+
+            foreach (var c in key)
+            {
+                if (!char.IsAsciiLetterOrDigit(c) && c is not '_' and not '-' and not '.')
+                    return "keys can only contain alphanumeric characters, underscores, hyphens and dots.";
+            }
+
+            if (value is null)
+                return "the value is null.";
+
+            foreach (var c in value)
+            {
+                if ((c < 0x20 && c != '\t') || c > 0x7E)
+                    return "the value must only contain printable ASCII characters (no control characters such as CR/LF, no non-ASCII characters).";
+            }
+
+            return null;
+        }
+
+        private const string BinaryKeySuffix = "-bin";
 
         /// <inheritdoc/>
         IEventPublishChannelMetadata IChannelMetadataSource.GetChannelMetadata()
