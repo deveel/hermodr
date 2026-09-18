@@ -75,6 +75,25 @@
     refresh should be configured via `SocketsHttpHandler.PooledConnectionLifetime`
     (see the channel documentation).
 
+### 📖 Documentation
+
+- **gRPC channel documentation** (`docs/publishers/grpc.md`) is now listed in
+  the publisher channels documentation index and website sidebar, and the
+  `Hermodr.Publisher.Grpc` package is listed in the packages reference.
+- **New `grpc-publisher` sample**: a two-project sample (ASP.NET Core gRPC
+  receiver + console publisher) demonstrating the `IGrpcEventSender` seam over
+  a shared `.proto` contract, with unary and client-streaming delivery.
+
+### 🧪 Tests
+
+- **gRPC server integration tests**: the `Hermodr.Publisher.Grpc.XUnit` test
+  project now hosts a real Grpc.AspNetCore server in
+  `Microsoft.AspNetCore.TestHost` (no Docker required) and verifies the
+  end-to-end publish flow — unary and client-streaming delivery, header
+  propagation, non-OK status → `GrpcTransportException` mapping with the gRPC
+  status code preserved, deadline enforcement, fan-out to multiple endpoints,
+  and dead-letter engagement on server failures.
+
 ## v1.5.2 - HTTP Publisher Channel
 
 ### 🚀 Features

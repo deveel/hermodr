@@ -1,7 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <PackageReference Include="Grpc.AspNetCore" Version="2.83.0" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="$(MicrosoftExtensionsVersion)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="Protos\order_events.proto" GrpcServices="Both" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\Hermodr.Publisher.Grpc\Hermodr.Publisher.Grpc.csproj" />
+    <ProjectReference Include="..\..\src\Hermodr.Publisher.DeadLetter\Hermodr.Publisher.DeadLetter.csproj" />
   </ItemGroup>
 
 </Project>

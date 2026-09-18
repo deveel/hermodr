@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+option csharp_namespace = "OrderService.GrpcEvents";
+
+package orderservice;
+
+// The application owns the gRPC wire contract: the publisher channel is
+// transport-agnostic and delegates the RPC invocation to an IGrpcEventSender
+// that calls the client generated from this file.
+service OrderEvents {
+  rpc PublishEvent (OrderEventMessage) returns (PublishReceipt);
+  rpc PublishEventBatch (stream OrderEventMessage) returns (BatchPublishReceipt);
+}
+
+message OrderEventMessage {
+  string id = 1;
+  string type = 2;
+  string source = 3;
+  string data_content_type = 4;
+  string data = 5;
+}
+
+message PublishReceipt {
+  string id = 1;
+}
+
+message BatchPublishReceipt {
+  int32 count = 1;
+}

@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+option csharp_namespace = "Hermodr.TestServices";
+
+package hermodr.testing;
+
+// A minimal application-defined gRPC contract used by the integration tests
+// and the sample to demonstrate the IGrpcEventSender seam: the wire contract
+// is owned by the application's .proto file, not by the publisher channel.
+service OrderEvents {
+  rpc PublishEvent (OrderEventMessage) returns (PublishReceipt);
+  rpc PublishEventBatch (stream OrderEventMessage) returns (BatchPublishReceipt);
+}
+
+message OrderEventMessage {
+  string id = 1;
+  string type = 2;
+  string source = 3;
+  string data_content_type = 4;
+  string data = 5;
+}
+
+message PublishReceipt {
+  string id = 1;
+}
+
+message BatchPublishReceipt {
+  int32 count = 1;
+}
