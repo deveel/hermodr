@@ -44,6 +44,12 @@ namespace Hermodr
         public const string Dapr = "dapr";
 
         /// <summary>
+        /// gRPC transport identifier (<c>"grpc"</c>).
+        /// Produced by the <c>Hermodr.Publisher.Grpc</c> channel (roadmap item 14).
+        /// </summary>
+        public const string Grpc = "grpc";
+
+        /// <summary>
         /// Marks a channel that is not a message transport (storage, deferral,
         /// recovery, ...). Exporters exclude channels with this transport from
         /// the produced document.

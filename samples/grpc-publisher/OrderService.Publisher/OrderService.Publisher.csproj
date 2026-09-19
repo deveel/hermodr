@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>OrderService.Publisher</RootNamespace>
+    <AssemblyName>OrderService.Publisher</AssemblyName>
+    <Description>
+      Console sample that publishes Order lifecycle events to a gRPC endpoint
+      using the Hermodr gRPC publisher channel: unary RPC for single events,
+      client-streaming RPC for batches, and a .proto-generated client wrapped
+      in an IGrpcEventSender.
+    </Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Google.Protobuf" Version="3.31.1" />
+    <!-- Code generation only: the runtime client libraries come from Hermodr.Publisher.Grpc. -->
+    <PackageReference Include="Grpc.Tools" Version="2.83.0" PrivateAssets="All" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Hermodr.Publisher.Grpc\Hermodr.Publisher.Grpc.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="..\protos\order_events.proto" GrpcServices="Client" />
+  </ItemGroup>
+
+</Project>

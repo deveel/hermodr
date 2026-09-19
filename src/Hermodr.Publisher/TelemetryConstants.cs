@@ -115,6 +115,8 @@ namespace Hermodr
         public const string SpanTransportHttp = "transport.publish.http";
         /// <summary>Span name for publishing through the Dapr transport.</summary>
         public const string SpanTransportDapr = "transport.publish.dapr";
+        /// <summary>Span name for publishing through the gRPC transport.</summary>
+        public const string SpanTransportGrpc = "transport.publish.grpc";
 
         /// <summary>Item key used to stash the publish start time for duration metrics.</summary>
         public const string PublishStartTimeItemKey = "Hermodr.Metrics.Publish.StartTime";

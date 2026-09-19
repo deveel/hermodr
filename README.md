@@ -218,8 +218,8 @@ The framework is still evolving. See the [ROADMAP](ROADMAP.md) for the full desc
 ### v1.5 — New Transports
 
 - [x] **CloudEvents HTTP Binding for the Webhook Publisher** — structured/binary content-mode compliance + WebHook abuse-protection discovery
-- [ ] **HTTP Publisher Channel** — lightweight, sign-free point-to-point delivery to statically-configured endpoints
-- [ ] **gRPC Publisher Channel** — low-latency service-to-service delivery using the CloudEvents gRPC protocol binding
+- [x] **HTTP Publisher Channel** — lightweight, sign-free point-to-point delivery to statically-configured endpoints
+- [x] **gRPC Publisher Channel** — low-latency service-to-service delivery with unary and client-streaming RPC and a pluggable sender (CloudEvents Protobuf binding planned for v1.6.0)
 - [ ] **Apache Kafka Publisher Channel** — publish CloudEvents to Kafka topics with partition key control and Schema Registry support
 - [ ] **Amazon SQS Publisher Channel** — standard and FIFO queue delivery on AWS with batch publish and S3 offload
 - [ ] **Amazon SNS Publisher Channel** — fan-out to SQS queues, Lambda functions, and HTTP endpoints via SNS topics

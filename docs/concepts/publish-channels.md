@@ -80,6 +80,8 @@ The Webhook channel implements both `IEventPublishChannel` and `IBatchEventPubli
 | RabbitMQ | `Hermodr.Publisher.RabbitMq` | `.AddRabbitMq(...)` | `.AddRabbitMq<TEvent>(...)` |
 | MassTransit | `Hermodr.Publisher.MassTransit` | `.AddMassTransit(...)` | `.AddMassTransit<TEvent>(...)` |
 | Webhook (HTTP) | `Hermodr.Publisher.Webhook` | `.AddWebhooks(...)` | `.AddWebhooks<TEvent>(...)` |
+| HTTP | `Hermodr.Publisher.Http` | `.AddHttpEventPublisherChannel(...)` | `.AddHttpEventPublisherChannel<TEvent>(...)` |
+| gRPC | `Hermodr.Publisher.Grpc` | `.AddGrpcEventPublisherChannel(...)` | `.AddGrpcEventPublisherChannel<TEvent>(...)` |
 | Test (in-memory) | `Hermodr.TestPublisher` | `.AddTestChannel(...)` | `.AddTestChannel<TEvent>(...)` |
 
 Multiple channels can be registered simultaneously — the publisher will deliver to all of them.  When a typed channel exists for `TEvent`, **only typed channels** receive that event.
@@ -176,5 +178,7 @@ Channels that extend `EventPublishChannel<TOptions>` with options that implement
 - [RabbitMQ](../publishers/rabbitmq.md)
 - [MassTransit](../publishers/masstransit.md)
 - [Webhook](../publishers/webhook.md)
+- [HTTP](../publishers/http.md)
+- [gRPC](../publishers/grpc.md)
 - [Test Publisher](../testing/README.md)
 

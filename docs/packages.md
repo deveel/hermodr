@@ -21,6 +21,7 @@ The framework is split into focused NuGet packages so you only take what you nee
 | [`Hermodr.Publisher.Webhook`](#hermodr-publisher-webhook) | Deliver events to HTTP webhook endpoints |
 | [`Hermodr.Publisher.Dapr`](#hermodr-publisher-dapr) | Publish events through the Dapr pub/sub building block |
 | [`Hermodr.Publisher.Http`](#hermodr-publisher-http) | Deliver CloudEvents to static HTTP endpoints via the CloudEvents HTTP binding |
+| [`Hermodr.Publisher.Grpc`](#hermodr-publisher-grpc) | Deliver CloudEvents to static gRPC endpoints with unary and client-streaming RPC |
 | [`Hermodr.Publisher.Outbox`](#hermodr-publisher-outbox) | Persist events to a transactional outbox for later relay |
 | [`Hermodr.Publisher.Outbox.EntityFramework`](#hermodr-publisher-outbox-entityframework) | Entity Framework Core store and helpers for the outbox channel |
 | [`Hermodr.Publisher.DeliveryLog`](#hermodr-publisher-deliverylog) | Core delivery log middleware and storage abstractions |
@@ -180,6 +181,21 @@ dotnet add package Hermodr.Publisher.Http
 ```
 
 See the [HTTP Channel](publishers/http.md) page for the full guide.
+
+---
+
+### `Hermodr.Publisher.Grpc`
+
+[![NuGet](https://img.shields.io/nuget/v/Hermodr.Publisher.Grpc.svg)](https://www.nuget.org/packages/Hermodr.Publisher.Grpc)
+[![GitHub pre-release](https://img.shields.io/badge/nuget-prerelease-yellow?logo=nuget)](https://github.com/deveel/hermodr/pkgs/nuget/Hermodr.Publisher.Grpc)
+
+A gRPC publish channel built on [grpc-dotnet](https://github.com/grpc/grpc-dotnet) (`Grpc.Net.Client`) that delivers CloudEvents to statically-configured gRPC endpoints. Fans a single publish call out to all endpoints concurrently, each with its own `GrpcChannel`, TLS/mTLS configuration, and deadline. The actual RPC (unary for single events, client-streaming for batches) is delegated to a pluggable `IGrpcEventSender` strategy that calls your `.proto`-generated gRPC client, keeping the channel transport-agnostic while leveraging the full pipeline (enrichment, schema validation, middleware, dead-letter, tracing).
+
+```bash
+dotnet add package Hermodr.Publisher.Grpc
+```
+
+See the [gRPC Channel](publishers/grpc.md) page for the full guide.
 
 ---
 

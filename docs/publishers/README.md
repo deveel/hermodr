@@ -12,6 +12,7 @@ Hermodr ships ready-made channel implementations for the most common messaging t
 | [Webhook](webhook.md) | `Hermodr.Publisher.Webhook` | Delivering events to external HTTP endpoints with HMAC signing |
 | [Dapr](dapr.md) | `Hermodr.Publisher.Dapr` | Portable publish through the Dapr pub/sub building block, abstracting the underlying broker |
 | [HTTP](http.md) | `Hermodr.Publisher.Http` | Lightweight CloudEvents delivery to known, trusted HTTP endpoints (structured/binary binding) without signing or subscriber registration |
+| [gRPC](grpc.md) | `Hermodr.Publisher.Grpc` | Low-latency CloudEvents over gRPC with unary and client-streaming RPC; pluggable sender for custom .proto contracts |
 | [Publish Error Handling](error-handling.md) | `Hermodr.Publisher` | Cross-cutting interception of publish failures for logging, policy, auditing, and custom recovery |
 | [OpenTelemetry Instrumentation](opentelemetry.md) | `Hermodr.Publisher.OpenTelemetry` | Distributed tracing with W3C trace context propagation across service boundaries |
 | [Transactional Outbox](reliability/outbox/README.md) | `Hermodr.Publisher.Outbox` | Guaranteed at-least-once delivery via a transactional outbox table |

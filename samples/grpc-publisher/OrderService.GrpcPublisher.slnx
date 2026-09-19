@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="../../src/Hermodr.Annotations/Hermodr.Annotations.csproj" />
+  <Project Path="../../src/Hermodr.Publisher/Hermodr.Publisher.csproj" />
+  <Project Path="../../src/Hermodr.Publisher.Grpc/Hermodr.Publisher.Grpc.csproj" />
+  <Project Path="OrderService.GrpcServer/OrderService.GrpcServer.csproj" />
+  <Project Path="OrderService.Publisher/OrderService.Publisher.csproj" />
+</Solution>
